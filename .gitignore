@@ -1,0 +1,26 @@
+# ===== Java / Gradle (services/api) =====
+**/target/
+**/.gradle/
+**/build/
+*.class
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# ===== Entornos y secretos =====
+.env
+.env.*
+*.local
+!.env.example
+
+# ===== Logs =====
+*.log
+
+# ===== Flutter (aplicación móvil) =====
+# El .gitignore específico de Flutter vive en apps/mobile/.gitignore
+apps/mobile/.dart_tool/
+apps/mobile/build/
+apps/mobile/.flutter-plugins-dependencies
