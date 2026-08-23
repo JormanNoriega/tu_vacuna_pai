@@ -100,7 +100,9 @@ pai/
 │   ├── domain/
 │   ├── api/
 │   ├── database/
-│   └── synchronization/
+│   ├── synchronization/
+│   ├── domain/
+│   └── decisions/              # ADRs de decisiones arquitectónicas
 │
 ├── .github/
 │   └── workflows/
@@ -391,6 +393,36 @@ enum OfflinePolicy {
 
 El rol determina qué operaciones están permitidas; la arquitectura determina cómo se ejecutan. Se evita llenar el código de `if (role == ...)`.
 
+### 7.5 Autoridad de autorización
+
+La interfaz puede ocultar botones y rutas para mejorar la experiencia, pero nunca es la autoridad de seguridad. La autorización definitiva ocurre en Spring Boot y se valida en cada request.
+
+```text
+Flutter UI:
+  → Oculta acciones para las que no existe permiso local
+  → Nunca se considera una barrera de seguridad
+
+Spring Boot:
+  → Valida JWT y usuario activo
+  → Resuelve permisos actuales desde la base de datos o una caché corta
+  → Valida permiso, institución, scope y reglas de dominio
+  → Registra auditoría de las operaciones sensibles
+```
+
+Los permisos y roles del JWT pueden utilizarse para pintar la interfaz, pero no son la fuente definitiva: pueden quedar obsoletos mientras el token siga vigente. El access token tiene una duración corta (15 minutos) y Spring puede invalidar el acceso consultando el estado actual del usuario.
+
+El `institutionId`, el scope y el actor se obtienen del usuario autenticado. El servidor nunca confía en esos valores cuando vienen en el body o en parámetros controlados por el cliente.
+
+### 7.6 Estrategias de operación por rol
+
+`SUPER_ADMIN` y `ADMIN_INSTITUTION` trabajan con estrategia **online-first**: toda escritura requiere respuesta exitosa del servidor y no se convierte en una operación administrativa pendiente.
+
+`VACCINATOR` trabaja con estrategia **offline-first**: las operaciones permitidas se persisten localmente y se envían mediante el outbox cuando existe conectividad.
+
+`READ_ONLY` puede consultar datos locales cacheados, pero no crea ni modifica operaciones.
+
+Si un administrador pierde conectividad, la aplicación debe mostrar `ONLINE_REQUIRED` y bloquear escrituras. Puede mostrar una caché de solo lectura, claramente marcada como potencialmente desactualizada, si la política de protección de datos lo permite.
+
 ---
 ## 8. Sesión y política de autorización offline
 
@@ -412,7 +444,7 @@ No es un token especial: es una **política basada en timestamp**.
 
 ```text
 last_online_validation     (persistido al validar sesión online)
-offline_window_hours       (default: 7 días, configurable por institución)
+  offline_window_hours       (pruebas: 72 horas, configurable por institución)
 
 Mientras ahora - last_online_validation <= window:
     → operación offline permitida (según rol)
@@ -420,13 +452,13 @@ Después:
     → OFFLINE_LOCKED: solo lectura, no nuevas operaciones
 ```
 
-### 8.3 Mitigaciones obligatorias (por la ventana larga de 7 días)
+### 8.3 Mitigaciones obligatorias (por la ventana offline)
 
 1. **Bloqueo local obligatorio**: PIN o biometría para abrir la app.
 2. **DB local cifrada** (SQLCipher/Drift, clave en secure storage).
 3. **Rechazo en servidor**: si el usuario fue desactivado, sus operaciones pendientes pasan a `QUARANTINED` (no se borran; se revisan).
 4. **Auditoría completa** de todo lo registrado dentro de la ventana.
-5. **Configurable por institución**: 7 días es el default; una institución puede endurecerlo sin cambiar código.
+5. **Configurable por institución**: 72 horas es el valor inicial de pruebas; producción requiere aprobación formal.
 6. **Purga al cambiar de institución o scope**: invalida los datos locales.
 
 ### 8.4 Al reconectar
@@ -473,6 +505,10 @@ Después:
 
 Los claims `institution_id`, `roles` y `permissions` se sincronizan desde `app.users` al momento de login.
 
+Estos claims son una instantánea útil para la interfaz y para decisiones rápidas del cliente, pero no constituyen la autorización definitiva. Spring resuelve el estado actual del usuario por `sub`, verifica que esté activo y consulta los permisos vigentes, con una caché de corta duración si fuera necesaria.
+
+La identidad viene del JWT; la autorización vigente viene del backend. Un cambio de rol, institución, scope o estado debe poder surtir efecto sin esperar a que expire una sesión larga.
+
 ---
 ## 10. Seguridad en Spring Boot
 
@@ -487,13 +523,27 @@ Supabase Management API → NO se usa (excepto invitaciones)
 ### 10.2 Autorización
 
 ```text
-@PreAuthorize("@security.hasPermission('ATTENTION_CREATE')")
+@PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
 public ResponseEntity<AttentionResponse> create(@RequestBody @Valid AttentionRequest request) {
     // El controller recibe el request
     // El use case ejecuta la lógica
     // Spring Security inyecta el usuario autenticado
 }
 ```
+
+La anotación de permiso es solo la primera validación. El caso de uso también debe verificar las reglas de dominio y el scope del recurso:
+
+```text
+1. JWT válido
+2. Usuario activo
+3. Permiso requerido
+4. Institución y scope del recurso
+5. Regla de negocio del agregado
+6. Transacción PostgreSQL
+7. AuditEvent
+```
+
+Por ejemplo, `ATTENTION_WRITE` no permite editar una atención `COMPLETED`, y `USER_MANAGE` no permite administrar usuarios de otra institución.
 
 ### 10.3 Extraer usuario del JWT
 
@@ -505,22 +555,11 @@ public class SecurityUtils {
         return UUID.fromString(jwt.getSubject());
     }
 
-    public UUID getCurrentInstitutionId(Authentication auth) {
-        Jwt jwt = (Jwt) auth.getPrincipal();
-        return UUID.fromString((String) jwt.getClaim("institution_id"));
-    }
-
-    public List<String> getCurrentRoles(Authentication auth) {
-        Jwt jwt = (Jwt) auth.getPrincipal();
-        return jwt.getClaimAsStringList("roles");
-    }
-
-    public List<String> getCurrentPermissions(Authentication auth) {
-        Jwt jwt = (Jwt) auth.getPrincipal();
-        return jwt.getClaimAsStringList("permissions");
-    }
+    // La identidad se obtiene del JWT; permisos y scope se resuelven en backend.
 }
 ```
+
+`AuthorizationService` recibe el `userId` autenticado y consulta `app.users`, `user_roles`, `roles`, `permissions`, `role_permissions` y `sync_scopes`. No se debe tomar `institution_id`, `roles` o `permissions` del body de una petición como fuente de autorización.
 
 ### 10.4 Auditoría
 
@@ -571,15 +610,17 @@ Flutter (offline)
 
 Flutter → SyncService → SyncRepository
   └── Pregunta: ¿está online?
-        → Sí: Push + Pull
-        → No: Continúa con SQLite local
+        → Sí: Push + Pull, según la política del rol
+        → No: VACCINATOR continúa con SQLite local; administradores quedan en ONLINE_REQUIRED
 
-Push: POST /api/sync/push
+Push: POST /api/v1/sync/push
   └── Server valida, aplica, guarda operation_id en processed_operations
 
-Pull: GET /api/sync/pull?since={cursor}
+Pull: GET /api/v1/sync/pull?since={cursor}
   └── Server devuelve operaciones del scope que el usuario no ha visto
 ```
+
+El scope no se recibe como una autorización confiable desde el cliente. El servidor lo calcula a partir del usuario autenticado y de `sync_scopes`.
 
 ### 11.2 Outbox Pattern ( cliente)
 
@@ -639,7 +680,7 @@ Al recibir un push con operation_id duplicado:
 ### 11.6 Push (cliente → servidor)
 
 ```text
-POST /api/sync/push
+POST /api/v1/sync/push
 
 Body:
 {
@@ -670,7 +711,7 @@ Response 200:
 ### 11.7 Pull (servidor → cliente)
 
 ```text
-GET /api/sync/pull?since={cursor}&scope={institution_id,municipality_id}
+GET /api/v1/sync/pull?since={cursor}
 
 Response 200:
 {
@@ -753,17 +794,153 @@ Cuando dos clientes modifican el mismo registro:
 Vigilancia de sesión offline:
 
   1. Al login online: guardar last_online_validation timestamp
-  2. Offline: validar que last_online_validation <= 7 días
-  3. Si > 7 días: OFFLINE_LOCKED (solo lectura, no nuevas operaciones)
+  2. Offline: validar que last_online_validation <= offline_window_hours
+  3. Si supera offline_window_hours: OFFLINE_LOCKED (solo lectura, no nuevas operaciones)
   4. Al reconectar: refresh token, validar usuario, desbloquear o purgar
 
 Configuración por institución:
-  - offline_window_hours: default 7 días (puede ajustarse por institución)
-  - configurable en tabla de configuración de institución
+   - offline_window_hours: 72 horas iniciales para pruebas
+   - configurable en tabla de configuración de institución
+   - producción requiere aprobación funcional, clínica, de seguridad y de protección de datos
+```
+
+### 11.12 Flujo online-first para administradores
+
+Online-first significa que el servidor es la fuente de verdad para cada escritura. Flutter puede conservar estado temporal y una caché de lectura, pero no confirma una modificación administrativa hasta recibir una respuesta exitosa del API.
+
+#### Lectura
+
+```text
+Flutter UI
+  → Controller
+  → Use Case
+  → Repository
+  → RemoteDataSource
+  → GET /users, /institutions, /catalogs o /conflicts
+  → Spring valida JWT, usuario, permiso y scope
+  → PostgreSQL consulta la fuente oficial
+  → JSON de respuesta
+  → Flutter actualiza estado y, opcionalmente, la caché
+```
+
+Si falla la red, la UI puede mostrar el último resultado cacheado como `STALE` o informar `ONLINE_REQUIRED`. Los datos cacheados nunca deben aparentar ser actuales.
+
+#### Escritura de `ADMIN_INSTITUTION`
+
+```text
+Flutter
+  → PUT /users/{id}/status
+  → Spring obtiene actor desde JWT.sub
+  → AuthorizationService valida USER_MANAGE
+  → ScopeService verifica que el usuario objetivo pertenece a la institución
+  → Caso de uso aplica reglas de identidad
+  → PostgreSQL actualiza en una transacción
+  → AuditEvent registra actor, institución y recurso
+  → Spring responde 200 con el estado actualizado
+  → Flutter actualiza la pantalla
+```
+
+Si no hay conexión, no se modifica SQLite, no se crea un outbox administrativo y la operación no se presenta como completada.
+
+#### Escritura de `SUPER_ADMIN`
+
+```text
+Flutter
+  → PUT /catalogs/vaccines/{id} o PUT /institutions/{id}
+  → Spring valida CATALOG_WRITE o INSTITUTION_WRITE
+  → No se aplica un scope institucional limitado
+  → Caso de uso valida reglas globales
+  → PostgreSQL confirma la transacción
+  → Se incrementa la versión si cambia un catálogo
+  → Se registra auditoría
+  → Flutter invalida la caché relacionada
+```
+
+Los administradores no utilizan `sync_operations` para sus cambios. La caché local es de apoyo para lectura; PostgreSQL continúa siendo la autoridad.
+
+### 11.13 Flujo offline-first para `VACCINATOR`
+
+Offline-first permite que el vacunador continúe trabajando sin conexión. SQLite cifrada es la fuente inmediata de lectura y escritura local; PostgreSQL es la fuente de verdad final.
+
+#### Crear un paciente sin conexión
+
+```text
+Flutter UI
+  → Controller
+  → CreatePatientUseCase valida el comando
+  → Repository genera operation_id
+  → Transacción local:
+       guarda Patient en SQLite
+       guarda CREATE_PATIENT en sync_operations
+  → UI muestra el paciente como PENDING_SYNC
+```
+
+```text
+sync_operations:
+  operation_id: UUID
+  command_type: CREATE_PATIENT
+  aggregate_id: UUID del paciente
+  payload: JSON del comando
+  status: PENDING
+```
+
+La escritura del agregado y del outbox debe ser atómica. No se debe confirmar el paciente localmente si la operación no quedó registrada en la cola.
+
+#### Sincronizar al recuperar conectividad
+
+```text
+SyncEngine
+  → detecta conexión
+  → refresca y valida sesión
+  → verifica offline_window_hours
+  → obtiene operaciones PENDING
+  → ordena dependencias
+  → POST /sync/push
+
+Spring
+  → valida JWT y usuario activo
+  → resuelve permisos actuales y scope real
+  → valida operation_id e idempotencia
+  → ejecuta el comando de dominio
+  → guarda cambio en PostgreSQL
+  → guarda processed_operations
+  → registra auditoría
+  → responde ACCEPTED o REJECTED
+
+Flutter
+  → ACCEPTED: marca COMPLETED y sincronizado
+  → REJECTED: marca FAILED o QUARANTINED y conserva el error
+```
+
+Si el usuario fue desactivado mientras estaba offline, el servidor rechaza las operaciones nuevas y las deja en `QUARANTINED`; nunca se borran silenciosamente.
+
+#### Dependencias y conflictos
+
+```text
+CREATE_PATIENT
+  → CREATE_ATTENTION
+  → REGISTER_APPLIED_DOSE
+```
+
+El servidor procesa las operaciones en orden. Si falla `CREATE_PATIENT`, las operaciones dependientes quedan bloqueadas. Los conflictos de identidad requieren revisión de `ADMIN_INSTITUTION`; las dosis siguen siendo append-only.
+
+### 11.14 Estados visibles en Flutter
+
+Las pantallas deben distinguir el estado local del estado remoto:
+
+```text
+LOCAL_ONLY       → existe localmente, aún no enviada
+PENDING_SYNC     → en cola
+SYNCING          → siendo enviada
+SYNCED           → confirmada por servidor
+FAILED           → rechazada, puede requerir corrección
+QUARANTINED      → retenida para revisión
+STALE            → lectura cacheada no confirmada recientemente
+ONLINE_REQUIRED  → operación bloqueada por falta de conexión
 ```
 
 ---
-## 12. Decisiones de diseño (D1-D11)
+## 12. Decisiones de diseño (D1-D14)
 
 | # | Decisión | Descripción | Estado |
 |---|---|---|---|
@@ -776,8 +953,19 @@ Configuración por institución:
 | D7 | Catálogo global + snapshot | Catálogo global + snapshot histórico en AppliedDose | Ampliada |
 | D8 | READ_ONLY | Réplica local de solo lectura | Confirmada |
 | D9 | Sync Scope | Sync por institución + municipio | Definida |
-| D10 | Offline window | 7 días default + mitigaciones obligatorias | Definida |
+| D10 | Offline window | 72 horas provisional + aprobación para producción | Provisional |
 | D11 | Fuente de verdad | Matriz por tipo de dato (identidad, contacto, append-only, etc.) | Confirmada |
+| D12 | Dependencias de sync | Grafo simple; el cliente respeta el orden y el servidor no acepta dependencias hacia adelante | Confirmada |
+| D13 | Plataforma de datos | Supabase para PostgreSQL/Auth; Spring es la autoridad y RLS es defensa adicional | Confirmada |
+| D14 | Versionado API | Versionado por path `/api/v1`; cambios incompatibles crean una nueva versión | Confirmada |
+
+Los detalles y responsables de estas decisiones están en:
+
+- `docs/decisions/ADR-001-mvp-y-dependencias-sync.md`
+- `docs/decisions/ADR-002-supabase-spring-rls.md`
+- `docs/decisions/ADR-003-ventana-offline.md`
+- `docs/decisions/ADR-004-versionado-api.md`
+- `docs/domain/invariants.md`
 
 ### 12.1 Matriz de escenarios de conflicto
 
@@ -789,7 +977,7 @@ Configuración por institución:
 | Dosis modificada después de REGISTERED | Append-only (CANCELLED) | Sí |
 | Catálogo modificado desde offline | Rechazo (solo `SUPER_ADMIN` modifica catálogos globales) | Sí |
 | Token expirado | Re-login obligatorio | No |
-| Offline > 7 días | OFFLINE_LOCKED (solo lectura) | Sí |
+| Offline > `offline_window_hours` | OFFLINE_LOCKED (solo lectura) | Sí |
 | Usuario desactivado mientras offline | Operaciones QUARANTINED al reconectar | Sí |
 | Cambio de institución | Purga de datos locales + re-scope | Sí |
 
@@ -870,7 +1058,7 @@ Los endpoints de lectura son públicos para usuarios autenticados. Los de escrit
 | Método | Ruta | Descripción |
 |---|---|---|
 | POST | `/sync/push` | Enviar operaciones pendientes |
-| GET | `/sync/pull?since={cursor}&scope={scope}` | Recibir operaciones del servidor |
+| GET | `/sync/pull?since={cursor}` | Recibir operaciones del scope calculado por el servidor |
 
 ### 13.7 Conflictos
 
@@ -991,7 +1179,102 @@ El esquema completo se documenta en `docs/database/sqlite-schema.drift`. Resumen
 | `ENUM` | `TEXT` | `String` (validado en dominio) |
 
 ---
-## 15. Plan de fases de implementación
+## 15. Buenas prácticas y programación orientada a objetos
+
+### 15.1 Responsabilidades por capa
+
+Cada clase debe tener una responsabilidad clara y depender de contratos, no de detalles concretos.
+
+```text
+Controller             → HTTP, validación sintáctica y códigos de respuesta
+Use Case               → Coordinar una operación de aplicación
+Repository             → Contrato de persistencia
+DataSource             → Acceso local o remoto
+Domain Entity          → Invariantes y comportamiento del negocio
+AuthorizationService   → Permisos vigentes
+ScopeService           → Alcance de datos
+SyncEngine             → Cola, reintentos y sincronización
+```
+
+En Flutter se mantiene:
+
+```text
+UI → Controller → Use Case → Repository → Local / Remote
+```
+
+En Spring se mantiene la separación hexagonal:
+
+```text
+HTTP Adapter → Application → Domain ← Ports → Infrastructure Adapters
+```
+
+No se permite que un Widget acceda a SQLite, que un Controller use Dio directamente o que una entidad de dominio conozca Drift, JPA, HTTP o Flutter.
+
+### 15.2 Encapsulamiento e invariantes
+
+Las entidades deben proteger sus estados válidos mediante métodos de dominio:
+
+```text
+Attention.complete()
+Attention.cancel(reason)
+AppliedDose.cancel(reason)
+```
+
+No se debe permitir cambiar directamente un estado crítico desde un Controller o mapper. Por ejemplo, una atención `COMPLETED` no puede editarse y una dosis no puede eliminarse.
+
+### 15.3 Composición e inversión de dependencias
+
+No se crean subclases innecesarias como `VaccinatorUser extends User`. El usuario se compone con roles, permisos, scope y una política offline:
+
+```text
+User
+  + roles
+  + permissions
+  + scope
+  + offlinePolicy
+```
+
+El dominio depende de interfaces:
+
+```dart
+abstract class PatientRepository {
+  Future<Patient> create(CreatePatientCommand command);
+  Future<Patient?> findById(String id);
+}
+```
+
+La implementación puede usar Drift, Dio, JPA o JDBC sin contaminar el dominio. Se aplica SOLID de forma pragmática: clases pequeñas, interfaces enfocadas, composición sobre herencia y dependencias inyectadas.
+
+### 15.4 DTOs, comandos y entidades
+
+No se exponen entidades directamente en HTTP ni se usan modelos de base de datos como modelos de dominio:
+
+```text
+CreatePatientRequest  → DTO de entrada HTTP
+CreatePatientCommand  → comando de aplicación
+Patient               → entidad de dominio
+PatientResponse       → DTO de salida HTTP
+```
+
+Los mappers convierten entre capas y los casos de uso son el punto de entrada para las operaciones de negocio.
+
+### 15.5 Errores y pruebas
+
+Los errores deben ser explícitos y traducibles a respuestas consistentes:
+
+```text
+OnlineRequiredException
+PermissionDeniedException
+ScopeViolationException
+OfflineWindowExpiredException
+OperationQuarantinedException
+ConflictRequiresReviewException
+```
+
+Cada caso de uso debe probarse sin Flutter, HTTP ni base de datos real. Las pruebas de integración deben verificar autorización, scope, transacciones, auditoría, idempotencia y recuperación de sincronización.
+
+---
+## 16. Plan de fases de implementación
 
 ### Fase 1: Fundamentos (Semanas 1-2)
 
@@ -1078,12 +1361,15 @@ El esquema completo se documenta en `docs/database/sqlite-schema.drift`. Resumen
 |---|---|---|
 | 5.1 | Esquema PostgreSQL (audit_events) | 1.5 |
 | 5.2 | Auditoría automática (Spring) | 5.1 |
-| 5.3 | Permisos por rol (Spring) | 1.7 |
-| 5.4 | Permisos por rol (Flutter) | 1.8 |
+| 5.3 | Autorización centralizada, permisos y scope (Spring) | 1.7 |
+| 5.4 | Capacidades de interfaz y política local (Flutter) | 1.8 |
 | 5.5 | Offline authorization (Flutter) | 3.10, 5.4 |
 | 5.6 | SyncScope (server-side) | 3.4 |
 | 5.7 | SyncScope (Flutter) | 3.3, 5.6 |
 | 5.8 | Documento `docs/api/openapi.yaml` (contrato completo) | 4.9, 3.9 |
+| 5.9 | Pruebas de autorización, scope y permisos revocados | 5.3, 5.6 |
+| 5.10 | Pruebas online-first/offline-first y conectividad intermitente | 5.5, 5.7 |
+| 5.11 | Pruebas de POO, casos de uso y reglas de dominio | 2.3, 2.8, 5.3 |
 
 **Entregable:** Auditoría completa, permisos funcionales, offline authorization, contrato OpenAPI.
 
@@ -1103,7 +1389,7 @@ El esquema completo se documenta en `docs/database/sqlite-schema.drift`. Resumen
 
 ---
 
-## 16. Reglas de oro
+## 17. Reglas de oro
 
 1. **No hay sync sin outbox.** Toda operación offline pasa por la cola de outbox antes de ser confirmada localmente.
 
@@ -1125,9 +1411,17 @@ El esquema completo se documenta en `docs/database/sqlite-schema.drift`. Resumen
 
 10. **No hay offline sin auditoría.** Todas las operaciones offline se auditan al reconectar.
 
+11. **La UI no autoriza.** Ocultar una acción en Flutter mejora UX, pero Spring Boot siempre valida permiso, usuario activo, scope y reglas de negocio.
+
+12. **Los administradores son online-first.** `SUPER_ADMIN` y `ADMIN_INSTITUTION` no guardan escrituras administrativas pendientes en el outbox; sin conexión, la escritura queda bloqueada.
+
+13. **El scope lo calcula el servidor.** Los valores enviados por el cliente en body o query no conceden acceso a otra institución, municipio o población.
+
+14. **No hay entidades anémicas para reglas críticas.** Las transiciones de estado y operaciones sensibles deben estar encapsuladas en entidades o servicios de dominio.
+
 ---
 
-## 17. Checklist de decisiones arquitectónicas
+## 18. Checklist de decisiones arquitectónicas
 
 - [x] Monorepo (Flutter + Spring en un solo repo)
 - [x] No hay `packages/api-contract` (contrato es HTTP + JSON + OpenAPI)
@@ -1137,11 +1431,17 @@ El esquema completo se documenta en `docs/database/sqlite-schema.drift`. Resumen
 - [x] Spring NUNCA crea usuarios en `auth.users` (usa Supabase Management API)
 - [x] `institutionId` viene del JWT, nunca del body
 - [x] Offline por operación (no por usuario)
-- [x] Ventana offline: 7 días default (configurable por institución)
+- [ ] Ventana offline de producción aprobada formalmente (valor inicial de pruebas: 72 horas)
 - [x] Resolución de conflictos: ADMIN_INSTITUTION (no automática)
 - [x] Scope de sync: institución + municipio
 - [x] Catálogos: globales (PAI es nacional); solo `SUPER_ADMIN` los escribe
 - [x] `Institution` y `institution config` (incluye ventana offline): gestionadas por `SUPER_ADMIN`
+- [x] `SUPER_ADMIN` y `ADMIN_INSTITUTION`: operación online-first, sin outbox administrativo
+- [x] Spring Boot es la autoridad definitiva de permisos, scope y reglas de negocio
+- [x] POO pragmática: casos de uso, entidades encapsuladas, DTOs y puertos/adaptadores
+- [x] Grafo simple de dependencias incluido en el MVP
+- [x] API versionado por path (`/api/v1`)
+- [x] Supabase: PostgreSQL/Auth administrados; RLS no reemplaza validaciones de Spring
 - [x] `VaccineSchedule`: incluido en MVP
 - [x] Demografía: contacto auto-merge con trazabilidad; identidad nunca
 - [x] Documentos derivados planificados: `docs/database/postgres-schema.sql`, `docs/database/sqlite-schema.drift`, `docs/api/openapi.yaml`
@@ -1150,4 +1450,4 @@ El esquema completo se documenta en `docs/database/sqlite-schema.drift`. Resumen
 ---
 
 *Documento generado: 2026-08-22*
-*Última actualización: 2026-08-22*
+*Última actualización: 2026-08-23*

@@ -16,6 +16,11 @@
 *.local
 !.env.example
 
+# ===== Configuracion local de OpenCode =====
+# Puede contener URLs, referencias de proyecto y credenciales de MCP.
+opencode.json
+opencode.jsonc
+
 # ===== Logs =====
 *.log
 
