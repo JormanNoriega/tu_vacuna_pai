@@ -47,7 +47,7 @@ Defectos reales detectados en el código actual:
                                     v
                          +----------------------+
                          |     Spring Boot      |
-                         |   Modular + Hexagonal|
+                         |  Modular por capas   |
                          +----------+-----------+
                                     | JDBC/JPA
                                     v
@@ -58,7 +58,7 @@ Defectos reales detectados en el código actual:
 
 Descripción técnica formal:
 
-> Aplicación Flutter offline-first organizada con **Clean Architecture + Repository Pattern**, conectada a un **monolito modular Spring Boot** con **arquitectura hexagonal**, usando **PostgreSQL administrado por Supabase**, **Supabase Auth** para identidad, y **sincronización offline mediante Outbox Pattern con comandos de dominio e idempotencia por `operation_id`**.
+> Aplicación Flutter offline-first organizada con **Clean Architecture + Repository Pattern**, conectada a un **monolito modular Spring Boot** con **arquitectura por capas (Controller → Service → Repository)**, usando **PostgreSQL administrado por Supabase**, **Supabase Auth** para identidad, y **sincronización offline mediante Outbox Pattern con comandos de dominio e idempotencia por `operation_id`**.
 
 ### 2.1 Responsabilidades por componente
 
@@ -73,10 +73,10 @@ Descripción técnica formal:
 | Sync Engine | Procesar y sincronizar operaciones |
 | Supabase Auth | Identidad y autenticación |
 | Supabase PostgreSQL | Persistencia oficial (fuente de verdad) |
-| Spring Controller | Capa HTTP |
-| Spring Application | Casos de uso del negocio |
-| Spring Domain | Reglas de negocio oficiales |
-| Spring Infrastructure | Acceso a PostgreSQL (JPA/JDBC) |
+| Spring Controller | Capa HTTP (validación sintáctica, respuestas DTO) |
+| Spring Service | Reglas de negocio, autorización y transacciones |
+| Spring Repository | Acceso a datos (Spring Data JPA) |
+| Spring Entity | Modelo persistente JPA |
 | Audit | Trazabilidad de cambios |
 
 ---
@@ -231,34 +231,68 @@ class AttentionRepositoryImpl implements AttentionRepository {
 
 ---
 
-## 5. Estructura Spring Boot (monolito modular + hexagonal)
+## 5. Estructura Spring Boot (monolito modular por capas)
 
 ```text
 services/api/src/main/java/com/pai/api/
 │
 ├── shared/
-│   ├── security/
+│   ├── security/        # SecurityConfig, SecurityBeans, converter JWT
 │   ├── exceptions/
 │   ├── pagination/
 │   └── auditing/
 │
-├── identity/          # institutions, app.users, roles, permissions
+├── identity/            # institutions, app.users, roles, permissions
 ├── patients/
 ├── attentions/
-├── catalogs/          # vaccines, config_options, insurers, laboratories, geo
-├── synchronization/   # push, pull, processed_operations, conflicts
+├── catalogs/            # vaccines, config_options, insurers, laboratories, geo
+├── synchronization/     # push, pull, processed_operations, conflicts
 ├── audit/
 └── reports/
 ```
 
-Cada módulo sigue la estructura: `domain/` (model, repository, service) + `application/` (command, usecase, mapper) + `infrastructure/` (persistence) + `presentation/` (controller, request, response).
+Cada módulo se organiza en `controller/`, `service/`, `repository/`, `entity/`
+y `dto/`. El flujo de una petición es:
+
+```text
+HTTP
+  ↓
+Controller      → HTTP, validación sintáctica, códigos de respuesta
+  ↓
+Service         → reglas de negocio, autorización, límites transaccionales
+  ↓
+Repository      → acceso a datos (Spring Data JPA)
+  ↓
+Entity          → modelo persistente JPA
+  ↓
+PostgreSQL (Supabase)
+```
+
+La seguridad queda separada en `shared/security/`: Spring Security Resource
+Server valida el JWT de Supabase y resuelve el usuario autenticado; el
+controller nunca implementa seguridad.
 
 ### 5.1 Reglas de dependencia en Spring
 
-```
-Domain no sabe que existe Hibernate, JPA, PostgreSQL ni Supabase.
-Infrastructure implementa las interfaces del Domain.
-```
+Estas reglas reemplazan la protección estructural que daba hexagonal y son
+obligatorias en código y en code review:
+
+1. Ningún controller devuelve una entidad JPA directamente; siempre responde
+   con un DTO.
+2. Ningún controller consulta un repositorio ni ejecuta lógica de negocio;
+   delega en el servicio.
+3. Todo mapeo de entidad a DTO se ejecuta dentro del método transaccional del
+   servicio, no después (evita `LazyInitializationException`).
+4. El servicio define los límites transaccionales con `@Transactional`.
+5. Los repositorios contienen consultas y acceso a datos, no reglas de negocio.
+6. Los DTOs de API no reutilizan entidades JPA como contrato público.
+
+Estas reglas se verifican automáticamente con **ArchUnit** (dependencia de
+test): una violación rompe el build.
+
+> Decisión documentada en `docs/decisions/ADR-006-arquitectura-backend-por-capas.md`.
+> La arquitectura hexagonal y las abstracciones de dominio/adapter no se usan
+> en el MVP; solo se reintroducirán si una necesidad concreta las justifica.
 
 ---
 ## 6. Entidades y relaciones
@@ -965,6 +999,8 @@ Los detalles y responsables de estas decisiones están en:
 - `docs/decisions/ADR-002-supabase-spring-rls.md`
 - `docs/decisions/ADR-003-ventana-offline.md`
 - `docs/decisions/ADR-004-versionado-api.md`
+- `docs/decisions/ADR-005-autenticacion-y-autorizacion-offline.md`
+- `docs/decisions/ADR-006-arquitectura-backend-por-capas.md`
 - `docs/domain/invariants.md`
 
 ### 12.1 Matriz de escenarios de conflicto
@@ -1202,13 +1238,13 @@ En Flutter se mantiene:
 UI → Controller → Use Case → Repository → Local / Remote
 ```
 
-En Spring se mantiene la separación hexagonal:
+En Spring se mantiene la arquitectura por capas:
 
 ```text
-HTTP Adapter → Application → Domain ← Ports → Infrastructure Adapters
+HTTP → Controller → Service → Repository → Entity → PostgreSQL
 ```
 
-No se permite que un Widget acceda a SQLite, que un Controller use Dio directamente o que una entidad de dominio conozca Drift, JPA, HTTP o Flutter.
+No se permite que un Widget acceda a SQLite, que un Controller use Dio directamente o que una entidad conozca Drift, JPA, HTTP o Flutter. En Spring, un controller no consulta repositorios ni expone entidades JPA: la protección la dan las reglas de la sección 5.1 y ArchUnit.
 
 ### 15.2 Encapsulamiento e invariantes
 
@@ -1283,7 +1319,7 @@ Cada caso de uso debe probarse sin Flutter, HTTP ni base de datos real. Las prue
 | # | Tarea | Dependencias |
 |---|---|---|
 | 1.1 | Inicializar monorepo (estructura de carpetas) | Ninguna |
-| 1.2 | Configurar Spring Boot (modular, hexagonal) | 1.1 |
+| 1.2 | Configurar Spring Boot (modular por capas) | 1.1 |
 | 1.3 | Configurar Flutter (feature-first, Clean Architecture) | 1.1 |
 | 1.4 | Configurar Supabase (auth, database, RLS) | 1.2 |
 | 1.5 | Crear esquema PostgreSQL (módulo identity) | 1.4 |
@@ -1438,7 +1474,8 @@ Cada caso de uso debe probarse sin Flutter, HTTP ni base de datos real. Las prue
 - [x] `Institution` y `institution config` (incluye ventana offline): gestionadas por `SUPER_ADMIN`
 - [x] `SUPER_ADMIN` y `ADMIN_INSTITUTION`: operación online-first, sin outbox administrativo
 - [x] Spring Boot es la autoridad definitiva de permisos, scope y reglas de negocio
-- [x] POO pragmática: casos de uso, entidades encapsuladas, DTOs y puertos/adaptadores
+- [x] POO pragmática: servicios, entidades encapsuladas, DTOs y capas
+- [x] Backend: arquitectura por capas (Controller → Service → Repository), sin hexagonal en el MVP
 - [x] Grafo simple de dependencias incluido en el MVP
 - [x] API versionado por path (`/api/v1`)
 - [x] Supabase: PostgreSQL/Auth administrados; RLS no reemplaza validaciones de Spring

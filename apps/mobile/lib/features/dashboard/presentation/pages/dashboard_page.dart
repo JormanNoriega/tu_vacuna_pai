@@ -1,0 +1,371 @@
+import 'package:flutter/material.dart';
+
+import '../../../../app/theme/app_theme.dart';
+
+class DashboardPage extends StatefulWidget {
+  const DashboardPage({
+    required this.userName,
+    required this.onSignOut,
+    super.key,
+  });
+
+  final String userName;
+  final VoidCallback onSignOut;
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  int _selectedIndex = 0;
+
+  static const _destinations = [
+    (
+      icon: Icons.space_dashboard_outlined,
+      selectedIcon: Icons.space_dashboard_rounded,
+      label: 'Inicio',
+    ),
+    (
+      icon: Icons.person_add_alt_1_outlined,
+      selectedIcon: Icons.person_add_alt_1_rounded,
+      label: 'Nueva atencion',
+    ),
+    (
+      icon: Icons.history_rounded,
+      selectedIcon: Icons.history_rounded,
+      label: 'Historial',
+    ),
+    (
+      icon: Icons.inventory_2_outlined,
+      selectedIcon: Icons.inventory_2_rounded,
+      label: 'Inventario',
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final isExpanded = MediaQuery.sizeOf(context).width >= 900;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Tu Vacuna PAI'),
+        actions: [
+          IconButton(
+            tooltip: 'Cerrar sesion',
+            onPressed: widget.onSignOut,
+            icon: const Icon(Icons.logout_rounded),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: Row(
+        children: [
+          if (isExpanded)
+            NavigationRail(
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: (value) =>
+                  setState(() => _selectedIndex = value),
+              labelType: NavigationRailLabelType.all,
+              destinations: [
+                for (final destination in _destinations)
+                  NavigationRailDestination(
+                    icon: Icon(destination.icon),
+                    selectedIcon: Icon(destination.selectedIcon),
+                    label: Text(destination.label),
+                  ),
+              ],
+            ),
+          Expanded(child: _DashboardContent(userName: widget.userName)),
+        ],
+      ),
+      bottomNavigationBar: isExpanded
+          ? null
+          : NavigationBar(
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: (value) =>
+                  setState(() => _selectedIndex = value),
+              destinations: [
+                for (final destination in _destinations)
+                  NavigationDestination(
+                    icon: Icon(destination.icon),
+                    selectedIcon: Icon(destination.selectedIcon),
+                    label: destination.label,
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+class _DashboardContent extends StatelessWidget {
+  const _DashboardContent({required this.userName});
+
+  final String userName;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final horizontalPadding = constraints.maxWidth >= 700 ? 32.0 : 16.0;
+        final columns = constraints.maxWidth >= 900 ? 3 : 1;
+        return SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            horizontalPadding,
+            28,
+            horizontalPadding,
+            32,
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1120),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Buenos dias',
+                    style: Theme.of(context).textTheme.bodyLarge
+                        ?.copyWith(color: AppColors.slate),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    userName,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 28),
+                  const _SyncBanner(),
+                  const SizedBox(height: 24),
+                  _StatsGrid(columns: columns),
+                  const SizedBox(height: 32),
+                  Text(
+                    'Acciones frecuentes',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  _ActionsGrid(columns: columns == 1 ? 2 : 4),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SyncBanner extends StatelessWidget {
+  const _SyncBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: AppColors.primary,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: .16),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.cloud_done_rounded, color: Colors.white),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Todo esta sincronizado',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Tus registros estan guardados de forma segura.',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Colors.white),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatsGrid extends StatelessWidget {
+  const _StatsGrid({required this.columns});
+
+  final int columns;
+
+  @override
+  Widget build(BuildContext context) {
+    const stats = [
+      (
+        icon: Icons.people_alt_outlined,
+        value: '128',
+        label: 'Pacientes atendidos',
+        color: AppColors.primary,
+      ),
+      (
+        icon: Icons.vaccines_outlined,
+        value: '246',
+        label: 'Dosis aplicadas',
+        color: AppColors.success,
+      ),
+      (
+        icon: Icons.pending_actions_rounded,
+        value: '08',
+        label: 'Pendientes de sync',
+        color: AppColors.warning,
+      ),
+    ];
+    return GridView.count(
+      crossAxisCount: columns,
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      childAspectRatio: columns == 1 ? 3.5 : 1.35,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        for (final stat in stats)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: stat.color.withValues(alpha: .1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(stat.icon, color: stat.color),
+                  ),
+                  const SizedBox(width: 14),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        stat.value,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        stat.label,
+                        style: const TextStyle(
+                          color: AppColors.slate,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ActionsGrid extends StatelessWidget {
+  const _ActionsGrid({required this.columns});
+
+  final int columns;
+
+  @override
+  Widget build(BuildContext context) {
+    const actions = [
+      (
+        icon: Icons.person_add_alt_1_rounded,
+        label: 'Nueva atencion',
+        description: 'Registrar un paciente',
+        primary: true,
+      ),
+      (
+        icon: Icons.search_rounded,
+        label: 'Buscar paciente',
+        description: 'Consultar historial',
+        primary: false,
+      ),
+      (
+        icon: Icons.inventory_2_outlined,
+        label: 'Ver inventario',
+        description: 'Consultar existencias',
+        primary: false,
+      ),
+      (
+        icon: Icons.file_download_outlined,
+        label: 'Exportar datos',
+        description: 'Descargar reportes',
+        primary: false,
+      ),
+    ];
+    return GridView.count(
+      crossAxisCount: columns,
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      childAspectRatio: columns == 2 ? 1.55 : 1.2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        for (final action in actions)
+          Card(
+            color: action.primary ? AppColors.primary : AppColors.surface,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () {},
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Icon(
+                      action.icon,
+                      color: action.primary ? Colors.white : AppColors.primary,
+                      size: 30,
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          action.label,
+                          style: TextStyle(
+                            color: action.primary
+                                ? Colors.white
+                                : AppColors.ink,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          action.description,
+                          style: TextStyle(
+                            color: action.primary
+                                ? Colors.white70
+                                : AppColors.slate,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}

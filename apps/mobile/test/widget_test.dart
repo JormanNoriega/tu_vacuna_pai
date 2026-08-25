@@ -1,30 +1,22 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:tu_vacuna_pai/main.dart';
+import 'package:tu_vacuna_pai/app/app.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('muestra login sin registro publico', (tester) async {
+    await tester.pumpWidget(const TuVacunaApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('Bienvenido de nuevo'), findsOneWidget);
+    expect(find.text('Iniciar sesion'), findsOneWidget);
+    expect(find.textContaining('No hay registro publico'), findsOneWidget);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  testWidgets('permite iniciar sesion y muestra el dashboard', (tester) async {
+    await tester.pumpWidget(const TuVacunaApp());
+    await tester.tap(find.text('Iniciar sesion'));
+    await tester.pump(const Duration(milliseconds: 500));
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Buenos dias'), findsOneWidget);
+    expect(find.text('Todo esta sincronizado'), findsOneWidget);
+    expect(find.text('Acciones frecuentes'), findsOneWidget);
   });
 }

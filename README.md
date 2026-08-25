@@ -6,18 +6,18 @@ Sistema de registro y consulta de vacunación (Programa Ampliado de Inmunizacion
 
 ```text
 apps/mobile/          # Flutter (offline-first)
-services/api/         # Spring Boot (monolito modular, hexagonal) — pendiente de crear
+services/api/         # Spring Boot (monolito modular por capas)
 infra/database/       # Migraciones SQL / esquemas
 docs/                 # documentación (architecture, domain, api, database, synchronization)
 ```
 
 ## Documentación de referencia
 
-- `docs/architecture/architecture.md` — plan de arquitectura y decisiones de diseño (D1–D11).
+- `docs/architecture/architecture.md` — plan de arquitectura y decisiones de diseño (D1–D14).
+- `docs/decisions/ADR-005-autenticacion-y-autorizacion-offline.md` — flujo de autenticación y autorización offline.
+- `docs/decisions/ADR-006-arquitectura-backend-por-capas.md` — arquitectura backend Controller → Service → Repository.
 
 ## Guía rápida
 
 1. Inicializar el subproyecto móvil: `cd apps/mobile && flutter pub get`
 2. (Próximamente) bootstrap del servicio API en `services/api`.
-
-Estado: plan objetivo. Nada implementado todavía.

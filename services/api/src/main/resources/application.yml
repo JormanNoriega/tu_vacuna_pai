@@ -25,6 +25,10 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    # El esquema de negocio vive en "app". Con baseline-on-migrate, si la BD ya
+    # tiene el esquema (p. ej. migrado via Supabase), Flyway adopta el estado
+    # actual en la version 1 y no reintenta V1.
+    schemas: app
     baseline-on-migrate: true
     validate-on-migrate: true
 
@@ -33,7 +37,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${SUPABASE_AUTH_ISSUER:https://jfxkrnzhfvecaaixkvv.supabase.co/auth/v1}
+          issuer-uri: ${SUPABASE_AUTH_ISSUER:https://jfxkrznzhfvecaaixkjv.supabase.co/auth/v1}
 
   jackson:
     default-property-inclusion: non_null
