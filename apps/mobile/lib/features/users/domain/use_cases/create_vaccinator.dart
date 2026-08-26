@@ -1,17 +1,29 @@
+﻿import '../../../../core/auth/offline_access.dart';
+import '../../../../core/auth/offline_policy.dart';
 import '../entities/vaccinator.dart';
 import '../repositories/users_repository.dart';
 
 class CreateVaccinator {
-  const CreateVaccinator(this._repository);
+  const CreateVaccinator(
+    this._repository, [
+    this._offlinePolicy = const OfflinePolicy(),
+  ]);
 
   final UsersRepository _repository;
+  final OfflinePolicy _offlinePolicy;
 
   Future<Vaccinator> call(
     String accessToken, {
+    required OfflineAccess offline,
     required String email,
     required String fullName,
     required String temporaryPassword,
   }) {
+    _offlinePolicy.ensureWritable(
+      status: offline.status,
+      permissions: offline.permissions,
+      operation: OperationPermission.createVaccinator,
+    );
     return _repository.createVaccinator(
       accessToken,
       email: email,

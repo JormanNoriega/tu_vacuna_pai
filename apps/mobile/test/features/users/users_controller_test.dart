@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tu_vacuna_pai/core/auth/offline_access.dart';
+import 'package:tu_vacuna_pai/features/auth/domain/entities/session_restore_result.dart';
 import 'package:tu_vacuna_pai/features/users/domain/use_cases/create_vaccinator.dart';
 import 'package:tu_vacuna_pai/features/users/domain/use_cases/list_users.dart';
 import 'package:tu_vacuna_pai/features/users/domain/use_cases/update_user_roles.dart';
@@ -13,13 +15,18 @@ void main() {
   late FakeSessionManager sessionManager;
   late UsersController controller;
 
+  const online = OfflineAccess(
+    status: SessionStatus.signedIn,
+    permissions: ['USER_MANAGE'],
+  );
+
   UsersController build() => UsersController(
-        sessionManager: sessionManager,
-        createVaccinator: CreateVaccinator(repository),
-        listUsers: ListUsers(repository),
-        updateUserStatus: UpdateUserStatus(repository),
-        updateUserRoles: UpdateUserRoles(repository),
-      );
+    sessionManager: sessionManager,
+    createVaccinator: CreateVaccinator(repository),
+    listUsers: ListUsers(repository),
+    updateUserStatus: UpdateUserStatus(repository),
+    updateUserRoles: UpdateUserRoles(repository),
+  );
 
   setUp(() {
     repository = FakeUsersRepository();
@@ -33,6 +40,7 @@ void main() {
         email: 'vacunador@hosp-a.com',
         fullName: 'Ana Vacunadora',
         temporaryPassword: 'Temp123!',
+        offline: online,
       );
 
       expect(created, isNotNull);
@@ -41,17 +49,21 @@ void main() {
       expect(controller.error, isNull);
     });
 
-    test('mantiene la contrasena temporal sin exponerla en el estado', () async {
-      await controller.createVaccinator(
-        email: 'vacunador@hosp-a.com',
-        fullName: 'Ana Vacunadora',
-        temporaryPassword: 'Secreto123!',
-      );
+    test(
+      'mantiene la contrasena temporal sin exponerla en el estado',
+      () async {
+        await controller.createVaccinator(
+          email: 'vacunador@hosp-a.com',
+          fullName: 'Ana Vacunadora',
+          temporaryPassword: 'Secreto123!',
+          offline: online,
+        );
 
-      expect(repository.lastPassword, 'Secreto123!');
-      // El controlador no guarda la contrasena en ningun campo publico.
-      expect(controller.error, isNull);
-    });
+        expect(repository.lastPassword, 'Secreto123!');
+        // El controlador no guarda la contrasena en ningun campo publico.
+        expect(controller.error, isNull);
+      },
+    );
 
     test('registra error cuando el repositorio falla', () async {
       repository = FakeUsersRepository(failOnCreate: true);
@@ -61,6 +73,7 @@ void main() {
         email: 'vacunador@hosp-a.com',
         fullName: 'Ana Vacunadora',
         temporaryPassword: 'Temp123!',
+        offline: online,
       );
 
       expect(created, isNull);
@@ -75,6 +88,7 @@ void main() {
         email: 'vacunador@hosp-a.com',
         fullName: 'Ana Vacunadora',
         temporaryPassword: 'Temp123!',
+        offline: online,
       );
 
       expect(created, isNull);
@@ -86,6 +100,7 @@ void main() {
         email: 'vacunador@hosp-a.com',
         fullName: 'Ana Vacunadora',
         temporaryPassword: 'Temp123!',
+        offline: online,
       );
 
       await controller.loadUsers(institutionId: 'inst-1');
@@ -99,11 +114,13 @@ void main() {
         email: 'vacunador@hosp-a.com',
         fullName: 'Ana Vacunadora',
         temporaryPassword: 'Temp123!',
+        offline: online,
       );
       await controller.loadUsers(institutionId: 'inst-1');
 
       final saved = await controller.updateUser(
         created!,
+        offline: online,
         status: 'INACTIVE',
         roles: const ['READ_ONLY'],
       );
@@ -120,12 +137,14 @@ void main() {
         email: 'vacunador@hosp-a.com',
         fullName: 'Ana Vacunadora',
         temporaryPassword: 'Temp123!',
+        offline: online,
       );
       await controller.loadUsers(institutionId: 'inst-1');
 
       repository.failOnUpdate = true;
       final saved = await controller.updateUser(
         created!,
+        offline: online,
         status: 'INACTIVE',
         roles: const ['READ_ONLY'],
       );
@@ -133,6 +152,85 @@ void main() {
       expect(saved, isFalse);
       expect(controller.users.single.status, 'ACTIVE');
       expect(controller.users.single.roles, ['VACCINATOR']);
+    });
+
+    test('bloquea las escrituras cuando la ventana offline vencio', () async {
+      const locked = OfflineAccess(
+        status: SessionStatus.offlineLocked,
+        permissions: ['USER_MANAGE'],
+      );
+
+      final created = await controller.createVaccinator(
+        offline: locked,
+        email: 'vacunador@hosp-a.com',
+        fullName: 'Ana Vacunadora',
+        temporaryPassword: 'Temp123!',
+      );
+
+      expect(created, isNull);
+      expect(controller.error, contains('ventana offline vencio'));
+      expect(controller.users, isEmpty);
+    });
+
+    test('bloquea la edicion cuando la ventana offline vencio', () async {
+      final created = await controller.createVaccinator(
+        email: 'vacunador@hosp-a.com',
+        fullName: 'Ana Vacunadora',
+        temporaryPassword: 'Temp123!',
+        offline: online,
+      );
+      await controller.loadUsers(institutionId: 'inst-1');
+
+      const locked = OfflineAccess(
+        status: SessionStatus.offlineLocked,
+        permissions: ['USER_MANAGE'],
+      );
+      final saved = await controller.updateUser(
+        created!,
+        offline: locked,
+        status: 'INACTIVE',
+        roles: const ['READ_ONLY'],
+      );
+
+      expect(saved, isFalse);
+      expect(controller.users.single.status, 'ACTIVE');
+    });
+
+    test(
+      'bloquea operaciones online-first en modo offline autorizado',
+      () async {
+        const offline = OfflineAccess(
+          status: SessionStatus.offlineAuthorized,
+          permissions: ['USER_MANAGE'],
+        );
+
+        final created = await controller.createVaccinator(
+          offline: offline,
+          email: 'vacunador@hosp-a.com',
+          fullName: 'Ana Vacunadora',
+          temporaryPassword: 'Temp123!',
+        );
+
+        expect(created, isNull);
+        expect(controller.error, contains('requiere conexion'));
+      },
+    );
+
+    test('rechaza una escritura sin el permiso requerido', () async {
+      const withoutPermission = OfflineAccess(
+        status: SessionStatus.signedIn,
+        permissions: ['PATIENT_READ'],
+      );
+
+      final created = await controller.createVaccinator(
+        offline: withoutPermission,
+        email: 'vacunador@hosp-a.com',
+        fullName: 'Ana Vacunadora',
+        temporaryPassword: 'Temp123!',
+      );
+
+      expect(created, isNull);
+      expect(controller.error, contains('No tienes permiso'));
     });
   });
 }

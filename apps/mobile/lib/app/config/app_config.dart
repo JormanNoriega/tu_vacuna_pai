@@ -32,10 +32,7 @@ abstract final class AppConfig {
     );
 
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return configured.replaceFirst(
-        'localhost',
-        '10.0.2.2',
-      );
+      return configured.replaceFirst('localhost', '10.0.2.2');
     }
     return configured;
   }

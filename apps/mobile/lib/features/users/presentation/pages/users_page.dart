@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../../core/auth/offline_access.dart';
 import '../../domain/entities/vaccinator.dart';
 import '../users_controller.dart';
 import 'create_vaccinator_page.dart';
@@ -11,11 +12,16 @@ class UsersPage extends StatefulWidget {
   const UsersPage({
     required this.controller,
     required this.institutionId,
+    required this.offline,
     super.key,
   });
 
   final UsersController controller;
   final String institutionId;
+
+  /// Estado de sesion actual: se propaga a las escrituras para aplicar la
+  /// politica offline.
+  final OfflineAccess offline;
 
   @override
   State<UsersPage> createState() => _UsersPageState();
@@ -31,7 +37,10 @@ class _UsersPageState extends State<UsersPage> {
   Future<void> _openCreateVaccinator() async {
     final created = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => CreateVaccinatorPage(controller: widget.controller),
+        builder: (_) => CreateVaccinatorPage(
+          controller: widget.controller,
+          offline: widget.offline,
+        ),
       ),
     );
     if (created == true && mounted) {
@@ -46,11 +55,18 @@ class _UsersPageState extends State<UsersPage> {
       context: context,
       builder: (_) => _EditUserDialog(
         user: user,
-        onSave: (status, roles) => widget.controller.updateUser(
-          user,
-          status: status,
-          roles: roles,
-        ),
+        onSave: (status, roles) async {
+          final ok = await widget.controller.updateUser(
+            user,
+            offline: widget.offline,
+            status: status,
+            roles: roles,
+          );
+          return ok
+              ? null
+              : (widget.controller.error ??
+                    'No se pudo actualizar el usuario.');
+        },
       ),
     );
     if (saved == true && mounted) {
@@ -58,9 +74,8 @@ class _UsersPageState extends State<UsersPage> {
         const SnackBar(content: Text('Usuario actualizado correctamente.')),
       );
     } else if (saved == false && mounted && widget.controller.error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(widget.controller.error!)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(widget.controller.error!)));
     }
   }
 
@@ -216,7 +231,9 @@ class _EditUserDialog extends StatefulWidget {
   const _EditUserDialog({required this.user, required this.onSave});
 
   final Vaccinator user;
-  final Future<bool> Function(String status, List<String> roles) onSave;
+
+  /// Devuelve null si la escritura se confirmo o un mensaje de error.
+  final Future<String?> Function(String status, List<String> roles) onSave;
 
   @override
   State<_EditUserDialog> createState() => _EditUserDialogState();
@@ -246,23 +263,26 @@ class _EditUserDialogState extends State<_EditUserDialog> {
       _saving = true;
       _error = null;
     });
-    final saved = await widget.onSave(
+    final error = await widget.onSave(
       _active ? 'ACTIVE' : 'INACTIVE',
       _roles.toList(),
     );
     if (!mounted) return;
-    if (saved) {
+    if (error == null) {
       Navigator.of(context).pop(true);
     } else {
-      setState(() => _saving = false);
+      setState(() {
+        _saving = false;
+        _error = error;
+      });
     }
   }
 
   String _roleLabel(String code) => switch (code) {
-        'VACCINATOR' => 'Vacunador',
-        'READ_ONLY' => 'Solo lectura',
-        _ => code,
-      };
+    'VACCINATOR' => 'Vacunador',
+    'READ_ONLY' => 'Solo lectura',
+    _ => code,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -286,20 +306,22 @@ class _EditUserDialogState extends State<_EditUserDialog> {
                     onSelected: _saving
                         ? null
                         : (selected) => setState(() {
-                              if (selected) {
-                                _roles.add(role);
-                              } else {
-                                _roles.remove(role);
-                              }
-                            }),
+                            if (selected) {
+                              _roles.add(role);
+                            } else {
+                              _roles.remove(role);
+                            }
+                          }),
                   ),
               ],
             ),
             const SizedBox(height: 20),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Usuario activo',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
+              title: const Text(
+                'Usuario activo',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
               subtitle: Text(
                 _active
                     ? 'Puede iniciar sesion y trabajar.'

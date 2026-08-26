@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../../core/auth/offline_access.dart';
 import '../admin_controller.dart';
 
 /// Formulario para crear una institucion (SUPER_ADMIN).
 class CreateInstitutionPage extends StatefulWidget {
-  const CreateInstitutionPage({required this.controller, super.key});
+  const CreateInstitutionPage({
+    required this.controller,
+    required this.offline,
+    super.key,
+  });
 
   final AdminController controller;
+
+  /// Estado de sesion actual para aplicar la politica offline a la escritura.
+  final OfflineAccess offline;
 
   @override
   State<CreateInstitutionPage> createState() => _CreateInstitutionPageState();
@@ -36,6 +44,7 @@ class _CreateInstitutionPageState extends State<CreateInstitutionPage> {
     setState(() => _submitting = true);
 
     final created = await widget.controller.createInstitution(
+      offline: widget.offline,
       code: _codeController.text.trim(),
       name: _nameController.text.trim(),
       offlineWindowHours: offline,

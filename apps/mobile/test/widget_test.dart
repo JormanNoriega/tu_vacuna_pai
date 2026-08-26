@@ -7,6 +7,7 @@ import 'package:tu_vacuna_pai/features/admin/domain/use_cases/create_institution
 import 'package:tu_vacuna_pai/features/admin/domain/use_cases/list_institutions.dart';
 import 'package:tu_vacuna_pai/features/admin/presentation/admin_controller.dart';
 import 'package:tu_vacuna_pai/features/auth/domain/entities/auth_user.dart';
+import 'package:tu_vacuna_pai/features/auth/domain/entities/session_restore_result.dart';
 import 'package:tu_vacuna_pai/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:tu_vacuna_pai/features/users/domain/use_cases/create_vaccinator.dart';
 import 'package:tu_vacuna_pai/features/users/domain/use_cases/list_users.dart';
@@ -47,8 +48,9 @@ void main() {
     expect(find.text('Acciones frecuentes'), findsOneWidget);
   });
 
-  testWidgets('SUPER_ADMIN ve la seccion de administracion con dos acciones',
-      (tester) async {
+  testWidgets('SUPER_ADMIN ve la seccion de administracion con dos acciones', (
+    tester,
+  ) async {
     final repository = FakeAdminRepository();
     repository.institutions.add(
       Institution(
@@ -101,8 +103,9 @@ void main() {
     expect(find.byType(NavigationBar), findsNothing);
   });
 
-  testWidgets('ADMIN_INSTITUTION gestiona los vacunadores de su institucion',
-      (tester) async {
+  testWidgets('ADMIN_INSTITUTION gestiona los vacunadores de su institucion', (
+    tester,
+  ) async {
     final usersController = UsersController(
       sessionManager: FakeSessionManager('token-123'),
       createVaccinator: CreateVaccinator(FakeUsersRepository()),
@@ -153,8 +156,9 @@ void main() {
     );
   });
 
-  testWidgets('VACCINATOR ve sus opciones sin seccion de administracion',
-      (tester) async {
+  testWidgets('VACCINATOR ve sus opciones sin seccion de administracion', (
+    tester,
+  ) async {
     final user = AuthUser(
       id: 'vac-1',
       email: 'vacunador@hosp-a.com',
@@ -171,7 +175,9 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(home: DashboardPage(user: user, onSignOut: () {})),
+      MaterialApp(
+        home: DashboardPage(user: user, onSignOut: () {}),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -185,8 +191,9 @@ void main() {
     expect(find.text('Inventario'), findsNothing);
   });
 
-  testWidgets('ADMIN_INSTITUTION edita el estado y los roles de un vacunador',
-      (tester) async {
+  testWidgets('ADMIN_INSTITUTION edita el estado y los roles de un vacunador', (
+    tester,
+  ) async {
     final repository = FakeUsersRepository();
     repository.users.add(
       Vaccinator(
@@ -255,8 +262,9 @@ void main() {
     expect(find.text('INACTIVO'), findsOneWidget);
   });
 
-  testWidgets('muestra el banner de solo lectura cuando la ventana vencio',
-      (tester) async {
+  testWidgets('muestra el banner de solo lectura cuando la ventana vencio', (
+    tester,
+  ) async {
     final user = AuthUser(
       id: 'vac-1',
       email: 'vacunador@hosp-a.com',
@@ -277,16 +285,118 @@ void main() {
         home: DashboardPage(
           user: user,
           onSignOut: () {},
-          offlineLocked: true,
+          sessionStatus: SessionStatus.offlineLocked,
         ),
       ),
     );
     await tester.pumpAndSettle();
 
     expect(find.text('Modo solo lectura'), findsOneWidget);
+    expect(find.textContaining('La ventana offline vencio'), findsOneWidget);
+  });
+
+  testWidgets('muestra el banner de modo offline dentro de la ventana', (
+    tester,
+  ) async {
+    final user = AuthUser(
+      id: 'vac-1',
+      email: 'vacunador@hosp-a.com',
+      name: 'Ana Vacunadora',
+      institution: const InstitutionProfile(
+        id: 'inst-1',
+        code: 'HOSP-A',
+        name: 'Hospital A',
+      ),
+      roles: const ['VACCINATOR'],
+      permissions: const ['PATIENT_READ', 'ATTENTION_CREATE'],
+      offlineWindowHours: 72,
+      lastOnlineValidation: DateTime.now().subtract(const Duration(hours: 1)),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DashboardPage(
+          user: user,
+          onSignOut: () {},
+          sessionStatus: SessionStatus.offlineAuthorized,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Modo offline'), findsOneWidget);
+    expect(find.text('Modo solo lectura'), findsNothing);
+  });
+
+  testWidgets('bloquea la edicion de usuario en modo solo lectura', (
+    tester,
+  ) async {
+    final repository = FakeUsersRepository();
+    repository.users.add(
+      Vaccinator(
+        id: 'vac-1',
+        email: 'vacunador@hosp-a.com',
+        fullName: 'Ana Vacunadora',
+        institutionId: 'inst-1',
+        roles: const ['VACCINATOR'],
+        status: 'ACTIVE',
+      ),
+    );
+    final usersController = UsersController(
+      sessionManager: FakeSessionManager('token-123'),
+      createVaccinator: CreateVaccinator(repository),
+      listUsers: ListUsers(repository),
+      updateUserStatus: UpdateUserStatus(repository),
+      updateUserRoles: UpdateUserRoles(repository),
+    );
+    final user = AuthUser(
+      id: 'admin-1',
+      email: 'admin@hosp-a.com',
+      name: 'Admin Hospital A',
+      institution: const InstitutionProfile(
+        id: 'inst-1',
+        code: 'HOSP-A',
+        name: 'Hospital A',
+      ),
+      roles: const ['ADMIN_INSTITUTION'],
+      permissions: const ['USER_MANAGE', 'PATIENT_READ'],
+      offlineWindowHours: 72,
+      lastOnlineValidation: DateTime.now(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DashboardPage(
+          user: user,
+          onSignOut: () {},
+          usersController: usersController,
+          sessionStatus: SessionStatus.offlineLocked,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('Administracion'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Editar usuario'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+
     expect(
-      find.textContaining('La ventana offline vencio'),
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.textContaining('La ventana offline vencio'),
+      ),
       findsOneWidget,
     );
+    // El usuario sigue activo: la escritura nunca llego al repositorio.
+    expect(repository.users.single.status, 'ACTIVE');
   });
 }

@@ -1,20 +1,29 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../../core/auth/offline_access.dart';
 import '../admin_controller.dart';
 
 /// Formulario para crear un ADMIN_INSTITUTION para una institucion existente.
 class CreateInstitutionAdminPage extends StatefulWidget {
-  const CreateInstitutionAdminPage({required this.controller, super.key});
+  const CreateInstitutionAdminPage({
+    required this.controller,
+    required this.offline,
+    super.key,
+  });
 
   final AdminController controller;
+
+  /// Estado de sesion actual para aplicar la politica offline a la escritura.
+  final OfflineAccess offline;
 
   @override
   State<CreateInstitutionAdminPage> createState() =>
       _CreateInstitutionAdminPageState();
 }
 
-class _CreateInstitutionAdminPageState extends State<CreateInstitutionAdminPage> {
+class _CreateInstitutionAdminPageState
+    extends State<CreateInstitutionAdminPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _nameController = TextEditingController();
@@ -52,6 +61,7 @@ class _CreateInstitutionAdminPageState extends State<CreateInstitutionAdminPage>
     setState(() => _submitting = true);
 
     final created = await widget.controller.createInstitutionAdmin(
+      offline: widget.offline,
       email: _emailController.text.trim(),
       fullName: _nameController.text.trim(),
       institutionId: _selectedInstitutionId!,
@@ -155,8 +165,7 @@ class _CreateInstitutionAdminPageState extends State<CreateInstitutionAdminPage>
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
                             labelText: 'Contrasena temporal',
-                            helperText:
-                                'Minimo 8 caracteres. Se la compartes al nuevo administrador.',
+                            helperText: 'Minimo 8 caracteres. Se la compartes al nuevo administrador.',
                             prefixIcon: const Icon(Icons.lock_outline_rounded),
                             suffixIcon: IconButton(
                               tooltip: _obscurePassword

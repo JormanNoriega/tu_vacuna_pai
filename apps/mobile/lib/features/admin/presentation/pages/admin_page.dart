@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../../core/auth/offline_access.dart';
 import '../../domain/entities/institution.dart';
 import '../admin_controller.dart';
 import 'create_institution_admin_page.dart';
@@ -9,9 +10,13 @@ import 'create_institution_page.dart';
 /// Seccion de administracion global del SUPER_ADMIN. Muestra exactamente dos
 /// acciones: crear instituciones y crear administradores de institucion.
 class AdminPage extends StatefulWidget {
-  const AdminPage({required this.controller, super.key});
+  const AdminPage({required this.controller, required this.offline, super.key});
 
   final AdminController controller;
+
+  /// Estado de sesion actual: se propaga a las escrituras para aplicar la
+  /// politica offline.
+  final OfflineAccess offline;
 
   @override
   State<AdminPage> createState() => _AdminPageState();
@@ -27,7 +32,10 @@ class _AdminPageState extends State<AdminPage> {
   Future<void> _openCreateInstitution() async {
     final created = await Navigator.of(context).push<Institution>(
       MaterialPageRoute(
-        builder: (_) => CreateInstitutionPage(controller: widget.controller),
+        builder: (_) => CreateInstitutionPage(
+          controller: widget.controller,
+          offline: widget.offline,
+        ),
       ),
     );
     if (created != null && mounted) {
@@ -40,7 +48,10 @@ class _AdminPageState extends State<AdminPage> {
   Future<void> _openCreateAdmin() async {
     final created = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => CreateInstitutionAdminPage(controller: widget.controller),
+        builder: (_) => CreateInstitutionAdminPage(
+          controller: widget.controller,
+          offline: widget.offline,
+        ),
       ),
     );
     if (created == true && mounted) {
@@ -97,8 +108,7 @@ class _AdminPageState extends State<AdminPage> {
                     _AdminActionCard(
                       icon: Icons.admin_panel_settings_rounded,
                       title: 'Crear usuario admin de institucion',
-                      description:
-                          'Crea el administrador que gestionara una institucion.',
+                      description: 'Crea el administrador que gestionara una institucion.',
                       onTap: _openCreateAdmin,
                     ),
                   ];

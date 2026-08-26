@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../../core/auth/offline_access.dart';
 import '../users_controller.dart';
 
 /// Formulario para crear un VACCINATOR en la institucion del admin autenticado.
 class CreateVaccinatorPage extends StatefulWidget {
-  const CreateVaccinatorPage({required this.controller, super.key});
+  const CreateVaccinatorPage({
+    required this.controller,
+    required this.offline,
+    super.key,
+  });
 
   final UsersController controller;
+
+  /// Estado de sesion actual para aplicar la politica offline a la escritura.
+  final OfflineAccess offline;
 
   @override
   State<CreateVaccinatorPage> createState() => _CreateVaccinatorPageState();
@@ -36,6 +44,7 @@ class _CreateVaccinatorPageState extends State<CreateVaccinatorPage> {
     setState(() => _submitting = true);
 
     final created = await widget.controller.createVaccinator(
+      offline: widget.offline,
       email: _emailController.text.trim(),
       fullName: _nameController.text.trim(),
       temporaryPassword: _passwordController.text,
@@ -111,8 +120,7 @@ class _CreateVaccinatorPageState extends State<CreateVaccinatorPage> {
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
                             labelText: 'Contrasena temporal',
-                            helperText:
-                                'Minimo 8 caracteres. Se la compartes al nuevo vacunador.',
+                            helperText: 'Minimo 8 caracteres. Se la compartes al nuevo vacunador.',
                             prefixIcon: const Icon(Icons.lock_outline_rounded),
                             suffixIcon: IconButton(
                               tooltip: _obscurePassword

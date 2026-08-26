@@ -20,10 +20,8 @@ class LocalSessionStore {
       roles: user.roles,
       permissions: user.permissions,
       offlineWindowHours: user.offlineWindowHours,
-      lastOnlineValidation: user.lastOnlineValidation
-          .toUtc()
-          .millisecondsSinceEpoch ~/
-          1000,
+      lastOnlineValidation:
+          user.lastOnlineValidation.toUtc().millisecondsSinceEpoch ~/ 1000,
     );
     await _database.upsertInstitution(
       id: user.institution.id,

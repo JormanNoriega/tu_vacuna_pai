@@ -52,14 +52,12 @@ class SessionManager {
     return SessionData(
       accessToken: accessToken,
       refreshToken: refreshToken,
-      expiresAt:
-          expiresAtRaw == null
-              ? DateTime.fromMillisecondsSinceEpoch(0)
-              : DateTime.parse(expiresAtRaw),
-      lastOnlineValidation:
-          lastOnlineRaw == null
-              ? DateTime.fromMillisecondsSinceEpoch(0)
-              : DateTime.parse(lastOnlineRaw),
+      expiresAt: expiresAtRaw == null
+          ? DateTime.fromMillisecondsSinceEpoch(0)
+          : DateTime.parse(expiresAtRaw),
+      lastOnlineValidation: lastOnlineRaw == null
+          ? DateTime.fromMillisecondsSinceEpoch(0)
+          : DateTime.parse(lastOnlineRaw),
     );
   }
 

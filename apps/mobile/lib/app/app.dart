@@ -86,7 +86,7 @@ class _TuVacunaAppState extends State<TuVacunaApp> {
         onSignOut: _authController.signOut,
         adminController: widget.adminController,
         usersController: widget.usersController,
-        offlineLocked: _authController.isOfflineLocked,
+        sessionStatus: _authController.status,
       );
     }
     return LoginPage(controller: _authController);

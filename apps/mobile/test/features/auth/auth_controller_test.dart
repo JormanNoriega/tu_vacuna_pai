@@ -13,10 +13,10 @@ void main() {
   late AuthController controller;
 
   AuthController build() => AuthController(
-        signIn: SignIn(repository),
-        restoreSession: RestoreSession(repository),
-        signOut: SignOut(repository),
-      );
+    signIn: SignIn(repository),
+    restoreSession: RestoreSession(repository),
+    signOut: SignOut(repository),
+  );
 
   setUp(() {
     repository = FakeAuthRepository();
@@ -24,27 +24,44 @@ void main() {
   });
 
   group('AuthController.restoreSession', () {
-    test('entra online con perfil fresco cuando la restauracion lo devuelve',
-        () async {
-      repository.restoreResult = SessionRestoreResult.signedIn(demoUser);
+    test(
+      'entra online con perfil fresco cuando la restauracion lo devuelve',
+      () async {
+        repository.restoreResult = SessionRestoreResult.signedIn(demoUser);
+
+        await controller.restoreSession();
+
+        expect(controller.isRestoring, isFalse);
+        expect(controller.isAuthenticated, isTrue);
+        expect(controller.isOfflineLocked, isFalse);
+        expect(controller.user?.name, 'Ana Vacunadora');
+      },
+    );
+
+    test(
+      'entra en modo solo lectura cuando la ventana offline vencio',
+      () async {
+        repository.restoreResult = SessionRestoreResult.offlineLocked(demoUser);
+
+        await controller.restoreSession();
+
+        expect(controller.isAuthenticated, isTrue);
+        expect(controller.isOfflineLocked, isTrue);
+        expect(repository.restoreCalls, 1);
+      },
+    );
+
+    test('entra en modo offline autorizado dentro de la ventana', () async {
+      repository.restoreResult = SessionRestoreResult.offlineAuthorized(
+        demoUser,
+      );
 
       await controller.restoreSession();
 
-      expect(controller.isRestoring, isFalse);
       expect(controller.isAuthenticated, isTrue);
       expect(controller.isOfflineLocked, isFalse);
-      expect(controller.user?.name, 'Ana Vacunadora');
-    });
-
-    test('entra en modo solo lectura cuando la ventana offline vencio',
-        () async {
-      repository.restoreResult = SessionRestoreResult.offlineLocked(demoUser);
-
-      await controller.restoreSession();
-
-      expect(controller.isAuthenticated, isTrue);
-      expect(controller.isOfflineLocked, isTrue);
-      expect(repository.restoreCalls, 1);
+      expect(controller.isOfflineAuthorized, isTrue);
+      expect(controller.status, SessionStatus.offlineAuthorized);
     });
 
     test('sin sesion persistida termina en signedOut', () async {
@@ -57,18 +74,21 @@ void main() {
       expect(controller.status, SessionStatus.signedOut);
     });
 
-    test('un fallo de restauracion cae a signedOut sin colgar la app', () async {
-      final controller = AuthController(
-        signIn: SignIn(repository),
-        restoreSession: _ThrowingRestore(repository),
-        signOut: SignOut(repository),
-      );
+    test(
+      'un fallo de restauracion cae a signedOut sin colgar la app',
+      () async {
+        final controller = AuthController(
+          signIn: SignIn(repository),
+          restoreSession: _ThrowingRestore(repository),
+          signOut: SignOut(repository),
+        );
 
-      await controller.restoreSession();
+        await controller.restoreSession();
 
-      expect(controller.isRestoring, isFalse);
-      expect(controller.isAuthenticated, isFalse);
-    });
+        expect(controller.isRestoring, isFalse);
+        expect(controller.isAuthenticated, isFalse);
+      },
+    );
   });
 
   group('AuthController.signOut', () {
@@ -98,7 +118,9 @@ void main() {
     });
 
     test('signIn fallido expone el error sin marcar sesion', () async {
-      repository.signInError = const AuthException('Correo o contrasena incorrectos.');
+      repository.signInError = const AuthException(
+        'Correo o contrasena incorrectos.',
+      );
 
       final ok = await controller.signIn(
         email: 'vacunador@hosp-a.com',

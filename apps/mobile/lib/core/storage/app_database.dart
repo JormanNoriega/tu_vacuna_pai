@@ -79,12 +79,9 @@ class SyncMetadata extends Table {
   Set<Column> get primaryKey => {key};
 }
 
-@DriftDatabase(tables: [
-  CurrentUser,
-  InstitutionsCache,
-  UsersCache,
-  SyncMetadata,
-])
+@DriftDatabase(
+  tables: [CurrentUser, InstitutionsCache, UsersCache, SyncMetadata],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
@@ -151,8 +148,9 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<List<UsersCacheData>> usersByInstitution(String institutionId) {
-    return (select(usersCache)..where((t) => t.institutionId.equals(institutionId)))
-        .get();
+    return (select(
+      usersCache,
+    )..where((t) => t.institutionId.equals(institutionId))).get();
   }
 
   // ---------- InstitutionsCache ----------
@@ -176,8 +174,9 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<InstitutionsCacheData?> institutionById(String id) {
-    return (select(institutionsCache)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    return (select(
+      institutionsCache,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
   // ---------- CurrentUser ----------
@@ -221,8 +220,9 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<String?> syncMetadataValue(String key) async {
-    final row = await (select(syncMetadata)..where((t) => t.key.equals(key)))
-        .getSingleOrNull();
+    final row = await (select(
+      syncMetadata,
+    )..where((t) => t.key.equals(key))).getSingleOrNull();
     return row?.value;
   }
 }

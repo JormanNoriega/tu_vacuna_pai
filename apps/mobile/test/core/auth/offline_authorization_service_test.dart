@@ -45,18 +45,21 @@ void main() {
       );
     });
 
-    test('no depende de la expiracion del token: ventana corta con last recente', () {
-      final last = now.subtract(const Duration(hours: 1));
+    test(
+      'no depende de la expiracion del token: ventana corta con last recente',
+      () {
+        final last = now.subtract(const Duration(hours: 1));
 
-      expect(
-        service.evaluate(
-          lastOnlineValidation: last,
-          offlineWindowHours: 72,
-          now: now,
-        ),
-        OfflineAuthorizationState.authorized,
-      );
-    });
+        expect(
+          service.evaluate(
+            lastOnlineValidation: last,
+            offlineWindowHours: 72,
+            now: now,
+          ),
+          OfflineAuthorizationState.authorized,
+        );
+      },
+    );
 
     test('reporta noProfile sin validacion previa', () {
       expect(

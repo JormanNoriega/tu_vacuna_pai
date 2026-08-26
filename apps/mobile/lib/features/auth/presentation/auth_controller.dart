@@ -14,11 +14,7 @@ class AuthController extends ChangeNotifier {
     required SignOut signOut,
   }) : this._(signIn, restoreSession, signOut);
 
-  AuthController._(
-    this._signIn,
-    this._restoreSession,
-    this._signOut,
-  );
+  AuthController._(this._signIn, this._restoreSession, this._signOut);
 
   final SignIn _signIn;
   final RestoreSession _restoreSession;
@@ -40,6 +36,9 @@ class AuthController extends ChangeNotifier {
 
   /// True cuando la ventana offline vencio y solo queda lectura local.
   bool get isOfflineLocked => _status == SessionStatus.offlineLocked;
+
+  /// True cuando la sesion se abrio offline dentro de la ventana autorizada.
+  bool get isOfflineAuthorized => _status == SessionStatus.offlineAuthorized;
 
   String get userName => _user?.name ?? '';
 

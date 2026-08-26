@@ -36,7 +36,10 @@ void main() {
     // El store normaliza a segundos UTC; se compara el mismo instante con 1s
     // de tolerancia por el truncado de subsegundos.
     expect(
-      restored.lastOnlineValidation.difference(demoUser.lastOnlineValidation).inSeconds.abs(),
+      restored.lastOnlineValidation
+          .difference(demoUser.lastOnlineValidation)
+          .inSeconds
+          .abs(),
       lessThanOrEqualTo(1),
     );
   });

@@ -40,10 +40,15 @@ class ApiClient {
   /// Obtiene el perfil autorizado del usuario autenticado.
   Future<MeResponse> fetchMe(String accessToken) async {
     final uri = Uri.parse('$baseUrl/me');
-    final response = await _send(_http.get(uri, headers: {
-      'Authorization': 'Bearer $accessToken',
-      'Accept': 'application/json',
-    }));
+    final response = await _send(
+      _http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Accept': 'application/json',
+        },
+      ),
+    );
 
     if (response.statusCode == 200) {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
@@ -80,13 +85,18 @@ class ApiClient {
   }
 
   /// Lista las instituciones. Requiere `INSTITUTION_WRITE` (SUPER_ADMIN).
-  Future<List<Map<String, dynamic>>> listInstitutions(String accessToken) async {
+  Future<List<Map<String, dynamic>>> listInstitutions(
+    String accessToken,
+  ) async {
     final uri = Uri.parse('$baseUrl/institutions');
     final response = await _send(
       _http.get(uri, headers: _jsonHeaders(accessToken)),
     );
 
-    return _decodeList(response, fallback: 'Error al consultar las instituciones.');
+    return _decodeList(
+      response,
+      fallback: 'Error al consultar las instituciones.',
+    );
   }
 
   /// Actualiza el estado de una institucion (ACTIVE/INACTIVE).
@@ -104,7 +114,10 @@ class ApiClient {
       ),
     );
 
-    return _decodeObject(response, fallback: 'Error al actualizar la institucion.');
+    return _decodeObject(
+      response,
+      fallback: 'Error al actualizar la institucion.',
+    );
   }
 
   /// Crea un ADMIN_INSTITUTION para una institucion. Requiere
@@ -175,10 +188,7 @@ class ApiClient {
       ),
     );
 
-    return _decodeObject(
-      response,
-      fallback: 'Error al crear el vacunador.',
-    );
+    return _decodeObject(response, fallback: 'Error al crear el vacunador.');
   }
 
   /// Activa o desactiva un usuario de la institucion del actor. El scope se
@@ -225,8 +235,10 @@ class ApiClient {
     'Content-Type': 'application/json',
   };
 
-  Map<String, dynamic> _decodeObject(http.Response response,
-      {required String fallback}) {
+  Map<String, dynamic> _decodeObject(
+    http.Response response, {
+    required String fallback,
+  }) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body) as Map<String, dynamic>;
     }
@@ -236,8 +248,10 @@ class ApiClient {
     );
   }
 
-  List<Map<String, dynamic>> _decodeList(http.Response response,
-      {required String fallback}) {
+  List<Map<String, dynamic>> _decodeList(
+    http.Response response, {
+    required String fallback,
+  }) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final decoded = jsonDecode(response.body);
       return (decoded as List<dynamic>)

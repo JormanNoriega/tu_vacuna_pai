@@ -2,11 +2,15 @@ import 'auth_user.dart';
 
 /// Estado de la sesion tras intentar restaurarla al abrir la aplicacion.
 enum SessionStatus {
-  /// Sesion valida (online o dentro de la ventana offline).
+  /// Sesion validada online (red disponible y perfil revalidado).
   signedIn,
 
   /// No hay sesion restaurable; se muestra el login.
   signedOut,
+
+  /// Sesion local dentro de la ventana offline: se trabaja con el perfil
+  /// guardado y solo operaciones autorizadas offline.
+  offlineAuthorized,
 
   /// Hay sesion local pero la ventana offline vencio (solo lectura).
   offlineLocked,
@@ -18,7 +22,8 @@ class SessionRestoreResult {
 
   final SessionStatus status;
 
-  /// Perfil autorizado. Presente cuando [status] es signedIn u offlineLocked.
+  /// Perfil autorizado. Presente cuando [status] es signedIn, offlineAuthorized
+  /// u offlineLocked.
   final AuthUser? user;
 
   factory SessionRestoreResult.signedIn(AuthUser user) =>
@@ -26,6 +31,9 @@ class SessionRestoreResult {
 
   factory SessionRestoreResult.signedOut() =>
       const SessionRestoreResult._(SessionStatus.signedOut, null);
+
+  factory SessionRestoreResult.offlineAuthorized(AuthUser user) =>
+      SessionRestoreResult._(SessionStatus.offlineAuthorized, user);
 
   factory SessionRestoreResult.offlineLocked(AuthUser user) =>
       SessionRestoreResult._(SessionStatus.offlineLocked, user);

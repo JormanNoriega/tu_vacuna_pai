@@ -68,11 +68,7 @@ void main() {
         throwsA(
           isA<ApiException>()
               .having((e) => e.statusCode, 'statusCode', 401)
-              .having(
-                (e) => e.message,
-                'message',
-                contains('desactivado'),
-              ),
+              .having((e) => e.message, 'message', contains('desactivado')),
         ),
       );
     });
@@ -95,52 +91,62 @@ void main() {
       );
     });
 
-    test('convierte errores de red en ApiException con mensaje amigable', () async {
-      final mockClient = MockClient((_) async {
-        throw http.ClientException(
-          'Connection timed out',
-          Uri.parse('http://localhost:8080/api/v1/me'),
+    test(
+      'convierte errores de red en ApiException con mensaje amigable',
+      () async {
+        final mockClient = MockClient((_) async {
+          throw http.ClientException(
+            'Connection timed out',
+            Uri.parse('http://localhost:8080/api/v1/me'),
+          );
+        });
+
+        final api = ApiClient(
+          baseUrl: 'http://localhost:8080/api/v1',
+          httpClient: mockClient,
         );
-      });
 
-      final api = ApiClient(
-        baseUrl: 'http://localhost:8080/api/v1',
-        httpClient: mockClient,
-      );
+        expect(
+          () => api.fetchMe('token-123'),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.statusCode, 'statusCode', isNull)
+                .having(
+                  (e) => e.message,
+                  'message',
+                  contains('No se pudo conectar con el servidor'),
+                ),
+          ),
+        );
+      },
+    );
 
-      expect(
-        () => api.fetchMe('token-123'),
-        throwsA(
-          isA<ApiException>()
-              .having((e) => e.statusCode, 'statusCode', isNull)
-              .having(
-                (e) => e.message,
-                'message',
-                contains('No se pudo conectar con el servidor'),
-              ),
-        ),
-      );
-    });
+    test(
+      'lanza ApiException si el servidor no responde dentro del timeout',
+      () async {
+        final mockClient = MockClient((_) async {
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+          return http.Response('{}', 200);
+        });
 
-    test('lanza ApiException si el servidor no responde dentro del timeout', () async {
-      final mockClient = MockClient((_) async {
-        await Future<void>.delayed(const Duration(milliseconds: 500));
-        return http.Response('{}', 200);
-      });
+        final api = ApiClient(
+          baseUrl: 'http://localhost:8080/api/v1',
+          httpClient: mockClient,
+          timeout: const Duration(milliseconds: 100),
+        );
 
-      final api = ApiClient(
-        baseUrl: 'http://localhost:8080/api/v1',
-        httpClient: mockClient,
-        timeout: const Duration(milliseconds: 100),
-      );
-
-      expect(
-        () => api.fetchMe('token-123'),
-        throwsA(
-          isA<ApiException>().having((e) => e.statusCode, 'statusCode', isNull),
-        ),
-      );
-    });
+        expect(
+          () => api.fetchMe('token-123'),
+          throwsA(
+            isA<ApiException>().having(
+              (e) => e.statusCode,
+              'statusCode',
+              isNull,
+            ),
+          ),
+        );
+      },
+    );
   });
 
   group('ApiClient.institutions', () {
@@ -171,7 +177,11 @@ void main() {
         httpClient: mockClient,
       );
 
-      final json = await api.createInstitution('token-123', code: 'HOSP-A', name: 'Hospital A');
+      final json = await api.createInstitution(
+        'token-123',
+        code: 'HOSP-A',
+        name: 'Hospital A',
+      );
 
       expect(json['id'], 'inst-1');
       expect(json['status'], 'ACTIVE');
@@ -223,7 +233,11 @@ void main() {
       );
 
       expect(
-        () => api.createInstitution('token-123', code: 'HOSP-A', name: 'Hospital A'),
+        () => api.createInstitution(
+          'token-123',
+          code: 'HOSP-A',
+          name: 'Hospital A',
+        ),
         throwsA(
           isA<ApiException>()
               .having((e) => e.statusCode, 'statusCode', 409)
@@ -288,7 +302,10 @@ void main() {
         httpClient: mockClient,
       );
 
-      final list = await api.listUsersByInstitution('token-123', institutionId: 'inst-1');
+      final list = await api.listUsersByInstitution(
+        'token-123',
+        institutionId: 'inst-1',
+      );
 
       expect(list, isEmpty);
     });
@@ -363,11 +380,7 @@ void main() {
         throwsA(
           isA<ApiException>()
               .having((e) => e.statusCode, 'statusCode', 403)
-              .having(
-                (e) => e.message,
-                'message',
-                contains('permiso'),
-              ),
+              .having((e) => e.message, 'message', contains('permiso')),
         ),
       );
     });

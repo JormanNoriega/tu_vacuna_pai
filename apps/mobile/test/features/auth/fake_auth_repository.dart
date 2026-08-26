@@ -4,10 +4,8 @@ import 'package:tu_vacuna_pai/features/auth/domain/repositories/auth_repository.
 
 /// Repositorio de autenticacion en memoria para pruebas del [AuthController].
 class FakeAuthRepository implements AuthRepository {
-  FakeAuthRepository({
-    SessionRestoreResult? restoreResult,
-    this.signInError,
-  }) : restoreResult = restoreResult ?? SessionRestoreResult.signedOut();
+  FakeAuthRepository({SessionRestoreResult? restoreResult, this.signInError})
+    : restoreResult = restoreResult ?? SessionRestoreResult.signedOut();
 
   SessionRestoreResult restoreResult;
   Object? signInError;
@@ -40,16 +38,16 @@ class FakeAuthRepository implements AuthRepository {
 }
 
 AuthUser get demoUser => AuthUser(
-      id: 'user-1',
-      email: 'vacunador@hosp-a.com',
-      name: 'Ana Vacunadora',
-      institution: const InstitutionProfile(
-        id: 'inst-1',
-        code: 'HOSP-A',
-        name: 'Hospital A',
-      ),
-      roles: const ['VACCINATOR'],
-      permissions: const ['PATIENT_READ', 'ATTENTION_CREATE'],
-      offlineWindowHours: 72,
-      lastOnlineValidation: DateTime.now().subtract(const Duration(hours: 20)),
-    );
+  id: 'user-1',
+  email: 'vacunador@hosp-a.com',
+  name: 'Ana Vacunadora',
+  institution: const InstitutionProfile(
+    id: 'inst-1',
+    code: 'HOSP-A',
+    name: 'Hospital A',
+  ),
+  roles: const ['VACCINATOR'],
+  permissions: const ['PATIENT_READ', 'ATTENTION_CREATE'],
+  offlineWindowHours: 72,
+  lastOnlineValidation: DateTime.now().subtract(const Duration(hours: 20)),
+);

@@ -107,7 +107,7 @@ class SupabaseAuthRepository implements AuthRepository {
       offlineWindowHours: profile.offlineWindowHours,
     );
     if (state == OfflineAuthorizationState.authorized) {
-      return SessionRestoreResult.signedIn(profile);
+      return SessionRestoreResult.offlineAuthorized(profile);
     }
     return SessionRestoreResult.offlineLocked(profile);
   }
@@ -143,8 +143,7 @@ class SupabaseAuthRepository implements AuthRepository {
       SessionData(
         accessToken: session.accessToken,
         refreshToken: session.refreshToken ?? '',
-        expiresAt:
-            session.expiresAt != null
+        expiresAt: session.expiresAt != null
             ? DateTime.fromMillisecondsSinceEpoch(session.expiresAt! * 1000)
             : DateTime.now().add(const Duration(minutes: 15)),
         lastOnlineValidation: lastOnlineValidation,

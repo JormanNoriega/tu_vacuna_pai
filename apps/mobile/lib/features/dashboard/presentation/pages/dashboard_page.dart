@@ -4,8 +4,10 @@ import '../../../../app/theme/app_theme.dart';
 import '../../../admin/presentation/admin_controller.dart';
 import '../../../admin/presentation/pages/admin_page.dart';
 import '../../../auth/domain/entities/auth_user.dart';
+import '../../../auth/domain/entities/session_restore_result.dart';
 import '../../../users/presentation/pages/users_page.dart';
 import '../../../users/presentation/users_controller.dart';
+import '../../../../core/auth/offline_access.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
@@ -13,7 +15,7 @@ class DashboardPage extends StatefulWidget {
     required this.onSignOut,
     this.adminController,
     this.usersController,
-    this.offlineLocked = false,
+    this.sessionStatus = SessionStatus.signedIn,
     super.key,
   });
 
@@ -28,9 +30,9 @@ class DashboardPage extends StatefulWidget {
   /// [user] tiene el permiso USER_MANAGE (ADMIN_INSTITUTION).
   final UsersController? usersController;
 
-  /// True cuando la ventana offline vencio: la sesion se abrio en modo solo
-  /// lectura local y exige reconexion.
-  final bool offlineLocked;
+  /// Estado de la sesion restaurada. Define si se muestra un banner de modo
+  /// offline y que operaciones de escritura estan permitidas.
+  final SessionStatus sessionStatus;
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -39,48 +41,58 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
 
-  List<_DashboardDestination> get _destinations => [
-    const _DashboardDestination(
-      icon: Icons.space_dashboard_outlined,
-      selectedIcon: Icons.space_dashboard_rounded,
-      label: 'Inicio',
-    ),
-    const _DashboardDestination(
-      icon: Icons.person_add_alt_1_outlined,
-      selectedIcon: Icons.person_add_alt_1_rounded,
-      label: 'Nueva atencion',
-      requiredPermission: 'ATTENTION_CREATE',
-    ),
-    const _DashboardDestination(
-      icon: Icons.history_rounded,
-      selectedIcon: Icons.history_rounded,
-      label: 'Historial',
-      requiredPermission: 'ATTENTION_READ',
-    ),
-    const _DashboardDestination(
-      icon: Icons.inventory_2_outlined,
-      selectedIcon: Icons.inventory_2_rounded,
-      label: 'Inventario',
-      requiredPermission: 'INVENTORY_READ',
-    ),
-    const _DashboardDestination(
-      icon: Icons.admin_panel_settings_outlined,
-      selectedIcon: Icons.admin_panel_settings_rounded,
-      label: 'Administracion',
-      requiredPermission: 'USER_MANAGE',
-      isUsersManagement: true,
-    ),
-  ].where((destination) =>
-      destination.requiredPermission == null ||
-      widget.user.hasPermission(destination.requiredPermission!)).toList();
+  List<_DashboardDestination> get _destinations =>
+      [
+            const _DashboardDestination(
+              icon: Icons.space_dashboard_outlined,
+              selectedIcon: Icons.space_dashboard_rounded,
+              label: 'Inicio',
+            ),
+            const _DashboardDestination(
+              icon: Icons.person_add_alt_1_outlined,
+              selectedIcon: Icons.person_add_alt_1_rounded,
+              label: 'Nueva atencion',
+              requiredPermission: 'ATTENTION_CREATE',
+            ),
+            const _DashboardDestination(
+              icon: Icons.history_rounded,
+              selectedIcon: Icons.history_rounded,
+              label: 'Historial',
+              requiredPermission: 'ATTENTION_READ',
+            ),
+            const _DashboardDestination(
+              icon: Icons.inventory_2_outlined,
+              selectedIcon: Icons.inventory_2_rounded,
+              label: 'Inventario',
+              requiredPermission: 'INVENTORY_READ',
+            ),
+            const _DashboardDestination(
+              icon: Icons.admin_panel_settings_outlined,
+              selectedIcon: Icons.admin_panel_settings_rounded,
+              label: 'Administracion',
+              requiredPermission: 'USER_MANAGE',
+              isUsersManagement: true,
+            ),
+          ]
+          .where(
+            (destination) =>
+                destination.requiredPermission == null ||
+                widget.user.hasPermission(destination.requiredPermission!),
+          )
+          .toList();
 
   bool get _isSuperAdmin => widget.user.hasRole('SUPER_ADMIN');
 
   bool get _isSuperAdminView => _isSuperAdmin && widget.adminController != null;
 
+  OfflineAccess get _offline => OfflineAccess(
+    status: widget.sessionStatus,
+    permissions: widget.user.permissions,
+  );
+
   Widget _buildContent() {
     if (_isSuperAdminView) {
-      return AdminPage(controller: widget.adminController!);
+      return AdminPage(controller: widget.adminController!, offline: _offline);
     }
 
     if (_destinations[_selectedIndex].isUsersManagement &&
@@ -88,6 +100,7 @@ class _DashboardPageState extends State<DashboardPage> {
       return UsersPage(
         controller: widget.usersController!,
         institutionId: widget.user.institution.id,
+        offline: _offline,
       );
     }
 
@@ -101,14 +114,21 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget build(BuildContext context) {
     final isExpanded = MediaQuery.sizeOf(context).width >= 900;
     final content = _buildContent();
-    final body = widget.offlineLocked
-        ? Column(
-            children: [
-              const _OfflineLockedBanner(),
-              Expanded(child: content),
-            ],
-          )
-        : content;
+    final body = switch (widget.sessionStatus) {
+      SessionStatus.offlineLocked => Column(
+        children: [
+          const _OfflineLockedBanner(),
+          Expanded(child: content),
+        ],
+      ),
+      SessionStatus.offlineAuthorized => Column(
+        children: [
+          const _OfflineModeBanner(),
+          Expanded(child: content),
+        ],
+      ),
+      SessionStatus.signedIn || SessionStatus.signedOut => content,
+    };
 
     // Para SUPER_ADMIN la vista es exclusivamente de administracion: no se
     // muestran la barra de navegacion ni las acciones operativas de vacunador.
@@ -307,6 +327,44 @@ class _SyncBanner extends StatelessWidget {
   }
 }
 
+class _OfflineModeBanner extends StatelessWidget {
+  const _OfflineModeBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.all(16),
+      color: AppColors.primary.withValues(alpha: .1),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(Icons.cloud_off_rounded, color: AppColors.primary),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Modo offline',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Estas trabajando sin conexion dentro de la ventana '
+                    'autorizada. Algunas operaciones requieren reconexion.',
+                    style: TextStyle(color: AppColors.slate, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _OfflineLockedBanner extends StatelessWidget {
   const _OfflineLockedBanner();
 
@@ -498,9 +556,7 @@ class _ActionsGrid extends StatelessWidget {
                   children: [
                     Icon(
                       action.icon,
-                      color: action.primary
-                          ? Colors.white
-                          : AppColors.primary,
+                      color: action.primary ? Colors.white : AppColors.primary,
                       size: 30,
                     ),
                     Column(

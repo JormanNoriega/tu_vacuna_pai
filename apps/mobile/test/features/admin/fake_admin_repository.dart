@@ -67,7 +67,9 @@ class FakeAdminRepository implements AdminRepository {
     String accessToken, {
     required String institutionId,
   }) async {
-    return admins.where((admin) => admin.institutionId == institutionId).toList();
+    return admins
+        .where((admin) => admin.institutionId == institutionId)
+        .toList();
   }
 }
 

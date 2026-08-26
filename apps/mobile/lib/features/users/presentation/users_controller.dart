@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/auth/offline_access.dart';
+import '../../../core/auth/offline_policy.dart';
 import '../../../core/auth/session_manager.dart';
 import '../../../core/network/api_exception.dart';
 import '../domain/entities/vaccinator.dart';
@@ -18,7 +20,13 @@ class UsersController extends ChangeNotifier {
     required ListUsers listUsers,
     required UpdateUserStatus updateUserStatus,
     required UpdateUserRoles updateUserRoles,
-  }) : this._(sessionManager, createVaccinator, listUsers, updateUserStatus, updateUserRoles);
+  }) : this._(
+         sessionManager,
+         createVaccinator,
+         listUsers,
+         updateUserStatus,
+         updateUserRoles,
+       );
 
   UsersController._(
     this._sessionManager,
@@ -68,6 +76,7 @@ class UsersController extends ChangeNotifier {
 
   /// Crea un vacunador. Devuelve el usuario creado o null si falla.
   Future<Vaccinator?> createVaccinator({
+    required OfflineAccess offline,
     required String email,
     required String fullName,
     required String temporaryPassword,
@@ -85,12 +94,16 @@ class UsersController extends ChangeNotifier {
     try {
       final created = await _createVaccinator(
         token,
+        offline: offline,
         email: email,
         fullName: fullName,
         temporaryPassword: temporaryPassword,
       );
       _users = [..._users, created];
       return created;
+    } on OfflinePolicyException catch (e) {
+      _setError(e.message);
+      return null;
     } on ApiException catch (e) {
       _setError(e.message);
       return null;
@@ -107,6 +120,7 @@ class UsersController extends ChangeNotifier {
   /// true solo si ambas escrituras se confirman con exito.
   Future<bool> updateUser(
     Vaccinator user, {
+    required OfflineAccess offline,
     required String status,
     required List<String> roles,
   }) async {
@@ -123,11 +137,13 @@ class UsersController extends ChangeNotifier {
     try {
       final updatedStatus = await _updateUserStatus(
         token,
+        offline: offline,
         userId: user.id,
         status: status,
       );
       final updatedRoles = await _updateUserRoles(
         token,
+        offline: offline,
         userId: user.id,
         roles: roles,
       );
@@ -139,10 +155,11 @@ class UsersController extends ChangeNotifier {
         roles: updatedRoles.roles,
         status: updatedStatus.status,
       );
-      _users = [
-        for (final u in _users) u.id == merged.id ? merged : u,
-      ];
+      _users = [for (final u in _users) u.id == merged.id ? merged : u];
       return true;
+    } on OfflinePolicyException catch (e) {
+      _setError(e.message);
+      return false;
     } on ApiException catch (e) {
       _setError(e.message);
       return false;

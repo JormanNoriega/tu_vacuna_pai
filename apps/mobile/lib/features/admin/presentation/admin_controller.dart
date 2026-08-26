@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/auth/offline_access.dart';
+import '../../../core/auth/offline_policy.dart';
 import '../../../core/auth/session_manager.dart';
 import '../../../core/network/api_exception.dart';
 import '../domain/entities/institution.dart';
@@ -17,11 +19,11 @@ class AdminController extends ChangeNotifier {
     required ListInstitutions listInstitutions,
     required CreateInstitutionAdmin createInstitutionAdmin,
   }) : this._(
-          sessionManager,
-          createInstitution,
-          listInstitutions,
-          createInstitutionAdmin,
-        );
+         sessionManager,
+         createInstitution,
+         listInstitutions,
+         createInstitutionAdmin,
+       );
 
   AdminController._(
     this._sessionManager,
@@ -69,6 +71,7 @@ class AdminController extends ChangeNotifier {
 
   /// Crea una institucion. Devuelve la institucion creada o null si falla.
   Future<Institution?> createInstitution({
+    required OfflineAccess offline,
     required String code,
     required String name,
     int? offlineWindowHours,
@@ -86,12 +89,16 @@ class AdminController extends ChangeNotifier {
     try {
       final created = await _createInstitution(
         token,
+        offline: offline,
         code: code,
         name: name,
         offlineWindowHours: offlineWindowHours,
       );
       _institutions = [..._institutions, created];
       return created;
+    } on OfflinePolicyException catch (e) {
+      _setError(e.message);
+      return null;
     } on ApiException catch (e) {
       _setError(e.message);
       return null;
@@ -106,6 +113,7 @@ class AdminController extends ChangeNotifier {
 
   /// Crea un admin de institucion. Devuelve el usuario creado o null si falla.
   Future<InstitutionAdmin?> createInstitutionAdmin({
+    required OfflineAccess offline,
     required String email,
     required String fullName,
     required String institutionId,
@@ -124,11 +132,15 @@ class AdminController extends ChangeNotifier {
     try {
       return await _createInstitutionAdmin(
         token,
+        offline: offline,
         email: email,
         fullName: fullName,
         institutionId: institutionId,
         temporaryPassword: temporaryPassword,
       );
+    } on OfflinePolicyException catch (e) {
+      _setError(e.message);
+      return null;
     } on ApiException catch (e) {
       _setError(e.message);
       return null;

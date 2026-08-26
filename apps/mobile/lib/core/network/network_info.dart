@@ -8,7 +8,7 @@ abstract interface class NetworkInfo {
 
 class ConnectivityNetworkInfo implements NetworkInfo {
   ConnectivityNetworkInfo([Connectivity? connectivity])
-      : _connectivity = connectivity ?? Connectivity();
+    : _connectivity = connectivity ?? Connectivity();
 
   final Connectivity _connectivity;
 

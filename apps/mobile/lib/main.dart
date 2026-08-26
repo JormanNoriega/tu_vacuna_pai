@@ -60,9 +60,11 @@ Future<void> main() async {
     updateUserRoles: UpdateUserRoles(usersRepository),
   );
 
-  runApp(TuVacunaApp(
-    authRepository: authRepository,
-    adminController: adminController,
-    usersController: usersController,
-  ));
+  runApp(
+    TuVacunaApp(
+      authRepository: authRepository,
+      adminController: adminController,
+      usersController: usersController,
+    ),
+  );
 }
