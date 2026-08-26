@@ -10,4 +10,6 @@ import com.pai.api.identity.entity.UserRoleId;
 public interface UserRoleRepository extends JpaRepository<UserRoleEntity, UserRoleId> {
 
     boolean existsByUserId(UUID userId);
+
+    void deleteByUserId(UUID userId);
 }

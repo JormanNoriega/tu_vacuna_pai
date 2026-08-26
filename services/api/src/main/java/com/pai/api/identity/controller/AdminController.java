@@ -21,6 +21,8 @@ import com.pai.api.identity.dto.CreateInstitutionRequest;
 import com.pai.api.identity.dto.CreateVaccinatorRequest;
 import com.pai.api.identity.dto.InstitutionResponse;
 import com.pai.api.identity.dto.UpdateInstitutionStatusRequest;
+import com.pai.api.identity.dto.UpdateUserRolesRequest;
+import com.pai.api.identity.dto.UpdateUserStatusRequest;
 import com.pai.api.identity.dto.UserResponse;
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.InstitutionService;
@@ -104,5 +106,27 @@ public class AdminController {
         AuthorizedUser actor = (AuthorizedUser) authentication.getPrincipal();
         return ResponseEntity.ok(
             userService.listByInstitution(actor.getId(), institutionId));
+    }
+
+    @PutMapping("/users/{id}/status")
+    @PreAuthorize("@authorization.hasPermission(authentication, 'USER_MANAGE') "
+        + "or @authorization.hasPermission(authentication, 'INSTITUTION_WRITE')")
+    public ResponseEntity<UserResponse> updateUserStatus(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateUserStatusRequest request) {
+        AuthorizedUser actor = (AuthorizedUser) authentication.getPrincipal();
+        return ResponseEntity.ok(userService.updateStatus(actor.getId(), id, request.status()));
+    }
+
+    @PutMapping("/users/{id}/roles")
+    @PreAuthorize("@authorization.hasPermission(authentication, 'USER_MANAGE') "
+        + "or @authorization.hasPermission(authentication, 'INSTITUTION_WRITE')")
+    public ResponseEntity<UserResponse> updateUserRoles(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateUserRolesRequest request) {
+        AuthorizedUser actor = (AuthorizedUser) authentication.getPrincipal();
+        return ResponseEntity.ok(userService.updateRoles(actor.getId(), id, request.roles()));
     }
 }

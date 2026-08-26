@@ -56,6 +56,14 @@ public class UserEntity {
         return status == Status.ACTIVE;
     }
 
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
     public UUID getId() {
         return id;
     }
