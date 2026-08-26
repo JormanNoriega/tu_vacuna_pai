@@ -1,16 +1,24 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../admin/presentation/admin_controller.dart';
+import '../../../admin/presentation/pages/admin_page.dart';
+import '../../../auth/domain/entities/auth_user.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
-    required this.userName,
+    required this.user,
     required this.onSignOut,
+    this.adminController,
     super.key,
   });
 
-  final String userName;
+  final AuthUser user;
   final VoidCallback onSignOut;
+
+  /// Controlador de administracion global. Solo se usa cuando [user] es
+  /// SUPER_ADMIN.
+  final AdminController? adminController;
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -19,32 +27,72 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
 
-  static const _destinations = [
-    (
+  List<_DashboardDestination> get _destinations => [
+    const _DashboardDestination(
       icon: Icons.space_dashboard_outlined,
       selectedIcon: Icons.space_dashboard_rounded,
       label: 'Inicio',
     ),
-    (
+    const _DashboardDestination(
       icon: Icons.person_add_alt_1_outlined,
       selectedIcon: Icons.person_add_alt_1_rounded,
       label: 'Nueva atencion',
+      requiredPermission: 'ATTENTION_CREATE',
     ),
-    (
+    const _DashboardDestination(
       icon: Icons.history_rounded,
       selectedIcon: Icons.history_rounded,
       label: 'Historial',
+      requiredPermission: 'ATTENTION_READ',
     ),
-    (
+    const _DashboardDestination(
       icon: Icons.inventory_2_outlined,
       selectedIcon: Icons.inventory_2_rounded,
       label: 'Inventario',
+      requiredPermission: 'INVENTORY_READ',
     ),
-  ];
+    const _DashboardDestination(
+      icon: Icons.admin_panel_settings_outlined,
+      selectedIcon: Icons.admin_panel_settings_rounded,
+      label: 'Administracion',
+      requiredPermission: 'USER_MANAGE',
+    ),
+  ].where((destination) =>
+      destination.requiredPermission == null ||
+      widget.user.hasPermission(destination.requiredPermission!)).toList();
+
+  bool get _isSuperAdmin => widget.user.hasRole('SUPER_ADMIN');
 
   @override
   Widget build(BuildContext context) {
     final isExpanded = MediaQuery.sizeOf(context).width >= 900;
+    final isAdminView = _isSuperAdmin && widget.adminController != null;
+    final content = isAdminView
+        ? AdminPage(controller: widget.adminController!)
+        : _DashboardContent(
+            userName: widget.user.name,
+            permissions: widget.user.permissions,
+          );
+
+    // Para SUPER_ADMIN la vista es exclusivamente de administracion: no se
+    // muestran la barra de navegacion ni las acciones operativas de vacunador.
+    if (isAdminView) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Tu Vacuna PAI'),
+          actions: [
+            IconButton(
+              tooltip: 'Cerrar sesion',
+              onPressed: widget.onSignOut,
+              icon: const Icon(Icons.logout_rounded),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+        body: content,
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tu Vacuna PAI'),
@@ -74,7 +122,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
               ],
             ),
-          Expanded(child: _DashboardContent(userName: widget.userName)),
+          Expanded(child: content),
         ],
       ),
       bottomNavigationBar: isExpanded
@@ -96,10 +144,25 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
+class _DashboardDestination {
+  const _DashboardDestination({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    this.requiredPermission,
+  });
+
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final String? requiredPermission;
+}
+
 class _DashboardContent extends StatelessWidget {
-  const _DashboardContent({required this.userName});
+  const _DashboardContent({required this.userName, required this.permissions});
 
   final String userName;
+  final List<String> permissions;
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +203,10 @@ class _DashboardContent extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 16),
-                  _ActionsGrid(columns: columns == 1 ? 2 : 4),
+                  _ActionsGrid(
+                    columns: columns == 1 ? 2 : 4,
+                    permissions: permissions,
+                  ),
                 ],
               ),
             ),
@@ -279,38 +345,58 @@ class _StatsGrid extends StatelessWidget {
 }
 
 class _ActionsGrid extends StatelessWidget {
-  const _ActionsGrid({required this.columns});
+  const _ActionsGrid({required this.columns, required this.permissions});
 
   final int columns;
+  final List<String> permissions;
 
   @override
   Widget build(BuildContext context) {
-    const actions = [
+    const allActions = [
       (
         icon: Icons.person_add_alt_1_rounded,
         label: 'Nueva atencion',
         description: 'Registrar un paciente',
         primary: true,
+        requiredPermission: 'ATTENTION_CREATE',
       ),
       (
         icon: Icons.search_rounded,
         label: 'Buscar paciente',
         description: 'Consultar historial',
         primary: false,
+        requiredPermission: 'PATIENT_READ',
       ),
       (
         icon: Icons.inventory_2_outlined,
         label: 'Ver inventario',
         description: 'Consultar existencias',
         primary: false,
+        requiredPermission: 'INVENTORY_READ',
+      ),
+      (
+        icon: Icons.admin_panel_settings_rounded,
+        label: 'Administracion',
+        description: 'Instituciones y usuarios',
+        primary: false,
+        requiredPermission: 'USER_MANAGE',
       ),
       (
         icon: Icons.file_download_outlined,
         label: 'Exportar datos',
         description: 'Descargar reportes',
         primary: false,
+        requiredPermission: null,
       ),
     ];
+    final actions = allActions.where(
+      (action) =>
+          action.requiredPermission == null ||
+          permissions.contains(action.requiredPermission),
+    );
+
+    if (actions.isEmpty) return const SizedBox.shrink();
+
     return GridView.count(
       crossAxisCount: columns,
       crossAxisSpacing: 16,
@@ -333,7 +419,9 @@ class _ActionsGrid extends StatelessWidget {
                   children: [
                     Icon(
                       action.icon,
-                      color: action.primary ? Colors.white : AppColors.primary,
+                      color: action.primary
+                          ? Colors.white
+                          : AppColors.primary,
                       size: 30,
                     ),
                     Column(

@@ -2,6 +2,15 @@ spring:
   application:
     name: api
 
+  # --- Carga de variables locales (dev) ---
+  # Spring Boot lee .env por defecto, no .env.local. Con este import se respeta
+  # la convencion del repo (.env.local, gitignored). Se listan ambas rutas para
+  # funcionar tanto al correr desde la raiz del repo (VS Code) como desde
+  # services/api (terminal). En produccion no existe el archivo y el prefijo
+  # "optional:" lo ignora.
+  config:
+    import: optional:file:./.env.local[.properties],optional:file:./services/api/.env.local[.properties]
+
   # ===== PostgreSQL (Supabase) =====
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/pai}
@@ -41,8 +50,10 @@ spring:
 
   jackson:
     default-property-inclusion: non_null
-    serialization:
-      write-dates-as-timestamps: false
+
+# --- Edge Functions de Supabase (aprovisionamiento de identidad) ---
+app:
+  auth-functions-url: ${AUTH_FUNCTIONS_URL:https://jfxkrznzhfvecaaixkjv.supabase.co/functions/v1}
 
 server:
   port: ${SERVER_PORT:8080}

@@ -23,6 +23,17 @@ class AuthUser {
   final List<String> permissions;
   final int offlineWindowHours;
   final DateTime lastOnlineValidation;
+
+  /// True si el usuario tiene el permiso dado. Base para decidir que mostrar en
+  /// la UI. La autoridad definitiva sigue siendo el backend.
+  bool hasPermission(String permission) => permissions.contains(permission);
+
+  /// True si el usuario tiene todos los permisos indicados.
+  bool hasAllPermissions(Iterable<String> required) =>
+      required.every(hasPermission);
+
+  /// True si el usuario tiene el rol dado.
+  bool hasRole(String role) => roles.contains(role);
 }
 
 class InstitutionProfile {

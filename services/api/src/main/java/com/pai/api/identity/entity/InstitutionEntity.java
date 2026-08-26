@@ -83,4 +83,12 @@ public class InstitutionEntity {
     public Instant getUpdatedAt() {
         return updatedAt;
     }
+
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }

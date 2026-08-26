@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.tu_vacuna_pai"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

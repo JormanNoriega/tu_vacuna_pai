@@ -37,7 +37,11 @@ public class ActiveUserAuthenticationConverter
 
         AuthorizedUser authorizedUser;
         try {
-            authorizedUser = identityService.resolve(userId);
+            // El token viaja en el principal: Spring Security borra las
+            // credenciales del Authentication tras autenticar, de modo que
+            // getCredentials() no es fiable para transportar el JWT.
+            authorizedUser = identityService.resolve(userId)
+                .withAccessToken(jwt.getTokenValue());
         } catch (UserNotFoundException | UserNotActiveException ex) {
             throw new org.springframework.security.authentication
                 .AuthenticationServiceException(ex.getMessage(), ex);

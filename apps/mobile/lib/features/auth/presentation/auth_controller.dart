@@ -17,6 +17,9 @@ class AuthController extends ChangeNotifier {
   String? get error => _error;
   String get userName => _user?.name ?? '';
 
+  /// Perfil autorizado actual. No es nulo cuando [isAuthenticated] es true.
+  AuthUser? get user => _user;
+
   Future<bool> signIn({required String email, required String password}) async {
     _isLoading = true;
     _error = null;

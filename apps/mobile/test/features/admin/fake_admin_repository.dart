@@ -1,0 +1,91 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:tu_vacuna_pai/core/auth/session_manager.dart';
+import 'package:tu_vacuna_pai/features/admin/domain/entities/institution.dart';
+import 'package:tu_vacuna_pai/features/admin/domain/entities/institution_admin.dart';
+import 'package:tu_vacuna_pai/features/admin/domain/repositories/admin_repository.dart';
+
+/// Repositorio en memoria para pruebas del [AdminController].
+class FakeAdminRepository implements AdminRepository {
+  FakeAdminRepository({this.failOnCreate = false});
+
+  final bool failOnCreate;
+  final List<Institution> institutions = [];
+  final List<InstitutionAdmin> admins = [];
+  String? lastPassword;
+
+  @override
+  Future<Institution> createInstitution(
+    String accessToken, {
+    required String code,
+    required String name,
+    int? offlineWindowHours,
+  }) async {
+    if (failOnCreate) {
+      throw StateError('Fallo simulado');
+    }
+    final institution = Institution(
+      id: 'inst-${institutions.length + 1}',
+      code: code,
+      name: name,
+      status: 'ACTIVE',
+      offlineWindowHours: offlineWindowHours ?? 72,
+    );
+    institutions.add(institution);
+    return institution;
+  }
+
+  @override
+  Future<List<Institution>> listInstitutions(String accessToken) async {
+    return List.unmodifiable(institutions);
+  }
+
+  @override
+  Future<InstitutionAdmin> createInstitutionAdmin(
+    String accessToken, {
+    required String email,
+    required String fullName,
+    required String institutionId,
+    required String temporaryPassword,
+  }) async {
+    if (failOnCreate) {
+      throw StateError('Fallo simulado');
+    }
+    lastPassword = temporaryPassword;
+    final admin = InstitutionAdmin(
+      id: 'user-${admins.length + 1}',
+      email: email,
+      fullName: fullName,
+      institutionId: institutionId,
+      roles: const ['ADMIN_INSTITUTION'],
+    );
+    admins.add(admin);
+    return admin;
+  }
+
+  @override
+  Future<List<InstitutionAdmin>> listUsersByInstitution(
+    String accessToken, {
+    required String institutionId,
+  }) async {
+    return admins.where((admin) => admin.institutionId == institutionId).toList();
+  }
+}
+
+/// SessionManager con un token fijo para pruebas.
+class FakeSessionManager extends SessionManager {
+  FakeSessionManager(this._token) : super(const FlutterSecureStorage());
+
+  final String? _token;
+
+  @override
+  Future<SessionData?> loadSession() async {
+    final token = _token;
+    if (token == null) return null;
+    return SessionData(
+      accessToken: token,
+      refreshToken: '',
+      expiresAt: DateTime.now().add(const Duration(hours: 1)),
+      lastOnlineValidation: DateTime.now(),
+    );
+  }
+}

@@ -47,6 +47,9 @@ class ActiveUserAuthenticationConverterTest {
         assertThat(auth.getPrincipal()).isInstanceOf(AuthorizedUser.class);
         AuthorizedUser principal = (AuthorizedUser) auth.getPrincipal();
         assertThat(principal.getId()).isEqualTo(userId);
+        // El access token viaja en el principal porque Spring Security borra las
+        // credenciales del Authentication despues de autenticar.
+        assertThat(principal.getAccessToken()).isEqualTo("token");
         assertThat(auth.getAuthorities())
             .extracting(a -> a.getAuthority())
             .contains("PERMISSION_PATIENT_READ", "PERMISSION_ATTENTION_CREATE");
