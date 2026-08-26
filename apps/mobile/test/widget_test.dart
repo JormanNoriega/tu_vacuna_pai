@@ -8,12 +8,18 @@ import 'package:tu_vacuna_pai/features/admin/domain/use_cases/list_institutions.
 import 'package:tu_vacuna_pai/features/admin/presentation/admin_controller.dart';
 import 'package:tu_vacuna_pai/features/auth/domain/entities/auth_user.dart';
 import 'package:tu_vacuna_pai/features/dashboard/presentation/pages/dashboard_page.dart';
+import 'package:tu_vacuna_pai/features/users/domain/use_cases/create_vaccinator.dart';
+import 'package:tu_vacuna_pai/features/users/domain/use_cases/list_users.dart';
+import 'package:tu_vacuna_pai/features/users/presentation/users_controller.dart';
 
 import 'features/admin/fake_admin_repository.dart';
+import 'features/users/fake_users_repository.dart';
 
 void main() {
   testWidgets('muestra login sin registro publico', (tester) async {
     await tester.pumpWidget(const TuVacunaApp());
+    // La restauracion de sesion termina sin sesion persistida y muestra login.
+    await tester.pumpAndSettle();
 
     expect(find.text('Bienvenido de nuevo'), findsOneWidget);
     expect(find.text('Iniciar sesion'), findsOneWidget);
@@ -22,6 +28,7 @@ void main() {
 
   testWidgets('permite iniciar sesion y muestra el dashboard', (tester) async {
     await tester.pumpWidget(const TuVacunaApp());
+    await tester.pumpAndSettle();
 
     await tester.enterText(
       find.byType(TextFormField).at(0),
@@ -30,6 +37,7 @@ void main() {
     await tester.enterText(find.byType(TextFormField).at(1), 'demo123');
     await tester.tap(find.text('Iniciar sesion'));
     await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
 
     expect(find.text('Buenos dias'), findsOneWidget);
     expect(find.text('Todo esta sincronizado'), findsOneWidget);
@@ -88,5 +96,90 @@ void main() {
     expect(find.text('Acciones frecuentes'), findsNothing);
     // No hay barra de navegacion operativa para el SUPER_ADMIN.
     expect(find.byType(NavigationBar), findsNothing);
+  });
+
+  testWidgets('ADMIN_INSTITUTION gestiona los vacunadores de su institucion',
+      (tester) async {
+    final usersController = UsersController(
+      sessionManager: FakeSessionManager('token-123'),
+      createVaccinator: CreateVaccinator(FakeUsersRepository()),
+      listUsers: ListUsers(FakeUsersRepository()),
+    );
+    final user = AuthUser(
+      id: 'admin-1',
+      email: 'admin@hosp-a.com',
+      name: 'Admin Hospital A',
+      institution: const InstitutionProfile(
+        id: 'inst-1',
+        code: 'HOSP-A',
+        name: 'Hospital A',
+      ),
+      roles: const ['ADMIN_INSTITUTION'],
+      permissions: const ['USER_MANAGE', 'PATIENT_READ'],
+      offlineWindowHours: 72,
+      lastOnlineValidation: DateTime.now(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DashboardPage(
+          user: user,
+          onSignOut: () {},
+          usersController: usersController,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Navegar a la pestaña Administracion muestra la gestion de usuarios.
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('Administracion'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gestion de usuarios'), findsOneWidget);
+    expect(find.text('Crear vacunador'), findsWidgets);
+    expect(
+      find.text('Todavia no hay vacunadores en esta institucion.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('muestra el banner de solo lectura cuando la ventana vencio',
+      (tester) async {
+    final user = AuthUser(
+      id: 'vac-1',
+      email: 'vacunador@hosp-a.com',
+      name: 'Ana Vacunadora',
+      institution: const InstitutionProfile(
+        id: 'inst-1',
+        code: 'HOSP-A',
+        name: 'Hospital A',
+      ),
+      roles: const ['VACCINATOR'],
+      permissions: const ['PATIENT_READ', 'ATTENTION_CREATE'],
+      offlineWindowHours: 72,
+      lastOnlineValidation: DateTime.now().subtract(const Duration(hours: 100)),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DashboardPage(
+          user: user,
+          onSignOut: () {},
+          offlineLocked: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Modo solo lectura'), findsOneWidget);
+    expect(
+      find.textContaining('La ventana offline vencio'),
+      findsOneWidget,
+    );
   });
 }

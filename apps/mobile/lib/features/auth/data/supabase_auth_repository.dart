@@ -1,21 +1,34 @@
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
+import '../../../core/auth/offline_authorization_service.dart';
 import '../../../core/auth/session_manager.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/network/network_info.dart';
 import '../../../core/network/me_response.dart';
 import '../domain/entities/auth_exception.dart';
 import '../domain/entities/auth_user.dart';
+import '../domain/entities/session_restore_result.dart';
 import '../domain/repositories/auth_repository.dart';
+import 'local_session_store.dart';
 
 /// Autenticacion real: Supabase Auth (`signInWithPassword`) + perfil
 /// autorizado por Spring (`GET /api/v1/me`). La sesion se persiste en
-/// almacenamiento seguro.
+/// almacenamiento seguro (tokens) y el perfil autorizado en la base local.
 class SupabaseAuthRepository implements AuthRepository {
-  SupabaseAuthRepository(this._apiClient, this._sessionManager);
+  SupabaseAuthRepository(
+    this._apiClient,
+    this._sessionManager,
+    this._localSessionStore,
+    this._networkInfo, [
+    this._offlineAuthorization = const OfflineAuthorizationService(),
+  ]);
 
   final ApiClient _apiClient;
   final SessionManager _sessionManager;
+  final LocalSessionStore _localSessionStore;
+  final NetworkInfo _networkInfo;
+  final OfflineAuthorizationService _offlineAuthorization;
 
   @override
   Future<AuthUser> signIn({
@@ -45,8 +58,85 @@ class SupabaseAuthRepository implements AuthRepository {
     } on ApiException catch (error) {
       await client.auth.signOut();
       throw AuthException(error.message);
+    } catch (_) {
+      // Cualquier otro fallo (p. ej. parseo) se muestra como error de red para
+      // que la app avise y nunca se quede colgada ni lance excepcion sin atrapar.
+      await client.auth.signOut();
+      throw const AuthException(
+        'No se pudo conectar con el servidor. Intenta de nuevo.',
+      );
     }
 
+    return _persistOnlineSession(session, me);
+  }
+
+  @override
+  Future<SessionRestoreResult> restoreSession() async {
+    final stored = await _sessionManager.loadSession();
+    final profile = await _localSessionStore.loadProfile();
+    if (stored == null) {
+      return SessionRestoreResult.signedOut();
+    }
+
+    // Con red se refresca y se revalida online antes de decidir. La expiracion
+    // del access token no bloquea el offline: la ventana es politica propia.
+    if (await _networkInfo.isConnected) {
+      final refreshed = await _tryRefresh(stored);
+      if (refreshed != null) {
+        try {
+          final me = await _apiClient.fetchMe(refreshed.accessToken);
+          final user = await _persistOnlineSession(refreshed, me);
+          return SessionRestoreResult.signedIn(user);
+        } on ApiException catch (error) {
+          if (error.statusCode == 401 || error.statusCode == 403) {
+            // Token revocado, usuario desactivado o sin permisos vigentes.
+            await _invalidateSession();
+            return SessionRestoreResult.signedOut();
+          }
+          // Otro fallo recuperable (5xx): se cae a la politica offline.
+        }
+      }
+    }
+
+    if (profile == null) {
+      return SessionRestoreResult.signedOut();
+    }
+
+    final state = _offlineAuthorization.evaluate(
+      lastOnlineValidation: profile.lastOnlineValidation,
+      offlineWindowHours: profile.offlineWindowHours,
+    );
+    if (state == OfflineAuthorizationState.authorized) {
+      return SessionRestoreResult.signedIn(profile);
+    }
+    return SessionRestoreResult.offlineLocked(profile);
+  }
+
+  @override
+  Future<void> signOut() async {
+    try {
+      await supabase.Supabase.instance.client.auth.signOut();
+    } catch (_) {
+      // Se limpia la sesion local aun si el signOut remoto falla.
+    }
+    await _invalidateSession();
+  }
+
+  Future<supabase.Session?> _tryRefresh(SessionData stored) async {
+    if (stored.refreshToken.isEmpty) return null;
+    try {
+      final response = await supabase.Supabase.instance.client.auth
+          .refreshSession(stored.refreshToken);
+      return response.session;
+    } on supabase.AuthException {
+      return null;
+    }
+  }
+
+  Future<AuthUser> _persistOnlineSession(
+    supabase.Session session,
+    MeResponse me,
+  ) async {
     final lastOnlineValidation = DateTime.parse(me.lastOnlineValidation);
 
     await _sessionManager.saveSession(
@@ -61,7 +151,7 @@ class SupabaseAuthRepository implements AuthRepository {
       ),
     );
 
-    return AuthUser(
+    final user = AuthUser(
       id: me.id,
       email: me.email,
       name: me.fullName,
@@ -75,6 +165,14 @@ class SupabaseAuthRepository implements AuthRepository {
       offlineWindowHours: me.offlineWindowHours,
       lastOnlineValidation: lastOnlineValidation,
     );
+
+    await _localSessionStore.saveProfile(user);
+    return user;
+  }
+
+  Future<void> _invalidateSession() async {
+    await _sessionManager.clear();
+    await _localSessionStore.clearProfile();
   }
 
   String _friendlyAuthMessage(String raw) {

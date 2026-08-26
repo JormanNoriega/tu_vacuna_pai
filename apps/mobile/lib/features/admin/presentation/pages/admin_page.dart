@@ -97,18 +97,33 @@ class _AdminPageState extends State<AdminPage> {
                     _AdminActionCard(
                       icon: Icons.admin_panel_settings_rounded,
                       title: 'Crear usuario admin de institucion',
-                      description: 'Crea el administrador que gestionara una institucion.',
+                      description:
+                          'Crea el administrador que gestionara una institucion.',
                       onTap: _openCreateAdmin,
                     ),
                   ];
-                  return GridView.count(
-                    crossAxisCount: twoColumns ? 2 : 1,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: twoColumns ? 1.4 : 2.1,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    children: actions,
+
+                  // Columnas reales (sin aspect ratio fijo) para que las
+                  // tarjetas crezcan con su contenido y no haya overflow en
+                  // pantallas angostas.
+                  if (twoColumns) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (var i = 0; i < actions.length; i++) ...[
+                          if (i > 0) const SizedBox(width: 16),
+                          Expanded(child: actions[i]),
+                        ],
+                      ],
+                    );
+                  }
+                  return Column(
+                    children: [
+                      for (var i = 0; i < actions.length; i++) ...[
+                        if (i > 0) const SizedBox(height: 16),
+                        actions[i],
+                      ],
+                    ],
                   );
                 },
               ),
@@ -200,11 +215,15 @@ class _AdminActionCard extends StatelessWidget {
               const SizedBox(height: 14),
               Text(
                 title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 4),
               Text(
                 description,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.slate,
                   fontSize: 13,
@@ -287,10 +306,14 @@ class _InstitutionTile extends StatelessWidget {
         ),
         title: Text(
           institution.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         subtitle: Text(
           '${institution.code} - ventana offline ${institution.offlineWindowHours}h',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 12),
         ),
         trailing: _StatusChip(active: institution.isActive),

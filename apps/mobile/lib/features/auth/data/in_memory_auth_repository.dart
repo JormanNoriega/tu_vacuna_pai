@@ -1,5 +1,6 @@
 import '../domain/entities/auth_exception.dart';
 import '../domain/entities/auth_user.dart';
+import '../domain/entities/session_restore_result.dart';
 import '../domain/repositories/auth_repository.dart';
 
 /// Adaptador temporal usado en tests y como respaldo hasta que haya un
@@ -38,4 +39,13 @@ class InMemoryAuthRepository implements AuthRepository {
       lastOnlineValidation: DateTime.now(),
     );
   }
+
+  @override
+  Future<SessionRestoreResult> restoreSession() async {
+    // Sin persistencia: cada arranque empieza en el login.
+    return SessionRestoreResult.signedOut();
+  }
+
+  @override
+  Future<void> signOut() async {}
 }

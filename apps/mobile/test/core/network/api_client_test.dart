@@ -94,6 +94,53 @@ void main() {
         ),
       );
     });
+
+    test('convierte errores de red en ApiException con mensaje amigable', () async {
+      final mockClient = MockClient((_) async {
+        throw http.ClientException(
+          'Connection timed out',
+          Uri.parse('http://localhost:8080/api/v1/me'),
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      expect(
+        () => api.fetchMe('token-123'),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'statusCode', isNull)
+              .having(
+                (e) => e.message,
+                'message',
+                contains('No se pudo conectar con el servidor'),
+              ),
+        ),
+      );
+    });
+
+    test('lanza ApiException si el servidor no responde dentro del timeout', () async {
+      final mockClient = MockClient((_) async {
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        return http.Response('{}', 200);
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+        timeout: const Duration(milliseconds: 100),
+      );
+
+      expect(
+        () => api.fetchMe('token-123'),
+        throwsA(
+          isA<ApiException>().having((e) => e.statusCode, 'statusCode', isNull),
+        ),
+      );
+    });
   });
 
   group('ApiClient.institutions', () {
@@ -244,6 +291,85 @@ void main() {
       final list = await api.listUsersByInstitution('token-123', institutionId: 'inst-1');
 
       expect(list, isEmpty);
+    });
+  });
+
+  group('ApiClient.vaccinators', () {
+    test('crea un vacunador sin institutionId en el body', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(request.url.path, '/api/v1/users/vaccinators');
+        expect(request.headers['Authorization'], 'Bearer token-123');
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['email'], 'vacunador@hosp-a.com');
+        expect(body['fullName'], 'Ana Vacunadora');
+        expect(body['temporaryPassword'], 'Secreto123!');
+        // El scope institucional se resuelve en el servidor, nunca se envia.
+        expect(body.containsKey('institutionId'), isFalse);
+        return http.Response(
+          jsonEncode({
+            'id': 'user-1',
+            'email': 'vacunador@hosp-a.com',
+            'fullName': 'Ana Vacunadora',
+            'institutionId': 'inst-1',
+            'roles': ['VACCINATOR'],
+            'status': 'ACTIVE',
+          }),
+          201,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final json = await api.createVaccinator(
+        'token-123',
+        email: 'vacunador@hosp-a.com',
+        fullName: 'Ana Vacunadora',
+        temporaryPassword: 'Secreto123!',
+      );
+
+      expect(json['roles'], ['VACCINATOR']);
+      expect(json['institutionId'], 'inst-1');
+    });
+
+    test('propaga el mensaje de permiso denegado al crear vacunador', () async {
+      final mockClient = MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'error': 'PERMISSION_DENIED',
+            'message': 'No tienes permiso para crear vacunadores.',
+          }),
+          403,
+          headers: {'content-type': 'application/json'},
+        ),
+      );
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      expect(
+        () => api.createVaccinator(
+          'token-123',
+          email: 'vacunador@hosp-a.com',
+          fullName: 'Ana Vacunadora',
+          temporaryPassword: 'Secreto123!',
+        ),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'statusCode', 403)
+              .having(
+                (e) => e.message,
+                'message',
+                contains('permiso'),
+              ),
+        ),
+      );
     });
   });
 }

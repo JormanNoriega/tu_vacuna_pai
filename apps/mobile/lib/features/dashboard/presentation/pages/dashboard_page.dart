@@ -4,12 +4,16 @@ import '../../../../app/theme/app_theme.dart';
 import '../../../admin/presentation/admin_controller.dart';
 import '../../../admin/presentation/pages/admin_page.dart';
 import '../../../auth/domain/entities/auth_user.dart';
+import '../../../users/presentation/pages/users_page.dart';
+import '../../../users/presentation/users_controller.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
     required this.user,
     required this.onSignOut,
     this.adminController,
+    this.usersController,
+    this.offlineLocked = false,
     super.key,
   });
 
@@ -19,6 +23,14 @@ class DashboardPage extends StatefulWidget {
   /// Controlador de administracion global. Solo se usa cuando [user] es
   /// SUPER_ADMIN.
   final AdminController? adminController;
+
+  /// Controlador de la gestion de usuarios de institucion. Solo se usa cuando
+  /// [user] tiene el permiso USER_MANAGE (ADMIN_INSTITUTION).
+  final UsersController? usersController;
+
+  /// True cuando la ventana offline vencio: la sesion se abrio en modo solo
+  /// lectura local y exige reconexion.
+  final bool offlineLocked;
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -56,6 +68,7 @@ class _DashboardPageState extends State<DashboardPage> {
       selectedIcon: Icons.admin_panel_settings_rounded,
       label: 'Administracion',
       requiredPermission: 'USER_MANAGE',
+      isUsersManagement: true,
     ),
   ].where((destination) =>
       destination.requiredPermission == null ||
@@ -63,20 +76,43 @@ class _DashboardPageState extends State<DashboardPage> {
 
   bool get _isSuperAdmin => widget.user.hasRole('SUPER_ADMIN');
 
+  bool get _isSuperAdminView => _isSuperAdmin && widget.adminController != null;
+
+  Widget _buildContent() {
+    if (_isSuperAdminView) {
+      return AdminPage(controller: widget.adminController!);
+    }
+
+    if (_destinations[_selectedIndex].isUsersManagement &&
+        widget.usersController != null) {
+      return UsersPage(
+        controller: widget.usersController!,
+        institutionId: widget.user.institution.id,
+      );
+    }
+
+    return _DashboardContent(
+      userName: widget.user.name,
+      permissions: widget.user.permissions,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isExpanded = MediaQuery.sizeOf(context).width >= 900;
-    final isAdminView = _isSuperAdmin && widget.adminController != null;
-    final content = isAdminView
-        ? AdminPage(controller: widget.adminController!)
-        : _DashboardContent(
-            userName: widget.user.name,
-            permissions: widget.user.permissions,
-          );
+    final content = _buildContent();
+    final body = widget.offlineLocked
+        ? Column(
+            children: [
+              const _OfflineLockedBanner(),
+              Expanded(child: content),
+            ],
+          )
+        : content;
 
     // Para SUPER_ADMIN la vista es exclusivamente de administracion: no se
     // muestran la barra de navegacion ni las acciones operativas de vacunador.
-    if (isAdminView) {
+    if (_isSuperAdminView) {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Tu Vacuna PAI'),
@@ -89,7 +125,7 @@ class _DashboardPageState extends State<DashboardPage> {
             const SizedBox(width: 8),
           ],
         ),
-        body: content,
+        body: body,
       );
     }
 
@@ -122,7 +158,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
               ],
             ),
-          Expanded(child: content),
+          Expanded(child: body),
         ],
       ),
       bottomNavigationBar: isExpanded
@@ -150,12 +186,17 @@ class _DashboardDestination {
     required this.selectedIcon,
     required this.label,
     this.requiredPermission,
+    this.isUsersManagement = false,
   });
 
   final IconData icon;
   final IconData selectedIcon;
   final String label;
   final String? requiredPermission;
+
+  /// True cuando el destino corresponde a la gestion de usuarios de la
+  /// institucion (ADMIN_INSTITUTION).
+  final bool isUsersManagement;
 }
 
 class _DashboardContent extends StatelessWidget {
@@ -259,6 +300,44 @@ class _SyncBanner extends StatelessWidget {
               ),
             ),
             const Icon(Icons.chevron_right_rounded, color: Colors.white),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OfflineLockedBanner extends StatelessWidget {
+  const _OfflineLockedBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.all(16),
+      color: AppColors.warning.withValues(alpha: .12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(Icons.cloud_off_rounded, color: AppColors.warning),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Modo solo lectura',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'La ventana offline vencio. Conectate a internet e inicia '
+                    'sesion de nuevo para seguir registrando.',
+                    style: TextStyle(color: AppColors.slate, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

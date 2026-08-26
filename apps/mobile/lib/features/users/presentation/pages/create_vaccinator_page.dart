@@ -1,35 +1,25 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
-import '../admin_controller.dart';
+import '../users_controller.dart';
 
-/// Formulario para crear un ADMIN_INSTITUTION para una institucion existente.
-class CreateInstitutionAdminPage extends StatefulWidget {
-  const CreateInstitutionAdminPage({required this.controller, super.key});
+/// Formulario para crear un VACCINATOR en la institucion del admin autenticado.
+class CreateVaccinatorPage extends StatefulWidget {
+  const CreateVaccinatorPage({required this.controller, super.key});
 
-  final AdminController controller;
+  final UsersController controller;
 
   @override
-  State<CreateInstitutionAdminPage> createState() =>
-      _CreateInstitutionAdminPageState();
+  State<CreateVaccinatorPage> createState() => _CreateVaccinatorPageState();
 }
 
-class _CreateInstitutionAdminPageState extends State<CreateInstitutionAdminPage> {
+class _CreateVaccinatorPageState extends State<CreateVaccinatorPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _nameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _submitting = false;
-  String? _selectedInstitutionId;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.controller.institutions.isNotEmpty) {
-      _selectedInstitutionId = widget.controller.institutions.first.id;
-    }
-  }
 
   @override
   void dispose() {
@@ -41,20 +31,13 @@ class _CreateInstitutionAdminPageState extends State<CreateInstitutionAdminPage>
 
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
-    if (_selectedInstitutionId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Primero crea una institucion.')),
-      );
-      return;
-    }
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() => _submitting = true);
 
-    final created = await widget.controller.createInstitutionAdmin(
+    final created = await widget.controller.createVaccinator(
       email: _emailController.text.trim(),
       fullName: _nameController.text.trim(),
-      institutionId: _selectedInstitutionId!,
       temporaryPassword: _passwordController.text,
     );
 
@@ -69,7 +52,7 @@ class _CreateInstitutionAdminPageState extends State<CreateInstitutionAdminPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Crear usuario admin')),
+      appBar: AppBar(title: const Text('Crear vacunador')),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -79,50 +62,23 @@ class _CreateInstitutionAdminPageState extends State<CreateInstitutionAdminPage>
               child: AnimatedBuilder(
                 animation: widget.controller,
                 builder: (context, _) {
-                  if (widget.controller.institutions.isEmpty) {
-                    return const _NoInstitutionsHint();
-                  }
-
                   return Form(
                     key: _formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          'Administrador de institucion',
+                          'Vacunador de la institucion',
                           style: Theme.of(context).textTheme.headlineSmall,
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          'Crea la cuenta del administrador que gestionara la institucion seleccionada.',
+                          'El vacunador podra iniciar sesion con su correo y la '
+                          'contrasena temporal, y trabajara en tu institucion '
+                          'con o sin conexion.',
                           style: TextStyle(color: AppColors.slate, height: 1.4),
                         ),
                         const SizedBox(height: 24),
-                        DropdownButtonFormField<String>(
-                          initialValue: _selectedInstitutionId,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Institucion',
-                            prefixIcon: Icon(Icons.account_balance_rounded),
-                          ),
-                          items: [
-                            for (final institution
-                                in widget.controller.institutions)
-                              DropdownMenuItem(
-                                value: institution.id,
-                                child: Text(
-                                  '${institution.name} (${institution.code})',
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                          ],
-                          onChanged: (value) =>
-                              setState(() => _selectedInstitutionId = value),
-                          validator: (value) => value == null
-                              ? 'Selecciona una institucion.'
-                              : null,
-                        ),
-                        const SizedBox(height: 16),
                         TextFormField(
                           controller: _nameController,
                           textCapitalization: TextCapitalization.words,
@@ -156,7 +112,7 @@ class _CreateInstitutionAdminPageState extends State<CreateInstitutionAdminPage>
                           decoration: InputDecoration(
                             labelText: 'Contrasena temporal',
                             helperText:
-                                'Minimo 8 caracteres. Se la compartes al nuevo administrador.',
+                                'Minimo 8 caracteres. Se la compartes al nuevo vacunador.',
                             prefixIcon: const Icon(Icons.lock_outline_rounded),
                             suffixIcon: IconButton(
                               tooltip: _obscurePassword
@@ -201,7 +157,7 @@ class _CreateInstitutionAdminPageState extends State<CreateInstitutionAdminPage>
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text('Crear usuario admin'),
+                              : const Text('Crear vacunador'),
                         ),
                       ],
                     ),
@@ -212,30 +168,6 @@ class _CreateInstitutionAdminPageState extends State<CreateInstitutionAdminPage>
           ),
         ),
       ),
-    );
-  }
-}
-
-class _NoInstitutionsHint extends StatelessWidget {
-  const _NoInstitutionsHint();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(
-          Icons.account_balance_outlined,
-          size: 56,
-          color: AppColors.hint,
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          'Primero crea una institucion para poder asignarle un administrador.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.slate, height: 1.4),
-        ),
-      ],
     );
   }
 }
