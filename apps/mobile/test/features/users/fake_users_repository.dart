@@ -3,9 +3,10 @@ import 'package:tu_vacuna_pai/features/users/domain/repositories/users_repositor
 
 /// Repositorio en memoria para pruebas del [UsersController].
 class FakeUsersRepository implements UsersRepository {
-  FakeUsersRepository({this.failOnCreate = false});
+  FakeUsersRepository({this.failOnCreate = false, this.failOnUpdate = false});
 
   final bool failOnCreate;
+  bool failOnUpdate;
   final List<Vaccinator> users = [];
   String? lastPassword;
 
@@ -38,5 +39,51 @@ class FakeUsersRepository implements UsersRepository {
     required String institutionId,
   }) async {
     return users.where((user) => user.institutionId == institutionId).toList();
+  }
+
+  @override
+  Future<Vaccinator> updateStatus(
+    String accessToken, {
+    required String userId,
+    required String status,
+  }) async {
+    if (failOnUpdate) {
+      throw StateError('Fallo simulado');
+    }
+    final index = users.indexWhere((user) => user.id == userId);
+    final current = users[index];
+    final updated = Vaccinator(
+      id: current.id,
+      email: current.email,
+      fullName: current.fullName,
+      institutionId: current.institutionId,
+      roles: current.roles,
+      status: status,
+    );
+    users[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<Vaccinator> updateRoles(
+    String accessToken, {
+    required String userId,
+    required List<String> roles,
+  }) async {
+    if (failOnUpdate) {
+      throw StateError('Fallo simulado');
+    }
+    final index = users.indexWhere((user) => user.id == userId);
+    final current = users[index];
+    final updated = Vaccinator(
+      id: current.id,
+      email: current.email,
+      fullName: current.fullName,
+      institutionId: current.institutionId,
+      roles: roles,
+      status: current.status,
+    );
+    users[index] = updated;
+    return updated;
   }
 }

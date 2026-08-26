@@ -10,7 +10,10 @@ import 'package:tu_vacuna_pai/features/auth/domain/entities/auth_user.dart';
 import 'package:tu_vacuna_pai/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:tu_vacuna_pai/features/users/domain/use_cases/create_vaccinator.dart';
 import 'package:tu_vacuna_pai/features/users/domain/use_cases/list_users.dart';
+import 'package:tu_vacuna_pai/features/users/domain/use_cases/update_user_roles.dart';
+import 'package:tu_vacuna_pai/features/users/domain/use_cases/update_user_status.dart';
 import 'package:tu_vacuna_pai/features/users/presentation/users_controller.dart';
+import 'package:tu_vacuna_pai/features/users/domain/entities/vaccinator.dart';
 
 import 'features/admin/fake_admin_repository.dart';
 import 'features/users/fake_users_repository.dart';
@@ -104,6 +107,8 @@ void main() {
       sessionManager: FakeSessionManager('token-123'),
       createVaccinator: CreateVaccinator(FakeUsersRepository()),
       listUsers: ListUsers(FakeUsersRepository()),
+      updateUserStatus: UpdateUserStatus(FakeUsersRepository()),
+      updateUserRoles: UpdateUserRoles(FakeUsersRepository()),
     );
     final user = AuthUser(
       id: 'admin-1',
@@ -146,6 +151,108 @@ void main() {
       find.text('Todavia no hay vacunadores en esta institucion.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('VACCINATOR ve sus opciones sin seccion de administracion',
+      (tester) async {
+    final user = AuthUser(
+      id: 'vac-1',
+      email: 'vacunador@hosp-a.com',
+      name: 'Ana Vacunadora',
+      institution: const InstitutionProfile(
+        id: 'inst-1',
+        code: 'HOSP-A',
+        name: 'Hospital A',
+      ),
+      roles: const ['VACCINATOR'],
+      permissions: const ['PATIENT_READ', 'ATTENTION_CREATE', 'ATTENTION_READ'],
+      offlineWindowHours: 72,
+      lastOnlineValidation: DateTime.now(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: DashboardPage(user: user, onSignOut: () {})),
+    );
+    await tester.pumpAndSettle();
+
+    // Ve la barra operativa de vacunador y sus destinos.
+    expect(find.text('Buenos dias'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.text('Nueva atencion'), findsWidgets);
+    expect(find.text('Historial'), findsOneWidget);
+    // No ve administracion de usuarios ni inventario.
+    expect(find.text('Administracion'), findsNothing);
+    expect(find.text('Inventario'), findsNothing);
+  });
+
+  testWidgets('ADMIN_INSTITUTION edita el estado y los roles de un vacunador',
+      (tester) async {
+    final repository = FakeUsersRepository();
+    repository.users.add(
+      Vaccinator(
+        id: 'vac-1',
+        email: 'vacunador@hosp-a.com',
+        fullName: 'Ana Vacunadora',
+        institutionId: 'inst-1',
+        roles: const ['VACCINATOR'],
+        status: 'ACTIVE',
+      ),
+    );
+    final usersController = UsersController(
+      sessionManager: FakeSessionManager('token-123'),
+      createVaccinator: CreateVaccinator(repository),
+      listUsers: ListUsers(repository),
+      updateUserStatus: UpdateUserStatus(repository),
+      updateUserRoles: UpdateUserRoles(repository),
+    );
+    final user = AuthUser(
+      id: 'admin-1',
+      email: 'admin@hosp-a.com',
+      name: 'Admin Hospital A',
+      institution: const InstitutionProfile(
+        id: 'inst-1',
+        code: 'HOSP-A',
+        name: 'Hospital A',
+      ),
+      roles: const ['ADMIN_INSTITUTION'],
+      permissions: const ['USER_MANAGE', 'PATIENT_READ'],
+      offlineWindowHours: 72,
+      lastOnlineValidation: DateTime.now(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DashboardPage(
+          user: user,
+          onSignOut: () {},
+          usersController: usersController,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('Administracion'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Abrir la edicion del vacunador.
+    await tester.tap(find.byTooltip('Editar usuario'));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar Ana Vacunadora'), findsOneWidget);
+
+    // Desactivar y cambiar a solo lectura.
+    await tester.tap(find.byType(Switch));
+    await tester.tap(find.text('Solo lectura'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Usuario actualizado correctamente.'), findsOneWidget);
+    expect(find.text('INACTIVO'), findsOneWidget);
   });
 
   testWidgets('muestra el banner de solo lectura cuando la ventana vencio',

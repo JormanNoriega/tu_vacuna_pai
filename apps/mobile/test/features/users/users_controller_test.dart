@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tu_vacuna_pai/features/users/domain/use_cases/create_vaccinator.dart';
 import 'package:tu_vacuna_pai/features/users/domain/use_cases/list_users.dart';
+import 'package:tu_vacuna_pai/features/users/domain/use_cases/update_user_roles.dart';
+import 'package:tu_vacuna_pai/features/users/domain/use_cases/update_user_status.dart';
 import 'package:tu_vacuna_pai/features/users/presentation/users_controller.dart';
 
 import '../admin/fake_admin_repository.dart';
@@ -15,6 +17,8 @@ void main() {
         sessionManager: sessionManager,
         createVaccinator: CreateVaccinator(repository),
         listUsers: ListUsers(repository),
+        updateUserStatus: UpdateUserStatus(repository),
+        updateUserRoles: UpdateUserRoles(repository),
       );
 
   setUp(() {
@@ -88,6 +92,47 @@ void main() {
 
       expect(controller.users, hasLength(1));
       expect(controller.isLoading, isFalse);
+    });
+
+    test('actualiza el estado y los roles de un usuario', () async {
+      final created = await controller.createVaccinator(
+        email: 'vacunador@hosp-a.com',
+        fullName: 'Ana Vacunadora',
+        temporaryPassword: 'Temp123!',
+      );
+      await controller.loadUsers(institutionId: 'inst-1');
+
+      final saved = await controller.updateUser(
+        created!,
+        status: 'INACTIVE',
+        roles: const ['READ_ONLY'],
+      );
+
+      expect(saved, isTrue);
+      final updated = controller.users.single;
+      expect(updated.status, 'INACTIVE');
+      expect(updated.roles, ['READ_ONLY']);
+      expect(controller.error, isNull);
+    });
+
+    test('mantiene el estado anterior cuando la edicion falla', () async {
+      final created = await controller.createVaccinator(
+        email: 'vacunador@hosp-a.com',
+        fullName: 'Ana Vacunadora',
+        temporaryPassword: 'Temp123!',
+      );
+      await controller.loadUsers(institutionId: 'inst-1');
+
+      repository.failOnUpdate = true;
+      final saved = await controller.updateUser(
+        created!,
+        status: 'INACTIVE',
+        roles: const ['READ_ONLY'],
+      );
+
+      expect(saved, isFalse);
+      expect(controller.users.single.status, 'ACTIVE');
+      expect(controller.users.single.roles, ['VACCINATOR']);
     });
   });
 }

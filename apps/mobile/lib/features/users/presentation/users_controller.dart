@@ -5,6 +5,8 @@ import '../../../core/network/api_exception.dart';
 import '../domain/entities/vaccinator.dart';
 import '../domain/use_cases/create_vaccinator.dart';
 import '../domain/use_cases/list_users.dart';
+import '../domain/use_cases/update_user_roles.dart';
+import '../domain/use_cases/update_user_status.dart';
 
 /// Controlador de la gestion de usuarios de una institucion (ADMIN_INSTITUTION).
 /// Online-first: ninguna escritura se confirma hasta recibir respuesta exitosa
@@ -14,17 +16,23 @@ class UsersController extends ChangeNotifier {
     required SessionManager sessionManager,
     required CreateVaccinator createVaccinator,
     required ListUsers listUsers,
-  }) : this._(sessionManager, createVaccinator, listUsers);
+    required UpdateUserStatus updateUserStatus,
+    required UpdateUserRoles updateUserRoles,
+  }) : this._(sessionManager, createVaccinator, listUsers, updateUserStatus, updateUserRoles);
 
   UsersController._(
     this._sessionManager,
     this._createVaccinator,
     this._listUsers,
+    this._updateUserStatus,
+    this._updateUserRoles,
   );
 
   final SessionManager _sessionManager;
   final CreateVaccinator _createVaccinator;
   final ListUsers _listUsers;
+  final UpdateUserStatus _updateUserStatus;
+  final UpdateUserRoles _updateUserRoles;
 
   List<Vaccinator> _users = const [];
   bool _isLoading = false;
@@ -89,6 +97,58 @@ class UsersController extends ChangeNotifier {
     } catch (_) {
       _setError('No se pudo crear el vacunador.');
       return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Actualiza el estado y los roles de un usuario. Online-first: devuelve
+  /// true solo si ambas escrituras se confirman con exito.
+  Future<bool> updateUser(
+    Vaccinator user, {
+    required String status,
+    required List<String> roles,
+  }) async {
+    final token = await _currentToken();
+    if (token == null) {
+      _setError('Tu sesion expiro. Inicia sesion de nuevo.');
+      return false;
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final updatedStatus = await _updateUserStatus(
+        token,
+        userId: user.id,
+        status: status,
+      );
+      final updatedRoles = await _updateUserRoles(
+        token,
+        userId: user.id,
+        roles: roles,
+      );
+      final merged = Vaccinator(
+        id: updatedStatus.id,
+        email: updatedStatus.email,
+        fullName: updatedStatus.fullName,
+        institutionId: updatedStatus.institutionId,
+        roles: updatedRoles.roles,
+        status: updatedStatus.status,
+      );
+      _users = [
+        for (final u in _users) u.id == merged.id ? merged : u,
+      ];
+      return true;
+    } on ApiException catch (e) {
+      _setError(e.message);
+      return false;
+    } catch (_) {
+      _setError('No se pudo actualizar el usuario.');
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();

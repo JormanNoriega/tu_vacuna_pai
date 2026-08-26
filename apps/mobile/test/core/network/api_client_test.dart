@@ -372,4 +372,110 @@ void main() {
       );
     });
   });
+
+  group('ApiClient.userUpdates', () {
+    test('actualiza el estado del usuario con PUT', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'PUT');
+        expect(request.url.path, '/api/v1/users/vac-1/status');
+        expect(request.headers['Authorization'], 'Bearer token-123');
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['status'], 'INACTIVE');
+        return http.Response(
+          jsonEncode({
+            'id': 'vac-1',
+            'email': 'vacunador@hosp-a.com',
+            'fullName': 'Ana Vacunadora',
+            'institutionId': 'inst-1',
+            'roles': ['VACCINATOR'],
+            'status': 'INACTIVE',
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final json = await api.updateUserStatus(
+        'token-123',
+        userId: 'vac-1',
+        status: 'INACTIVE',
+      );
+
+      expect(json['status'], 'INACTIVE');
+    });
+
+    test('reemplaza los roles del usuario con PUT', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'PUT');
+        expect(request.url.path, '/api/v1/users/vac-1/roles');
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['roles'], ['READ_ONLY']);
+        return http.Response(
+          jsonEncode({
+            'id': 'vac-1',
+            'email': 'vacunador@hosp-a.com',
+            'fullName': 'Ana Vacunadora',
+            'institutionId': 'inst-1',
+            'roles': ['READ_ONLY'],
+            'status': 'ACTIVE',
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final json = await api.updateUserRoles(
+        'token-123',
+        userId: 'vac-1',
+        roles: const ['READ_ONLY'],
+      );
+
+      expect(json['roles'], ['READ_ONLY']);
+    });
+
+    test('propaga error de scope al actualizar usuario', () async {
+      final mockClient = MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'error': 'SCOPE_VIOLATION',
+            'message': 'No tienes permiso para administrar usuarios de otra institucion.',
+          }),
+          403,
+          headers: {'content-type': 'application/json'},
+        ),
+      );
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      expect(
+        () => api.updateUserStatus(
+          'token-123',
+          userId: 'vac-1',
+          status: 'INACTIVE',
+        ),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'statusCode', 403)
+              .having(
+                (e) => e.message,
+                'message',
+                contains('otra institucion'),
+              ),
+        ),
+      );
+    });
+  });
 }

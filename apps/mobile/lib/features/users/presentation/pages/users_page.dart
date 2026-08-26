@@ -41,6 +41,29 @@ class _UsersPageState extends State<UsersPage> {
     }
   }
 
+  Future<void> _openEditUser(Vaccinator user) async {
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => _EditUserDialog(
+        user: user,
+        onSave: (status, roles) => widget.controller.updateUser(
+          user,
+          status: status,
+          roles: roles,
+        ),
+      ),
+    );
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Usuario actualizado correctamente.')),
+      );
+    } else if (saved == false && mounted && widget.controller.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(widget.controller.error!)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -88,7 +111,10 @@ class _UsersPageState extends State<UsersPage> {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 12),
-                  _UsersList(controller: widget.controller),
+                  _UsersList(
+                    controller: widget.controller,
+                    onEditUser: _openEditUser,
+                  ),
                 ],
               );
             },
@@ -100,9 +126,10 @@ class _UsersPageState extends State<UsersPage> {
 }
 
 class _UsersList extends StatelessWidget {
-  const _UsersList({required this.controller});
+  const _UsersList({required this.controller, required this.onEditUser});
 
   final UsersController controller;
+  final ValueChanged<Vaccinator> onEditUser;
 
   @override
   Widget build(BuildContext context) {
@@ -122,22 +149,25 @@ class _UsersList extends StatelessWidget {
 
     return Column(
       children: [
-        for (final user in controller.users) _UserTile(user: user),
+        for (final user in controller.users)
+          _UserTile(user: user, onTap: () => onEditUser(user)),
       ],
     );
   }
 }
 
 class _UserTile extends StatelessWidget {
-  const _UserTile({required this.user});
+  const _UserTile({required this.user, required this.onTap});
 
   final Vaccinator user;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
+        onTap: onTap,
         leading: Container(
           width: 40,
           height: 40,
@@ -165,8 +195,147 @@ class _UserTile extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 12),
         ),
-        trailing: _StatusChip(active: user.isActive),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _StatusChip(active: user.isActive),
+            const SizedBox(width: 4),
+            IconButton(
+              tooltip: 'Editar usuario',
+              onPressed: onTap,
+              icon: const Icon(Icons.edit_outlined, size: 20),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _EditUserDialog extends StatefulWidget {
+  const _EditUserDialog({required this.user, required this.onSave});
+
+  final Vaccinator user;
+  final Future<bool> Function(String status, List<String> roles) onSave;
+
+  @override
+  State<_EditUserDialog> createState() => _EditUserDialogState();
+}
+
+class _EditUserDialogState extends State<_EditUserDialog> {
+  static const _roleOptions = ['VACCINATOR', 'READ_ONLY'];
+
+  late bool _active;
+  late Set<String> _roles;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _active = widget.user.isActive;
+    _roles = widget.user.roles.where(_roleOptions.contains).toSet();
+  }
+
+  Future<void> _save() async {
+    if (_roles.isEmpty) {
+      setState(() => _error = 'Selecciona al menos un rol.');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final saved = await widget.onSave(
+      _active ? 'ACTIVE' : 'INACTIVE',
+      _roles.toList(),
+    );
+    if (!mounted) return;
+    if (saved) {
+      Navigator.of(context).pop(true);
+    } else {
+      setState(() => _saving = false);
+    }
+  }
+
+  String _roleLabel(String code) => switch (code) {
+        'VACCINATOR' => 'Vacunador',
+        'READ_ONLY' => 'Solo lectura',
+        _ => code,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Editar ${widget.user.fullName}'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Roles', style: TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final role in _roleOptions)
+                  FilterChip(
+                    label: Text(_roleLabel(role)),
+                    selected: _roles.contains(role),
+                    onSelected: _saving
+                        ? null
+                        : (selected) => setState(() {
+                              if (selected) {
+                                _roles.add(role);
+                              } else {
+                                _roles.remove(role);
+                              }
+                            }),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Usuario activo',
+                  style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text(
+                _active
+                    ? 'Puede iniciar sesion y trabajar.'
+                    : 'Solo lectura bloqueada: no podra iniciar sesion.',
+              ),
+              value: _active,
+              onChanged: _saving
+                  ? null
+                  : (value) => setState(() => _active = value),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          child: _saving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Guardar'),
+        ),
+      ],
     );
   }
 }

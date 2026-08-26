@@ -19,4 +19,18 @@ abstract interface class UsersRepository {
     String accessToken, {
     required String institutionId,
   });
+
+  /// Activa o desactiva un usuario de la institucion del actor.
+  Future<Vaccinator> updateStatus(
+    String accessToken, {
+    required String userId,
+    required String status,
+  });
+
+  /// Reemplaza los roles de un usuario de la institucion del actor.
+  Future<Vaccinator> updateRoles(
+    String accessToken, {
+    required String userId,
+    required List<String> roles,
+  });
 }

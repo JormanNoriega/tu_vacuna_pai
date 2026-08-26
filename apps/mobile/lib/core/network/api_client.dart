@@ -181,6 +181,44 @@ class ApiClient {
     );
   }
 
+  /// Activa o desactiva un usuario de la institucion del actor. El scope se
+  /// valida en el backend.
+  Future<Map<String, dynamic>> updateUserStatus(
+    String accessToken, {
+    required String userId,
+    required String status,
+  }) async {
+    final uri = Uri.parse('$baseUrl/users/$userId/status');
+    final response = await _send(
+      _http.put(
+        uri,
+        headers: _jsonHeaders(accessToken),
+        body: jsonEncode({'status': status}),
+      ),
+    );
+
+    return _decodeObject(response, fallback: 'Error al actualizar el usuario.');
+  }
+
+  /// Reemplaza los roles de un usuario de la institucion del actor. El rol
+  /// SUPER_ADMIN no se puede asignar por esta via.
+  Future<Map<String, dynamic>> updateUserRoles(
+    String accessToken, {
+    required String userId,
+    required List<String> roles,
+  }) async {
+    final uri = Uri.parse('$baseUrl/users/$userId/roles');
+    final response = await _send(
+      _http.put(
+        uri,
+        headers: _jsonHeaders(accessToken),
+        body: jsonEncode({'roles': roles}),
+      ),
+    );
+
+    return _decodeObject(response, fallback: 'Error al actualizar los roles.');
+  }
+
   Map<String, String> _jsonHeaders(String accessToken) => {
     'Authorization': 'Bearer $accessToken',
     'Accept': 'application/json',

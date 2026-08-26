@@ -18,6 +18,8 @@ import 'features/auth/data/supabase_auth_repository.dart';
 import 'features/users/data/users_repository_impl.dart';
 import 'features/users/domain/use_cases/create_vaccinator.dart';
 import 'features/users/domain/use_cases/list_users.dart';
+import 'features/users/domain/use_cases/update_user_roles.dart';
+import 'features/users/domain/use_cases/update_user_status.dart';
 import 'features/users/presentation/users_controller.dart';
 
 Future<void> main() async {
@@ -54,6 +56,8 @@ Future<void> main() async {
     sessionManager: sessionManager,
     createVaccinator: CreateVaccinator(usersRepository),
     listUsers: ListUsers(usersRepository),
+    updateUserStatus: UpdateUserStatus(usersRepository),
+    updateUserRoles: UpdateUserRoles(usersRepository),
   );
 
   runApp(TuVacunaApp(

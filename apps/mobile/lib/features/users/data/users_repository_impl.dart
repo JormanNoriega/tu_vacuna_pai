@@ -46,6 +46,38 @@ class UsersRepositoryImpl implements UsersRepository {
     return users;
   }
 
+  @override
+  Future<Vaccinator> updateStatus(
+    String accessToken, {
+    required String userId,
+    required String status,
+  }) async {
+    final json = await _apiClient.updateUserStatus(
+      accessToken,
+      userId: userId,
+      status: status,
+    );
+    final user = Vaccinator.fromJson(json);
+    await _cacheUser(user);
+    return user;
+  }
+
+  @override
+  Future<Vaccinator> updateRoles(
+    String accessToken, {
+    required String userId,
+    required List<String> roles,
+  }) async {
+    final json = await _apiClient.updateUserRoles(
+      accessToken,
+      userId: userId,
+      roles: roles,
+    );
+    final user = Vaccinator.fromJson(json);
+    await _cacheUser(user);
+    return user;
+  }
+
   Future<void> _cacheUser(Vaccinator user) {
     return _database.upsertUser(
       id: user.id,
