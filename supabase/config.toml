@@ -1,0 +1,7 @@
+project_id = "jfxkrznzhfvecaaixkjv"
+
+[functions.create-auth-user]
+verify_jwt = true
+
+[functions.delete-auth-user]
+verify_jwt = true
