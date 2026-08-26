@@ -87,11 +87,16 @@ class AppDatabase extends _$AppDatabase {
 
   /// Abre la base local con la implementacion nativa de drift_flutter.
   ///
-  /// La base queda cifrada cuando el binario de sqlite3 se compila con soporte
-  /// de cifrado (hook `source=sqlcipher` o `sqlite3mc` en el build; ADR-003).
-  /// La clave se genera una vez y se guarda en almacenamiento seguro, nunca en
-  /// la base. Sobre un build sin cifrado, los pragmas son ignorados y la base
-  /// sigue siendo funcional para desarrollo.
+  /// La base queda cifrada con SQLite3MultipleCiphers (compatible SQLCipher):
+  /// el binario nativo se resuelve con `hooks.user_defines.sqlite3.source =
+  /// sqlite3mc` en pubspec.yaml (ADR-003). La clave se genera una vez y se
+  /// guarda en almacenamiento seguro, nunca en la base.
+  ///
+  /// Advertencia de migracion: una base creada SIN cifrado por un build
+  /// anterior no puede abrirse con clave. Como esta base es solo cache (perfil,
+  /// instituciones y usuarios, recreables con una validacion online), la
+  /// solucion es eliminar el archivo local (o reinstalar) antes del primer
+  /// arranque con cifrado.
   static Future<AppDatabase> open(FlutterSecureStorage storage) async {
     final key = await _loadOrCreateKey(storage);
     final connection = driftDatabase(

@@ -21,6 +21,14 @@ version: 1.0.0+1
 environment:
   sdk: ^3.13.1
 
+# Cifrado real de la base local: el binario nativo de SQLite que `package:sqlite3`
+# descarga vía hooks se compila con SQLite3MultipleCiphers (sqlite3mc, compatible
+# con SQLCipher). Sin esta opcion, `PRAGMA key` era ignorado (ADR-003).
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3mc
+
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
 # consider running `flutter pub upgrade --major-versions`. Alternatively,
@@ -44,6 +52,10 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  # Acceso directo al binario nativo en el test de cifrado (ya es transitiva
+  # por drift; se declara para usarla en el test de verificacion).
+  sqlite3: ^3.5.2
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
