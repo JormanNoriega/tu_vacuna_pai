@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.pai.api.identity.dto.CreateInstitutionAdminRequest;
+import com.pai.api.identity.dto.CreateVaccinatorRequest;
 import com.pai.api.identity.dto.UserResponse;
 import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.entity.RoleEntity;
@@ -21,6 +22,7 @@ import com.pai.api.identity.repository.UserRepository;
 import com.pai.api.identity.repository.UserRoleRepository;
 import com.pai.api.shared.exceptions.EmailAlreadyExistsException;
 import com.pai.api.shared.exceptions.InstitutionNotFoundException;
+import com.pai.api.shared.exceptions.PermissionDeniedException;
 import com.pai.api.shared.exceptions.RoleNotFoundException;
 import com.pai.api.shared.exceptions.ScopeViolationException;
 
@@ -40,6 +42,8 @@ public class UserService {
 
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
     private static final String ADMIN_INSTITUTION_ROLE = "ADMIN_INSTITUTION";
+    private static final String VACCINATOR_ROLE = "VACCINATOR";
+    private static final String USER_MANAGE_PERMISSION = "USER_MANAGE";
 
     private final UserRepository userRepository;
     private final InstitutionRepository institutionRepository;
@@ -129,6 +133,86 @@ public class UserService {
             request.fullName().trim(),
             institution.getId(),
             List.of(ADMIN_INSTITUTION_ROLE),
+            UserEntity.Status.ACTIVE.name());
+    }
+
+    /**
+     * Crea un {@code VACCINATOR} en la institucion del actor autenticado.
+     *
+     * <p>El {@code institutionId} nunca se recibe en el request: se resuelve
+     * exclusivamente desde el actor (scope calculado por el servidor). El
+     * permiso {@code USER_MANAGE} se revalida aqui como segunda barrera, ademas
+     * del {@code @PreAuthorize} del controller, para que una llamada directa al
+     * servicio no pueda saltarse la regla (Ajuste 2).
+     *
+     * @param actorId     id del usuario autenticado (ADMIN_INSTITUTION)
+     * @param accessToken access token del actor para invocar las Edge Functions
+     */
+    @Transactional
+    public UserResponse createVaccinator(UUID actorId, String accessToken,
+            CreateVaccinatorRequest request) {
+        AuthorizedUser actor = identityService.resolve(actorId);
+        if (!actor.getPermissions().contains(USER_MANAGE_PERMISSION)) {
+            throw new PermissionDeniedException(
+                "No tienes permiso para crear vacunadores.");
+        }
+
+        String email = request.email().trim().toLowerCase();
+
+        if (userRepository.existsByEmail(email)) {
+            throw new EmailAlreadyExistsException(
+                "Ya existe un usuario con ese correo.");
+        }
+
+        RoleEntity role = roleRepository.findByCode(VACCINATOR_ROLE)
+            .orElseThrow(() -> new RoleNotFoundException(
+                "El rol VACCINATOR no esta configurado."));
+
+        // 1. Crear la identidad en auth.users (Edge Function con service role).
+        // La institucion del actor ya fue validada como activa por resolve().
+        UUID authUserId;
+        try {
+            authUserId = authUserClient.createAuthUser(
+                accessToken, email, request.temporaryPassword(), request.fullName().trim());
+        } catch (EmailAlreadyExistsException ex) {
+            throw new EmailAlreadyExistsException(
+                "Ya existe un usuario con ese correo.");
+        }
+
+        // 2. Crear el espejo en app.users y el rol. Si falla, compensar sin
+        // ocultar la excepcion original: el fallo de compensacion se adjunta
+        // como suppressed y la excepcion principal se conserva.
+        try {
+            Instant now = Instant.now();
+            UserEntity user = new UserEntity(
+                authUserId,
+                email,
+                request.fullName().trim(),
+                actor.getInstitution().getId(),
+                UserEntity.Status.ACTIVE,
+                now,
+                now);
+            userRepository.save(user);
+            userRoleRepository.save(new UserRoleEntity(authUserId, role.getId()));
+        } catch (RuntimeException ex) {
+            log.warn("Compensando: fallo la creacion del espejo app.users para el vacunador {}",
+                email, ex);
+            try {
+                authUserClient.deleteAuthUser(accessToken, authUserId);
+            } catch (RuntimeException compensationEx) {
+                log.error("No se pudo eliminar el auth.user huerfano {} tras la compensacion",
+                    authUserId, compensationEx);
+                ex.addSuppressed(compensationEx);
+            }
+            throw ex;
+        }
+
+        return new UserResponse(
+            authUserId,
+            email,
+            request.fullName().trim(),
+            actor.getInstitution().getId(),
+            List.of(VACCINATOR_ROLE),
             UserEntity.Status.ACTIVE.name());
     }
 

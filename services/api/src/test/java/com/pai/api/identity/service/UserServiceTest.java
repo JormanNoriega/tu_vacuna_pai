@@ -18,8 +18,10 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import com.pai.api.identity.dto.CreateInstitutionAdminRequest;
+import com.pai.api.identity.dto.CreateVaccinatorRequest;
 import com.pai.api.identity.dto.UserResponse;
 import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.entity.RoleEntity;
@@ -30,6 +32,7 @@ import com.pai.api.identity.repository.UserRepository;
 import com.pai.api.identity.repository.UserRoleRepository;
 import com.pai.api.shared.exceptions.EmailAlreadyExistsException;
 import com.pai.api.shared.exceptions.InstitutionNotFoundException;
+import com.pai.api.shared.exceptions.PermissionDeniedException;
 import com.pai.api.shared.exceptions.RoleNotFoundException;
 import com.pai.api.shared.exceptions.ScopeViolationException;
 
@@ -70,6 +73,16 @@ class UserServiceTest {
     private InstitutionEntity institution() {
         return new InstitutionEntity(INSTITUTION_ID, "HOSP-A", "Hospital A",
             InstitutionEntity.Status.ACTIVE, (short) 72, Instant.now(), Instant.now());
+    }
+
+    private CreateVaccinatorRequest vaccinatorRequest() {
+        return new CreateVaccinatorRequest("VAC@HOSP.A", "Vaca Uno", "TempPass123!");
+    }
+
+    private AuthorizedUser adminInstitutionActor() {
+        return new AuthorizedUser(ACTOR_ID, "admin@hosp.a",
+            "Admin Hospital A", institution(), List.of("ADMIN_INSTITUTION"),
+            List.of("USER_MANAGE"), Instant.now());
     }
 
     @Test
@@ -169,6 +182,127 @@ class UserServiceTest {
         service.createInstitutionAdmin(ACTOR_ID, ACCESS_TOKEN, request());
 
         verify(authUserClient, never()).deleteAuthUser(eq(ACCESS_TOKEN), any(UUID.class));
+    }
+
+    @Test
+    void createVaccinator_createsAuthUserMirrorAndRole() {
+        when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
+        when(userRepository.existsByEmail("vac@hosp.a")).thenReturn(false);
+        when(roleRepository.findByCode("VACCINATOR"))
+            .thenReturn(Optional.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
+        when(authUserClient.createAuthUser(ACCESS_TOKEN, "vac@hosp.a",
+            "TempPass123!", "Vaca Uno")).thenReturn(AUTH_USER_ID);
+
+        UserResponse result = service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest());
+
+        assertThat(result.id()).isEqualTo(AUTH_USER_ID);
+        assertThat(result.email()).isEqualTo("vac@hosp.a");
+        assertThat(result.institutionId()).isEqualTo(INSTITUTION_ID);
+        assertThat(result.roles()).containsExactly("VACCINATOR");
+        verify(userRepository).save(any(UserEntity.class));
+        verify(userRoleRepository).save(any());
+    }
+
+    @Test
+    void createVaccinator_blocksActorWithoutUserManagePermission() {
+        AuthorizedUser actor = new AuthorizedUser(ACTOR_ID, "admin@hosp.a",
+            "Admin Hospital A", institution(), List.of("ADMIN_INSTITUTION"),
+            List.of("ATTENTION_CREATE"), Instant.now());
+        when(identityService.resolve(ACTOR_ID)).thenReturn(actor);
+
+        assertThatThrownBy(() -> service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest()))
+            .isInstanceOf(PermissionDeniedException.class);
+        verify(authUserClient, never())
+            .createAuthUser(anyString(), anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void createVaccinator_usesActorInstitutionAsScope() {
+        when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
+        when(userRepository.existsByEmail("vac@hosp.a")).thenReturn(false);
+        when(roleRepository.findByCode("VACCINATOR"))
+            .thenReturn(Optional.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
+        when(authUserClient.createAuthUser(ACCESS_TOKEN, "vac@hosp.a",
+            "TempPass123!", "Vaca Uno")).thenReturn(AUTH_USER_ID);
+
+        service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest());
+
+        ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().getInstitutionId()).isEqualTo(INSTITUTION_ID);
+    }
+
+    @Test
+    void createVaccinator_throwsWhenEmailAlreadyRegistered() {
+        when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
+        when(userRepository.existsByEmail("vac@hosp.a")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest()))
+            .isInstanceOf(EmailAlreadyExistsException.class);
+        verify(authUserClient, never())
+            .createAuthUser(anyString(), anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void createVaccinator_throwsWhenRoleMissing() {
+        when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
+        when(userRepository.existsByEmail("vac@hosp.a")).thenReturn(false);
+        when(roleRepository.findByCode("VACCINATOR")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest()))
+            .isInstanceOf(RoleNotFoundException.class);
+        verify(authUserClient, never())
+            .createAuthUser(anyString(), anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void createVaccinator_throwsWhenAuthUserEmailExists() {
+        when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
+        when(userRepository.existsByEmail("vac@hosp.a")).thenReturn(false);
+        when(roleRepository.findByCode("VACCINATOR"))
+            .thenReturn(Optional.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
+        when(authUserClient.createAuthUser(ACCESS_TOKEN, "vac@hosp.a",
+            "TempPass123!", "Vaca Uno"))
+            .thenThrow(new EmailAlreadyExistsException("Ya existe"));
+
+        assertThatThrownBy(() -> service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest()))
+            .isInstanceOf(EmailAlreadyExistsException.class);
+        verify(userRepository, never()).save(any(UserEntity.class));
+    }
+
+    @Test
+    void createVaccinator_compensatesWhenAppUserSaveFails() {
+        when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
+        when(userRepository.existsByEmail("vac@hosp.a")).thenReturn(false);
+        when(roleRepository.findByCode("VACCINATOR"))
+            .thenReturn(Optional.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
+        when(authUserClient.createAuthUser(ACCESS_TOKEN, "vac@hosp.a",
+            "TempPass123!", "Vaca Uno")).thenReturn(AUTH_USER_ID);
+        when(userRepository.save(any(UserEntity.class)))
+            .thenThrow(new RuntimeException("DB failure"));
+
+        assertThatThrownBy(() -> service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest()))
+            .isInstanceOf(RuntimeException.class);
+        verify(authUserClient).deleteAuthUser(ACCESS_TOKEN, AUTH_USER_ID);
+    }
+
+    @Test
+    void createVaccinator_preservesOriginalExceptionWhenCompensationFails() {
+        when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
+        when(userRepository.existsByEmail("vac@hosp.a")).thenReturn(false);
+        when(roleRepository.findByCode("VACCINATOR"))
+            .thenReturn(Optional.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
+        when(authUserClient.createAuthUser(ACCESS_TOKEN, "vac@hosp.a",
+            "TempPass123!", "Vaca Uno")).thenReturn(AUTH_USER_ID);
+        RuntimeException original = new RuntimeException("DB failure");
+        when(userRepository.save(any(UserEntity.class))).thenThrow(original);
+        doThrow(new RuntimeException("Compensation failure"))
+            .when(authUserClient).deleteAuthUser(ACCESS_TOKEN, AUTH_USER_ID);
+
+        assertThatThrownBy(() -> service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest()))
+            .isSameAs(original)
+            .satisfies(ex -> assertThat(ex.getSuppressed()).hasSize(1));
+        verify(authUserClient).deleteAuthUser(ACCESS_TOKEN, AUTH_USER_ID);
     }
 
     @Test

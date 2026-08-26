@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.pai.api.identity.dto.CreateInstitutionAdminRequest;
 import com.pai.api.identity.dto.CreateInstitutionRequest;
+import com.pai.api.identity.dto.CreateVaccinatorRequest;
 import com.pai.api.identity.dto.InstitutionResponse;
 import com.pai.api.identity.dto.UpdateInstitutionStatusRequest;
 import com.pai.api.identity.dto.UserResponse;
@@ -78,6 +79,20 @@ public class AdminController {
         }
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(userService.createInstitutionAdmin(actor.getId(), accessToken, request));
+    }
+
+    @PostMapping("/users/vaccinators")
+    @PreAuthorize("@authorization.hasPermission(authentication, 'USER_MANAGE')")
+    public ResponseEntity<UserResponse> createVaccinator(
+            Authentication authentication,
+            @Valid @RequestBody CreateVaccinatorRequest request) {
+        AuthorizedUser actor = (AuthorizedUser) authentication.getPrincipal();
+        String accessToken = actor.getAccessToken();
+        if (accessToken == null) {
+            throw new IllegalStateException("No se pudo recuperar el access token.");
+        }
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(userService.createVaccinator(actor.getId(), accessToken, request));
     }
 
     @GetMapping("/users")
