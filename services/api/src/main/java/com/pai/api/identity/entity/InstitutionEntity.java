@@ -88,6 +88,10 @@ public class InstitutionEntity {
         this.status = status;
     }
 
+    public void setOfflineWindowHours(short offlineWindowHours) {
+        this.offlineWindowHours = offlineWindowHours;
+    }
+
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
     }

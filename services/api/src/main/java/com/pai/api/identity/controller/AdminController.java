@@ -20,6 +20,7 @@ import com.pai.api.identity.dto.CreateInstitutionAdminRequest;
 import com.pai.api.identity.dto.CreateInstitutionRequest;
 import com.pai.api.identity.dto.CreateVaccinatorRequest;
 import com.pai.api.identity.dto.InstitutionResponse;
+import com.pai.api.identity.dto.UpdateInstitutionConfigRequest;
 import com.pai.api.identity.dto.UpdateInstitutionStatusRequest;
 import com.pai.api.identity.dto.UpdateUserRolesRequest;
 import com.pai.api.identity.dto.UpdateUserStatusRequest;
@@ -67,6 +68,15 @@ public class AdminController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateInstitutionStatusRequest request) {
         return ResponseEntity.ok(institutionService.updateStatus(id, request.status()));
+    }
+
+    @PutMapping("/institutions/{id}/config")
+    @PreAuthorize("@authorization.hasPermission(authentication, 'INSTITUTION_WRITE')")
+    public ResponseEntity<InstitutionResponse> updateInstitutionConfig(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateInstitutionConfigRequest request) {
+        return ResponseEntity.ok(
+            institutionService.updateConfig(id, request.offlineWindowHours()));
     }
 
     @PostMapping("/users/institution-admins")

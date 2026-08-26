@@ -115,6 +115,40 @@ class InstitutionServiceTest {
             .isInstanceOf(IllegalArgumentException.class);
     }
 
+    @Test
+    void updateConfig_updatesOfflineWindow() {
+        InstitutionEntity entity = entity("HOSP-A");
+        when(institutionRepository.findById(entity.getId()))
+            .thenReturn(Optional.of(entity));
+        when(institutionRepository.save(any(InstitutionEntity.class)))
+            .thenAnswer(inv -> inv.getArgument(0));
+
+        InstitutionResponse result = service.updateConfig(entity.getId(), (short) 48);
+
+        assertThat(result.offlineWindowHours()).isEqualTo((short) 48);
+    }
+
+    @Test
+    void updateConfig_throwsWhenInstitutionMissing() {
+        UUID id = UUID.randomUUID();
+        when(institutionRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.updateConfig(id, (short) 48))
+            .isInstanceOf(InstitutionNotFoundException.class);
+    }
+
+    @Test
+    void updateConfig_rejectsOutOfRange() {
+        InstitutionEntity entity = entity("HOSP-A");
+        when(institutionRepository.findById(entity.getId()))
+            .thenReturn(Optional.of(entity));
+
+        assertThatThrownBy(() -> service.updateConfig(entity.getId(), (short) 0))
+            .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.updateConfig(entity.getId(), (short) 200))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
     private InstitutionEntity entity(String code) {
         return new InstitutionEntity(UUID.randomUUID(), code, "Inst " + code,
             InstitutionEntity.Status.ACTIVE, (short) 72, Instant.now(), Instant.now());

@@ -81,6 +81,22 @@ public class InstitutionService {
         return toResponse(institutionRepository.save(entity));
     }
 
+    @Transactional
+    public InstitutionResponse updateConfig(UUID id, short offlineWindowHours) {
+        if (offlineWindowHours < 1 || offlineWindowHours > 168) {
+            throw new IllegalArgumentException(
+                "La ventana offline debe estar entre 1 y 168 horas.");
+        }
+
+        InstitutionEntity entity = institutionRepository.findById(id)
+            .orElseThrow(() -> new InstitutionNotFoundException(
+                "La institucion no existe."));
+
+        entity.setOfflineWindowHours(offlineWindowHours);
+        entity.setUpdatedAt(Instant.now());
+        return toResponse(institutionRepository.save(entity));
+    }
+
     private InstitutionResponse toResponse(InstitutionEntity entity) {
         return new InstitutionResponse(
             entity.getId(),
