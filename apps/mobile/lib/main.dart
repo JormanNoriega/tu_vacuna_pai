@@ -12,6 +12,7 @@ import 'features/admin/data/admin_repository_impl.dart';
 import 'features/admin/domain/use_cases/create_institution.dart';
 import 'features/admin/domain/use_cases/create_institution_admin.dart';
 import 'features/admin/domain/use_cases/list_institutions.dart';
+import 'features/admin/domain/use_cases/update_institution_config.dart';
 import 'features/admin/presentation/admin_controller.dart';
 import 'features/auth/data/local_session_store.dart';
 import 'features/auth/data/supabase_auth_repository.dart';
@@ -49,6 +50,7 @@ Future<void> main() async {
     createInstitution: CreateInstitution(adminRepository),
     listInstitutions: ListInstitutions(adminRepository),
     createInstitutionAdmin: CreateInstitutionAdmin(adminRepository),
+    updateInstitutionConfig: UpdateInstitutionConfig(adminRepository),
   );
 
   final usersRepository = UsersRepositoryImpl(apiClient, appDatabase);

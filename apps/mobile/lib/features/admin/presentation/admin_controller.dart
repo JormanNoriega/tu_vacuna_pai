@@ -9,6 +9,7 @@ import '../domain/entities/institution_admin.dart';
 import '../domain/use_cases/create_institution.dart';
 import '../domain/use_cases/create_institution_admin.dart';
 import '../domain/use_cases/list_institutions.dart';
+import '../domain/use_cases/update_institution_config.dart';
 
 /// Controlador de la administracion global (SUPER_ADMIN). Online-first: ninguna
 /// escritura se confirma hasta recibir respuesta exitosa del servidor.
@@ -18,11 +19,13 @@ class AdminController extends ChangeNotifier {
     required CreateInstitution createInstitution,
     required ListInstitutions listInstitutions,
     required CreateInstitutionAdmin createInstitutionAdmin,
+    required UpdateInstitutionConfig updateInstitutionConfig,
   }) : this._(
          sessionManager,
          createInstitution,
          listInstitutions,
          createInstitutionAdmin,
+         updateInstitutionConfig,
        );
 
   AdminController._(
@@ -30,12 +33,14 @@ class AdminController extends ChangeNotifier {
     this._createInstitution,
     this._listInstitutions,
     this._createInstitutionAdmin,
+    this._updateInstitutionConfig,
   );
 
   final SessionManager _sessionManager;
   final CreateInstitution _createInstitution;
   final ListInstitutions _listInstitutions;
   final CreateInstitutionAdmin _createInstitutionAdmin;
+  final UpdateInstitutionConfig _updateInstitutionConfig;
 
   List<Institution> _institutions = const [];
   bool _isLoading = false;
@@ -147,6 +152,50 @@ class AdminController extends ChangeNotifier {
     } catch (_) {
       _setError('No se pudo crear el usuario admin.');
       return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Actualiza la ventana offline de una institucion. Devuelve true solo si la
+  /// escritura se confirma con exito.
+  Future<bool> updateInstitutionConfig(
+    Institution institution, {
+    required OfflineAccess offline,
+    required int offlineWindowHours,
+  }) async {
+    final token = await _currentToken();
+    if (token == null) {
+      _setError('Tu sesion expiro. Inicia sesion de nuevo.');
+      return false;
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final updated = await _updateInstitutionConfig(
+        token,
+        offline: offline,
+        institutionId: institution.id,
+        offlineWindowHours: offlineWindowHours,
+      );
+      _institutions = [
+        for (final inst in _institutions)
+          inst.id == updated.id ? updated : inst,
+      ];
+      return true;
+    } on OfflinePolicyException catch (e) {
+      _setError(e.message);
+      return false;
+    } on ApiException catch (e) {
+      _setError(e.message);
+      return false;
+    } catch (_) {
+      _setError('No se pudo actualizar la configuracion.');
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();

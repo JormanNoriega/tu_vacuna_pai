@@ -4,6 +4,7 @@ import 'package:tu_vacuna_pai/features/admin/domain/entities/institution.dart';
 import 'package:tu_vacuna_pai/features/admin/domain/use_cases/create_institution.dart';
 import 'package:tu_vacuna_pai/features/admin/domain/use_cases/create_institution_admin.dart';
 import 'package:tu_vacuna_pai/features/admin/domain/use_cases/list_institutions.dart';
+import 'package:tu_vacuna_pai/features/admin/domain/use_cases/update_institution_config.dart';
 import 'package:tu_vacuna_pai/features/admin/presentation/admin_controller.dart';
 import 'package:tu_vacuna_pai/features/auth/domain/entities/session_restore_result.dart';
 
@@ -24,6 +25,7 @@ void main() {
     createInstitution: CreateInstitution(repository),
     listInstitutions: ListInstitutions(repository),
     createInstitutionAdmin: CreateInstitutionAdmin(repository),
+    updateInstitutionConfig: UpdateInstitutionConfig(repository),
   );
 
   setUp(() {
@@ -138,6 +140,67 @@ void main() {
         expect(controller.error, contains('requiere conexion'));
       },
     );
+
+    test('actualiza la ventana offline de una institucion', () async {
+      await controller.createInstitution(
+        offline: online,
+        code: 'HOSP-A',
+        name: 'Hospital A',
+      );
+
+      final saved = await controller.updateInstitutionConfig(
+        controller.institutions.single,
+        offline: online,
+        offlineWindowHours: 24,
+      );
+
+      expect(saved, isTrue);
+      expect(controller.institutions.single.offlineWindowHours, 24);
+      expect(controller.error, isNull);
+    });
+
+    test(
+      'mantiene la configuracion anterior cuando la escritura falla',
+      () async {
+        await controller.createInstitution(
+          offline: online,
+          code: 'HOSP-A',
+          name: 'Hospital A',
+        );
+        repository.failOnUpdate = true;
+
+        final saved = await controller.updateInstitutionConfig(
+          controller.institutions.single,
+          offline: online,
+          offlineWindowHours: 24,
+        );
+
+        expect(saved, isFalse);
+        expect(controller.institutions.single.offlineWindowHours, 72);
+      },
+    );
+
+    test('bloquea la configuracion cuando la ventana offline vencio', () async {
+      await controller.createInstitution(
+        offline: online,
+        code: 'HOSP-A',
+        name: 'Hospital A',
+      );
+
+      const locked = OfflineAccess(
+        status: SessionStatus.offlineLocked,
+        permissions: ['INSTITUTION_WRITE', 'USER_MANAGE'],
+      );
+      final saved = await controller.updateInstitutionConfig(
+        controller.institutions.single,
+        offline: locked,
+        offlineWindowHours: 24,
+      );
+
+      expect(saved, isFalse);
+      expect(controller.error, contains('ventana offline vencio'));
+      expect(controller.institutions.single.offlineWindowHours, 72);
+    });
   });
 }
 

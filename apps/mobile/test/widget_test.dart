@@ -5,6 +5,7 @@ import 'package:tu_vacuna_pai/features/admin/domain/entities/institution.dart';
 import 'package:tu_vacuna_pai/features/admin/domain/use_cases/create_institution.dart';
 import 'package:tu_vacuna_pai/features/admin/domain/use_cases/create_institution_admin.dart';
 import 'package:tu_vacuna_pai/features/admin/domain/use_cases/list_institutions.dart';
+import 'package:tu_vacuna_pai/features/admin/domain/use_cases/update_institution_config.dart';
 import 'package:tu_vacuna_pai/features/admin/presentation/admin_controller.dart';
 import 'package:tu_vacuna_pai/features/auth/domain/entities/auth_user.dart';
 import 'package:tu_vacuna_pai/features/auth/domain/entities/session_restore_result.dart';
@@ -66,6 +67,7 @@ void main() {
       createInstitution: CreateInstitution(repository),
       listInstitutions: ListInstitutions(repository),
       createInstitutionAdmin: CreateInstitutionAdmin(repository),
+      updateInstitutionConfig: UpdateInstitutionConfig(repository),
     );
     final user = AuthUser(
       id: 'super-1',
@@ -398,5 +400,67 @@ void main() {
     );
     // El usuario sigue activo: la escritura nunca llego al repositorio.
     expect(repository.users.single.status, 'ACTIVE');
+  });
+
+  testWidgets('SUPER_ADMIN edita la ventana offline de una institucion', (
+    tester,
+  ) async {
+    final repository = FakeAdminRepository();
+    repository.institutions.add(
+      Institution(
+        id: 'inst-1',
+        code: 'HOSP-A',
+        name: 'Hospital A',
+        status: 'ACTIVE',
+        offlineWindowHours: 72,
+      ),
+    );
+    final adminController = AdminController(
+      sessionManager: FakeSessionManager('token-123'),
+      createInstitution: CreateInstitution(repository),
+      listInstitutions: ListInstitutions(repository),
+      createInstitutionAdmin: CreateInstitutionAdmin(repository),
+      updateInstitutionConfig: UpdateInstitutionConfig(repository),
+    );
+    final user = AuthUser(
+      id: 'super-1',
+      email: 'super@pai.test',
+      name: 'Super Admin',
+      institution: const InstitutionProfile(
+        id: 'inst-0',
+        code: 'PAI-DEMO',
+        name: 'Institucion Demo PAI',
+      ),
+      roles: const ['SUPER_ADMIN'],
+      permissions: const ['INSTITUTION_WRITE', 'USER_MANAGE'],
+      offlineWindowHours: 72,
+      lastOnlineValidation: DateTime.now(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DashboardPage(
+          user: user,
+          onSignOut: () {},
+          adminController: adminController,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Editar configuracion'));
+    await tester.pumpAndSettle();
+    expect(find.text('Configurar Hospital A'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '24');
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Ventana offline de "Hospital A" actualizada.'),
+      findsOneWidget,
+    );
+    expect(find.text('HOSP-A - ventana offline 24h'), findsOneWidget);
+    expect(repository.institutions.single.offlineWindowHours, 24);
   });
 }

@@ -16,6 +16,10 @@ enum OperationPermission {
   createInstitutionAdmin(
     requiredPermission: 'INSTITUTION_WRITE',
     offlineAuthorized: false,
+  ),
+  updateInstitutionConfig(
+    requiredPermission: 'INSTITUTION_WRITE',
+    offlineAuthorized: false,
   );
 
   const OperationPermission({

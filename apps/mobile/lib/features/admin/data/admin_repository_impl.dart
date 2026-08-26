@@ -61,4 +61,18 @@ class AdminRepositoryImpl implements AdminRepository {
     );
     return jsonList.map(InstitutionAdmin.fromJson).toList();
   }
+
+  @override
+  Future<Institution> updateInstitutionConfig(
+    String accessToken, {
+    required String institutionId,
+    required int offlineWindowHours,
+  }) async {
+    final json = await _apiClient.updateInstitutionConfig(
+      accessToken,
+      institutionId: institutionId,
+      offlineWindowHours: offlineWindowHours,
+    );
+    return Institution.fromJson(json);
+  }
 }

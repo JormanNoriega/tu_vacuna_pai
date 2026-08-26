@@ -28,4 +28,10 @@ abstract interface class AdminRepository {
     String accessToken, {
     required String institutionId,
   });
+
+  Future<Institution> updateInstitutionConfig(
+    String accessToken, {
+    required String institutionId,
+    required int offlineWindowHours,
+  });
 }

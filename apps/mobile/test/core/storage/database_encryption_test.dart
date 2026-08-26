@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,8 +13,10 @@ import 'package:tu_vacuna_pai/core/storage/app_database.dart';
 /// por lo que actuan como guarda de regresion.
 void main() {
   // Clave de 32 bytes en hexadecimal, como la genera AppDatabase.
-  const key = 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90';
-  const wrongKey = 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+  const key =
+      'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90';
+  const wrongKey =
+      'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
   const secret = 'MEGA_SECRETO_XYZ';
   const secretKey = 'token_de_prueba';
 
@@ -43,8 +45,7 @@ void main() {
     }
   });
 
-  String dbPath() =>
-      '${tempDir.path}${Platform.pathSeparator}encrypted.db';
+  String dbPath() => '${tempDir.path}${Platform.pathSeparator}encrypted.db';
 
   test('la base creada con clave no deja el secreto en texto plano', () async {
     final db = await openEncrypted(dbPath());

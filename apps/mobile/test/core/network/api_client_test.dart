@@ -491,4 +491,40 @@ void main() {
       );
     });
   });
+
+  group('ApiClient.institutionConfig', () {
+    test('actualiza la ventana offline con PUT', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'PUT');
+        expect(request.url.path, '/api/v1/institutions/inst-1/config');
+        expect(request.headers['Authorization'], 'Bearer token-123');
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['offlineWindowHours'], 24);
+        return http.Response(
+          jsonEncode({
+            'id': 'inst-1',
+            'code': 'HOSP-A',
+            'name': 'Hospital A',
+            'status': 'ACTIVE',
+            'offlineWindowHours': 24,
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final json = await api.updateInstitutionConfig(
+        'token-123',
+        institutionId: 'inst-1',
+        offlineWindowHours: 24,
+      );
+
+      expect(json['offlineWindowHours'], 24);
+    });
+  });
 }

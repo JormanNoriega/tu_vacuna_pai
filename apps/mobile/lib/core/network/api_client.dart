@@ -229,6 +229,28 @@ class ApiClient {
     return _decodeObject(response, fallback: 'Error al actualizar los roles.');
   }
 
+  /// Actualiza la configuracion de una institucion. Requiere
+  /// `INSTITUTION_WRITE` (SUPER_ADMIN).
+  Future<Map<String, dynamic>> updateInstitutionConfig(
+    String accessToken, {
+    required String institutionId,
+    required int offlineWindowHours,
+  }) async {
+    final uri = Uri.parse('$baseUrl/institutions/$institutionId/config');
+    final response = await _send(
+      _http.put(
+        uri,
+        headers: _jsonHeaders(accessToken),
+        body: jsonEncode({'offlineWindowHours': offlineWindowHours}),
+      ),
+    );
+
+    return _decodeObject(
+      response,
+      fallback: 'Error al actualizar la configuracion.',
+    );
+  }
+
   Map<String, String> _jsonHeaders(String accessToken) => {
     'Authorization': 'Bearer $accessToken',
     'Accept': 'application/json',

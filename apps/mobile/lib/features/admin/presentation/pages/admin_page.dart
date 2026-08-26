@@ -61,6 +61,35 @@ class _AdminPageState extends State<AdminPage> {
     }
   }
 
+  Future<void> _openEditConfig(Institution institution) async {
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => _EditConfigDialog(
+        institution: institution,
+        onSave: (offlineWindowHours) async {
+          final ok = await widget.controller.updateInstitutionConfig(
+            institution,
+            offline: widget.offline,
+            offlineWindowHours: offlineWindowHours,
+          );
+          return ok
+              ? null
+              : (widget.controller.error ??
+                    'No se pudo actualizar la configuracion.');
+        },
+      ),
+    );
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Ventana offline de "${institution.name}" actualizada.',
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -138,7 +167,10 @@ class _AdminPageState extends State<AdminPage> {
                 },
               ),
               const SizedBox(height: 28),
-              _InstitutionsSection(controller: widget.controller),
+              _InstitutionsSection(
+                controller: widget.controller,
+                onEditConfig: _openEditConfig,
+              ),
             ],
           ),
         ),
@@ -249,9 +281,13 @@ class _AdminActionCard extends StatelessWidget {
 }
 
 class _InstitutionsSection extends StatelessWidget {
-  const _InstitutionsSection({required this.controller});
+  const _InstitutionsSection({
+    required this.controller,
+    required this.onEditConfig,
+  });
 
   final AdminController controller;
+  final ValueChanged<Institution> onEditConfig;
 
   @override
   Widget build(BuildContext context) {
@@ -281,7 +317,10 @@ class _InstitutionsSection extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             for (final institution in controller.institutions)
-              _InstitutionTile(institution: institution),
+              _InstitutionTile(
+                institution: institution,
+                onEditConfig: () => onEditConfig(institution),
+              ),
           ],
         );
       },
@@ -290,9 +329,13 @@ class _InstitutionsSection extends StatelessWidget {
 }
 
 class _InstitutionTile extends StatelessWidget {
-  const _InstitutionTile({required this.institution});
+  const _InstitutionTile({
+    required this.institution,
+    required this.onEditConfig,
+  });
 
   final Institution institution;
+  final VoidCallback onEditConfig;
 
   @override
   Widget build(BuildContext context) {
@@ -326,7 +369,18 @@ class _InstitutionTile extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 12),
         ),
-        trailing: _StatusChip(active: institution.isActive),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _StatusChip(active: institution.isActive),
+            const SizedBox(width: 4),
+            IconButton(
+              tooltip: 'Editar configuracion',
+              onPressed: onEditConfig,
+              icon: const Icon(Icons.settings_outlined, size: 20),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -354,6 +408,111 @@ class _StatusChip extends StatelessWidget {
           fontWeight: FontWeight.w700,
         ),
       ),
+    );
+  }
+}
+
+class _EditConfigDialog extends StatefulWidget {
+  const _EditConfigDialog({required this.institution, required this.onSave});
+
+  final Institution institution;
+
+  /// Devuelve null si la escritura se confirmo o un mensaje de error.
+  final Future<String?> Function(int offlineWindowHours) onSave;
+
+  @override
+  State<_EditConfigDialog> createState() => _EditConfigDialogState();
+}
+
+class _EditConfigDialogState extends State<_EditConfigDialog> {
+  late final TextEditingController _hoursController;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _hoursController = TextEditingController(
+      text: '${widget.institution.offlineWindowHours}',
+    );
+  }
+
+  @override
+  void dispose() {
+    _hoursController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final hours = int.tryParse(_hoursController.text.trim());
+    if (hours == null || hours < 1 || hours > 168) {
+      setState(() => _error = 'Usa un valor entre 1 y 168 horas.');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final error = await widget.onSave(hours);
+    if (!mounted) return;
+    if (error == null) {
+      Navigator.of(context).pop(true);
+    } else {
+      setState(() {
+        _saving = false;
+        _error = error;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Configurar ${widget.institution.name}'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Ventana offline (horas)',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _hoursController,
+            enabled: !_saving,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              hintText: '72',
+              helperText: 'Entre 1 y 168 horas. Rige el trabajo sin conexion.',
+              prefixIcon: Icon(Icons.cloud_off_outlined),
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          child: _saving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Guardar'),
+        ),
+      ],
     );
   }
 }

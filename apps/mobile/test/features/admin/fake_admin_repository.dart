@@ -9,6 +9,7 @@ class FakeAdminRepository implements AdminRepository {
   FakeAdminRepository({this.failOnCreate = false});
 
   final bool failOnCreate;
+  bool failOnUpdate = false;
   final List<Institution> institutions = [];
   final List<InstitutionAdmin> admins = [];
   String? lastPassword;
@@ -70,6 +71,28 @@ class FakeAdminRepository implements AdminRepository {
     return admins
         .where((admin) => admin.institutionId == institutionId)
         .toList();
+  }
+
+  @override
+  Future<Institution> updateInstitutionConfig(
+    String accessToken, {
+    required String institutionId,
+    required int offlineWindowHours,
+  }) async {
+    if (failOnUpdate) {
+      throw StateError('Fallo simulado');
+    }
+    final index = institutions.indexWhere((inst) => inst.id == institutionId);
+    final current = institutions[index];
+    final updated = Institution(
+      id: current.id,
+      code: current.code,
+      name: current.name,
+      status: current.status,
+      offlineWindowHours: offlineWindowHours,
+    );
+    institutions[index] = updated;
+    return updated;
   }
 }
 
