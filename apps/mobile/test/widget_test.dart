@@ -45,7 +45,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Buenos dias'), findsOneWidget);
-    expect(find.text('Todo esta sincronizado'), findsOneWidget);
+    expect(find.text('Datos protegidos'), findsOneWidget);
     expect(find.text('Acciones frecuentes'), findsOneWidget);
   });
 

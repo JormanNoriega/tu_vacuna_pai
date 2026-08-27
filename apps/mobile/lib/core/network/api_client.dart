@@ -151,13 +151,20 @@ class ApiClient {
   }
 
   /// Lista los usuarios de una institucion. Para ADMIN_INSTITUTION el scope se
-  /// valida en el backend.
+  /// valida en el backend y el listado se fuerza a los roles gestionables
+  /// (VACCINATOR, READ_ONLY); el parametro [roles] es opcional y solo lo usa
+  /// quien tiene INSTITUTION_WRITE.
   Future<List<Map<String, dynamic>>> listUsersByInstitution(
     String accessToken, {
     required String institutionId,
+    List<String>? roles,
   }) async {
-    final uri = Uri.parse('$baseUrl/users')
-        .replace(queryParameters: {'institutionId': institutionId});
+    final uri = Uri.parse('$baseUrl/users').replace(
+      queryParameters: {
+        'institutionId': institutionId,
+        if (roles != null && roles.isNotEmpty) 'roles': roles.join(','),
+      },
+    );
     final response = await _send(
       _http.get(uri, headers: _jsonHeaders(accessToken)),
     );

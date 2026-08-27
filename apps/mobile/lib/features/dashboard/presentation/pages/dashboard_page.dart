@@ -304,7 +304,7 @@ class _SyncBanner extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Todo esta sincronizado',
+                    'Datos protegidos',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -313,7 +313,8 @@ class _SyncBanner extends StatelessWidget {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Tus registros estan guardados de forma segura.',
+                    'Tu informacion se guarda cifrada en este dispositivo '
+                    'y disponible sin conexion.',
                     style: TextStyle(color: Colors.white70, fontSize: 13),
                   ),
                 ],
@@ -410,22 +411,25 @@ class _StatsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Datos reales en cero hasta que el modulo clinico los alimente. Cuando
+    // exista, estos contadores se computan SIEMPRE acotados a la institucion
+    // del actor (misma regla de alcance que el backend).
     const stats = [
       (
         icon: Icons.people_alt_outlined,
-        value: '128',
+        value: '0',
         label: 'Pacientes atendidos',
         color: AppColors.primary,
       ),
       (
         icon: Icons.vaccines_outlined,
-        value: '246',
+        value: '0',
         label: 'Dosis aplicadas',
         color: AppColors.success,
       ),
       (
         icon: Icons.pending_actions_rounded,
-        value: '08',
+        value: '0',
         label: 'Pendientes de sync',
         color: AppColors.warning,
       ),

@@ -38,6 +38,7 @@ class UsersRepositoryImpl implements UsersRepository {
     final jsonList = await _apiClient.listUsersByInstitution(
       accessToken,
       institutionId: institutionId,
+      roles: const ['VACCINATOR', 'READ_ONLY'],
     );
     final users = jsonList.map(Vaccinator.fromJson).toList();
     for (final user in users) {

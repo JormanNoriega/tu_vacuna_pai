@@ -309,6 +309,32 @@ void main() {
 
       expect(list, isEmpty);
     });
+
+    test('filtra por roles gestionables al listar usuarios', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.url.path, '/api/v1/users');
+        expect(request.url.queryParameters['institutionId'], 'inst-1');
+        expect(request.url.queryParameters['roles'], 'VACCINATOR,READ_ONLY');
+        return http.Response(
+          jsonEncode([]),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final list = await api.listUsersByInstitution(
+        'token-123',
+        institutionId: 'inst-1',
+        roles: const ['VACCINATOR', 'READ_ONLY'],
+      );
+
+      expect(list, isEmpty);
+    });
   });
 
   group('ApiClient.vaccinators', () {
