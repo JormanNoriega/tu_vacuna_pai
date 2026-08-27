@@ -5,11 +5,11 @@ import '../../../../core/auth/offline_access.dart';
 import '../../domain/entities/clone_catalog_result.dart';
 import '../../domain/entities/institution.dart';
 import '../admin_controller.dart';
-import 'create_institution_admin_page.dart';
 import 'create_institution_page.dart';
 
-/// Seccion de administracion global del SUPER_ADMIN. Muestra exactamente dos
-/// acciones: crear instituciones y crear administradores de institucion.
+/// Seccion de administracion global del SUPER_ADMIN. Muestra las instituciones
+/// registradas y permite crear nuevas. La gestion de administradores vive en
+/// el panel de Usuarios.
 class AdminPage extends StatefulWidget {
   const AdminPage({required this.controller, required this.offline, super.key});
 
@@ -42,22 +42,6 @@ class _AdminPageState extends State<AdminPage> {
     if (created != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Institucion "${created.name}" creada.')),
-      );
-    }
-  }
-
-  Future<void> _openCreateAdmin() async {
-    final created = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => CreateInstitutionAdminPage(
-          controller: widget.controller,
-          offline: widget.offline,
-        ),
-      ),
-    );
-    if (created == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Usuario admin creado correctamente.')),
       );
     }
   }
@@ -139,7 +123,7 @@ class _AdminPageState extends State<AdminPage> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Registra instituciones de salud y crea los administradores que las gestionaran.',
+                'Registra instituciones de salud y administra su configuracion.',
                 style: TextStyle(color: AppColors.slate, height: 1.4),
               ),
               const SizedBox(height: 24),
@@ -157,49 +141,13 @@ class _AdminPageState extends State<AdminPage> {
                 },
               ),
               const SizedBox(height: 16),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final twoColumns = constraints.maxWidth >= 600;
-                  final actions = [
-                    _AdminActionCard(
-                      icon: Icons.account_balance_rounded,
-                      title: 'Crear institucion',
-                      description: 'Registra una nueva institucion de salud.',
-                      onTap: _openCreateInstitution,
-                    ),
-                    _AdminActionCard(
-                      icon: Icons.admin_panel_settings_rounded,
-                      title: 'Crear usuario admin de institucion',
-                      description: 'Crea el administrador que gestionara una institucion.',
-                      onTap: _openCreateAdmin,
-                    ),
-                  ];
-
-                  // Columnas reales (sin aspect ratio fijo) para que las
-                  // tarjetas crezcan con su contenido y no haya overflow en
-                  // pantallas angostas.
-                  if (twoColumns) {
-                    return IntrinsicHeight(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          for (var i = 0; i < actions.length; i++) ...[
-                            if (i > 0) const SizedBox(width: 16),
-                            Expanded(child: actions[i]),
-                          ],
-                        ],
-                      ),
-                    );
-                  }
-                  return Column(
-                    children: [
-                      for (var i = 0; i < actions.length; i++) ...[
-                        if (i > 0) const SizedBox(height: 16),
-                        actions[i],
-                      ],
-                    ],
-                  );
-                },
+              _AdminActionCard(
+                icon: Icons.account_balance_rounded,
+                title: 'Crear institucion',
+                description:
+                    'Registra una nueva institucion de salud. Despues podras '
+                    'asignarle su administrador desde el panel de Usuarios.',
+                onTap: _openCreateInstitution,
               ),
               const SizedBox(height: 28),
               _InstitutionsSection(
@@ -276,38 +224,43 @@ class _AdminActionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
+          padding: const EdgeInsets.all(24),
+          child: Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 64,
+                height: 64,
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: .1),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(18),
                 ),
-                child: Icon(icon, color: AppColors.primary, size: 26),
+                child: Icon(icon, color: AppColors.primary, size: 34),
               ),
-              const SizedBox(height: 14),
-              Text(
-                title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.slate,
-                  fontSize: 13,
-                  height: 1.4,
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        color: AppColors.slate,
+                        fontSize: 14,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(width: 12),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.hint),
             ],
           ),
         ),

@@ -320,136 +320,83 @@ class _VaccineFormPageState extends State<VaccineFormPage> {
   }
 
   Future<void> _addOption(Vaccine vaccine) async {
-    final value = TextEditingController();
-    final fieldType = await showDialog<String>(
+    final result = await showDialog<(String, String)>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Agregar opcion'),
-        content: TextField(
-          controller: value,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Nombre o valor'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'dose'),
-            child: const Text('Dosis'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'pneumococcalType'),
-            child: const Text('Tipo neumococo'),
-          ),
+      builder: (_) => const _OptionDialog(
+        title: 'Agregar opcion',
+        autofocus: true,
+        choices: [
+          ('dose', 'Dosis'),
+          ('pneumococcalType', 'Tipo neumococo'),
         ],
       ),
     );
-    if (!mounted || fieldType == null || value.text.trim().isEmpty) {
-      value.dispose();
-      return;
-    }
+    if (!mounted || result == null || result.$2.isEmpty) return;
     await widget.controller.addOption(
       vaccine,
       optionPayload(
-        fieldType: fieldType,
-        value: value.text.trim(),
+        fieldType: result.$1,
+        value: result.$2,
         isDefault: false,
       ),
       institutionId: '',
       institutionScoped: false,
       offline: widget.offline,
     );
-    value.dispose();
     if (mounted) _loadOptions(vaccine);
   }
 
   Future<void> _editOption(Vaccine vaccine, VaccineOption option) async {
-    final value = TextEditingController(text: option.value);
-    final saved = await showDialog<bool>(
+    final result = await showDialog<(String, String)>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Editar opcion'),
-        content: TextField(
-          controller: value,
-          decoration: const InputDecoration(labelText: 'Nombre o valor'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Guardar'),
-          ),
-        ],
+      builder: (_) => _OptionDialog(
+        title: 'Editar opcion',
+        initialValue: option.value,
+        choices: const [('save', 'Guardar')],
       ),
     );
-    if (saved == true && value.text.trim().isNotEmpty && mounted) {
-      await widget.controller.updateOption(
-        vaccine,
-        option,
-        optionPayload(
-          fieldType: option.fieldType,
-          value: value.text.trim(),
-          isDefault: option.isDefault,
-          sortOrder: option.sortOrder,
-          version: option.version,
-        ),
-        institutionId: '',
-        institutionScoped: false,
-        offline: widget.offline,
-      );
-      _loadOptions(vaccine);
-    }
-    value.dispose();
+    if (!mounted || result == null || result.$2.isEmpty) return;
+    await widget.controller.updateOption(
+      vaccine,
+      option,
+      optionPayload(
+        fieldType: option.fieldType,
+        value: result.$2,
+        isDefault: option.isDefault,
+        sortOrder: option.sortOrder,
+        version: option.version,
+      ),
+      institutionId: '',
+      institutionScoped: false,
+      offline: widget.offline,
+    );
+    if (mounted) _loadOptions(vaccine);
   }
 
   Future<void> _addTemplate(Vaccine vaccine) async {
-    final value = TextEditingController();
-    final fieldType = await showDialog<String>(
+    final result = await showDialog<(String, String)>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Agregar plantilla'),
-        content: TextField(
-          controller: value,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Nombre o valor'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          for (final type in const [
-            'laboratory',
-            'syringe',
-            'dropper',
-            'observation',
-          ])
-            TextButton(
-              onPressed: () => Navigator.pop(context, type),
-              child: Text(type),
-            ),
+      builder: (_) => const _OptionDialog(
+        title: 'Agregar plantilla',
+        autofocus: true,
+        choices: [
+          ('laboratory', 'laboratory'),
+          ('syringe', 'syringe'),
+          ('dropper', 'dropper'),
+          ('observation', 'observation'),
         ],
       ),
     );
-    if (!mounted || fieldType == null || value.text.trim().isEmpty) {
-      value.dispose();
-      return;
-    }
+    if (!mounted || result == null || result.$2.isEmpty) return;
     await widget.controller.addTemplate(
       vaccine,
       optionPayload(
-        fieldType: fieldType,
-        value: value.text.trim(),
+        fieldType: result.$1,
+        value: result.$2,
         isDefault: false,
       ),
       offline: widget.offline,
     );
-    value.dispose();
     if (mounted) _loadOptions(vaccine);
   }
 
@@ -486,5 +433,83 @@ class _VaccineFormPageState extends State<VaccineFormPage> {
         ),
       );
     }
+  }
+}
+
+/// Dialogo con campo de texto que es dueño de su [TextEditingController]:
+/// lo crea en [initState] y lo libera en [dispose], que corre cuando la ruta
+/// del dialogo ya termino su animacion de salida. Esto evita el crash de
+/// "TextEditingController used after being disposed" que ocurria al liberar el
+/// controller justo despues de `await showDialog(...)`, mientras la vista
+/// todavia se reconstruia durante el cierre del dialogo (p. ej. al ocultarse
+/// el teclado).
+class _OptionDialog extends StatefulWidget {
+  const _OptionDialog({
+    required this.title,
+    this.autofocus = false,
+    this.initialValue,
+    required this.choices,
+  });
+
+  final String title;
+  final bool autofocus;
+  final String? initialValue;
+
+  /// Pares (valor devuelto, etiqueta del boton) de las acciones que confirman
+  /// el valor ingresado. El primero se muestra como boton relleno.
+  final List<(String, String)> choices;
+
+  @override
+  State<_OptionDialog> createState() => _OptionDialogState();
+}
+
+class _OptionDialogState extends State<_OptionDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit(String value) {
+    Navigator.pop(context, (value, _controller.text.trim()));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        autofocus: widget.autofocus,
+        decoration: const InputDecoration(
+          labelText: 'Nombre o valor',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        for (final (index, choice) in widget.choices.indexed)
+          if (index == 0)
+            FilledButton(
+              onPressed: () => _submit(choice.$1),
+              child: Text(choice.$2),
+            )
+          else
+            TextButton(
+              onPressed: () => _submit(choice.$1),
+              child: Text(choice.$2),
+            ),
+      ],
+    );
   }
 }

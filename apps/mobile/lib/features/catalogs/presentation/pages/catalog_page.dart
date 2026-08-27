@@ -487,67 +487,36 @@ class _CatalogPageState extends State<CatalogPage> {
   }
 
   Future<void> _addOption(Vaccine vaccine) async {
-    final value = TextEditingController();
-    final fieldType = await showDialog<String>(
+    final result = await showDialog<(String, String)>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Agregar opcion'),
-        content: TextField(
-          controller: value,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Nombre o valor',
-            hintText: 'Ej. Primera dosis, Pfizer, 0.5 ml',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, 'dose'),
-            child: const Text('Agregar como dosis'),
-          ),
-          if (globalAdmin)
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'pneumococcalType'),
-              child: const Text('Tipo neumococo'),
-            ),
+      builder: (_) => _OptionDialog(
+        title: 'Agregar opcion',
+        autofocus: true,
+        hint: 'Ej. Primera dosis, Pfizer, 0.5 ml',
+        choices: [
+          ('dose', 'Agregar como dosis'),
+          if (globalAdmin) ('pneumococcalType', 'Tipo neumococo'),
           if (institutionAdmin) ...[
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'laboratory'),
-              child: const Text('Laboratorio'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'syringe'),
-              child: const Text('Jeringa'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'dropper'),
-              child: const Text('Gotero'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'observation'),
-              child: const Text('Observacion'),
-            ),
+            ('laboratory', 'Laboratorio'),
+            ('syringe', 'Jeringa'),
+            ('dropper', 'Gotero'),
+            ('observation', 'Observacion'),
           ],
         ],
       ),
     );
-    if (!mounted || fieldType == null || value.text.trim().isEmpty) return;
+    if (!mounted || result == null || result.$2.isEmpty) return;
     final ok = await widget.controller.addOption(
       vaccine,
       optionPayload(
-        fieldType: fieldType,
-        value: value.text.trim(),
+        fieldType: result.$1,
+        value: result.$2,
         isDefault: false,
       ),
       institutionId: widget.user.institution.id,
       institutionScoped: institutionAdmin,
       offline: widget.offline,
     );
-    value.dispose();
     if (mounted && !ok) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -558,87 +527,55 @@ class _CatalogPageState extends State<CatalogPage> {
   }
 
   Future<void> _editOption(Vaccine vaccine, VaccineOption option) async {
-    final value = TextEditingController(text: option.value);
-    final saved = await showDialog<bool>(
+    final result = await showDialog<(String, String)>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Editar opcion'),
-        content: TextField(
-          controller: value,
-          decoration: const InputDecoration(labelText: 'Nombre o valor'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Guardar'),
-          ),
-        ],
+      builder: (_) => _OptionDialog(
+        title: 'Editar opcion',
+        initialValue: option.value,
+        choices: const [('save', 'Guardar')],
       ),
     );
-    if (saved == true && value.text.trim().isNotEmpty && mounted) {
-      await widget.controller.updateOption(
-        vaccine,
-        option,
-        optionPayload(
-          fieldType: option.fieldType,
-          value: value.text.trim(),
-          isDefault: option.isDefault,
-          sortOrder: option.sortOrder,
-          version: option.version,
-        ),
-        institutionId: widget.user.institution.id,
-        institutionScoped: institutionAdmin,
-        offline: widget.offline,
-      );
-    }
-    value.dispose();
+    if (!mounted || result == null || result.$2.isEmpty) return;
+    await widget.controller.updateOption(
+      vaccine,
+      option,
+      optionPayload(
+        fieldType: option.fieldType,
+        value: result.$2,
+        isDefault: option.isDefault,
+        sortOrder: option.sortOrder,
+        version: option.version,
+      ),
+      institutionId: widget.user.institution.id,
+      institutionScoped: institutionAdmin,
+      offline: widget.offline,
+    );
   }
 
   Future<void> _addTemplate(Vaccine vaccine) async {
-    final value = TextEditingController();
-    final fieldType = await showDialog<String>(
+    final result = await showDialog<(String, String)>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Agregar plantilla operativa'),
-        content: TextField(
-          controller: value,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Nombre o valor'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          for (final type in const [
-            'laboratory',
-            'syringe',
-            'dropper',
-            'observation',
-          ])
-            TextButton(
-              onPressed: () => Navigator.pop(context, type),
-              child: Text(type),
-            ),
+      builder: (_) => const _OptionDialog(
+        title: 'Agregar plantilla operativa',
+        autofocus: true,
+        choices: [
+          ('laboratory', 'laboratory'),
+          ('syringe', 'syringe'),
+          ('dropper', 'dropper'),
+          ('observation', 'observation'),
         ],
       ),
     );
-    if (fieldType != null && value.text.trim().isNotEmpty && mounted) {
-      await widget.controller.addTemplate(
-        vaccine,
-        optionPayload(
-          fieldType: fieldType,
-          value: value.text.trim(),
-          isDefault: false,
-        ),
-        offline: widget.offline,
-      );
-    }
-    value.dispose();
+    if (!mounted || result == null || result.$2.isEmpty) return;
+    await widget.controller.addTemplate(
+      vaccine,
+      optionPayload(
+        fieldType: result.$1,
+        value: result.$2,
+        isDefault: false,
+      ),
+      offline: widget.offline,
+    );
   }
 
   Future<void> _disableOption(Vaccine vaccine, VaccineOption option) async {
@@ -657,4 +594,85 @@ class _CatalogPageState extends State<CatalogPage> {
             type == 'syringe' ||
             type == 'dropper' ||
             type == 'observation';
+}
+
+/// Dialogo con campo de texto que es dueño de su [TextEditingController]:
+/// lo crea en [initState] y lo libera en [dispose], que corre cuando la ruta
+/// del dialogo ya termino su animacion de salida. Esto evita el crash de
+/// "TextEditingController used after being disposed" que ocurria al liberar el
+/// controller justo despues de `await showDialog(...)`, mientras la vista
+/// todavia se reconstruia durante el cierre del dialogo (p. ej. al ocultarse
+/// el teclado).
+class _OptionDialog extends StatefulWidget {
+  const _OptionDialog({
+    required this.title,
+    this.autofocus = false,
+    this.hint,
+    this.initialValue,
+    required this.choices,
+  });
+
+  final String title;
+  final bool autofocus;
+  final String? hint;
+  final String? initialValue;
+
+  /// Pares (valor devuelto, etiqueta del boton) de las acciones que confirman
+  /// el valor ingresado. El primero se muestra como boton relleno.
+  final List<(String, String)> choices;
+
+  @override
+  State<_OptionDialog> createState() => _OptionDialogState();
+}
+
+class _OptionDialogState extends State<_OptionDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit(String value) {
+    Navigator.pop(context, (value, _controller.text.trim()));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        autofocus: widget.autofocus,
+        decoration: InputDecoration(
+          labelText: 'Nombre o valor',
+          hintText: widget.hint,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        for (final (index, choice) in widget.choices.indexed)
+          if (index == 0)
+            FilledButton(
+              onPressed: () => _submit(choice.$1),
+              child: Text(choice.$2),
+            )
+          else
+            TextButton(
+              onPressed: () => _submit(choice.$1),
+              child: Text(choice.$2),
+            ),
+      ],
+    );
+  }
 }
