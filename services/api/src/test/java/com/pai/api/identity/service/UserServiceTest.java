@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -51,6 +52,7 @@ class UserServiceTest {
     private UserRoleRepository userRoleRepository;
     private AuthUserProvisioningClient authUserClient;
     private IdentityService identityService;
+    private DataScope dataScope;
     private UserService service;
 
     @BeforeEach
@@ -61,9 +63,10 @@ class UserServiceTest {
         userRoleRepository = mock(UserRoleRepository.class);
         authUserClient = mock(AuthUserProvisioningClient.class);
         identityService = mock(IdentityService.class);
+        dataScope = new DataScope();
         service = new UserService(
             userRepository, institutionRepository, roleRepository,
-            userRoleRepository, authUserClient, identityService);
+            userRoleRepository, authUserClient, identityService, dataScope);
     }
 
     private CreateInstitutionAdminRequest request() {
@@ -315,7 +318,7 @@ class UserServiceTest {
         when(identityService.resolve(ACTOR_ID)).thenReturn(actor);
         when(userRepository.findByInstitutionId(other)).thenReturn(List.of());
 
-        List<UserResponse> result = service.listByInstitution(ACTOR_ID, other);
+        List<UserResponse> result = service.listByInstitution(ACTOR_ID, other, null);
 
         assertThat(result).isEmpty();
     }
@@ -328,7 +331,7 @@ class UserServiceTest {
             List.of("USER_MANAGE"), Instant.now());
         when(identityService.resolve(ACTOR_ID)).thenReturn(actor);
 
-        assertThatThrownBy(() -> service.listByInstitution(ACTOR_ID, other))
+        assertThatThrownBy(() -> service.listByInstitution(ACTOR_ID, other, null))
             .isInstanceOf(ScopeViolationException.class);
     }
 
@@ -338,13 +341,86 @@ class UserServiceTest {
             "Admin Hospital A", institution(), List.of("ADMIN_INSTITUTION"),
             List.of("USER_MANAGE"), Instant.now());
         when(identityService.resolve(ACTOR_ID)).thenReturn(actor);
-        when(userRepository.findByInstitutionId(INSTITUTION_ID))
-            .thenReturn(List.of(new UserEntity(UUID.randomUUID(), "u@hosp.a", "User",
-                INSTITUTION_ID, UserEntity.Status.ACTIVE, Instant.now(), Instant.now())));
+        UserEntity vaccinator = new UserEntity(UUID.randomUUID(), "vac@hosp.a", "Vaca",
+            INSTITUTION_ID, UserEntity.Status.ACTIVE, Instant.now(), Instant.now());
+        when(userRepository.findByInstitutionIdAndRoleCodes(
+            INSTITUTION_ID, Set.of("VACCINATOR", "READ_ONLY")))
+            .thenReturn(List.of(vaccinator));
+        when(userRepository.findRolesByUserId(vaccinator.getId()))
+            .thenReturn(List.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
 
-        List<UserResponse> result = service.listByInstitution(ACTOR_ID, INSTITUTION_ID);
+        List<UserResponse> result = service.listByInstitution(ACTOR_ID, INSTITUTION_ID, null);
 
         assertThat(result).hasSize(1);
+        assertThat(result.get(0).roles()).containsExactly("VACCINATOR");
+    }
+
+    @Test
+    void listByInstitution_forcesManagedRolesForInstitutionAdmin() {
+        AuthorizedUser actor = new AuthorizedUser(ACTOR_ID, "admin@hosp.a",
+            "Admin Hospital A", institution(), List.of("ADMIN_INSTITUTION"),
+            List.of("USER_MANAGE"), Instant.now());
+        when(identityService.resolve(ACTOR_ID)).thenReturn(actor);
+        // El repositorio solo devuelve el vacunador: el admin sembrado en la
+        // misma institucion queda fuera del listado de gestion.
+        UserEntity vaccinator = new UserEntity(UUID.randomUUID(), "vac@hosp.a", "Vaca",
+            INSTITUTION_ID, UserEntity.Status.ACTIVE, Instant.now(), Instant.now());
+        when(userRepository.findByInstitutionIdAndRoleCodes(
+            INSTITUTION_ID, Set.of("VACCINATOR", "READ_ONLY")))
+            .thenReturn(List.of(vaccinator));
+        when(userRepository.findRolesByUserId(vaccinator.getId()))
+            .thenReturn(List.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
+
+        List<UserResponse> result = service.listByInstitution(ACTOR_ID, INSTITUTION_ID, null);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).roles()).doesNotContain("ADMIN_INSTITUTION");
+    }
+
+    @Test
+    void listByInstitution_ignoresClientRolesForInstitutionAdmin() {
+        AuthorizedUser actor = new AuthorizedUser(ACTOR_ID, "admin@hosp.a",
+            "Admin Hospital A", institution(), List.of("ADMIN_INSTITUTION"),
+            List.of("USER_MANAGE"), Instant.now());
+        when(identityService.resolve(ACTOR_ID)).thenReturn(actor);
+        UserEntity vaccinator = new UserEntity(UUID.randomUUID(), "vac@hosp.a", "Vaca",
+            INSTITUTION_ID, UserEntity.Status.ACTIVE, Instant.now(), Instant.now());
+        when(userRepository.findByInstitutionIdAndRoleCodes(
+            INSTITUTION_ID, Set.of("VACCINATOR", "READ_ONLY")))
+            .thenReturn(List.of(vaccinator));
+        when(userRepository.findRolesByUserId(vaccinator.getId()))
+            .thenReturn(List.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
+
+        // Aunque el cliente pida ADMIN_INSTITUTION, el filtro efectivo es
+        // siempre el conjunto gestionable.
+        List<UserResponse> result = service.listByInstitution(
+            ACTOR_ID, INSTITUTION_ID, Set.of("ADMIN_INSTITUTION"));
+
+        assertThat(result).hasSize(1);
+        verify(userRepository).findByInstitutionIdAndRoleCodes(
+            INSTITUTION_ID, Set.of("VACCINATOR", "READ_ONLY"));
+    }
+
+    @Test
+    void listByInstitution_allowsSuperAdminToFilterByRoles() {
+        UUID other = UUID.randomUUID();
+        AuthorizedUser actor = new AuthorizedUser(ACTOR_ID, "super@admin.test",
+            "Super Admin", institution(), List.of("SUPER_ADMIN"),
+            List.of("INSTITUTION_WRITE", "USER_MANAGE"), Instant.now());
+        when(identityService.resolve(ACTOR_ID)).thenReturn(actor);
+        UserEntity admin = new UserEntity(UUID.randomUUID(), "admin@other", "Admin",
+            other, UserEntity.Status.ACTIVE, Instant.now(), Instant.now());
+        when(userRepository.findByInstitutionIdAndRoleCodes(
+            other, Set.of("ADMIN_INSTITUTION")))
+            .thenReturn(List.of(admin));
+        when(userRepository.findRolesByUserId(admin.getId()))
+            .thenReturn(List.of(new RoleEntity(ROLE_ID, "ADMIN_INSTITUTION", "Admin")));
+
+        List<UserResponse> result = service.listByInstitution(
+            ACTOR_ID, other, Set.of("ADMIN_INSTITUTION"));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).roles()).containsExactly("ADMIN_INSTITUTION");
     }
 
     // ---------- updateStatus ----------
@@ -356,25 +432,25 @@ class UserServiceTest {
             INSTITUTION_ID, UserEntity.Status.ACTIVE, Instant.now(), Instant.now());
     }
 
-    private void stubTargetInOwnInstitution() {
-        when(userRepository.findById(TARGET_ID)).thenReturn(Optional.of(targetVaccinator()));
-        when(userRepository.findRolesByUserId(TARGET_ID))
-            .thenReturn(List.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
-    }
-
     @Test
     void updateStatus_deactivatesVaccinatorInOwnInstitution() {
         when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
-        stubTargetInOwnInstitution();
-        when(userRepository.save(any(UserEntity.class)))
-            .thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.findByIdAndInstitutionId(TARGET_ID, INSTITUTION_ID))
+            .thenReturn(Optional.of(targetVaccinator()));
+        when(userRepository.findRolesByUserId(TARGET_ID))
+            .thenReturn(List.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
+        when(userRepository.updateStatusScoped(
+            eq(TARGET_ID), eq(INSTITUTION_ID), eq(UserEntity.Status.INACTIVE),
+            any(Instant.class)))
+            .thenReturn(1);
 
         UserResponse result = service.updateStatus(ACTOR_ID, TARGET_ID, "INACTIVE");
 
         assertThat(result.status()).isEqualTo("INACTIVE");
-        ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
-        verify(userRepository).save(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo(UserEntity.Status.INACTIVE);
+        verify(userRepository).updateStatusScoped(
+            eq(TARGET_ID), eq(INSTITUTION_ID), eq(UserEntity.Status.INACTIVE),
+            any(Instant.class));
+        verify(userRepository, never()).save(any(UserEntity.class));
     }
 
     @Test
@@ -384,11 +460,9 @@ class UserServiceTest {
             "Admin Hospital A", institution(), List.of("ADMIN_INSTITUTION"),
             List.of("USER_MANAGE"), Instant.now());
         when(identityService.resolve(ACTOR_ID)).thenReturn(actor);
-        when(userRepository.findById(TARGET_ID))
-            .thenReturn(Optional.of(new UserEntity(TARGET_ID, "u@other", "Other",
-                other, UserEntity.Status.ACTIVE, Instant.now(), Instant.now())));
-        when(userRepository.findRolesByUserId(TARGET_ID))
-            .thenReturn(List.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
+        // El target de otra institucion nunca se materializa en la query scopeada.
+        when(userRepository.findByIdAndInstitutionId(TARGET_ID, INSTITUTION_ID))
+            .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.updateStatus(ACTOR_ID, TARGET_ID, "INACTIVE"))
             .isInstanceOf(ScopeViolationException.class);
@@ -397,11 +471,6 @@ class UserServiceTest {
     @Test
     void updateStatus_rejectsSelfDeactivation() {
         when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
-        when(userRepository.findById(ACTOR_ID))
-            .thenReturn(Optional.of(new UserEntity(ACTOR_ID, "admin@hosp.a", "Admin Hospital A",
-                INSTITUTION_ID, UserEntity.Status.ACTIVE, Instant.now(), Instant.now())));
-        when(userRepository.findRolesByUserId(ACTOR_ID))
-            .thenReturn(List.of(new RoleEntity(ROLE_ID, "ADMIN_INSTITUTION", "Admin")));
 
         assertThatThrownBy(() -> service.updateStatus(ACTOR_ID, ACTOR_ID, "INACTIVE"))
             .isInstanceOf(IllegalArgumentException.class)
@@ -411,9 +480,40 @@ class UserServiceTest {
     @Test
     void updateStatus_blocksSuperAdminTargetForInstitutionAdmin() {
         when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
-        when(userRepository.findById(TARGET_ID)).thenReturn(Optional.of(targetVaccinator()));
+        when(userRepository.findByIdAndInstitutionId(TARGET_ID, INSTITUTION_ID))
+            .thenReturn(Optional.of(targetVaccinator()));
         when(userRepository.findRolesByUserId(TARGET_ID))
             .thenReturn(List.of(new RoleEntity(ROLE_ID, "SUPER_ADMIN", "Super")));
+
+        assertThatThrownBy(() -> service.updateStatus(ACTOR_ID, TARGET_ID, "INACTIVE"))
+            .isInstanceOf(ScopeViolationException.class);
+        verify(userRepository, never()).updateStatusScoped(
+            any(), any(), any(), any());
+    }
+
+    @Test
+    void updateStatus_blocksCoAdminTargetForInstitutionAdmin() {
+        when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
+        when(userRepository.findByIdAndInstitutionId(TARGET_ID, INSTITUTION_ID))
+            .thenReturn(Optional.of(targetVaccinator()));
+        when(userRepository.findRolesByUserId(TARGET_ID))
+            .thenReturn(List.of(new RoleEntity(ROLE_ID, "ADMIN_INSTITUTION", "Admin")));
+
+        assertThatThrownBy(() -> service.updateStatus(ACTOR_ID, TARGET_ID, "INACTIVE"))
+            .isInstanceOf(ScopeViolationException.class);
+    }
+
+    @Test
+    void updateStatus_scopeGuaranteesScopedWriteForInstitutionAdmin() {
+        when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
+        when(userRepository.findByIdAndInstitutionId(TARGET_ID, INSTITUTION_ID))
+            .thenReturn(Optional.of(targetVaccinator()));
+        when(userRepository.findRolesByUserId(TARGET_ID))
+            .thenReturn(List.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
+        // Red de seguridad: si la UPDATE scopeada no afecta filas (no existe o
+        // fuera de alcance), la operacion se aborta.
+        when(userRepository.updateStatusScoped(any(), any(), any(), any()))
+            .thenReturn(0);
 
         assertThatThrownBy(() -> service.updateStatus(ACTOR_ID, TARGET_ID, "INACTIVE"))
             .isInstanceOf(ScopeViolationException.class);
@@ -442,7 +542,6 @@ class UserServiceTest {
     @Test
     void updateStatus_rejectsInvalidStatus() {
         when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
-        stubTargetInOwnInstitution();
 
         assertThatThrownBy(() -> service.updateStatus(ACTOR_ID, TARGET_ID, "BANANA"))
             .isInstanceOf(IllegalArgumentException.class)
@@ -455,10 +554,11 @@ class UserServiceTest {
     @Test
     void updateRoles_replacesRolesOfVaccinator() {
         when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
-        when(userRepository.findById(TARGET_ID)).thenReturn(Optional.of(targetVaccinator()));
+        when(userRepository.findByIdAndInstitutionId(TARGET_ID, INSTITUTION_ID))
+            .thenReturn(Optional.of(targetVaccinator()));
         RoleEntity vaccinatorRole = new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador");
         RoleEntity readOnlyRole = new RoleEntity(UUID.randomUUID(), "READ_ONLY", "Consulta");
-        // Primera lectura (guard de SUPER_ADMIN) -> estado previo; la segunda
+        // Primera lectura (guard de target) -> estado previo; la segunda
         // (toResponse) ya refleja el reemplazo.
         when(userRepository.findRolesByUserId(TARGET_ID))
             .thenReturn(List.of(vaccinatorRole), List.of(readOnlyRole));
@@ -467,7 +567,9 @@ class UserServiceTest {
         UserResponse result = service.updateRoles(ACTOR_ID, TARGET_ID, List.of("READ_ONLY"));
 
         assertThat(result.roles()).containsExactly("READ_ONLY");
-        verify(userRoleRepository).deleteByUserId(TARGET_ID);
+        verify(userRoleRepository).deleteByUserIdScoped(TARGET_ID, INSTITUTION_ID);
+        verify(userRepository).touchUpdatedAtScoped(
+            eq(TARGET_ID), eq(INSTITUTION_ID), any(Instant.class));
         ArgumentCaptor<UserRoleEntity> captor =
             ArgumentCaptor.forClass(UserRoleEntity.class);
         verify(userRoleRepository).save(captor.capture());
@@ -478,23 +580,21 @@ class UserServiceTest {
     @Test
     void updateRoles_rejectsSuperAdminRole() {
         when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
-        stubTargetInOwnInstitution();
 
         assertThatThrownBy(() -> service.updateRoles(ACTOR_ID, TARGET_ID, List.of("SUPER_ADMIN")))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("SUPER_ADMIN");
-        verify(userRoleRepository, never()).deleteByUserId(any());
+        verify(userRoleRepository, never()).deleteByUserIdScoped(any(), any());
     }
 
     @Test
     void updateRoles_rejectsUnknownRole() {
         when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
-        stubTargetInOwnInstitution();
         when(roleRepository.findByCode("GHOST")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.updateRoles(ACTOR_ID, TARGET_ID, List.of("GHOST")))
             .isInstanceOf(RoleNotFoundException.class);
-        verify(userRoleRepository, never()).deleteByUserId(any());
+        verify(userRoleRepository, never()).deleteByUserIdScoped(any(), any());
     }
 
     @Test
@@ -504,13 +604,28 @@ class UserServiceTest {
             "Admin Hospital A", institution(), List.of("ADMIN_INSTITUTION"),
             List.of("USER_MANAGE"), Instant.now());
         when(identityService.resolve(ACTOR_ID)).thenReturn(actor);
-        when(userRepository.findById(TARGET_ID))
-            .thenReturn(Optional.of(new UserEntity(TARGET_ID, "u@other", "Other",
-                other, UserEntity.Status.ACTIVE, Instant.now(), Instant.now())));
-        when(userRepository.findRolesByUserId(TARGET_ID))
-            .thenReturn(List.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
+        when(roleRepository.findByCode("READ_ONLY"))
+            .thenReturn(Optional.of(new RoleEntity(UUID.randomUUID(), "READ_ONLY", "Consulta")));
+        when(userRepository.findByIdAndInstitutionId(TARGET_ID, INSTITUTION_ID))
+            .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.updateRoles(ACTOR_ID, TARGET_ID, List.of("READ_ONLY")))
             .isInstanceOf(ScopeViolationException.class);
+        verify(userRoleRepository, never()).deleteByUserIdScoped(any(), any());
+    }
+
+    @Test
+    void updateRoles_blocksCoAdminTargetForInstitutionAdmin() {
+        when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
+        when(roleRepository.findByCode("READ_ONLY"))
+            .thenReturn(Optional.of(new RoleEntity(UUID.randomUUID(), "READ_ONLY", "Consulta")));
+        when(userRepository.findByIdAndInstitutionId(TARGET_ID, INSTITUTION_ID))
+            .thenReturn(Optional.of(targetVaccinator()));
+        when(userRepository.findRolesByUserId(TARGET_ID))
+            .thenReturn(List.of(new RoleEntity(ROLE_ID, "ADMIN_INSTITUTION", "Admin")));
+
+        assertThatThrownBy(() -> service.updateRoles(ACTOR_ID, TARGET_ID, List.of("READ_ONLY")))
+            .isInstanceOf(ScopeViolationException.class);
+        verify(userRoleRepository, never()).deleteByUserIdScoped(any(), any());
     }
 }

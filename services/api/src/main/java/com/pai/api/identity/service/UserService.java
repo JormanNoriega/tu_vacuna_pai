@@ -2,7 +2,9 @@ package com.pai.api.identity.service;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -38,6 +40,11 @@ import com.pai.api.shared.exceptions.UserNotFoundException;
  * falla la creacion del espejo en {@code app.users} o de los roles, se elimina
  * el usuario recien creado en {@code auth.users} para no dejar un usuario
  * huerfano.
+ *
+ * <p>El alcance institucional se deriva del actor via {@link DataScope}
+ * (equivalente a RLS en la capa de datos): las lecturas y escrituras de
+ * usuarios usan consultas scopeadas por {@code institution_id}, de modo que un
+ * recurso de otra institucion nunca se materializa ni se modifica.
  */
 @Service
 public class UserService {
@@ -45,9 +52,18 @@ public class UserService {
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
     private static final String ADMIN_INSTITUTION_ROLE = "ADMIN_INSTITUTION";
     private static final String VACCINATOR_ROLE = "VACCINATOR";
+    private static final String READ_ONLY_ROLE = "READ_ONLY";
     private static final String SUPER_ADMIN_ROLE = "SUPER_ADMIN";
     private static final String USER_MANAGE_PERMISSION = "USER_MANAGE";
     private static final String INSTITUTION_WRITE_PERMISSION = "INSTITUTION_WRITE";
+
+    /**
+     * Roles que un ADMIN_INSTITUTION administra. El listado de gestion se
+     * fuerza a estos roles en el servidor: un admin nunca ve ni toca perfiles
+     * de otros administradores.
+     */
+    private static final Set<String> MANAGED_ROLES =
+        Set.of(VACCINATOR_ROLE, READ_ONLY_ROLE);
 
     private final UserRepository userRepository;
     private final InstitutionRepository institutionRepository;
@@ -55,6 +71,7 @@ public class UserService {
     private final UserRoleRepository userRoleRepository;
     private final AuthUserProvisioningClient authUserClient;
     private final IdentityService identityService;
+    private final DataScope dataScope;
 
     public UserService(
             UserRepository userRepository,
@@ -62,13 +79,15 @@ public class UserService {
             RoleRepository roleRepository,
             UserRoleRepository userRoleRepository,
             AuthUserProvisioningClient authUserClient,
-            IdentityService identityService) {
+            IdentityService identityService,
+            DataScope dataScope) {
         this.userRepository = userRepository;
         this.institutionRepository = institutionRepository;
         this.roleRepository = roleRepository;
         this.userRoleRepository = userRoleRepository;
         this.authUserClient = authUserClient;
         this.identityService = identityService;
+        this.dataScope = dataScope;
     }
 
     /**
@@ -221,70 +240,173 @@ public class UserService {
     }
 
     /**
-     * Lista los usuarios de una institucion. La autorizacion de scope vive en
-     * el servicio (no en el controller): el actor se resuelve por su id y se
-     * compara contra la institucion solicitada para evitar un IDOR clasico
+     * Lista los usuarios de una institucion.
+     *
+     * <p>La autorizacion de scope vive en el servicio (no en el controller):
+     * el actor se resuelve por su id y {@link DataScope} valida la institucion
+     * solicitada contra la del actor para evitar un IDOR clasico
      * ({@code GET /users?institutionId=OTRA-INSTITUCION}).
+     *
+     * <p>Para actores restringidos (ADMIN_INSTITUTION) el listado se fuerza a
+     * los roles gestionables ({@link #MANAGED_ROLES}): el parametro {@code roles}
+     * del cliente se ignora, de modo que un admin no puede pedir perfiles de
+     * otros administradores. Para actores con {@code INSTITUTION_WRITE} el
+     * parametro {@code roles} es opcional y permite filtrar (null = todos).
      *
      * @param actorId                id del usuario autenticado
      * @param requestedInstitutionId institucion solicitada por el cliente
+     * @param roles                  filtro de roles opcional (solo para
+     *                               INSTITUTION_WRITE)
      */
     @Transactional(readOnly = true)
-    public List<UserResponse> listByInstitution(UUID actorId, UUID requestedInstitutionId) {
+    public List<UserResponse> listByInstitution(UUID actorId, UUID requestedInstitutionId,
+            Set<String> roles) {
         AuthorizedUser actor = identityService.resolve(actorId);
-        UUID institutionId = requestedInstitutionId;
+        InstitutionScope scope = dataScope.currentScope(actor);
 
-        if (!actor.getPermissions().contains("INSTITUTION_WRITE")
-                && !actor.getInstitution().getId().equals(requestedInstitutionId)) {
-            throw new ScopeViolationException(
-                "No tienes permiso para consultar usuarios de otra institucion.");
-        }
+        UUID institutionId = dataScope.resolveInstitutionId(actor, requestedInstitutionId);
 
-        return userRepository.findByInstitutionId(institutionId).stream()
+        Set<String> effectiveRoles = scope.unrestricted()
+            ? (roles == null || roles.isEmpty() ? null : roles)
+            : MANAGED_ROLES;
+
+        List<UserEntity> users = (effectiveRoles == null || effectiveRoles.isEmpty())
+            ? userRepository.findByInstitutionId(institutionId)
+            : userRepository.findByInstitutionIdAndRoleCodes(institutionId, effectiveRoles);
+        return users.stream()
             .map(this::toResponse)
             .toList();
     }
 
     /**
-     * Activa o desactiva un usuario de la institucion del actor. La
-     * autorizacion se revalida aqui (permiso y scope institucional) ademas del
-     * {@code @PreAuthorize} del controller.
+     * Activa o desactiva un usuario.
      *
-     * <p>Reglas de defensa: no se puede desactivar la propia cuenta y no se
-     * pueden editar usuarios con rol {@code SUPER_ADMIN} salvo que el actor
-     * tenga {@code INSTITUTION_WRITE}.
+     * <p>Para actores restringidos la escritura se ejecuta con un UPDATE
+     * scopeado ({@code WHERE id AND institution_id}) y el target no puede ser
+     * otro administrador ni un SUPER_ADMIN. Para actores con
+     * {@code INSTITUTION_WRITE} (alcance global) se opera por id.
+     *
+     * <p>Regla de defensa: no se puede desactivar la propia cuenta.
      */
     @Transactional
     public UserResponse updateStatus(UUID actorId, UUID userId, String status) {
         AuthorizedUser actor = identityService.resolve(actorId);
-        UserEntity user = findEditableUser(actor, userId);
+        InstitutionScope scope = dataScope.currentScope(actor);
 
-        UserEntity.Status parsed;
-        try {
-            parsed = UserEntity.Status.valueOf(status.trim().toUpperCase());
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("Estado invalido. Usa ACTIVE o INACTIVE.");
-        }
+        UserEntity.Status parsed = parseStatus(status);
 
         if (actorId.equals(userId) && parsed == UserEntity.Status.INACTIVE) {
             throw new IllegalArgumentException("No puedes desactivar tu propia cuenta.");
         }
 
-        user.setStatus(parsed);
-        user.setUpdatedAt(Instant.now());
-        return toResponse(userRepository.save(user));
+        Instant now = Instant.now();
+
+        if (scope.unrestricted()) {
+            UserEntity user = findById(userId);
+            user.setStatus(parsed);
+            user.setUpdatedAt(now);
+            return toResponse(userRepository.save(user));
+        }
+
+        UserEntity user = requireScopedManagedUser(userId, scope);
+        int updated = userRepository.updateStatusScoped(
+            userId, scope.institutionId(), parsed, now);
+        if (updated == 0) {
+            throw new ScopeViolationException(
+                "El usuario no existe o no pertenece a tu institucion.");
+        }
+        return new UserResponse(
+            user.getId(),
+            user.getEmail(),
+            user.getFullName(),
+            user.getInstitutionId(),
+            userRepository.findRolesByUserId(user.getId()).stream()
+                .map(RoleEntity::getCode)
+                .toList(),
+            parsed.name());
     }
 
     /**
-     * Reemplaza los roles de un usuario de la institucion del actor. El rol
-     * {@code SUPER_ADMIN} no se asigna por esta via (solo rol institucional:
-     * ADMIN_INSTITUTION, VACCINATOR o READ_ONLY).
+     * Reemplaza los roles de un usuario. El rol {@code SUPER_ADMIN} no se
+     * asigna por esta via (solo roles institucionales: ADMIN_INSTITUTION,
+     * VACCINATOR o READ_ONLY). Para actores restringidos el reemplazo usa
+     * operaciones scopeadas por {@code institution_id}.
      */
     @Transactional
     public UserResponse updateRoles(UUID actorId, UUID userId, List<String> roleCodes) {
         AuthorizedUser actor = identityService.resolve(actorId);
-        UserEntity user = findEditableUser(actor, userId);
+        InstitutionScope scope = dataScope.currentScope(actor);
 
+        List<RoleEntity> roles = resolveAssignableRoles(roleCodes);
+
+        Instant now = Instant.now();
+
+        if (scope.unrestricted()) {
+            UserEntity user = findById(userId);
+            replaceRoles(userId, roles);
+            user.setUpdatedAt(now);
+            userRepository.save(user);
+            return toResponse(user);
+        }
+
+        UserEntity user = requireScopedManagedUser(userId, scope);
+        userRoleRepository.deleteByUserIdScoped(userId, scope.institutionId());
+        for (RoleEntity role : roles) {
+            userRoleRepository.save(new UserRoleEntity(userId, role.getId()));
+        }
+        userRepository.touchUpdatedAtScoped(userId, scope.institutionId(), now);
+        return toResponse(user);
+    }
+
+    /**
+     * Carga el usuario objetivo con criterio de institucion y valida que no sea
+     * un perfil privilegiado (otro administrador o SUPER_ADMIN). Para actores
+     * restringidos un recurso de otra institucion se materializa como "no
+     * existe" en la propia query.
+     */
+    private UserEntity requireScopedManagedUser(UUID userId, InstitutionScope scope) {
+        UserEntity user = userRepository.findByIdAndInstitutionId(
+                userId, scope.institutionId())
+            .orElseThrow(() -> new ScopeViolationException(
+                "El usuario no existe o no pertenece a tu institucion."));
+
+        boolean privileged = userRepository.findRolesByUserId(userId).stream()
+            .map(RoleEntity::getCode)
+            .anyMatch(code -> SUPER_ADMIN_ROLE.equals(code)
+                || ADMIN_INSTITUTION_ROLE.equals(code));
+        if (privileged) {
+            throw new ScopeViolationException(
+                "No tienes permiso para administrar a otro administrador.");
+        }
+        return user;
+    }
+
+    /**
+     * Carga un usuario por id sin alcance. Solo permitido para actores con
+     * {@code INSTITUTION_WRITE}, cuyo alcance es global por diseno.
+     */
+    private UserEntity findById(UUID userId) {
+        return userRepository.findById(userId)
+            .orElseThrow(() -> new UserNotFoundException("El usuario no existe."));
+    }
+
+    private void replaceRoles(UUID userId, List<RoleEntity> roles) {
+        userRoleRepository.deleteByUserId(userId);
+        for (RoleEntity role : roles) {
+            userRoleRepository.save(new UserRoleEntity(userId, role.getId()));
+        }
+    }
+
+    private UserEntity.Status parseStatus(String status) {
+        try {
+            return UserEntity.Status.valueOf(status.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException(
+                "Estado invalido. Usa ACTIVE o INACTIVE.");
+        }
+    }
+
+    private List<RoleEntity> resolveAssignableRoles(List<String> roleCodes) {
         List<RoleEntity> roles = new ArrayList<>(roleCodes.size());
         for (String code : roleCodes) {
             String normalized = code.trim().toUpperCase();
@@ -297,38 +419,7 @@ public class UserService {
                     "El rol " + normalized + " no esta configurado."));
             roles.add(role);
         }
-
-        userRoleRepository.deleteByUserId(userId);
-        for (RoleEntity role : roles) {
-            userRoleRepository.save(new UserRoleEntity(userId, role.getId()));
-        }
-        user.setUpdatedAt(Instant.now());
-        userRepository.save(user);
-        return toResponse(user);
-    }
-
-    /**
-     * Carga el usuario objetivo y valida el scope del actor. Los usuarios con
-     * rol {@code SUPER_ADMIN} solo pueden editarse por actores con
-     * {@code INSTITUTION_WRITE}.
-     */
-    private UserEntity findEditableUser(AuthorizedUser actor, UUID userId) {
-        UserEntity user = userRepository.findById(userId)
-            .orElseThrow(() -> new UserNotFoundException("El usuario no existe."));
-
-        boolean targetIsSuperAdmin = userRepository.findRolesByUserId(userId).stream()
-            .anyMatch(role -> SUPER_ADMIN_ROLE.equals(role.getCode()));
-        if (targetIsSuperAdmin && !actor.getPermissions().contains(INSTITUTION_WRITE_PERMISSION)) {
-            throw new ScopeViolationException(
-                "No tienes permiso para administrar un usuario SUPER_ADMIN.");
-        }
-
-        if (!actor.getPermissions().contains(INSTITUTION_WRITE_PERMISSION)
-                && !actor.getInstitution().getId().equals(user.getInstitutionId())) {
-            throw new ScopeViolationException(
-                "No tienes permiso para administrar usuarios de otra institucion.");
-        }
-        return user;
+        return roles;
     }
 
     private UserResponse toResponse(UserEntity user) {

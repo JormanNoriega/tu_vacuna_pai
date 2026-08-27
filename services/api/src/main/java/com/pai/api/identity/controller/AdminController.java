@@ -1,6 +1,8 @@
 package com.pai.api.identity.controller;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -112,10 +114,14 @@ public class AdminController {
         + "or @authorization.hasPermission(authentication, 'INSTITUTION_WRITE')")
     public ResponseEntity<List<UserResponse>> listUsers(
             Authentication authentication,
-            @RequestParam UUID institutionId) {
+            @RequestParam UUID institutionId,
+            @RequestParam(required = false) List<String> roles) {
         AuthorizedUser actor = (AuthorizedUser) authentication.getPrincipal();
+        Set<String> roleSet = (roles == null || roles.isEmpty())
+            ? null
+            : new HashSet<>(roles);
         return ResponseEntity.ok(
-            userService.listByInstitution(actor.getId(), institutionId));
+            userService.listByInstitution(actor.getId(), institutionId, roleSet));
     }
 
     @PutMapping("/users/{id}/status")
