@@ -12,6 +12,19 @@ import '../domain/entities/session_restore_result.dart';
 import '../domain/repositories/auth_repository.dart';
 import 'local_session_store.dart';
 
+/// Resultado de la validacion online durante la restauracion de sesion.
+enum _OnlineOutcome {
+  /// El token y el perfil se revalidaron correctamente.
+  authenticated,
+
+  /// El token es invalido y no pudo renovarse: se debe cerrar la sesion.
+  invalidCredentials,
+
+  /// Hay conectividad pero el backend no respondio correctamente (5xx o
+  /// inalcanzable): no hay una decision de credenciales.
+  unreachable,
+}
+
 /// Autenticacion real: Supabase Auth (`signInWithPassword`) + perfil
 /// autorizado por Spring (`GET /api/v1/me`). La sesion se persiste en
 /// almacenamiento seguro (tokens) y el perfil autorizado en la base local.
@@ -20,15 +33,33 @@ class SupabaseAuthRepository implements AuthRepository {
     this._apiClient,
     this._sessionManager,
     this._localSessionStore,
-    this._networkInfo, [
+    this._networkInfo, {
     this._offlineAuthorization = const OfflineAuthorizationService(),
-  ]);
+    Future<supabase.Session?> Function(SessionData stored)? refreshSession,
+  }) : _refreshSession = refreshSession ?? _supabaseRefreshSession;
 
   final ApiClient _apiClient;
   final SessionManager _sessionManager;
   final LocalSessionStore _localSessionStore;
   final NetworkInfo _networkInfo;
   final OfflineAuthorizationService _offlineAuthorization;
+
+  /// Renueva el access token. Inyectable para pruebas; en produccion usa el
+  /// cliente de Supabase.
+  final Future<supabase.Session?> Function(SessionData stored) _refreshSession;
+
+  static Future<supabase.Session?> _supabaseRefreshSession(
+    SessionData stored,
+  ) async {
+    if (stored.refreshToken.isEmpty) return null;
+    try {
+      final response = await supabase.Supabase.instance.client.auth
+          .refreshSession(stored.refreshToken);
+      return response.session;
+    } on supabase.AuthException {
+      return null;
+    }
+  }
 
   @override
   Future<AuthUser> signIn({
@@ -67,7 +98,17 @@ class SupabaseAuthRepository implements AuthRepository {
       );
     }
 
-    return _persistOnlineSession(session, me);
+    return _persistOnlineSession(
+      SessionData(
+        accessToken: session.accessToken,
+        refreshToken: session.refreshToken ?? '',
+        expiresAt: session.expiresAt != null
+            ? DateTime.fromMillisecondsSinceEpoch(session.expiresAt! * 1000)
+            : DateTime.now().add(const Duration(minutes: 15)),
+        lastOnlineValidation: DateTime.now(),
+      ),
+      me,
+    );
   }
 
   @override
@@ -78,24 +119,35 @@ class SupabaseAuthRepository implements AuthRepository {
       return SessionRestoreResult.signedOut();
     }
 
-    // Con red se refresca y se revalida online antes de decidir. La expiracion
-    // del access token no bloquea el offline: la ventana es politica propia.
+    final isAdmin =
+        profile != null &&
+        (profile.roles.contains('ADMIN_INSTITUTION') ||
+            profile.roles.contains('SUPER_ADMIN'));
+
+    // Con red se revalida online antes de decidir. La expiracion del access
+    // token no bloquea el offline: la ventana es politica propia.
     if (await _networkInfo.isConnected) {
-      final refreshed = await _tryRefresh(stored);
-      if (refreshed != null) {
-        try {
-          final me = await _apiClient.fetchMe(refreshed.accessToken);
-          final user = await _persistOnlineSession(refreshed, me);
-          return SessionRestoreResult.signedIn(user);
-        } on ApiException catch (error) {
-          if (error.statusCode == 401 || error.statusCode == 403) {
-            // Token revocado, usuario desactivado o sin permisos vigentes.
-            await _invalidateSession();
-            return SessionRestoreResult.signedOut();
-          }
-          // Otro fallo recuperable (5xx): se cae a la politica offline.
-        }
+      final outcome = await _validateOnline(stored);
+      if (outcome == _OnlineOutcome.authenticated) {
+        final refreshed = await _localSessionStore.loadProfile();
+        return SessionRestoreResult.signedIn(refreshed ?? profile!);
       }
+      if (outcome == _OnlineOutcome.invalidCredentials) {
+        // Token revocado, usuario desactivado o sin permisos vigentes.
+        await _invalidateSession();
+        return SessionRestoreResult.signedOut();
+      }
+      // Backend inalcanzable o 5xx con conectividad: los administradores
+      // permanecen online (online-first) y las vistas muestran el error; el
+      // resto cae a la ventana offline.
+      if (isAdmin) {
+        return SessionRestoreResult.signedIn(profile);
+      }
+    } else if (isAdmin) {
+      // Sin conectividad el admin tampoco entra a la ventana offline: su
+      // operacion depende del servidor, permanece autenticado y las vistas
+      // muestran los errores de conexion.
+      return SessionRestoreResult.signedIn(profile);
     }
 
     if (profile == null) {
@@ -112,6 +164,54 @@ class SupabaseAuthRepository implements AuthRepository {
     return SessionRestoreResult.offlineLocked(profile);
   }
 
+  /// Intenta validar online. Primero usa el access token vigente; solo si el
+  /// servidor lo rechaza (401/403) renueva y reintenta. Evita caer a la
+  /// ventana offline por un fallo transitorio del refresh teniendo internet.
+  Future<_OnlineOutcome> _validateOnline(SessionData stored) async {
+    final tokenStillValid = stored.expiresAt.isAfter(DateTime.now());
+
+    if (tokenStillValid) {
+      try {
+        final me = await _apiClient.fetchMe(stored.accessToken);
+        await _persistOnlineSession(stored, me);
+        return _OnlineOutcome.authenticated;
+      } on ApiException catch (e) {
+        if (e.statusCode == 401 || e.statusCode == 403) {
+          return _refreshAndValidate(stored);
+        }
+        return _OnlineOutcome.unreachable;
+      }
+    }
+    return _refreshAndValidate(stored);
+  }
+
+  Future<_OnlineOutcome> _refreshAndValidate(SessionData stored) async {
+    final refreshed = await _refreshSession(stored);
+    if (refreshed == null) {
+      return _OnlineOutcome.invalidCredentials;
+    }
+    try {
+      final me = await _apiClient.fetchMe(refreshed.accessToken);
+      await _persistOnlineSession(
+        SessionData(
+          accessToken: refreshed.accessToken,
+          refreshToken: refreshed.refreshToken ?? stored.refreshToken,
+          expiresAt: refreshed.expiresAt != null
+              ? DateTime.fromMillisecondsSinceEpoch(refreshed.expiresAt! * 1000)
+              : stored.expiresAt,
+          lastOnlineValidation: stored.lastOnlineValidation,
+        ),
+        me,
+      );
+      return _OnlineOutcome.authenticated;
+    } on ApiException catch (e) {
+      if (e.statusCode == 401 || e.statusCode == 403) {
+        return _OnlineOutcome.invalidCredentials;
+      }
+      return _OnlineOutcome.unreachable;
+    }
+  }
+
   @override
   Future<void> signOut() async {
     try {
@@ -122,30 +222,17 @@ class SupabaseAuthRepository implements AuthRepository {
     await _invalidateSession();
   }
 
-  Future<supabase.Session?> _tryRefresh(SessionData stored) async {
-    if (stored.refreshToken.isEmpty) return null;
-    try {
-      final response = await supabase.Supabase.instance.client.auth
-          .refreshSession(stored.refreshToken);
-      return response.session;
-    } on supabase.AuthException {
-      return null;
-    }
-  }
-
   Future<AuthUser> _persistOnlineSession(
-    supabase.Session session,
+    SessionData sessionData,
     MeResponse me,
   ) async {
     final lastOnlineValidation = DateTime.parse(me.lastOnlineValidation);
 
     await _sessionManager.saveSession(
       SessionData(
-        accessToken: session.accessToken,
-        refreshToken: session.refreshToken ?? '',
-        expiresAt: session.expiresAt != null
-            ? DateTime.fromMillisecondsSinceEpoch(session.expiresAt! * 1000)
-            : DateTime.now().add(const Duration(minutes: 15)),
+        accessToken: sessionData.accessToken,
+        refreshToken: sessionData.refreshToken,
+        expiresAt: sessionData.expiresAt,
         lastOnlineValidation: lastOnlineValidation,
       ),
     );

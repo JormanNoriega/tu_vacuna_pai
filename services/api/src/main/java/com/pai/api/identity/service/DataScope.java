@@ -1,4 +1,4 @@
-﻿package com.pai.api.identity.service;
+package com.pai.api.identity.service;
 
 import java.util.UUID;
 
