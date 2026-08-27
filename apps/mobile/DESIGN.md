@@ -104,7 +104,7 @@ La paleta observada es restrained: neutrales claros mas un azul de accion, con c
 
 La app usa SafeArea y scroll vertical para formularios y dashboards. En movil el contenido parte de 16dp laterales; en tablet usa 24-32dp. Las estadisticas se organizan en una columna estrecha y en una grilla de tres columnas cuando hay espacio. Las acciones frecuentes usan una grilla de dos columnas en compacto y hasta cuatro en ancho expandido.
 
-La navegacion debe adaptarse al ancho: barra inferior Material en compacto y NavigationRail o NavigationDrawer en superficies expandidas. Los objetivos tactiles no deben ser menores de 48dp en Android ni 44pt en iOS.
+La navegacion usa la barra inferior heredada de la app anterior en todos los tamanos: icono + etiqueta por destino, item seleccionado en color primario y altura mayor en tablet/web. La barra no se estira como una NavigationBar de Material; los objetivos tactiles no deben ser menores de 48dp en Android ni 44pt en iOS.
 
 ## Elevation & Depth
 
@@ -138,8 +138,8 @@ El lenguaje heredado usa radios de 8, 12 y 16dp. Los campos usan 8dp, botones y 
 - **Behavior:** labels y errores describen la accion y la recuperacion; password permite revelar el valor.
 
 ### Navigation
-- **Compact:** NavigationBar con 3-5 destinos principales y etiquetas visibles.
-- **Expanded:** NavigationRail o drawer; nunca estirar una barra inferior de telefono sobre tablet.
+- **Barra inferior legacy:** barra propia con icono + etiqueta por destino en todos los tamanos; el item seleccionado usa color primario y el AppBar muestra el icono y el nombre de la seccion actual.
+- **Destinos:** 3-5 por rol, filtrados por permisos.
 - **Context:** Top app bar con titulo de pantalla, acciones de refresh o estadisticas solo donde el contexto las necesita.
 
 ### Feedback

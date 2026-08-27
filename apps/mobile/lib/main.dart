@@ -9,8 +9,10 @@ import 'core/network/api_client.dart';
 import 'core/network/network_info.dart';
 import 'core/storage/app_database.dart';
 import 'features/admin/data/admin_repository_impl.dart';
+import 'features/admin/domain/use_cases/clone_catalog_to_institution.dart';
 import 'features/admin/domain/use_cases/create_institution.dart';
 import 'features/admin/domain/use_cases/create_institution_admin.dart';
+import 'features/admin/domain/use_cases/list_institution_users.dart';
 import 'features/admin/domain/use_cases/list_institutions.dart';
 import 'features/admin/domain/use_cases/update_institution_config.dart';
 import 'features/admin/presentation/admin_controller.dart';
@@ -54,6 +56,8 @@ Future<void> main() async {
     listInstitutions: ListInstitutions(adminRepository),
     createInstitutionAdmin: CreateInstitutionAdmin(adminRepository),
     updateInstitutionConfig: UpdateInstitutionConfig(adminRepository),
+    listUsersByInstitution: ListInstitutionUsers(adminRepository),
+    cloneCatalogToInstitution: CloneCatalogToInstitution(adminRepository),
   );
 
   final usersRepository = UsersRepositoryImpl(apiClient, appDatabase);

@@ -105,6 +105,11 @@ class AuthController extends ChangeNotifier {
     _status = result.status;
     _user = result.user;
     _offlineReason = result.offlineReason;
+    if (result.blockedMessage != null) {
+      // La sesion no pudo restaurarse (p. ej. un administrador sin validacion
+      // online): se muestra el login con un aviso claro.
+      _error = result.blockedMessage;
+    }
   }
 
   void clearError() {

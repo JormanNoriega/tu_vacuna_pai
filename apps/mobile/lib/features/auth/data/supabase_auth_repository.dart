@@ -137,20 +137,22 @@ class SupabaseAuthRepository implements AuthRepository {
         await _invalidateSession();
         return SessionRestoreResult.signedOut();
       }
-      // Backend inalcanzable o 5xx CON conectividad del dispositivo: los
-      // administradores permanecen online (online-first) y las vistas muestran
-      // el error; el resto entra a la ventana offline con razon
+      // Backend inalcanzable o 5xx CON conectividad del dispositivo: un
+      // administrador (online-first) no entra sin validacion online; se vuelve
+      // al login con un aviso. El resto entra a la ventana offline con razon
       // BACKEND_UNAVAILABLE, sin perder la capacidad de trabajar localmente.
       if (isAdmin) {
-        return SessionRestoreResult.signedIn(profile);
+        return SessionRestoreResult.adminBlocked(
+          OfflineReason.backendUnavailable,
+        );
       }
       return _offlineRestore(profile, OfflineReason.backendUnavailable);
     }
 
-    // Sin conectividad real del dispositivo: los administradores permanecen
-    // online-first; el resto cae a la ventana offline por razon NO_NETWORK.
+    // Sin conectividad real del dispositivo: los administradores (online-first)
+    // no entran; el resto cae a la ventana offline por razon NO_NETWORK.
     if (isAdmin) {
-      return SessionRestoreResult.signedIn(profile);
+      return SessionRestoreResult.adminBlocked(OfflineReason.noNetwork);
     }
     return _offlineRestore(profile, OfflineReason.noNetwork);
   }

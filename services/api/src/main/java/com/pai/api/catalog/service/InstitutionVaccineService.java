@@ -1,20 +1,373 @@
 package com.pai.api.catalog.service;
-import java.time.Instant; import java.util.*; import jakarta.persistence.EntityManager; import org.springframework.stereotype.Service; import org.springframework.transaction.annotation.Transactional;
-import com.pai.api.catalog.dto.*; import com.pai.api.catalog.entity.*; import com.pai.api.catalog.repository.*; import com.pai.api.identity.service.*; import com.pai.api.shared.exceptions.*;
-@Service public class InstitutionVaccineService {
- private final InstitutionVaccineRepository relations; private final InstitutionVaccineOptionRepository local; private final VaccineRepository vaccines; private final VaccineOptionTemplateRepository templates; private final IdentityService identity; private final DataScope scope; private final EntityManager em;
- public InstitutionVaccineService(InstitutionVaccineRepository r,InstitutionVaccineOptionRepository l,VaccineRepository v,VaccineOptionTemplateRepository t,IdentityService i,DataScope s,EntityManager e){relations=r;local=l;vaccines=v;templates=t;identity=i;scope=s;em=e;}
- private AuthorizedUser actor(UUID id,String p){AuthorizedUser a=identity.resolve(id);if(!a.getPermissions().contains(p))throw new PermissionDeniedException("Permiso insuficiente: "+p);return a;}
- private UUID institution(AuthorizedUser a,UUID requested){return scope.resolveInstitutionId(a,requested);}
- @Transactional(readOnly=true) public List<InstitutionVaccineResponse> list(UUID actorId,UUID inst){AuthorizedUser a=actor(actorId,"CATALOG_CONFIG_READ");UUID i=institution(a,inst);return relations.findByInstitutionId(i).stream().map(x->{VaccineEntity v=vaccines.findById(x.getVaccineId()).orElseThrow(()->new IllegalArgumentException("Vacuna no existe."));return new InstitutionVaccineResponse(x.getId(),i,v.getId(),v.getName(),v.getCode(),v.getCategory(),x.isEnabled(),x.getVersion());}).toList();}
- @Transactional public void enable(UUID actorId,UUID inst,UUID vaccine){AuthorizedUser a=actor(actorId,"CATALOG_CONFIG_WRITE");UUID i=institution(a,inst);VaccineEntity v=vaccines.findById(vaccine).orElseThrow(()->new IllegalArgumentException("Vacuna no existe."));if(!v.isActive())throw new IllegalArgumentException("La vacuna esta inactiva.");List<?> inserted=em.createNativeQuery("INSERT INTO app.institution_vaccines(institution_id,vaccine_id,is_enabled,enabled_at,enabled_by) VALUES (:i,:v,true,now(),:a) ON CONFLICT (institution_id,vaccine_id) DO NOTHING RETURNING id").setParameter("i",i).setParameter("v",vaccine).setParameter("a",a.getId()).getResultList();if(!inserted.isEmpty())for(VaccineOptionTemplateEntity t:templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccine)) local.save(new InstitutionVaccineOptionEntity(UUID.randomUUID(),i,vaccine,t.getFieldType(),t.getValue(),t.getDisplayName(),t.getSortOrder(),false,t.getId(),a.getId(),Instant.now()));else relations.findByInstitutionIdAndVaccineId(i,vaccine).ifPresent(x->{if(!x.isEnabled())em.createQuery("update InstitutionVaccineEntity x set x.enabled=true where x.id=:id").setParameter("id",x.getId()).executeUpdate();});}
- @Transactional public void disable(UUID actorId,UUID inst,UUID vaccine){AuthorizedUser a=actor(actorId,"CATALOG_CONFIG_WRITE");UUID i=institution(a,inst);relations.findByInstitutionIdAndVaccineId(i,vaccine).ifPresent(x->em.createQuery("update InstitutionVaccineEntity y set y.enabled=false where y.id=:id").setParameter("id",x.getId()).executeUpdate());}
-  @Transactional(readOnly=true) public List<OptionResponse> options(UUID actorId,UUID inst,UUID vaccine){AuthorizedUser a=actor(actorId,"CATALOG_CONFIG_READ");UUID i=institution(a,inst);requireEnabled(i,vaccine);return local.findByInstitutionIdAndVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(i,vaccine).stream().map(x->new OptionResponse(x.getId(),vaccine,i,x.getFieldType(),x.getValue(),x.getDisplayName(),x.getSortOrder(),x.isDefault(),x.isActive(),x.getSourceTemplateId(),x.getVersion())).toList();}
- @Transactional public OptionResponse createOption(UUID actorId,UUID inst,UUID vaccine,OptionRequest r){AuthorizedUser a=actor(actorId,"CATALOG_CONFIG_WRITE");UUID i=institution(a,inst);requireEnabled(i,vaccine);validateType(r.fieldType());if(r.isDefault())local.lockActive(i,vaccine).stream().filter(x->x.getFieldType().equals(r.fieldType())).forEach(x->x.update(x.getValue(),x.getDisplayName(),x.getSortOrder(),false,x.isActive(),a.getId()));InstitutionVaccineOptionEntity x=local.save(new InstitutionVaccineOptionEntity(UUID.randomUUID(),i,vaccine,r.fieldType(),r.value(),r.displayName(),r.sortOrder(),r.isDefault(),null,a.getId(),Instant.now()));return new OptionResponse(x.getId(),vaccine,i,x.getFieldType(),x.getValue(),x.getDisplayName(),x.getSortOrder(),x.isDefault(),x.isActive(),null,x.getVersion());}
- @Transactional public OptionResponse updateOption(UUID actorId,UUID inst,UUID vaccine,UUID id,OptionRequest r){AuthorizedUser a=actor(actorId,"CATALOG_CONFIG_WRITE");UUID i=institution(a,inst);requireEnabled(i,vaccine);validateType(r.fieldType());InstitutionVaccineOptionEntity x=local.findByIdAndInstitutionIdAndVaccineId(id,i,vaccine).orElseThrow(()->new IllegalArgumentException("Opcion local no existe."));if(x.getVersion()!=r.version())throw new com.pai.api.catalog.exception.OptimisticCatalogException("La opcion fue modificada por otro usuario.");if(r.isDefault())local.lockActive(i,vaccine).stream().filter(y->y.getFieldType().equals(r.fieldType())&&!y.getId().equals(id)).forEach(y->y.update(y.getValue(),y.getDisplayName(),y.getSortOrder(),false,y.isActive(),a.getId()));x.update(r.value(),r.displayName(),r.sortOrder(),r.isDefault(),r.isActive(),a.getId());return new OptionResponse(x.getId(),vaccine,i,x.getFieldType(),x.getValue(),x.getDisplayName(),x.getSortOrder(),x.isDefault(),x.isActive(),x.getSourceTemplateId(),x.getVersion());}
-  @Transactional public void deleteOption(UUID actorId,UUID inst,UUID vaccine,UUID id,long version){AuthorizedUser a=actor(actorId,"CATALOG_CONFIG_WRITE");UUID i=institution(a,inst);requireEnabled(i,vaccine);InstitutionVaccineOptionEntity x=local.findByIdAndInstitutionIdAndVaccineId(id,i,vaccine).orElseThrow(()->new IllegalArgumentException("Opcion local no existe."));if(x.getVersion()!=version)throw new com.pai.api.catalog.exception.OptimisticCatalogException("La opcion fue modificada por otro usuario.");x.update(x.getValue(),x.getDisplayName(),x.getSortOrder(),false,false,a.getId());}
-  @Transactional(readOnly=true) public List<OptionResponse> suggested(UUID actorId,UUID inst,UUID vaccine){AuthorizedUser a=actor(actorId,"CATALOG_CONFIG_READ");UUID i=institution(a,inst);Set<String> existing=new HashSet<>(local.findByInstitutionIdAndVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(i,vaccine).stream().map(x->x.getValueNormalized()).toList());return templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccine).stream().filter(t->!existing.contains(t.getValueNormalized())).map(t->new OptionResponse(t.getId(),vaccine,i,t.getFieldType(),t.getValue(),t.getDisplayName(),t.getSortOrder(),false,true,t.getId(),0)).toList();}
-  @Transactional public List<OptionResponse> importSuggested(UUID actorId,UUID inst,UUID vaccine){AuthorizedUser a=actor(actorId,"CATALOG_CONFIG_WRITE");UUID i=institution(a,inst);requireEnabled(i,vaccine);Set<String> existing=new HashSet<>(local.findByInstitutionIdAndVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(i,vaccine).stream().map(InstitutionVaccineOptionEntity::getValueNormalized).toList());List<OptionResponse> out=new ArrayList<>();for(VaccineOptionTemplateEntity t:templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccine))if(existing.add(t.getValueNormalized())){try{InstitutionVaccineOptionEntity x=local.saveAndFlush(new InstitutionVaccineOptionEntity(UUID.randomUUID(),i,vaccine,t.getFieldType(),t.getValue(),t.getDisplayName(),t.getSortOrder(),false,t.getId(),a.getId(),Instant.now()));out.add(new OptionResponse(x.getId(),vaccine,i,x.getFieldType(),x.getValue(),x.getDisplayName(),x.getSortOrder(),false,true,x.getSourceTemplateId(),x.getVersion()));}catch(org.springframework.dao.DataIntegrityViolationException ignored){}}return out;}
-  private void validateType(String type){if(!Set.of("laboratory","syringe","dropper","observation").contains(type))throw new IllegalArgumentException("Tipo de opcion local invalido.");}
-  private void requireEnabled(UUID institution,UUID vaccine){if(relations.findByInstitutionIdAndVaccineId(institution,vaccine).filter(x->x.isEnabled()).isEmpty())throw new IllegalArgumentException("La vacuna no esta habilitada en la institucion.");}
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+import jakarta.persistence.EntityManager;
+
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.pai.api.catalog.dto.CloneCatalogResponse;
+import com.pai.api.catalog.dto.OptionRequest;
+import com.pai.api.catalog.dto.OptionResponse;
+import com.pai.api.catalog.dto.InstitutionVaccineResponse;
+import com.pai.api.catalog.entity.InstitutionVaccineOptionEntity;
+import com.pai.api.catalog.entity.VaccineEntity;
+import com.pai.api.catalog.entity.VaccineOptionTemplateEntity;
+import com.pai.api.catalog.exception.OptimisticCatalogException;
+import com.pai.api.catalog.repository.InstitutionVaccineOptionRepository;
+import com.pai.api.catalog.repository.InstitutionVaccineRepository;
+import com.pai.api.catalog.repository.VaccineOptionTemplateRepository;
+import com.pai.api.catalog.repository.VaccineRepository;
+import com.pai.api.identity.service.AuthorizedUser;
+import com.pai.api.identity.service.DataScope;
+import com.pai.api.identity.service.IdentityService;
+import com.pai.api.shared.exceptions.PermissionDeniedException;
+
+@Service
+public class InstitutionVaccineService {
+    private static final Set<String> LOCAL_OPTION_TYPES =
+            Set.of("laboratory", "syringe", "dropper", "observation");
+
+    private final InstitutionVaccineRepository relations;
+    private final InstitutionVaccineOptionRepository local;
+    private final VaccineRepository vaccines;
+    private final VaccineOptionTemplateRepository templates;
+    private final IdentityService identity;
+    private final DataScope scope;
+    private final EntityManager entityManager;
+
+    public InstitutionVaccineService(
+            InstitutionVaccineRepository relations,
+            InstitutionVaccineOptionRepository local,
+            VaccineRepository vaccines,
+            VaccineOptionTemplateRepository templates,
+            IdentityService identity,
+            DataScope scope,
+            EntityManager entityManager) {
+        this.relations = relations;
+        this.local = local;
+        this.vaccines = vaccines;
+        this.templates = templates;
+        this.identity = identity;
+        this.scope = scope;
+        this.entityManager = entityManager;
+    }
+
+    private AuthorizedUser actor(UUID actorId, String permission) {
+        AuthorizedUser actor = identity.resolve(actorId);
+        if (!actor.getPermissions().contains(permission)) {
+            throw new PermissionDeniedException("Permiso insuficiente: " + permission);
+        }
+        return actor;
+    }
+
+    private UUID institution(AuthorizedUser actor, UUID requestedInstitution) {
+        return scope.resolveInstitutionId(actor, requestedInstitution);
+    }
+
+    @Transactional(readOnly = true)
+    public List<InstitutionVaccineResponse> list(UUID actorId, UUID requestedInstitution) {
+        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_READ");
+        UUID institutionId = institution(actor, requestedInstitution);
+
+        return relations.findByInstitutionId(institutionId).stream()
+                .map(relation -> {
+                    VaccineEntity vaccine = vaccines.findById(relation.getVaccineId())
+                            .orElseThrow(() -> new IllegalArgumentException("Vacuna no existe."));
+                    return new InstitutionVaccineResponse(
+                            relation.getId(), institutionId, vaccine.getId(), vaccine.getName(),
+                            vaccine.getCode(), vaccine.getCategory(), relation.isEnabled(),
+                            relation.getVersion());
+                })
+                .toList();
+    }
+
+    @Transactional
+    public void enable(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
+        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_WRITE");
+        UUID institutionId = institution(actor, requestedInstitution);
+        VaccineEntity vaccine = vaccines.findById(vaccineId)
+                .orElseThrow(() -> new IllegalArgumentException("Vacuna no existe."));
+        if (!vaccine.isActive()) {
+            throw new IllegalArgumentException("La vacuna esta inactiva.");
+        }
+
+        List<?> inserted = entityManager.createNativeQuery(
+                        "INSERT INTO app.institution_vaccines "
+                                + "(institution_id, vaccine_id, is_enabled, enabled_at, enabled_by) "
+                                + "VALUES (:institution, :vaccine, true, now(), :actor) "
+                                + "ON CONFLICT (institution_id, vaccine_id) DO NOTHING RETURNING id")
+                .setParameter("institution", institutionId)
+                .setParameter("vaccine", vaccineId)
+                .setParameter("actor", actor.getId())
+                .getResultList();
+
+        if (!inserted.isEmpty()) {
+            for (VaccineOptionTemplateEntity template : templates
+                    .findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccineId)) {
+                local.save(new InstitutionVaccineOptionEntity(
+                        UUID.randomUUID(), institutionId, vaccineId, template.getFieldType(),
+                        template.getValue(), template.getDisplayName(), template.getSortOrder(),
+                        false, template.getId(), actor.getId(), Instant.now()));
+            }
+            return;
+        }
+
+        relations.findByInstitutionIdAndVaccineId(institutionId, vaccineId)
+                .filter(relation -> !relation.isEnabled())
+                .ifPresent(relation -> entityManager.createQuery(
+                                "update InstitutionVaccineEntity relation "
+                                        + "set relation.enabled = true where relation.id = :id")
+                        .setParameter("id", relation.getId())
+                        .executeUpdate());
+    }
+
+    @Transactional
+    public void disable(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
+        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_WRITE");
+        UUID institutionId = institution(actor, requestedInstitution);
+        relations.findByInstitutionIdAndVaccineId(institutionId, vaccineId)
+                .ifPresent(relation -> entityManager.createQuery(
+                                "update InstitutionVaccineEntity relation "
+                                        + "set relation.enabled = false where relation.id = :id")
+                        .setParameter("id", relation.getId())
+                        .executeUpdate());
+    }
+
+    /**
+     * Clona el catalogo global hacia una institucion: habilita todas las vacunas
+     * activas (crea la relacion si no existe y reactiva las deshabilitadas) y,
+     * cuando [includeDefaultConfig] es true, copia las opciones operativas de los
+     * templates como configuracion por defecto. La copia es copy-once e
+     * idempotente: las vacunas ya habilitadas no se tocan y las opciones locales
+     * existentes no se sobrescriben.
+     */
+    @Transactional
+    public CloneCatalogResponse clone(
+            UUID actorId, UUID requestedInstitution, boolean includeDefaultConfig) {
+        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_WRITE");
+        UUID institutionId = institution(actor, requestedInstitution);
+        List<VaccineEntity> active = vaccines.findByActiveTrueOrderByNameAsc();
+        int vaccinesEnabled = 0;
+        int optionsCopied = 0;
+
+        for (VaccineEntity vaccine : active) {
+            List<?> inserted = entityManager.createNativeQuery(
+                            "INSERT INTO app.institution_vaccines "
+                                    + "(institution_id, vaccine_id, is_enabled, enabled_at, enabled_by) "
+                                    + "VALUES (:institution, :vaccine, true, now(), :actor) "
+                                    + "ON CONFLICT (institution_id, vaccine_id) DO NOTHING RETURNING id")
+                    .setParameter("institution", institutionId)
+                    .setParameter("vaccine", vaccine.getId())
+                    .setParameter("actor", actor.getId())
+                    .getResultList();
+
+            if (!inserted.isEmpty()) {
+                vaccinesEnabled++;
+                if (includeDefaultConfig) {
+                    for (VaccineOptionTemplateEntity template : templates
+                            .findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(
+                                    vaccine.getId())) {
+                        local.save(new InstitutionVaccineOptionEntity(
+                                UUID.randomUUID(), institutionId, vaccine.getId(),
+                                template.getFieldType(), template.getValue(), template.getDisplayName(),
+                                template.getSortOrder(), false, template.getId(), actor.getId(),
+                                Instant.now()));
+                        optionsCopied++;
+                    }
+                }
+            } else {
+                // La relacion ya existia: se reactiva si estaba deshabilitada, sin
+                // volver a copiar opciones (misma regla que el enable explicito).
+                relations.findByInstitutionIdAndVaccineId(institutionId, vaccine.getId())
+                        .filter(relation -> !relation.isEnabled())
+                        .ifPresent(relation -> entityManager.createQuery(
+                                        "update InstitutionVaccineEntity relation "
+                                                + "set relation.enabled = true where relation.id = :id")
+                                .setParameter("id", relation.getId())
+                                .executeUpdate());
+            }
+        }
+        return new CloneCatalogResponse(vaccinesEnabled, optionsCopied, active.size());
+    }
+
+    @Transactional(readOnly = true)
+    public List<OptionResponse> options(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
+        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_READ");
+        UUID institutionId = institution(actor, requestedInstitution);
+        requireEnabled(institutionId, vaccineId);
+
+        return local.findByInstitutionIdAndVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(
+                        institutionId, vaccineId)
+                .stream()
+                .map(option -> toResponse(option, vaccineId, institutionId))
+                .toList();
+    }
+
+    @Transactional
+    public OptionResponse createOption(
+            UUID actorId, UUID requestedInstitution, UUID vaccineId, OptionRequest request) {
+        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_WRITE");
+        UUID institutionId = institution(actor, requestedInstitution);
+        requireEnabled(institutionId, vaccineId);
+        validateType(request.fieldType());
+
+        if (request.isDefault()) {
+            clearDefaults(institutionId, vaccineId, request.fieldType(), actor.getId());
+        }
+
+        InstitutionVaccineOptionEntity option = local.save(new InstitutionVaccineOptionEntity(
+                UUID.randomUUID(), institutionId, vaccineId, request.fieldType(), request.value(),
+                request.displayName(), request.sortOrder(), request.isDefault(), null, actor.getId(),
+                Instant.now()));
+        return toResponse(option, vaccineId, institutionId);
+    }
+
+    @Transactional
+    public OptionResponse updateOption(
+            UUID actorId,
+            UUID requestedInstitution,
+            UUID vaccineId,
+            UUID optionId,
+            OptionRequest request) {
+        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_WRITE");
+        UUID institutionId = institution(actor, requestedInstitution);
+        requireEnabled(institutionId, vaccineId);
+        validateType(request.fieldType());
+
+        InstitutionVaccineOptionEntity option = local
+                .findByIdAndInstitutionIdAndVaccineId(optionId, institutionId, vaccineId)
+                .orElseThrow(() -> new IllegalArgumentException("Opcion local no existe."));
+        if (option.getVersion() != request.version()) {
+            throw new OptimisticCatalogException(
+                    "La opcion fue modificada por otro usuario.");
+        }
+        if (request.isDefault()) {
+            clearDefaults(institutionId, vaccineId, request.fieldType(), actor.getId(), optionId);
+        }
+
+        option.update(request.value(), request.displayName(), request.sortOrder(),
+                request.isDefault(), request.isActive(), actor.getId());
+        return toResponse(option, vaccineId, institutionId);
+    }
+
+    @Transactional
+    public void deleteOption(
+            UUID actorId,
+            UUID requestedInstitution,
+            UUID vaccineId,
+            UUID optionId,
+            long version) {
+        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_WRITE");
+        UUID institutionId = institution(actor, requestedInstitution);
+        requireEnabled(institutionId, vaccineId);
+
+        InstitutionVaccineOptionEntity option = local
+                .findByIdAndInstitutionIdAndVaccineId(optionId, institutionId, vaccineId)
+                .orElseThrow(() -> new IllegalArgumentException("Opcion local no existe."));
+        if (option.getVersion() != version) {
+            throw new OptimisticCatalogException(
+                    "La opcion fue modificada por otro usuario.");
+        }
+        option.update(option.getValue(), option.getDisplayName(), option.getSortOrder(),
+                false, false, actor.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public List<OptionResponse> suggested(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
+        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_READ");
+        UUID institutionId = institution(actor, requestedInstitution);
+        Set<String> existing = new HashSet<>(local
+                .findByInstitutionIdAndVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(
+                        institutionId, vaccineId)
+                .stream()
+                .map(option -> option.getValueNormalized())
+                .toList());
+
+        return templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccineId)
+                .stream()
+                .filter(template -> !existing.contains(template.getValueNormalized()))
+                .map(template -> new OptionResponse(
+                        template.getId(), vaccineId, institutionId, template.getFieldType(),
+                        template.getValue(), template.getDisplayName(), template.getSortOrder(),
+                        false, true, template.getId(), 0))
+                .toList();
+    }
+
+    @Transactional
+    public List<OptionResponse> importSuggested(
+            UUID actorId, UUID requestedInstitution, UUID vaccineId) {
+        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_WRITE");
+        UUID institutionId = institution(actor, requestedInstitution);
+        requireEnabled(institutionId, vaccineId);
+        Set<String> existing = new HashSet<>(local
+                .findByInstitutionIdAndVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(
+                        institutionId, vaccineId)
+                .stream()
+                .map(option -> option.getValueNormalized())
+                .toList());
+        List<OptionResponse> imported = new ArrayList<>();
+
+        for (VaccineOptionTemplateEntity template : templates
+                .findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccineId)) {
+            if (!existing.add(template.getValueNormalized())) {
+                continue;
+            }
+            try {
+                InstitutionVaccineOptionEntity option = local.saveAndFlush(
+                        new InstitutionVaccineOptionEntity(
+                                UUID.randomUUID(), institutionId, vaccineId, template.getFieldType(),
+                                template.getValue(), template.getDisplayName(), template.getSortOrder(),
+                                false, template.getId(), actor.getId(), Instant.now()));
+                imported.add(toResponse(option, vaccineId, institutionId));
+            } catch (DataIntegrityViolationException ignored) {
+                // Another request imported the same suggestion first.
+            }
+        }
+        return imported;
+    }
+
+    private void clearDefaults(UUID institutionId, UUID vaccineId, String fieldType, UUID actorId) {
+        clearDefaults(institutionId, vaccineId, fieldType, actorId, null);
+    }
+
+    private void clearDefaults(
+            UUID institutionId, UUID vaccineId, String fieldType, UUID actorId, UUID exceptId) {
+        local.lockActive(institutionId, vaccineId).stream()
+                .filter(option -> option.getFieldType().equals(fieldType))
+                .filter(option -> exceptId == null || !option.getId().equals(exceptId))
+                .forEach(option -> option.update(
+                        option.getValue(), option.getDisplayName(), option.getSortOrder(),
+                        false, option.isActive(), actorId));
+    }
+
+    private OptionResponse toResponse(
+            InstitutionVaccineOptionEntity option, UUID vaccineId, UUID institutionId) {
+        return new OptionResponse(
+                option.getId(), vaccineId, institutionId, option.getFieldType(), option.getValue(),
+                option.getDisplayName(), option.getSortOrder(), option.isDefault(), option.isActive(),
+                option.getSourceTemplateId(), option.getVersion());
+    }
+
+    private void validateType(String fieldType) {
+        if (!LOCAL_OPTION_TYPES.contains(fieldType)) {
+            throw new IllegalArgumentException("Tipo de opcion local invalido.");
+        }
+    }
+
+    private void requireEnabled(UUID institutionId, UUID vaccineId) {
+        if (relations.findByInstitutionIdAndVaccineId(institutionId, vaccineId)
+                .filter(relation -> relation.isEnabled())
+                .isEmpty()) {
+            throw new IllegalArgumentException(
+                    "La vacuna no esta habilitada en la institucion.");
+        }
+    }
 }

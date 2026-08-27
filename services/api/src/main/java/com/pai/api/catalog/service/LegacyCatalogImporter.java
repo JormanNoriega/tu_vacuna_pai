@@ -24,14 +24,13 @@ public class LegacyCatalogImporter implements ApplicationRunner {
     private final VaccineRepository vaccines;
     private final VaccineOptionRepository options;
     private final VaccineOptionTemplateRepository templates;
-    private final ObjectMapper mapper;
+    private final ObjectMapper mapper = new ObjectMapper();
 
     public LegacyCatalogImporter(VaccineRepository vaccines, VaccineOptionRepository options,
-            VaccineOptionTemplateRepository templates, ObjectMapper mapper) {
+            VaccineOptionTemplateRepository templates) {
         this.vaccines = vaccines;
         this.options = options;
         this.templates = templates;
-        this.mapper = mapper;
     }
 
     @Override

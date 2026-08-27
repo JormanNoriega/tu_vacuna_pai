@@ -110,9 +110,33 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           if (widget.controller.error != null) ...[
                             const SizedBox(height: 16),
-                            Text(
-                              widget.controller.error!,
-                              style: const TextStyle(color: Color(0xFFB42318)),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFB42318)
+                                    .withValues(alpha: .08),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(
+                                    Icons.error_outline_rounded,
+                                    color: Color(0xFFB42318),
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      widget.controller.error!,
+                                      style: const TextStyle(
+                                        color: Color(0xFFB42318),
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                           const SizedBox(height: 24),

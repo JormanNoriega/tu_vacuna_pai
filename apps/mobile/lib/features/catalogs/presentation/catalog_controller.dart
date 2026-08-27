@@ -23,6 +23,7 @@ class CatalogController extends ChangeNotifier {
   final ToggleInstitutionVaccine toggle;
   List<Vaccine> _vaccines;
   final Map<String, bool> institutionEnabled = {};
+  final Map<String, List<VaccineOption>> doseOptions = {};
   bool isLoading = false;
   String? error;
   String query = '';
@@ -55,6 +56,7 @@ class CatalogController extends ChangeNotifier {
     notifyListeners();
     try {
       _vaccines = await listVaccines(token);
+      await _loadDoseOptions(token, _vaccines);
     } on ApiException catch (e) {
       error = e.message;
     } catch (_) {
@@ -100,6 +102,7 @@ class CatalogController extends ChangeNotifier {
             ),
           )
           .toList();
+      await _loadDoseOptions(token, _vaccines);
     } on ApiException catch (e) {
       error = e.message;
     } catch (_) {
@@ -305,4 +308,28 @@ class CatalogController extends ChangeNotifier {
 
   Future<String?> _token() async =>
       (await sessionManager.loadSession())?.accessToken;
+
+  Future<void> _loadDoseOptions(String token, List<Vaccine> vaccines) async {
+    final results = await Future.wait(
+      vaccines.map((vaccine) async {
+        try {
+          final options = await repository.listOptions(
+            token,
+            vaccine,
+            institutionScoped: false,
+            institutionId: '',
+          );
+          return MapEntry(
+            vaccine.id,
+            options.where((option) => option.fieldType == 'dose').toList(),
+          );
+        } catch (_) {
+          return MapEntry(vaccine.id, <VaccineOption>[]);
+        }
+      }),
+    );
+    doseOptions
+      ..clear()
+      ..addEntries(results);
+  }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:tu_vacuna_pai/core/auth/session_manager.dart';
+import 'package:tu_vacuna_pai/features/admin/domain/entities/clone_catalog_result.dart';
 import 'package:tu_vacuna_pai/features/admin/domain/entities/institution.dart';
 import 'package:tu_vacuna_pai/features/admin/domain/entities/institution_admin.dart';
 import 'package:tu_vacuna_pai/features/admin/domain/repositories/admin_repository.dart';
@@ -96,6 +97,22 @@ class FakeAdminRepository implements AdminRepository {
     );
     institutions[index] = updated;
     return updated;
+  }
+
+  @override
+  Future<CloneCatalogResult> cloneCatalogToInstitution(
+    String accessToken, {
+    required String institutionId,
+    required bool includeDefaultConfig,
+  }) async {
+    if (failOnCreate) {
+      throw StateError('Fallo simulado');
+    }
+    return CloneCatalogResult(
+      vaccinesEnabled: 3,
+      optionsCopied: includeDefaultConfig ? 12 : 0,
+      vaccinesTotal: 3,
+    );
   }
 }
 

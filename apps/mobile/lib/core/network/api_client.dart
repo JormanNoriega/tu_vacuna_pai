@@ -455,6 +455,27 @@ class ApiClient {
     );
   }
 
+  /// Clona el catalogo global hacia una institucion. Requiere
+  /// `CATALOG_CONFIG_WRITE`. [includeDefaultConfig] copia las opciones
+  /// operativas de los templates como configuracion por defecto.
+  Future<Map<String, dynamic>> cloneCatalogToInstitution(
+    String token,
+    String institutionId, {
+    required bool includeDefaultConfig,
+  }) async {
+    final uri = Uri.parse(
+      '$baseUrl/institutions/$institutionId/vaccines/clone',
+    );
+    final response = await _send(
+      _http.post(
+        uri,
+        headers: _jsonHeaders(token),
+        body: jsonEncode({'includeDefaultConfig': includeDefaultConfig}),
+      ),
+    );
+    return _decodeObject(response, fallback: 'Error al clonar el catalogo.');
+  }
+
   Future<List<Map<String, dynamic>>> suggestedCatalogOptions(
     String token,
     String institutionId,

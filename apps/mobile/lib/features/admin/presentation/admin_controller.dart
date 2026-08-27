@@ -5,10 +5,13 @@ import '../../../core/auth/offline_policy.dart';
 import '../../../core/auth/session_manager.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/uuid.dart';
+import '../domain/entities/clone_catalog_result.dart';
 import '../domain/entities/institution.dart';
 import '../domain/entities/institution_admin.dart';
+import '../domain/use_cases/clone_catalog_to_institution.dart';
 import '../domain/use_cases/create_institution.dart';
 import '../domain/use_cases/create_institution_admin.dart';
+import '../domain/use_cases/list_institution_users.dart';
 import '../domain/use_cases/list_institutions.dart';
 import '../domain/use_cases/update_institution_config.dart';
 
@@ -21,12 +24,16 @@ class AdminController extends ChangeNotifier {
     required ListInstitutions listInstitutions,
     required CreateInstitutionAdmin createInstitutionAdmin,
     required UpdateInstitutionConfig updateInstitutionConfig,
+    ListInstitutionUsers? listUsersByInstitution,
+    CloneCatalogToInstitution? cloneCatalogToInstitution,
   }) : this._(
          sessionManager,
          createInstitution,
          listInstitutions,
          createInstitutionAdmin,
          updateInstitutionConfig,
+         listUsersByInstitution,
+         cloneCatalogToInstitution,
        );
 
   AdminController._(
@@ -35,6 +42,8 @@ class AdminController extends ChangeNotifier {
     this._listInstitutions,
     this._createInstitutionAdmin,
     this._updateInstitutionConfig,
+    this._listUsersByInstitution,
+    this._cloneCatalogToInstitution,
   );
 
   final SessionManager _sessionManager;
@@ -42,9 +51,13 @@ class AdminController extends ChangeNotifier {
   final ListInstitutions _listInstitutions;
   final CreateInstitutionAdmin _createInstitutionAdmin;
   final UpdateInstitutionConfig _updateInstitutionConfig;
+  final ListInstitutionUsers? _listUsersByInstitution;
+  final CloneCatalogToInstitution? _cloneCatalogToInstitution;
 
   List<Institution> _institutions = const [];
+  List<InstitutionAdmin> _admins = const [];
   bool _isLoading = false;
+  bool _adminsLoading = false;
   String? _error;
 
   /// Clave de idempotencia del aprovisionamiento de admins: se genera por
@@ -55,7 +68,9 @@ class AdminController extends ChangeNotifier {
   String? _pendingInstitutionId;
 
   List<Institution> get institutions => List.unmodifiable(_institutions);
+  List<InstitutionAdmin> get admins => List.unmodifiable(_admins);
   bool get isLoading => _isLoading;
+  bool get adminsLoading => _adminsLoading;
   String? get error => _error;
 
   /// Carga las instituciones existentes para el selector de la vista.
@@ -72,6 +87,9 @@ class AdminController extends ChangeNotifier {
 
     try {
       _institutions = await _listInstitutions(token);
+      if (_listUsersByInstitution != null) {
+        await loadAdmins();
+      }
     } on ApiException catch (e) {
       _setError(e.message);
     } catch (_) {
@@ -81,6 +99,46 @@ class AdminController extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// Carga los administradores de institucion agregando los resultados de cada
+  /// institucion. Solo disponible cuando se inyecto [ListInstitutionUsers].
+  Future<void> loadAdmins() async {
+    final token = await _currentToken();
+    if (token == null || _listUsersByInstitution == null) return;
+
+    _adminsLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final results = await Future.wait(
+        _institutions.map(
+          (institution) =>
+              _listUsersByInstitution(token, institutionId: institution.id),
+        ),
+      );
+      _admins = results.expand((admins) => admins).toList();
+    } on ApiException catch (e) {
+      _setError(e.message);
+    } catch (_) {
+      _setError('No se pudieron cargar los administradores.');
+    } finally {
+      _adminsLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Nombre de la institucion para un [InstitutionAdmin].
+  String? institutionNameOf(String institutionId) {
+    for (final institution in _institutions) {
+      if (institution.id == institutionId) return institution.name;
+    }
+    return null;
+  }
+
+  /// Cantidad de administradores registrados para una institucion.
+  int adminsFor(String institutionId) =>
+      _admins.where((admin) => admin.institutionId == institutionId).length;
 
   /// Crea una institucion. Devuelve la institucion creada o null si falla.
   Future<Institution?> createInstitution({
@@ -217,6 +275,50 @@ class AdminController extends ChangeNotifier {
     } catch (_) {
       _setError('No se pudo actualizar la configuracion.');
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Clona el catalogo global hacia una institucion. Devuelve el resumen del
+  /// clonado o null si falla.
+  Future<CloneCatalogResult?> cloneCatalogToInstitution(
+    Institution institution, {
+    required OfflineAccess offline,
+    required bool includeDefaultConfig,
+  }) async {
+    final clone = _cloneCatalogToInstitution;
+    if (clone == null) {
+      _setError('El clonado de catalogo no esta disponible.');
+      return null;
+    }
+    final token = await _currentToken();
+    if (token == null) {
+      _setError('Tu sesion expiro. Inicia sesion de nuevo.');
+      return null;
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      return await clone(
+        token,
+        offline: offline,
+        institutionId: institution.id,
+        includeDefaultConfig: includeDefaultConfig,
+      );
+    } on OfflinePolicyException catch (e) {
+      _setError(e.message);
+      return null;
+    } on ApiException catch (e) {
+      _setError(e.message);
+      return null;
+    } catch (_) {
+      _setError('No se pudo clonar el catalogo.');
+      return null;
     } finally {
       _isLoading = false;
       notifyListeners();

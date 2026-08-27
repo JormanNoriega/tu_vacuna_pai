@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/auth/offline_access.dart';
+import '../../domain/entities/clone_catalog_result.dart';
 import '../../domain/entities/institution.dart';
 import '../admin_controller.dart';
 import 'create_institution_admin_page.dart';
@@ -90,6 +91,38 @@ class _AdminPageState extends State<AdminPage> {
     }
   }
 
+  Future<void> _openCloneCatalog(Institution institution) async {
+    final result = await showDialog<CloneCatalogResult>(
+      context: context,
+      builder: (_) => _CloneCatalogDialog(
+        institution: institution,
+        onClone: (includeDefaultConfig) async {
+          final cloned = await widget.controller.cloneCatalogToInstitution(
+            institution,
+            offline: widget.offline,
+            includeDefaultConfig: includeDefaultConfig,
+          );
+          if (cloned == null) {
+            throw _CloneException(
+              widget.controller.error ?? 'No se pudo clonar el catalogo.',
+            );
+          }
+          return cloned;
+        },
+      ),
+    );
+    if (!mounted || result == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Catalogo clonado en "${institution.name}": '
+          '${result.vaccinesEnabled} vacunas habilitadas '
+          '(${result.optionsCopied} opciones copiadas).',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -101,12 +134,12 @@ class _AdminPageState extends State<AdminPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Administracion',
+                'Instituciones',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 8),
               const Text(
-                'Configura instituciones y crea los administradores que las gestionaran.',
+                'Registra instituciones de salud y crea los administradores que las gestionaran.',
                 style: TextStyle(color: AppColors.slate, height: 1.4),
               ),
               const SizedBox(height: 24),
@@ -146,14 +179,16 @@ class _AdminPageState extends State<AdminPage> {
                   // tarjetas crezcan con su contenido y no haya overflow en
                   // pantallas angostas.
                   if (twoColumns) {
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (var i = 0; i < actions.length; i++) ...[
-                          if (i > 0) const SizedBox(width: 16),
-                          Expanded(child: actions[i]),
+                    return IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (var i = 0; i < actions.length; i++) ...[
+                            if (i > 0) const SizedBox(width: 16),
+                            Expanded(child: actions[i]),
+                          ],
                         ],
-                      ],
+                      ),
                     );
                   }
                   return Column(
@@ -170,6 +205,7 @@ class _AdminPageState extends State<AdminPage> {
               _InstitutionsSection(
                 controller: widget.controller,
                 onEditConfig: _openEditConfig,
+                onCloneCatalog: _openCloneCatalog,
               ),
             ],
           ),
@@ -284,10 +320,12 @@ class _InstitutionsSection extends StatelessWidget {
   const _InstitutionsSection({
     required this.controller,
     required this.onEditConfig,
+    required this.onCloneCatalog,
   });
 
   final AdminController controller;
   final ValueChanged<Institution> onEditConfig;
+  final ValueChanged<Institution> onCloneCatalog;
 
   @override
   Widget build(BuildContext context) {
@@ -319,7 +357,9 @@ class _InstitutionsSection extends StatelessWidget {
             for (final institution in controller.institutions)
               _InstitutionTile(
                 institution: institution,
+                adminCount: controller.adminsFor(institution.id),
                 onEditConfig: () => onEditConfig(institution),
+                onCloneCatalog: () => onCloneCatalog(institution),
               ),
           ],
         );
@@ -331,11 +371,15 @@ class _InstitutionsSection extends StatelessWidget {
 class _InstitutionTile extends StatelessWidget {
   const _InstitutionTile({
     required this.institution,
+    required this.adminCount,
     required this.onEditConfig,
+    required this.onCloneCatalog,
   });
 
   final Institution institution;
+  final int adminCount;
   final VoidCallback onEditConfig;
+  final VoidCallback onCloneCatalog;
 
   @override
   Widget build(BuildContext context) {
@@ -372,8 +416,13 @@ class _InstitutionTile extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _StatusChip(active: institution.isActive),
+            _CountBadge(adminCount: adminCount),
             const SizedBox(width: 4),
+            IconButton(
+              tooltip: 'Clonar catalogo',
+              onPressed: onCloneCatalog,
+              icon: const Icon(Icons.content_copy_outlined, size: 20),
+            ),
             IconButton(
               tooltip: 'Editar configuracion',
               onPressed: onEditConfig,
@@ -386,28 +435,146 @@ class _InstitutionTile extends StatelessWidget {
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.active});
+class _CountBadge extends StatelessWidget {
+  const _CountBadge({required this.adminCount});
 
-  final bool active;
+  final int adminCount;
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppColors.success : AppColors.hint;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: .12),
+        color: AppColors.success.withValues(alpha: .12),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        active ? 'ACTIVA' : 'INACTIVA',
-        style: TextStyle(
-          color: color,
+        '$adminCount admin${adminCount == 1 ? '' : 's'}',
+        style: const TextStyle(
+          color: AppColors.success,
           fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
       ),
+    );
+  }
+}
+
+/// Error del clonado: se muestra dentro del dialogo sin cerrarlo.
+class _CloneException implements Exception {
+  const _CloneException(this.message);
+
+  final String message;
+}
+
+class _CloneCatalogDialog extends StatefulWidget {
+  const _CloneCatalogDialog({required this.institution, required this.onClone});
+
+  final Institution institution;
+
+  /// Devuelve el resumen del clonado o lanza [_CloneException] si falla.
+  final Future<CloneCatalogResult> Function(bool includeDefaultConfig) onClone;
+
+  @override
+  State<_CloneCatalogDialog> createState() => _CloneCatalogDialogState();
+}
+
+class _CloneCatalogDialogState extends State<_CloneCatalogDialog> {
+  bool _includeDefaultConfig = true;
+  bool _cloning = false;
+  String? _error;
+
+  Future<void> _clone() async {
+    setState(() {
+      _cloning = true;
+      _error = null;
+    });
+    try {
+      final result = await widget.onClone(_includeDefaultConfig);
+      if (!mounted) return;
+      Navigator.of(context).pop(result);
+    } on _CloneException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _cloning = false;
+        _error = error.message;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Clonar catalogo'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Habilita todo el catalogo global en '
+            '"${widget.institution.name}".',
+            style: const TextStyle(color: AppColors.slate, height: 1.4),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            '¿Agregar la configuracion por defecto?',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          IgnorePointer(
+            ignoring: _cloning,
+            child: RadioGroup<bool>(
+              groupValue: _includeDefaultConfig,
+              onChanged: (value) =>
+                  setState(() => _includeDefaultConfig = value ?? true),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  RadioListTile<bool>(
+                    value: true,
+                    title: const Text('Si, con configuracion por defecto'),
+                    subtitle: const Text(
+                      'Copia laboratorio, jeringa, gotero y observacion '
+                      'de cada vacuna.',
+                    ),
+                  ),
+                  RadioListTile<bool>(
+                    value: false,
+                    title: const Text('No, solo habilitar las vacunas'),
+                    subtitle: const Text(
+                      'Las opciones se configuran despues por la institucion.',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _cloning ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _cloning ? null : _clone,
+          child: _cloning
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Clonar'),
+        ),
+      ],
     );
   }
 }

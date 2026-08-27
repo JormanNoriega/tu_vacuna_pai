@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tu_vacuna_pai/app/app.dart';
 import 'package:tu_vacuna_pai/features/admin/domain/entities/institution.dart';
+import 'package:tu_vacuna_pai/features/admin/domain/use_cases/clone_catalog_to_institution.dart';
 import 'package:tu_vacuna_pai/features/admin/domain/use_cases/create_institution.dart';
 import 'package:tu_vacuna_pai/features/admin/domain/use_cases/create_institution_admin.dart';
 import 'package:tu_vacuna_pai/features/admin/domain/use_cases/list_institutions.dart';
@@ -95,14 +96,20 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Administracion'), findsWidgets);
+    // El home del SUPER_ADMIN muestra el hero, las acciones rapidas y la
+    // barra de navegacion con sus destinos de administracion.
+    expect(find.text('Hola, Super'), findsOneWidget);
+    expect(find.text('SUPER ADMIN'), findsOneWidget);
+    expect(find.text('Acciones rapidas'), findsOneWidget);
     expect(find.text('Crear institucion'), findsWidgets);
-    expect(find.text('Crear usuario admin de institucion'), findsWidgets);
+    expect(find.text('Crear admin'), findsWidgets);
+    expect(find.text('Instituciones'), findsWidgets);
+    expect(find.text('Usuarios'), findsWidgets);
     // Las acciones genericas de vacunador no deben aparecer.
     expect(find.text('Nueva atencion'), findsNothing);
     expect(find.text('Acciones frecuentes'), findsNothing);
-    // No hay barra de navegacion operativa para el SUPER_ADMIN.
-    expect(find.byType(NavigationBar), findsNothing);
+    // El SUPER_ADMIN tiene barra de navegacion propia.
+    expect(find.byKey(const Key('dashboard-nav-bar')), findsOneWidget);
   });
 
   testWidgets('ADMIN_INSTITUTION gestiona los vacunadores de su institucion', (
@@ -144,7 +151,7 @@ void main() {
     // Navegar a la pestaña Administracion muestra la gestion de usuarios.
     await tester.tap(
       find.descendant(
-        of: find.byType(NavigationBar),
+        of: find.byKey(const Key('dashboard-nav-bar')),
         matching: find.text('Administracion'),
       ),
     );
@@ -185,7 +192,7 @@ void main() {
 
     // Ve la barra operativa de vacunador y sus destinos.
     expect(find.text('Buenos dias'), findsOneWidget);
-    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byKey(const Key('dashboard-nav-bar')), findsOneWidget);
     expect(find.text('Nueva atencion'), findsWidgets);
     expect(find.text('Historial'), findsOneWidget);
     // No ve administracion de usuarios ni inventario.
@@ -242,7 +249,7 @@ void main() {
 
     await tester.tap(
       find.descendant(
-        of: find.byType(NavigationBar),
+        of: find.byKey(const Key('dashboard-nav-bar')),
         matching: find.text('Administracion'),
       ),
     );
@@ -332,40 +339,39 @@ void main() {
     expect(find.text('Modo solo lectura'), findsNothing);
   });
 
-  testWidgets(
-    'distingue el banner cuando el servidor esta no disponible',
-    (tester) async {
-      final user = AuthUser(
-        id: 'vac-1',
-        email: 'vacunador@hosp-a.com',
-        name: 'Ana Vacunadora',
-        institution: const InstitutionProfile(
-          id: 'inst-1',
-          code: 'HOSP-A',
-          name: 'Hospital A',
-        ),
-        roles: const ['VACCINATOR'],
-        permissions: const ['PATIENT_READ', 'ATTENTION_CREATE'],
-        offlineWindowHours: 72,
-        lastOnlineValidation: DateTime.now().subtract(const Duration(hours: 1)),
-      );
+  testWidgets('distingue el banner cuando el servidor esta no disponible', (
+    tester,
+  ) async {
+    final user = AuthUser(
+      id: 'vac-1',
+      email: 'vacunador@hosp-a.com',
+      name: 'Ana Vacunadora',
+      institution: const InstitutionProfile(
+        id: 'inst-1',
+        code: 'HOSP-A',
+        name: 'Hospital A',
+      ),
+      roles: const ['VACCINATOR'],
+      permissions: const ['PATIENT_READ', 'ATTENTION_CREATE'],
+      offlineWindowHours: 72,
+      lastOnlineValidation: DateTime.now().subtract(const Duration(hours: 1)),
+    );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: DashboardPage(
-            user: user,
-            onSignOut: () {},
-            sessionStatus: SessionStatus.offlineAuthorized,
-            offlineReason: OfflineReason.backendUnavailable,
-          ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DashboardPage(
+          user: user,
+          onSignOut: () {},
+          sessionStatus: SessionStatus.offlineAuthorized,
+          offlineReason: OfflineReason.backendUnavailable,
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.text('Servidor no disponible'), findsOneWidget);
-      expect(find.text('Sin conexion a Internet'), findsNothing);
-    },
-  );
+    expect(find.text('Servidor no disponible'), findsOneWidget);
+    expect(find.text('Sin conexion a Internet'), findsNothing);
+  });
 
   testWidgets('bloquea la edicion de usuario en modo solo lectura', (
     tester,
@@ -417,7 +423,7 @@ void main() {
 
     await tester.tap(
       find.descendant(
-        of: find.byType(NavigationBar),
+        of: find.byKey(const Key('dashboard-nav-bar')),
         matching: find.text('Administracion'),
       ),
     );
@@ -485,6 +491,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // Ir a la pestana Instituciones para editar la configuracion offline.
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('dashboard-nav-bar')),
+        matching: find.text('Instituciones'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byTooltip('Editar configuracion'));
     await tester.tap(find.byTooltip('Editar configuracion'));
     await tester.pumpAndSettle();
     expect(find.text('Configurar Hospital A'), findsOneWidget);
@@ -499,5 +515,82 @@ void main() {
     );
     expect(find.text('HOSP-A - ventana offline 24h'), findsOneWidget);
     expect(repository.institutions.single.offlineWindowHours, 24);
+  });
+
+  testWidgets('SUPER_ADMIN clona el catalogo hacia una institucion', (
+    tester,
+  ) async {
+    final repository = FakeAdminRepository();
+    repository.institutions.add(
+      Institution(
+        id: 'inst-1',
+        code: 'HOSP-A',
+        name: 'Hospital A',
+        status: 'ACTIVE',
+        offlineWindowHours: 72,
+      ),
+    );
+    final adminController = AdminController(
+      sessionManager: FakeSessionManager('token-123'),
+      createInstitution: CreateInstitution(repository),
+      listInstitutions: ListInstitutions(repository),
+      createInstitutionAdmin: CreateInstitutionAdmin(repository),
+      updateInstitutionConfig: UpdateInstitutionConfig(repository),
+      cloneCatalogToInstitution: CloneCatalogToInstitution(repository),
+    );
+    final user = AuthUser(
+      id: 'super-1',
+      email: 'super@pai.test',
+      name: 'Super Admin',
+      institution: const InstitutionProfile(
+        id: 'inst-0',
+        code: 'PAI-DEMO',
+        name: 'Institucion Demo PAI',
+      ),
+      roles: const ['SUPER_ADMIN'],
+      permissions: const [
+        'INSTITUTION_WRITE',
+        'USER_MANAGE',
+        'CATALOG_CONFIG_WRITE',
+      ],
+      offlineWindowHours: 72,
+      lastOnlineValidation: DateTime.now(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DashboardPage(
+          user: user,
+          onSignOut: () {},
+          adminController: adminController,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('dashboard-nav-bar')),
+        matching: find.text('Instituciones'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byTooltip('Clonar catalogo'));
+    await tester.tap(find.byTooltip('Clonar catalogo'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('¿Agregar la configuracion por defecto?'), findsOneWidget);
+
+    await tester.tap(find.text('No, solo habilitar las vacunas'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Clonar'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Catalogo clonado en "Hospital A"'),
+      findsOneWidget,
+    );
   });
 }

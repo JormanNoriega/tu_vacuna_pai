@@ -7,6 +7,9 @@ import '../../../../core/auth/offline_access.dart';
 import '../../../../core/network/network_info.dart';
 import '../../../admin/presentation/admin_controller.dart';
 import '../../../admin/presentation/pages/admin_page.dart';
+import '../../../admin/presentation/pages/create_institution_admin_page.dart';
+import '../../../admin/presentation/pages/create_institution_page.dart';
+import '../../../admin/presentation/pages/super_admin_users_page.dart';
 import '../../../auth/domain/entities/auth_user.dart';
 import '../../../auth/domain/entities/session_restore_result.dart';
 import '../../../users/presentation/pages/users_page.dart';
@@ -148,6 +151,29 @@ class _DashboardPageState extends State<DashboardPage> {
           )
           .toList();
 
+  List<_DashboardDestination> get _superAdminDestinations => const [
+    _DashboardDestination(
+      icon: Icons.space_dashboard_outlined,
+      selectedIcon: Icons.space_dashboard_rounded,
+      label: 'Inicio',
+    ),
+    _DashboardDestination(
+      icon: Icons.account_balance_outlined,
+      selectedIcon: Icons.account_balance_rounded,
+      label: 'Instituciones',
+    ),
+    _DashboardDestination(
+      icon: Icons.admin_panel_settings_outlined,
+      selectedIcon: Icons.admin_panel_settings_rounded,
+      label: 'Usuarios',
+    ),
+    _DashboardDestination(
+      icon: Icons.inventory_2_outlined,
+      selectedIcon: Icons.inventory_2_rounded,
+      label: 'Inventario',
+    ),
+  ];
+
   bool get _isSuperAdmin => widget.user.hasRole('SUPER_ADMIN');
 
   bool get _isSuperAdminView => _isSuperAdmin && widget.adminController != null;
@@ -159,7 +185,22 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildContent() {
     if (_isSuperAdminView) {
-      return AdminPage(controller: widget.adminController!, offline: _offline);
+      return switch (_selectedIndex) {
+        0 => _SuperAdminHome(
+          userName: widget.user.name,
+          controller: widget.adminController!,
+          offline: _offline,
+          onOpenCatalog: _openCatalog,
+          onSelectTab: _selectTab,
+        ),
+        1 => AdminPage(controller: widget.adminController!, offline: _offline),
+        2 => SuperAdminUsersPage(
+          controller: widget.adminController!,
+          offline: _offline,
+        ),
+        3 => _catalogContent(),
+        _ => const SizedBox.shrink(),
+      };
     }
 
     if (_destinations[_selectedIndex].isUsersManagement &&
@@ -186,9 +227,36 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  Widget _catalogContent() {
+    final catalogController = widget.catalogController;
+    if (catalogController == null) {
+      return const Center(child: Text('Inventario no disponible.'));
+    }
+    return CatalogPage(
+      user: widget.user,
+      controller: catalogController,
+      offline: _offline,
+    );
+  }
+
+  void _selectTab(int index) => setState(() => _selectedIndex = index);
+
+  void _openCatalog() {
+    final catalogController = widget.catalogController;
+    if (catalogController == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CatalogPage(
+          user: widget.user,
+          controller: catalogController,
+          offline: _offline,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isExpanded = MediaQuery.sizeOf(context).width >= 900;
     final content = _buildContent();
     final body = switch (widget.sessionStatus) {
       SessionStatus.offlineLocked => Column(
@@ -206,42 +274,35 @@ class _DashboardPageState extends State<DashboardPage> {
       SessionStatus.signedIn || SessionStatus.signedOut => content,
     };
 
-    // Para SUPER_ADMIN la vista es exclusivamente de administracion: no se
-    // muestran la barra de navegacion ni las acciones operativas de vacunador.
-    if (_isSuperAdminView) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Tu Vacuna PAI'),
-          actions: [
-            if (widget.catalogController != null)
-              IconButton(
-                tooltip: 'Inventario',
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => CatalogPage(
-                      user: widget.user,
-                      controller: widget.catalogController!,
-                      offline: _offline,
-                    ),
-                  ),
-                ),
-                icon: const Icon(Icons.inventory_2_outlined),
-              ),
-            IconButton(
-              tooltip: 'Cerrar sesion',
-              onPressed: widget.onSignOut,
-              icon: const Icon(Icons.logout_rounded),
-            ),
-            const SizedBox(width: 8),
-          ],
-        ),
-        body: body,
-      );
-    }
+    final destinations = _isSuperAdminView
+        ? _superAdminDestinations
+        : _destinations;
+    final selectedIndex = _selectedIndex.clamp(0, destinations.length - 1);
+    final current = destinations[selectedIndex];
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tu Vacuna PAI'),
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 2,
+        shadowColor: Colors.black.withValues(alpha: .1),
+        centerTitle: false,
+        iconTheme: const IconThemeData(color: AppColors.ink),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(current.selectedIcon, color: AppColors.primary, size: 24),
+            const SizedBox(width: 10),
+            Text(
+              current.label,
+              style: const TextStyle(
+                color: AppColors.ink,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: 'Cerrar sesion',
@@ -251,41 +312,523 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(width: 8),
         ],
       ),
-      body: Row(
-        children: [
-          if (isExpanded)
-            NavigationRail(
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: (value) =>
-                  setState(() => _selectedIndex = value),
-              labelType: NavigationRailLabelType.all,
-              destinations: [
-                for (final destination in _destinations)
-                  NavigationRailDestination(
-                    icon: Icon(destination.icon),
-                    selectedIcon: Icon(destination.selectedIcon),
-                    label: Text(destination.label),
+      body: body,
+      bottomNavigationBar: _LegacyNavBar(
+        destinations: destinations,
+        selectedIndex: selectedIndex,
+        onSelected: (value) => setState(() => _selectedIndex = value),
+      ),
+    );
+  }
+}
+
+/// Barra de navegacion inferior con el diseno de la app legacy: icono + etiqueta
+/// por destino, item seleccionado en color primario, presente en todos los
+/// tamanos de pantalla.
+class _LegacyNavBar extends StatelessWidget {
+  const _LegacyNavBar({
+    required this.destinations,
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final List<_DashboardDestination> destinations;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final isTablet = MediaQuery.sizeOf(context).width >= 768;
+    return Material(
+      key: const Key('dashboard-nav-bar'),
+      color: AppColors.surface,
+      surfaceTintColor: Colors.transparent,
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: .1),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(
+              color: AppColors.border.withValues(alpha: .5),
+              width: 0.5,
+            ),
+          ),
+        ),
+        child: SafeArea(
+          child: SizedBox(
+            height: isTablet ? 70 : 60,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                for (var i = 0; i < destinations.length; i++)
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => onSelected(i),
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.transparent,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            i == selectedIndex
+                                ? destinations[i].selectedIcon
+                                : destinations[i].icon,
+                            size: isTablet ? 30 : 26,
+                            color: i == selectedIndex
+                                ? AppColors.primary
+                                : Colors.grey,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            destinations[i].label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: isTablet ? 11 : 10,
+                              fontWeight: i == selectedIndex
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                              color: i == selectedIndex
+                                  ? AppColors.primary
+                                  : Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
               ],
             ),
-          Expanded(child: body),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SuperAdminHome extends StatefulWidget {
+  const _SuperAdminHome({
+    required this.userName,
+    required this.controller,
+    required this.offline,
+    required this.onOpenCatalog,
+    required this.onSelectTab,
+  });
+
+  final String userName;
+  final AdminController controller;
+  final OfflineAccess offline;
+  final VoidCallback onOpenCatalog;
+  final ValueChanged<int> onSelectTab;
+
+  @override
+  State<_SuperAdminHome> createState() => _SuperAdminHomeState();
+}
+
+class _SuperAdminHomeState extends State<_SuperAdminHome> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.loadInstitutions();
+  }
+
+  Future<void> _openCreateInstitution() async {
+    final created = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CreateInstitutionPage(
+          controller: widget.controller,
+          offline: widget.offline,
+        ),
+      ),
+    );
+    if (created != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Institucion "${created.name}" creada.')),
+      );
+    }
+  }
+
+  Future<void> _openCreateAdmin() async {
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => CreateInstitutionAdminPage(
+          controller: widget.controller,
+          offline: widget.offline,
+        ),
+      ),
+    );
+    if (created == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Usuario admin creado correctamente.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final horizontalPadding = constraints.maxWidth >= 700 ? 32.0 : 16.0;
+        final twoColumns = constraints.maxWidth >= 640;
+        return SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            horizontalPadding,
+            20,
+            horizontalPadding,
+            32,
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1120),
+              child: AnimatedBuilder(
+                animation: widget.controller,
+                builder: (context, _) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _SuperHero(userName: widget.userName),
+                      const SizedBox(height: 24),
+                      _SuperStats(
+                        institutions: widget.controller.institutions.length,
+                        admins: widget.controller.admins.length,
+                        activeInstitutions: widget.controller.institutions
+                            .where((institution) => institution.isActive)
+                            .length,
+                        twoColumns: twoColumns,
+                      ),
+                      const SizedBox(height: 32),
+                      Text(
+                        'Acciones rapidas',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 16),
+                      _SuperActions(
+                        onCreateInstitution: _openCreateInstitution,
+                        onCreateAdmin: _openCreateAdmin,
+                        onOpenCatalog: widget.onOpenCatalog,
+                        onOpenUsers: () => widget.onSelectTab(2),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SuperHero extends StatelessWidget {
+  const _SuperHero({required this.userName});
+
+  final String userName;
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = userName.isEmpty
+        ? '?'
+        : userName
+              .split(' ')
+              .where((part) => part.isNotEmpty)
+              .take(2)
+              .map((part) => part[0].toUpperCase())
+              .join();
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary, Color(0xFF3E7BFA)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: .3),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
         ],
       ),
-      bottomNavigationBar: isExpanded
-          ? null
-          : NavigationBar(
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: (value) =>
-                  setState(() => _selectedIndex = value),
-              destinations: [
-                for (final destination in _destinations)
-                  NavigationDestination(
-                    icon: Icon(destination.icon),
-                    selectedIcon: Icon(destination.selectedIcon),
-                    label: destination.label,
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: Colors.white.withValues(alpha: .2),
+            foregroundColor: Colors.white,
+            child: Text(
+              initials,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hola, ${userName.split(' ').first}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
                   ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Panel de control global del sistema',
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                ),
               ],
             ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: .18),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withValues(alpha: .3)),
+            ),
+            child: const Text(
+              'SUPER ADMIN',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: .6,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SuperStats extends StatelessWidget {
+  const _SuperStats({
+    required this.institutions,
+    required this.admins,
+    required this.activeInstitutions,
+    required this.twoColumns,
+  });
+
+  final int institutions;
+  final int admins;
+  final int activeInstitutions;
+  final bool twoColumns;
+
+  @override
+  Widget build(BuildContext context) {
+    final stats = [
+      (
+        icon: Icons.account_balance_outlined,
+        value: '$institutions',
+        label: 'Instituciones',
+        color: AppColors.primary,
+      ),
+      (
+        icon: Icons.admin_panel_settings_outlined,
+        value: '$admins',
+        label: 'Administradores',
+        color: AppColors.success,
+      ),
+      (
+        icon: Icons.check_circle_outline,
+        value: '$activeInstitutions',
+        label: 'Activas',
+        color: AppColors.warning,
+      ),
+    ];
+
+    final children = [
+      for (final stat in stats)
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: stat.color.withValues(alpha: .1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(stat.icon, color: stat.color),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        stat.value,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        stat.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.slate,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+    ];
+
+    if (!twoColumns) {
+      return Column(
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) const SizedBox(height: 12),
+            children[i],
+          ],
+        ],
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0) const SizedBox(width: 12),
+          Expanded(child: children[i]),
+        ],
+      ],
+    );
+  }
+}
+
+class _SuperActions extends StatelessWidget {
+  const _SuperActions({
+    required this.onCreateInstitution,
+    required this.onCreateAdmin,
+    required this.onOpenCatalog,
+    required this.onOpenUsers,
+  });
+
+  final VoidCallback onCreateInstitution;
+  final VoidCallback onCreateAdmin;
+  final VoidCallback onOpenCatalog;
+  final VoidCallback onOpenUsers;
+
+  @override
+  Widget build(BuildContext context) {
+    final actions = [
+      (
+        icon: Icons.account_balance_rounded,
+        label: 'Crear institucion',
+        description: 'Registra una institucion de salud',
+        primary: true,
+        onTap: onCreateInstitution,
+      ),
+      (
+        icon: Icons.admin_panel_settings_rounded,
+        label: 'Crear admin',
+        description: 'Admin de institucion',
+        primary: false,
+        onTap: onCreateAdmin,
+      ),
+      (
+        icon: Icons.inventory_2_outlined,
+        label: 'Ver inventario',
+        description: 'Catalogo global de vacunas',
+        primary: false,
+        onTap: onOpenCatalog,
+      ),
+      (
+        icon: Icons.people_alt_outlined,
+        label: 'Gestionar usuarios',
+        description: 'Administradores por institucion',
+        primary: false,
+        onTap: onOpenUsers,
+      ),
+    ];
+
+    final children = [
+      for (final action in actions)
+        Card(
+          color: action.primary ? AppColors.primary : AppColors.surface,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: action.onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Icon(
+                    action.icon,
+                    color: action.primary ? Colors.white : AppColors.primary,
+                    size: 28,
+                  ),
+                  const SizedBox(height: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        action.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: action.primary ? Colors.white : AppColors.ink,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        action.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: action.primary
+                              ? Colors.white70
+                              : AppColors.slate,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+    ];
+
+    // Grid responsivo con igual altura en todas las tarjetas: 4 columnas en
+    // superficies amplias y 2 en movil/tablet, con proporcion adaptativa para
+    // evitar desbordes del texto inferior.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final columns = width >= 960 ? 4 : 2;
+        final childAspectRatio = width >= 768
+            ? 1.2
+            : (width >= 600 ? 1.0 : 0.95);
+        return GridView.count(
+          crossAxisCount: columns,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: childAspectRatio,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: children,
+        );
+      },
     );
   }
 }

@@ -30,7 +30,12 @@ enum OfflineReason {
 
 /// Resultado de la restauracion de sesion al arrancar.
 class SessionRestoreResult {
-  const SessionRestoreResult._(this.status, this.user, this.offlineReason);
+  const SessionRestoreResult._(
+    this.status,
+    this.user,
+    this.offlineReason,
+    this.blockedMessage,
+  );
 
   final SessionStatus status;
 
@@ -42,19 +47,46 @@ class SessionRestoreResult {
   /// offlineAuthorized u offlineLocked.
   final OfflineReason? offlineReason;
 
+  /// Aviso claro para la pantalla de login cuando una sesion no pudo
+  /// restaurarse porque el rol requiere conexion (p. ej. un administrador sin
+  /// validacion online exitosa). Solo es relevante cuando [status] es
+  /// signedOut.
+  final String? blockedMessage;
+
   factory SessionRestoreResult.signedIn(AuthUser user) =>
-      SessionRestoreResult._(SessionStatus.signedIn, user, null);
+      SessionRestoreResult._(SessionStatus.signedIn, user, null, null);
 
   factory SessionRestoreResult.signedOut() =>
-      const SessionRestoreResult._(SessionStatus.signedOut, null, null);
+      const SessionRestoreResult._(SessionStatus.signedOut, null, null, null);
+
+  /// Un rol online-first (ADMIN_INSTITUTION, SUPER_ADMIN) no pudo validarse en
+  /// linea: no entra a la ventana offline, se devuelve al login con un aviso.
+  /// La sesion almacenada se conserva para restaurar online en el proximo
+  /// arranque con conectividad.
+  factory SessionRestoreResult.adminBlocked(OfflineReason reason) =>
+      SessionRestoreResult._(
+        SessionStatus.signedOut,
+        null,
+        reason,
+        reason == OfflineReason.noNetwork
+            ? 'Para iniciar sesion como administrador necesitas conexion a '
+                  'Internet. Verifica tu red e intentalo de nuevo.'
+            : 'El servidor no esta disponible. Los administradores deben '
+                  'iniciar sesion en linea; intentalo de nuevo en un momento.',
+      );
 
   factory SessionRestoreResult.offlineAuthorized(
     AuthUser user, {
     OfflineReason reason = OfflineReason.noNetwork,
-  }) => SessionRestoreResult._(SessionStatus.offlineAuthorized, user, reason);
+  }) => SessionRestoreResult._(
+    SessionStatus.offlineAuthorized,
+    user,
+    reason,
+    null,
+  );
 
   factory SessionRestoreResult.offlineLocked(
     AuthUser user, {
     OfflineReason reason = OfflineReason.noNetwork,
-  }) => SessionRestoreResult._(SessionStatus.offlineLocked, user, reason);
+  }) => SessionRestoreResult._(SessionStatus.offlineLocked, user, reason, null);
 }

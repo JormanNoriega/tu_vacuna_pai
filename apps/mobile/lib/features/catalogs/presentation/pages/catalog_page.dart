@@ -186,6 +186,7 @@ class _CatalogPageState extends State<CatalogPage> {
                   onSelected: (value) {
                     if (value == 'edit' && globalAdmin) _form(v);
                     if (value == 'toggle' && institutionAdmin) _toggle(v);
+                    if (value == 'options') _options(v);
                   },
                   itemBuilder: (_) => [
                     if (globalAdmin)
@@ -197,6 +198,11 @@ class _CatalogPageState extends State<CatalogPage> {
                       PopupMenuItem(
                         value: 'toggle',
                         child: Text('Cambiar disponibilidad'),
+                      ),
+                    if (globalAdmin || institutionAdmin)
+                      const PopupMenuItem(
+                        value: 'options',
+                        child: Text('Opciones clinicas y operativas'),
                       ),
                   ],
                 ),
@@ -263,15 +269,7 @@ class _CatalogPageState extends State<CatalogPage> {
               ),
             ),
           ],
-          if (globalAdmin || institutionAdmin)
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () => _options(v),
-                icon: const Icon(Icons.tune),
-                label: const Text('Opciones clinicas y operativas'),
-              ),
-            ),
+          _doseSummary(v),
         ],
       ),
     ),
@@ -295,6 +293,32 @@ class _CatalogPageState extends State<CatalogPage> {
     side: const BorderSide(color: AppColors.border),
     labelStyle: const TextStyle(fontSize: 11),
   );
+
+  Widget _doseSummary(Vaccine vaccine) {
+    final doses = widget.controller.doseOptions[vaccine.id] ?? const [];
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(Icons.format_list_numbered, size: 18),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              doses.isEmpty
+                  ? 'Dosis: sin opciones configuradas'
+                  : 'Dosis: ${doses.map((dose) => dose.displayName).join('  |  ')}',
+              style: const TextStyle(color: AppColors.slate, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   bool _hasFeature(Vaccine v) =>
       v.hasLaboratory ||
       v.hasLot ||
@@ -585,7 +609,7 @@ class _CatalogPageState extends State<CatalogPage> {
           autofocus: true,
           decoration: const InputDecoration(labelText: 'Nombre o valor'),
         ),
-          actions: [
+        actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancelar'),

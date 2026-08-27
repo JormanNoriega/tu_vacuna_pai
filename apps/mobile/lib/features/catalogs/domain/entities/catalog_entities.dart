@@ -50,6 +50,15 @@ class Vaccine {
     maxAgeMonths: (json['maxAgeMonths'] as num?)?.toInt(),
     active: json['active'] as bool? ?? true,
     version: (json['version'] as num?)?.toInt() ?? 0,
+    hasLaboratory: json['hasLaboratory'] as bool? ?? false,
+    hasLot: json['hasLot'] as bool? ?? true,
+    hasSyringe: json['hasSyringe'] as bool? ?? false,
+    hasSyringeLot: json['hasSyringeLot'] as bool? ?? false,
+    hasDiluent: json['hasDiluent'] as bool? ?? false,
+    hasDropper: json['hasDropper'] as bool? ?? false,
+    hasPneumococcalType: json['hasPneumococcalType'] as bool? ?? false,
+    hasVialCount: json['hasVialCount'] as bool? ?? false,
+    hasObservation: json['hasObservation'] as bool? ?? false,
   );
 }
 

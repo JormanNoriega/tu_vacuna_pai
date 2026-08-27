@@ -97,6 +97,13 @@ La politica offline aplica por capacidad y rol. Solo `VACCINATOR` puede crear
 operaciones clinicas offline. `ADMIN_INSTITUTION`, `SUPER_ADMIN` y las
 operaciones administrativas requieren conectividad.
 
+`ADMIN_INSTITUTION` y `SUPER_ADMIN` son online-first de forma estricta: si al
+restaurar la sesion no hay conectividad o el backend no responde, no entran a la
+ventana offline. La sesion se restaura como cerrada y se muestra el login con un
+aviso claro. La sesion almacenada se conserva para restaurar online en el
+proximo arranque con conectividad. Los dos flujos (admin online-only y
+vaccinator con ventana offline) son independientes.
+
 ### Reconexion
 
 Al detectar conectividad, Flutter ejecuta las acciones en este orden:

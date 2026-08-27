@@ -266,7 +266,31 @@ POST /api/v1/institutions/{institutionId}/vaccines/{vaccineId}/disable
 
 Solo cambia `is_enabled`. No elimina la relacion ni sus opciones locales.
 
-### 4.4 Editar configuracion local
+### 4.4 Clonar el catalogo a una institucion
+
+```http
+POST /api/v1/institutions/{institutionId}/vaccines/clone
+Body: { "includeDefaultConfig": true }
+```
+
+Accion administrativa global (requiere `CATALOG_CONFIG_WRITE`) que habilita todas
+las vacunas activas del catalogo global en la institucion:
+
+- Por cada vacuna activa ejecuta `INSERT ... ON CONFLICT DO NOTHING` en
+  `institution_vaccines` (misma garantia de concurrencia que el enable).
+- Si la relacion no existia y `includeDefaultConfig = true`, copia las opciones
+  activas del template como configuracion por defecto (laboratorio, jeringa,
+  gotero y observacion), con `is_default = false`.
+- Si `includeDefaultConfig = false`, solo crea las relaciones: la institucion
+  configura sus opciones luego (o usa `import-suggested-options` por vacuna).
+- Si la relacion ya existia deshabilitada, se reactiva sin volver a copiar
+  opciones. Nunca sobrescribe ediciones locales.
+- Responde un resumen: `{ vaccinesEnabled, optionsCopied, vaccinesTotal }`.
+
+El clonado es idempotente: ejecutarlo dos veces no duplica relaciones ni
+opciones.
+
+### 4.5 Editar configuracion local
 
 `ADMIN_INSTITUTION` puede editar, ordenar, activar, desactivar o crear opciones
 locales. Las escrituras requieren conectividad y validan `version` mediante
@@ -283,7 +307,7 @@ Al marcar una opcion como default, el servicio:
 Si la version enviada no coincide, responde `409 CONFLICT` y no sobrescribe el
 cambio de otro administrador.
 
-### 4.5 Importar sugerencias posteriores
+### 4.6 Importar sugerencias posteriores
 
 ```http
 GET  /api/v1/institutions/{institutionId}/vaccines/{vaccineId}/suggested-options

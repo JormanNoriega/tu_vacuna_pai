@@ -163,7 +163,7 @@ void main() {
     },
   );
 
-  test('mantiene online a un admin cuando el backend falla con 5xx', () async {
+  test('no deja entrar a un admin cuando el backend falla con 5xx', () async {
     sessionManager.data = storedSession();
     await store.saveProfile(
       profile(
@@ -179,8 +179,10 @@ void main() {
 
     final result = await repository.restoreSession();
 
-    expect(result.status, SessionStatus.signedIn);
-    expect(result.user!.roles, contains('ADMIN_INSTITUTION'));
+    expect(result.status, SessionStatus.signedOut);
+    expect(result.blockedMessage, isNotNull);
+    // La sesion almacenada se conserva para restaurar online mas adelante.
+    expect(sessionManager.data, isNotNull);
   });
 
   test(
@@ -202,25 +204,24 @@ void main() {
     },
   );
 
-  test(
-    'ventana vencida con backend caido queda en solo lectura',
-    () async {
-      sessionManager.data = storedSession();
-      await store.saveProfile(
-        profile(lastOnlineValidation: DateTime.now().subtract(const Duration(days: 10))),
-      );
-      final repository = build(
-        httpClient: MockClient((request) async {
-          return http.Response('server error', 500);
-        }),
-      );
+  test('ventana vencida con backend caido queda en solo lectura', () async {
+    sessionManager.data = storedSession();
+    await store.saveProfile(
+      profile(
+        lastOnlineValidation: DateTime.now().subtract(const Duration(days: 10)),
+      ),
+    );
+    final repository = build(
+      httpClient: MockClient((request) async {
+        return http.Response('server error', 500);
+      }),
+    );
 
-      final result = await repository.restoreSession();
+    final result = await repository.restoreSession();
 
-      expect(result.status, SessionStatus.offlineLocked);
-      expect(result.offlineReason, OfflineReason.backendUnavailable);
-    },
-  );
+    expect(result.status, SessionStatus.offlineLocked);
+    expect(result.offlineReason, OfflineReason.backendUnavailable);
+  });
 
   test('sin conectividad un vaccinator usa la ventana offline', () async {
     sessionManager.data = storedSession();
@@ -238,7 +239,7 @@ void main() {
     expect(result.offlineReason, OfflineReason.noNetwork);
   });
 
-  test('sin conectividad un admin permanece online', () async {
+  test('no deja entrar a un admin sin conectividad', () async {
     sessionManager.data = storedSession();
     await store.saveProfile(
       profile(
@@ -255,7 +256,32 @@ void main() {
 
     final result = await repository.restoreSession();
 
+    expect(result.status, SessionStatus.signedOut);
+    expect(result.blockedMessage, isNotNull);
+  });
+
+  test('un admin entra online cuando el backend responde', () async {
+    sessionManager.data = storedSession();
+    await store.saveProfile(
+      profile(
+        roles: const ['SUPER_ADMIN'],
+        permissions: const ['INSTITUTION_WRITE'],
+      ),
+    );
+    final repository = build(
+      httpClient: MockClient((request) async {
+        return http.Response(
+          jsonEncode(meJson(roles: const ['SUPER_ADMIN'])),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+
+    final result = await repository.restoreSession();
+
     expect(result.status, SessionStatus.signedIn);
+    expect(result.user!.roles, contains('SUPER_ADMIN'));
   });
 
   test(

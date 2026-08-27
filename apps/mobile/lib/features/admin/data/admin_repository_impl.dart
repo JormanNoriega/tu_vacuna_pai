@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import '../domain/entities/clone_catalog_result.dart';
 import '../domain/entities/institution.dart';
 import '../domain/entities/institution_admin.dart';
 import '../domain/repositories/admin_repository.dart';
@@ -76,5 +77,19 @@ class AdminRepositoryImpl implements AdminRepository {
       offlineWindowHours: offlineWindowHours,
     );
     return Institution.fromJson(json);
+  }
+
+  @override
+  Future<CloneCatalogResult> cloneCatalogToInstitution(
+    String accessToken, {
+    required String institutionId,
+    required bool includeDefaultConfig,
+  }) async {
+    final json = await _apiClient.cloneCatalogToInstitution(
+      accessToken,
+      institutionId,
+      includeDefaultConfig: includeDefaultConfig,
+    );
+    return CloneCatalogResult.fromJson(json);
   }
 }

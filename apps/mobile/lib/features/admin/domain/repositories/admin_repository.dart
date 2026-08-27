@@ -1,3 +1,4 @@
+import '../entities/clone_catalog_result.dart';
 import '../entities/institution.dart';
 import '../entities/institution_admin.dart';
 
@@ -34,5 +35,12 @@ abstract interface class AdminRepository {
     String accessToken, {
     required String institutionId,
     required int offlineWindowHours,
+  });
+
+  /// Clona el catalogo global hacia una institucion (online-first).
+  Future<CloneCatalogResult> cloneCatalogToInstitution(
+    String accessToken, {
+    required String institutionId,
+    required bool includeDefaultConfig,
   });
 }
