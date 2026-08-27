@@ -1,0 +1,1068 @@
+[
+    {
+        "name":  "COVID-19",
+        "code":  "covid19",
+        "category":  "todas",
+        "maxDoses":  6,
+        "minMonths":  null,
+        "maxMonths":  null,
+        "flags":  [
+                      true,
+                      true,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Primera dosis",
+                                           "Segunda dosis",
+                                           "Unica",
+                                           "Refuerzo",
+                                           "2do refuerzo - Res419",
+                                           "2do refuerzo",
+                                           "Dosis Adicional"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "laboratory",
+                            "values":  [
+                                           "PFIZER",
+                                           "ASTRAZENECA",
+                                           "MODERNA 0,25",
+                                           "MODERNA 0,5",
+                                           "SINOVAC",
+                                           "JANSSEN"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa23G1_convencional_covid19",
+                                           "Jeringa22G1_media_pulg_convencional_covid19"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "BCG",
+        "code":  "bcg",
+        "category":  "infantil",
+        "maxDoses":  1,
+        "minMonths":  "0",
+        "maxMonths":  "6",
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      true
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Unica"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_26G_Tres_Octavos_Pulg_AD",
+                                           "Jeringa_Desechable_26G_Tres_Octavos_Pulg_Convencional",
+                                           "Jeringa_Desechable_27G_Tres_Octavos_Pulg"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "observation",
+                            "values":  [
+                                           "POBLACION INDIGENA Y RURAL DISPERSA",
+                                           "CONTACTOS DE HANSEN"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Hepatitis B",
+        "code":  "hepatitis_b",
+        "category":  "infantil",
+        "maxDoses":  4,
+        "minMonths":  "0",
+        "maxMonths":  "216",
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false,
+                      true
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "RECIEN NACIDO",
+                                           "Primera dosis",
+                                           "Segunda dosis",
+                                           "Tercera dosis",
+                                           "Adiccional"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_22G1_Media_Pulg_AD",
+                                           "Jeringa_Desechable_22G1_Media_Pulg_Convencional",
+                                           "Jeringa_Desechable_23G1_Pulg_AD",
+                                           "Jeringa_Desechable_23G1_Pulg_Convencional"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "observation",
+                            "values":  [
+                                           "ANTES DE 12 HORAS",
+                                           "DESPÚES DE 12 HORAS",
+                                           "(ICBF)",
+                                           "RESOLUCION. 0459/2012 y Circular 031/14",
+                                           "HOMBRES QUE TIENEN SEXO CON HOMBRES. PRIO",
+                                           "PERSONAS QUE EJERCEN ACTIVIDADES SEXUALES PAGAS. PRIO",
+                                           "MUJERES TRANSGENERO. PRIO",
+                                           "PERSONAS QUE SE INYECTAN DROGAS. PRIO",
+                                           "HABITANTES DE CALLE. PRIO",
+                                           "INDIGENAS. PRIO"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Polio Inactivado (IPV)",
+        "code":  "polio_ipv",
+        "category":  "infantil",
+        "maxDoses":  5,
+        "minMonths":  "0",
+        "maxMonths":  "60",
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false,
+                      true
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Primera dosis",
+                                           "Segunda dosis",
+                                           "Tercera dosis",
+                                           "Primer Refuerzo",
+                                           "Segundo Refuerzo"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_23G1_Pulg_AD",
+                                           "Jeringa_Desechable_23G1_Pulg_Convencional"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "observation",
+                            "values":  [
+                                           "AUTORIZADAS POR EL MINISTERIO"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Polio Oral (OPV)",
+        "code":  "polio_oral",
+        "category":  "infantil",
+        "maxDoses":  1,
+        "minMonths":  "0",
+        "maxMonths":  "60",
+        "flags":  [
+                      false,
+                      true,
+                      false,
+                      false,
+                      false,
+                      true,
+                      false,
+                      false,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Segundo Refuerzo"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "dropper",
+                            "values":  [
+                                           "Desechado"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Pentavalente (DPT+HB+Hib)",
+        "code":  "pentavalente",
+        "category":  "infantil",
+        "maxDoses":  5,
+        "minMonths":  "0",
+        "maxMonths":  "24",
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false,
+                      true
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Primera dosis",
+                                           "Segunda dosis",
+                                           "Tercera dosis",
+                                           "Primer Refuerzo",
+                                           "Segundo Refuerzo"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_23G1_Pulg_AD",
+                                           "Jeringa_Desechable_23G1_Pulg_Convencional"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "observation",
+                            "values":  [
+                                           "AUTORIZADAS POR EL MINISTERIO"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Hexavalente",
+        "code":  "hexavalente",
+        "category":  "infantil",
+        "maxDoses":  3,
+        "minMonths":  "0",
+        "maxMonths":  "24",
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Primera dosis",
+                                           "Segunda dosis",
+                                           "Tercera dosis"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_23G1_Pulg_AD",
+                                           "Jeringa_Desechable_23G1_Pulg_Convencional"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "DPT (Difteria, Tos ferina, Tétanos)",
+        "code":  "dpt",
+        "category":  "infantil",
+        "maxDoses":  5,
+        "minMonths":  "0",
+        "maxMonths":  "84",
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Primera dosis",
+                                           "Segunda dosis",
+                                           "Tercera dosis",
+                                           "Primer Refuerzo",
+                                           "Segundo Refuerzo"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_23G1_Pulg_AD",
+                                           "Jeringa_Desechable_23G1_Pulg_Convencional"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "DTPa Pediátrico",
+        "code":  "dtpa_pediatrico",
+        "category":  "infantil",
+        "maxDoses":  5,
+        "minMonths":  "0",
+        "maxMonths":  "84",
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Primera dosis",
+                                           "Segunda dosis",
+                                           "Tercera dosis",
+                                           "Primer Refuerzo",
+                                           "Segundo Refuerzo"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_23G1_Pulg_AD",
+                                           "Jeringa_Desechable_23G1_Pulg_Convencional"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "TD Pediátrico",
+        "code":  "td_pediatrico",
+        "category":  "infantil",
+        "maxDoses":  5,
+        "minMonths":  "0",
+        "maxMonths":  "84",
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Primera dosis",
+                                           "Segunda dosis",
+                                           "Tercera dosis",
+                                           "Primer Refuerzo",
+                                           "Segundo Refuerzo"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_23G1_Pulg_AD",
+                                           "Jeringa_Desechable_23G1_Pulg_Convencional"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Rotavirus",
+        "code":  "rotavirus",
+        "category":  "infantil",
+        "maxDoses":  2,
+        "minMonths":  "0",
+        "maxMonths":  "6",
+        "flags":  [
+                      false,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false,
+                      false,
+                      false,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Primera dosis",
+                                           "Segunda dosis"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Neumococo Conjugada",
+        "code":  "neumococo",
+        "category":  "infantil",
+        "maxDoses":  4,
+        "minMonths":  "0",
+        "maxMonths":  "60",
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      true,
+                      false,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "pneumococcalType",
+                            "values":  [
+                                           "DECAVALENTE",
+                                           "TRECEVALENTE"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Primera dosis",
+                                           "Segunda dosis",
+                                           "Primer Refuerzo",
+                                           "Unica"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_23G1_Pulg_AD",
+                                           "Jeringa_Desechable_23G1_Pulg_Convencional"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Triple Viral (SRP)",
+        "code":  "srp",
+        "category":  "infantil",
+        "maxDoses":  2,
+        "minMonths":  "12",
+        "maxMonths":  "60",
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Primera dosis",
+                                           "Refuerzo"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_25G_Cinco_Octavos_Pulg_AD",
+                                           "Jeringa_Desechable_25G_Cinco_Octavos_Pulg_Convencional"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Sarampión Rubeola (SR) Multidosis",
+        "code":  "sr_multidosis",
+        "category":  "infantil",
+        "maxDoses":  2,
+        "minMonths":  null,
+        "maxMonths":  null,
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Unica",
+                                           "Cero"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_25G_Cinco_Octavos_Pulg_AD",
+                                           "Jeringa_Desechable_25G_Cinco_Octavos_Pulg_Convencional"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Fiebre Amarilla",
+        "code":  "fiebre_amarilla",
+        "category":  "todas",
+        "maxDoses":  1,
+        "minMonths":  "12",
+        "maxMonths":  null,
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Unica"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_25G_Cinco_Octavos_Pulg_AD",
+                                           "Jeringa_Desechable_25G_Cinco_Octavos_Pulg_Convencional"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Hepatitis A Pediátrica",
+        "code":  "hepatitis_a_pediatrica",
+        "category":  "infantil",
+        "maxDoses":  1,
+        "minMonths":  "0",
+        "maxMonths":  "144",
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Unica"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_23G1_Pulg_AD",
+                                           "Jeringa_Desechable_23G1_Pulg_Convencional"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Varicela",
+        "code":  "varicela",
+        "category":  "infantil",
+        "maxDoses":  2,
+        "minMonths":  "12",
+        "maxMonths":  "120",
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Primera dosis",
+                                           "Refuerzo"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_25G_Cinco_Octavos_Pulg_AD",
+                                           "Jeringa_Desechable_25G_Cinco_Octavos_Pulg_Convencional"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Toxoide Tetánico Diftérico (TD) Adulto",
+        "code":  "td_adulto",
+        "category":  "adulto",
+        "maxDoses":  9,
+        "minMonths":  "84",
+        "maxMonths":  null,
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Primera dosis",
+                                           "Segunda dosis",
+                                           "Tercera dosis",
+                                           "Cuarta dosis",
+                                           "Quinta dosis",
+                                           "Primer Refuerzo",
+                                           "Segundo Refuerzo",
+                                           "Tercer Refuerzo",
+                                           "Cuarto Refuerzo"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_22G1_Media_Pulg_AD",
+                                           "Jeringa_Desechable_22G1_Media_Pulg_Convencional"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "dTpa Adulto",
+        "code":  "dtpa_adulto",
+        "category":  "adulto",
+        "maxDoses":  6,
+        "minMonths":  "84",
+        "maxMonths":  null,
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Primera dosis",
+                                           "Segunda dosis",
+                                           "Tercera dosis",
+                                           "Cuarta dosis",
+                                           "Quinta dosis",
+                                           "Unica"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_22G1_Media_Pulg_AD",
+                                           "Jeringa_Desechable_22G1_Media_Pulg_Convencional"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Influenza",
+        "code":  "influenza",
+        "category":  "todas",
+        "maxDoses":  99,
+        "minMonths":  "6",
+        "maxMonths":  null,
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false,
+                      true
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Primera dosis",
+                                           "Segunda dosis",
+                                           "Unica 0,25",
+                                           "Unica 0,5"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_22G1_Media_Pulg_AD",
+                                           "Jeringa_Desechable_22G1_Media_Pulg_Convencional",
+                                           "Jeringa_Desechable_23G1_Pulg_AD",
+                                           "Jeringa_Desechable_23G1_Pulg_Convencional"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "observation",
+                            "values":  [
+                                           "DIAGNÓSTICO DE RIESGO",
+                                           "Poblaciones autorizadas MSPS",
+                                           "TALENTO HUMANO EN SALUD"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "VPH (Virus del Papiloma Humano)",
+        "code":  "vph",
+        "category":  "adolescente",
+        "maxDoses":  3,
+        "minMonths":  "108",
+        "maxMonths":  "204",
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Primera dosis",
+                                           "Segunda dosis",
+                                           "Tercera dosis",
+                                           "Dosis Unica"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_22G1_Media_Pulg_AD",
+                                           "Jeringa_Desechable_22G1_Media_Pulg_Convencional",
+                                           "Jeringa_Desechable_23G1_Pulg_AD",
+                                           "Jeringa_Desechable_23G1_Pulg_Convencional"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Antirrábica Humana (Vacuna)",
+        "code":  "antirrabica_vacuna",
+        "category":  "especial",
+        "maxDoses":  6,
+        "minMonths":  null,
+        "maxMonths":  null,
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      true
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Primera dosis",
+                                           "Segunda dosis",
+                                           "Tercera dosis",
+                                           "Cuarta dosis"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_22G1_Media_Pulg_AD",
+                                           "Jeringa_Desechable_22G1_Media_Pulg_Convencional"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "observation",
+                            "values":  [
+                                           "PRE EXPOSICIÓN OPCION 1 (I.D.)",
+                                           "PRE EXPOSICIÓN OPCION 2 (I.M.)",
+                                           "POS EXPOSICIÓN NORMAL"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Antirrábico Humano (Suero)",
+        "code":  "antirrabico_suero",
+        "category":  "especial",
+        "maxDoses":  1,
+        "minMonths":  null,
+        "maxMonths":  null,
+        "flags":  [
+                      false,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false,
+                      false,
+                      true,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Única"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Hepatitis B (Inmunoglobulina)",
+        "code":  "hepatitis_b_inmunoglobulina",
+        "category":  "especial",
+        "maxDoses":  1,
+        "minMonths":  null,
+        "maxMonths":  null,
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      true,
+                      true
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_22G1_Media_Pulg_AD",
+                                           "Jeringa_Desechable_22G1_Media_Pulg_Convencional",
+                                           "Jeringa_Desechable_23G1_Pulg_AD",
+                                           "Jeringa_Desechable_23G1_Pulg_Convencional"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Única"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "observation",
+                            "values":  [
+                                           "ANTES DE 12 HORAS",
+                                           "DESPÚES DE 12 HORAS",
+                                           "RESOLUCION 0459/2012- circular 031/14"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Inmunoglobulina Antitetánica (Suero Homólogo)",
+        "code":  "inmunoglobulina_antitetanica",
+        "category":  "especial",
+        "maxDoses":  1,
+        "minMonths":  null,
+        "maxMonths":  null,
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      true,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Única"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_22G1_Media_Pulg_AD",
+                                           "Jeringa_Desechable_22G1_Media_Pulg_Convencional",
+                                           "Jeringa_Desechable_23G1_Pulg_AD",
+                                           "Jeringa_Desechable_23G1_Pulg_Convencional",
+                                           "Jeringa_Desechable_25G_Cinco_Octavos_Pulg_AD",
+                                           "Jeringa_Desechable_25G_Cinco_Octavos_Pulg_Convencional",
+                                           "Jeringa_Desechable_26G_Tres_Octavos_Pulg_AD",
+                                           "Jeringa_Desechable_26G_Tres_Octavos_Pulg_Convencional",
+                                           "Jeringa_Desechable_27G_Tres_Octavos_Pulg"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Antitoxina Tetánica (Suero Heterólogo)",
+        "code":  "antitoxina_tetanica",
+        "category":  "especial",
+        "maxDoses":  1,
+        "minMonths":  null,
+        "maxMonths":  null,
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      true,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Única"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_22G1_Media_Pulg_AD",
+                                           "Jeringa_Desechable_22G1_Media_Pulg_Convencional",
+                                           "Jeringa_Desechable_23G1_Pulg_AD",
+                                           "Jeringa_Desechable_23G1_Pulg_Convencional",
+                                           "Jeringa_Desechable_25G_Cinco_Octavos_Pulg_AD",
+                                           "Jeringa_Desechable_25G_Cinco_Octavos_Pulg_Convencional",
+                                           "Jeringa_Desechable_26G_Tres_Octavos_Pulg_AD",
+                                           "Jeringa_Desechable_26G_Tres_Octavos_Pulg_Convencional",
+                                           "Jeringa_Desechable_27G_Tres_Octavos_Pulg"
+                                       ]
+                        }
+                    ]
+    },
+    {
+        "name":  "Meningococo (Serogrupos A, C, W-135, Y)",
+        "code":  "meningococo",
+        "category":  "todas",
+        "maxDoses":  4,
+        "minMonths":  null,
+        "maxMonths":  null,
+        "flags":  [
+                      false,
+                      true,
+                      true,
+                      true,
+                      true,
+                      false,
+                      false,
+                      false,
+                      false
+                  ],
+        "options":  [
+                        {
+                            "fieldType":  "dose",
+                            "values":  [
+                                           "Primera dosis",
+                                           "Segunda dosis",
+                                           "Tercera dosis",
+                                           "Unica"
+                                       ]
+                        },
+                        {
+                            "fieldType":  "syringe",
+                            "values":  [
+                                           "Jeringa_Desechable_23G1_Pulg_AD",
+                                           "Jeringa_Desechable_23G1_Pulg_Convencional"
+                                       ]
+                        }
+                    ]
+    }
+]

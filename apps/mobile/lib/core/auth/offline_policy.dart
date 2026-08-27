@@ -20,6 +20,14 @@ enum OperationPermission {
   updateInstitutionConfig(
     requiredPermission: 'INSTITUTION_WRITE',
     offlineAuthorized: false,
+  ),
+  catalogGlobalWrite(
+    requiredPermission: 'CATALOG_GLOBAL_WRITE',
+    offlineAuthorized: false,
+  ),
+  catalogConfigWrite(
+    requiredPermission: 'CATALOG_CONFIG_WRITE',
+    offlineAuthorized: false,
   );
 
   const OperationPermission({

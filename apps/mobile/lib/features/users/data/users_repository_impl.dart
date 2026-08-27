@@ -18,12 +18,30 @@ class UsersRepositoryImpl implements UsersRepository {
     required String email,
     required String fullName,
     required String temporaryPassword,
+    required String operationId,
+    required String documentType,
+    required String documentNumber,
+    String? phone,
+    String? birthDate,
+    String? gender,
+    required String professionCode,
+    String? professionalRegistrationNumber,
+    String? professionalRegistrationType,
   }) async {
     final json = await _apiClient.createVaccinator(
       accessToken,
       email: email,
       fullName: fullName,
       temporaryPassword: temporaryPassword,
+      operationId: operationId,
+      documentType: documentType,
+      documentNumber: documentNumber,
+      phone: phone,
+      birthDate: birthDate,
+      gender: gender,
+      professionCode: professionCode,
+      professionalRegistrationNumber: professionalRegistrationNumber,
+      professionalRegistrationType: professionalRegistrationType,
     );
     final user = Vaccinator.fromJson(json);
     await _cacheUser(user);
@@ -87,6 +105,14 @@ class UsersRepositoryImpl implements UsersRepository {
       institutionId: user.institutionId,
       roles: user.roles,
       status: user.status,
+      documentType: user.documentType,
+      documentNumber: user.documentNumber,
+      phone: user.phone,
+      birthDate: user.birthDate,
+      gender: user.gender,
+      professionCode: user.professionCode,
+      professionalRegistrationNumber: user.professionalRegistrationNumber,
+      professionalRegistrationType: user.professionalRegistrationType,
     );
   }
 }

@@ -4,6 +4,7 @@ import '../../../core/auth/offline_access.dart';
 import '../../../core/auth/offline_policy.dart';
 import '../../../core/auth/session_manager.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/utils/uuid.dart';
 import '../domain/entities/institution.dart';
 import '../domain/entities/institution_admin.dart';
 import '../domain/use_cases/create_institution.dart';
@@ -45,6 +46,13 @@ class AdminController extends ChangeNotifier {
   List<Institution> _institutions = const [];
   bool _isLoading = false;
   String? _error;
+
+  /// Clave de idempotencia del aprovisionamiento de admins: se genera por
+  /// intencion (mismo email e institucion) y se reutiliza en reintentos; se
+  /// descarta tras el exito o si cambia el destino.
+  String? _pendingOperationId;
+  String? _pendingEmail;
+  String? _pendingInstitutionId;
 
   List<Institution> get institutions => List.unmodifiable(_institutions);
   bool get isLoading => _isLoading;
@@ -130,19 +138,32 @@ class AdminController extends ChangeNotifier {
       return null;
     }
 
+    if (_pendingOperationId == null ||
+        _pendingEmail != email ||
+        _pendingInstitutionId != institutionId) {
+      _pendingOperationId = uuidV4();
+      _pendingEmail = email;
+      _pendingInstitutionId = institutionId;
+    }
+
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      return await _createInstitutionAdmin(
+      final created = await _createInstitutionAdmin(
         token,
         offline: offline,
         email: email,
         fullName: fullName,
         institutionId: institutionId,
         temporaryPassword: temporaryPassword,
+        operationId: _pendingOperationId!,
       );
+      _pendingOperationId = null;
+      _pendingEmail = null;
+      _pendingInstitutionId = null;
+      return created;
     } on OfflinePolicyException catch (e) {
       _setError(e.message);
       return null;

@@ -26,6 +26,11 @@ Este documento es la referencia funcional común para Flutter (Dart) y Spring Bo
 | Solo `VACCINATOR` puede generar operaciones clínicas offline | Consulta capacidades locales | Revalida permiso actual al sincronizar | Spring |
 | Una operación offline debe tener `operation_id` | Genera UUID y lo persiste con el outbox | Aplica idempotencia | Spring |
 | Una operación dependiente requiere dependencia aceptada | Ordena y envía la cadena | Rechaza dependencias ausentes o fallidas | Spring |
+| Una opción activa no se duplica dentro de su alcance | Valida antes de enviar | Constraint parcial por valor normalizado | Spring + PostgreSQL |
+| Solo existe un default activo por vacuna y campo | Refleja el estado recibido | El servicio reemplaza el default en transacción | Spring + PostgreSQL |
+| El enable institucional es idempotente | Deshabilita doble acción | `UNIQUE` + `ON CONFLICT DO NOTHING`; solo el insertador copia el template | Spring + PostgreSQL |
+| Una edición administrativa no pisa otra edición | Envía `version` | Optimistic locking y respuesta `409 CONFLICT` | Spring |
+| El template no modifica configuraciones institucionales existentes | Muestra sugerencias | Importación explícita solo de faltantes | Spring |
 | Un usuario debe estar activo para sincronizar | Bloquea si la última validación lo indica | Consulta estado actual | Spring |
 | Toda operación clínica sincronizada se audita | Conserva estado local | Crea `AuditEvent` | Spring |
 

@@ -205,7 +205,7 @@ class _UserTile extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         subtitle: Text(
-          user.email,
+          _documentLabel(user),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 12),
@@ -224,6 +224,15 @@ class _UserTile extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Etiqueta del listado: documento (si existe) + correo.
+  String _documentLabel(Vaccinator user) {
+    final document = user.documentType == null || user.documentNumber == null
+        ? ''
+        : '${user.documentType} ${user.documentNumber}';
+    if (document.isEmpty) return user.email;
+    return '$document · ${user.email}';
   }
 }
 

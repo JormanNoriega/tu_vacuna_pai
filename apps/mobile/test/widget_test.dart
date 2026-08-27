@@ -321,14 +321,51 @@ void main() {
           user: user,
           onSignOut: () {},
           sessionStatus: SessionStatus.offlineAuthorized,
+          offlineReason: OfflineReason.noNetwork,
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Modo offline'), findsOneWidget);
+    expect(find.text('Sin conexion a Internet'), findsOneWidget);
+    expect(find.text('Servidor no disponible'), findsNothing);
     expect(find.text('Modo solo lectura'), findsNothing);
   });
+
+  testWidgets(
+    'distingue el banner cuando el servidor esta no disponible',
+    (tester) async {
+      final user = AuthUser(
+        id: 'vac-1',
+        email: 'vacunador@hosp-a.com',
+        name: 'Ana Vacunadora',
+        institution: const InstitutionProfile(
+          id: 'inst-1',
+          code: 'HOSP-A',
+          name: 'Hospital A',
+        ),
+        roles: const ['VACCINATOR'],
+        permissions: const ['PATIENT_READ', 'ATTENTION_CREATE'],
+        offlineWindowHours: 72,
+        lastOnlineValidation: DateTime.now().subtract(const Duration(hours: 1)),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DashboardPage(
+            user: user,
+            onSignOut: () {},
+            sessionStatus: SessionStatus.offlineAuthorized,
+            offlineReason: OfflineReason.backendUnavailable,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Servidor no disponible'), findsOneWidget);
+      expect(find.text('Sin conexion a Internet'), findsNothing);
+    },
+  );
 
   testWidgets('bloquea la edicion de usuario en modo solo lectura', (
     tester,

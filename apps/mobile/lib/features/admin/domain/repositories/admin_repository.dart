@@ -22,6 +22,7 @@ abstract interface class AdminRepository {
     required String fullName,
     required String institutionId,
     required String temporaryPassword,
+    required String operationId,
   });
 
   Future<List<InstitutionAdmin>> listUsersByInstitution(

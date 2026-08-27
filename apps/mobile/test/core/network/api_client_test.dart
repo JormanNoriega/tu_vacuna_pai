@@ -256,6 +256,7 @@ void main() {
         expect(body['email'], 'admin@hosp-a.com');
         expect(body['temporaryPassword'], 'Secreto123!');
         expect(body['institutionId'], 'inst-1');
+        expect(body['operationId'], 'operation-1');
         return http.Response(
           jsonEncode({
             'id': 'user-1',
@@ -281,6 +282,7 @@ void main() {
         fullName: 'Admin A',
         institutionId: 'inst-1',
         temporaryPassword: 'Secreto123!',
+        operationId: 'operation-1',
       );
 
       expect(json['roles'], ['ADMIN_INSTITUTION']);
@@ -349,6 +351,15 @@ void main() {
         expect(body['temporaryPassword'], 'Secreto123!');
         // El scope institucional se resuelve en el servidor, nunca se envia.
         expect(body.containsKey('institutionId'), isFalse);
+        // Clave de idempotencia para reintentos seguros.
+        expect(body['operationId'], 'operation-1');
+        // Perfil ampliado viaja crudo; el backend normaliza y valida.
+        expect(body['documentType'], 'CC');
+        expect(body['documentNumber'], '12.345.678');
+        expect(body['professionCode'], 'ENFERMERO');
+        expect(body['phone'], '3001234567');
+        // Campos opcionales ausentes se omiten del body.
+        expect(body.containsKey('gender'), isFalse);
         return http.Response(
           jsonEncode({
             'id': 'user-1',
@@ -357,6 +368,10 @@ void main() {
             'institutionId': 'inst-1',
             'roles': ['VACCINATOR'],
             'status': 'ACTIVE',
+            'documentType': 'CC',
+            'documentNumber': '12345678',
+            'phone': '3001234567',
+            'professionCode': 'ENFERMERO',
           }),
           201,
           headers: {'content-type': 'application/json'},
@@ -373,10 +388,16 @@ void main() {
         email: 'vacunador@hosp-a.com',
         fullName: 'Ana Vacunadora',
         temporaryPassword: 'Secreto123!',
+        operationId: 'operation-1',
+        documentType: 'CC',
+        documentNumber: '12.345.678',
+        phone: '3001234567',
+        professionCode: 'ENFERMERO',
       );
 
       expect(json['roles'], ['VACCINATOR']);
       expect(json['institutionId'], 'inst-1');
+      expect(json['documentNumber'], '12345678');
     });
 
     test('propaga el mensaje de permiso denegado al crear vacunador', () async {
@@ -402,6 +423,10 @@ void main() {
           email: 'vacunador@hosp-a.com',
           fullName: 'Ana Vacunadora',
           temporaryPassword: 'Secreto123!',
+          operationId: 'operation-1',
+          documentType: 'CC',
+          documentNumber: '12345678',
+          professionCode: 'ENFERMERO',
         ),
         throwsA(
           isA<ApiException>()

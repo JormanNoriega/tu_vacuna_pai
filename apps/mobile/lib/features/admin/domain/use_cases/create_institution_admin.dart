@@ -19,6 +19,7 @@ class CreateInstitutionAdmin {
     required String fullName,
     required String institutionId,
     required String temporaryPassword,
+    required String operationId,
   }) {
     _offlinePolicy.ensureWritable(
       status: offline.status,
@@ -31,6 +32,7 @@ class CreateInstitutionAdmin {
       fullName: fullName,
       institutionId: institutionId,
       temporaryPassword: temporaryPassword,
+      operationId: operationId,
     );
   }
 }

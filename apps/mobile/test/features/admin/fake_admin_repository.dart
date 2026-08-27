@@ -8,11 +8,12 @@ import 'package:tu_vacuna_pai/features/admin/domain/repositories/admin_repositor
 class FakeAdminRepository implements AdminRepository {
   FakeAdminRepository({this.failOnCreate = false});
 
-  final bool failOnCreate;
+  bool failOnCreate;
   bool failOnUpdate = false;
   final List<Institution> institutions = [];
   final List<InstitutionAdmin> admins = [];
   String? lastPassword;
+  String? lastOperationId;
 
   @override
   Future<Institution> createInstitution(
@@ -47,7 +48,9 @@ class FakeAdminRepository implements AdminRepository {
     required String fullName,
     required String institutionId,
     required String temporaryPassword,
+    required String operationId,
   }) async {
+    lastOperationId = operationId;
     if (failOnCreate) {
       throw StateError('Fallo simulado');
     }

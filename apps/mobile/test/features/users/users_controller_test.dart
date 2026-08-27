@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tu_vacuna_pai/core/auth/offline_access.dart';
 import 'package:tu_vacuna_pai/features/auth/domain/entities/session_restore_result.dart';
+import 'package:tu_vacuna_pai/features/users/domain/entities/vaccinator.dart';
 import 'package:tu_vacuna_pai/features/users/domain/use_cases/create_vaccinator.dart';
 import 'package:tu_vacuna_pai/features/users/domain/use_cases/list_users.dart';
 import 'package:tu_vacuna_pai/features/users/domain/use_cases/update_user_roles.dart';
@@ -28,6 +29,27 @@ void main() {
     updateUserRoles: UpdateUserRoles(repository),
   );
 
+  /// Helper: crea un vacunador con perfil minimo valido.
+  Future<Vaccinator?> createVaccinator({
+    String email = 'vacunador@hosp-a.com',
+    String fullName = 'Ana Vacunadora',
+    String temporaryPassword = 'Temp123!',
+    OfflineAccess offline = online,
+    String documentType = 'CC',
+    String documentNumber = '12345678',
+    String professionCode = 'ENFERMERO',
+  }) {
+    return controller.createVaccinator(
+      offline: offline,
+      email: email,
+      fullName: fullName,
+      temporaryPassword: temporaryPassword,
+      documentType: documentType,
+      documentNumber: documentNumber,
+      professionCode: professionCode,
+    );
+  }
+
   setUp(() {
     repository = FakeUsersRepository();
     sessionManager = FakeSessionManager('token-123');
@@ -36,15 +58,12 @@ void main() {
 
   group('UsersController', () {
     test('crea un vacunador y lo agrega a la lista', () async {
-      final created = await controller.createVaccinator(
-        email: 'vacunador@hosp-a.com',
-        fullName: 'Ana Vacunadora',
-        temporaryPassword: 'Temp123!',
-        offline: online,
-      );
+      final created = await createVaccinator();
 
       expect(created, isNotNull);
       expect(created!.roles, contains('VACCINATOR'));
+      expect(created.documentNumber, '12345678');
+      expect(created.professionCode, 'ENFERMERO');
       expect(controller.users, hasLength(1));
       expect(controller.error, isNull);
     });
@@ -52,12 +71,7 @@ void main() {
     test(
       'mantiene la contrasena temporal sin exponerla en el estado',
       () async {
-        await controller.createVaccinator(
-          email: 'vacunador@hosp-a.com',
-          fullName: 'Ana Vacunadora',
-          temporaryPassword: 'Secreto123!',
-          offline: online,
-        );
+        await createVaccinator(temporaryPassword: 'Secreto123!');
 
         expect(repository.lastPassword, 'Secreto123!');
         // El controlador no guarda la contrasena en ningun campo publico.
@@ -69,12 +83,7 @@ void main() {
       repository = FakeUsersRepository(failOnCreate: true);
       controller = build();
 
-      final created = await controller.createVaccinator(
-        email: 'vacunador@hosp-a.com',
-        fullName: 'Ana Vacunadora',
-        temporaryPassword: 'Temp123!',
-        offline: online,
-      );
+      final created = await createVaccinator();
 
       expect(created, isNull);
       expect(controller.error, isNotNull);
@@ -84,24 +93,14 @@ void main() {
       sessionManager = FakeSessionManager(null);
       controller = build();
 
-      final created = await controller.createVaccinator(
-        email: 'vacunador@hosp-a.com',
-        fullName: 'Ana Vacunadora',
-        temporaryPassword: 'Temp123!',
-        offline: online,
-      );
+      final created = await createVaccinator();
 
       expect(created, isNull);
       expect(controller.error, contains('sesion expiro'));
     });
 
     test('carga los usuarios de la institucion', () async {
-      await controller.createVaccinator(
-        email: 'vacunador@hosp-a.com',
-        fullName: 'Ana Vacunadora',
-        temporaryPassword: 'Temp123!',
-        offline: online,
-      );
+      await createVaccinator();
 
       await controller.loadUsers(institutionId: 'inst-1');
 
@@ -110,12 +109,7 @@ void main() {
     });
 
     test('actualiza el estado y los roles de un usuario', () async {
-      final created = await controller.createVaccinator(
-        email: 'vacunador@hosp-a.com',
-        fullName: 'Ana Vacunadora',
-        temporaryPassword: 'Temp123!',
-        offline: online,
-      );
+      final created = await createVaccinator();
       await controller.loadUsers(institutionId: 'inst-1');
 
       final saved = await controller.updateUser(
@@ -133,12 +127,7 @@ void main() {
     });
 
     test('mantiene el estado anterior cuando la edicion falla', () async {
-      final created = await controller.createVaccinator(
-        email: 'vacunador@hosp-a.com',
-        fullName: 'Ana Vacunadora',
-        temporaryPassword: 'Temp123!',
-        offline: online,
-      );
+      final created = await createVaccinator();
       await controller.loadUsers(institutionId: 'inst-1');
 
       repository.failOnUpdate = true;
@@ -160,12 +149,7 @@ void main() {
         permissions: ['USER_MANAGE'],
       );
 
-      final created = await controller.createVaccinator(
-        offline: locked,
-        email: 'vacunador@hosp-a.com',
-        fullName: 'Ana Vacunadora',
-        temporaryPassword: 'Temp123!',
-      );
+      final created = await createVaccinator(offline: locked);
 
       expect(created, isNull);
       expect(controller.error, contains('ventana offline vencio'));
@@ -173,12 +157,7 @@ void main() {
     });
 
     test('bloquea la edicion cuando la ventana offline vencio', () async {
-      final created = await controller.createVaccinator(
-        email: 'vacunador@hosp-a.com',
-        fullName: 'Ana Vacunadora',
-        temporaryPassword: 'Temp123!',
-        offline: online,
-      );
+      final created = await createVaccinator();
       await controller.loadUsers(institutionId: 'inst-1');
 
       const locked = OfflineAccess(
@@ -204,12 +183,7 @@ void main() {
           permissions: ['USER_MANAGE'],
         );
 
-        final created = await controller.createVaccinator(
-          offline: offline,
-          email: 'vacunador@hosp-a.com',
-          fullName: 'Ana Vacunadora',
-          temporaryPassword: 'Temp123!',
-        );
+        final created = await createVaccinator(offline: offline);
 
         expect(created, isNull);
         expect(controller.error, contains('requiere conexion'));
@@ -222,15 +196,41 @@ void main() {
         permissions: ['PATIENT_READ'],
       );
 
-      final created = await controller.createVaccinator(
-        offline: withoutPermission,
-        email: 'vacunador@hosp-a.com',
-        fullName: 'Ana Vacunadora',
-        temporaryPassword: 'Temp123!',
-      );
+      final created = await createVaccinator(offline: withoutPermission);
 
       expect(created, isNull);
       expect(controller.error, contains('No tienes permiso'));
     });
+
+    test('reusa el mismo operationId al reintentar el mismo correo', () async {
+      repository.failOnCreate = true;
+      await createVaccinator();
+      final firstId = repository.lastOperationId;
+
+      repository.failOnCreate = false;
+      final created = await createVaccinator();
+
+      expect(created, isNotNull);
+      // El reintento del mismo intento reenvia la misma clave idempotente.
+      expect(repository.lastOperationId, firstId);
+      expect(repository.lastOperationId, isNotNull);
+    });
+
+    test(
+      'genera un nuevo operationId tras el exito o si cambia el correo',
+      () async {
+        await createVaccinator(email: 'uno@hosp-a.com');
+        final firstId = repository.lastOperationId;
+
+        final created = await createVaccinator(
+          email: 'dos@hosp-a.com',
+          fullName: 'Dos',
+        );
+
+        expect(created, isNotNull);
+        expect(repository.lastOperationId, isNot(firstId));
+        expect(repository.lastOperationId, isNotNull);
+      },
+    );
   });
 }

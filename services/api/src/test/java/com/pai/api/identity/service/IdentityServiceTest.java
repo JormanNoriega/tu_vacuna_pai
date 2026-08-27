@@ -103,14 +103,4 @@ class IdentityServiceTest {
         assertThatThrownBy(() -> service.resolve(USER_ID))
             .isInstanceOf(UserNotActiveException.class);
     }
-
-    @Test
-    void hasPermission_returnsTrueWhenPermissionGranted() {
-        when(userRepository.findPermissionsByUserId(USER_ID))
-            .thenReturn(List.of(new PermissionEntity(UUID.randomUUID(),
-                "PATIENT_READ", "Leer pacientes")));
-
-        assertThat(service.hasPermission(USER_ID, "PATIENT_READ")).isTrue();
-        assertThat(service.hasPermission(USER_ID, "CATALOG_WRITE")).isFalse();
-    }
 }

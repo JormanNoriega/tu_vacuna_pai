@@ -22,6 +22,9 @@ import 'features/users/domain/use_cases/list_users.dart';
 import 'features/users/domain/use_cases/update_user_roles.dart';
 import 'features/users/domain/use_cases/update_user_status.dart';
 import 'features/users/presentation/users_controller.dart';
+import 'features/catalogs/data/catalog_repository_impl.dart';
+import 'features/catalogs/domain/use_cases/catalog_use_cases.dart';
+import 'features/catalogs/presentation/catalog_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,12 +64,22 @@ Future<void> main() async {
     updateUserStatus: UpdateUserStatus(usersRepository),
     updateUserRoles: UpdateUserRoles(usersRepository),
   );
+  final catalogRepository = CatalogRepositoryImpl(apiClient, appDatabase);
+  final catalogController = CatalogController(
+    sessionManager: sessionManager,
+    repository: catalogRepository,
+    listVaccines: ListVaccines(catalogRepository),
+    saveVaccine: SaveVaccine(catalogRepository),
+    toggle: ToggleInstitutionVaccine(catalogRepository),
+  );
 
   runApp(
     TuVacunaApp(
       authRepository: authRepository,
       adminController: adminController,
       usersController: usersController,
+      catalogController: catalogController,
+      networkInfo: networkInfo,
     ),
   );
 }

@@ -1,13 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../../core/auth/offline_access.dart';
+import '../../../../core/network/network_info.dart';
 import '../../../admin/presentation/admin_controller.dart';
 import '../../../admin/presentation/pages/admin_page.dart';
 import '../../../auth/domain/entities/auth_user.dart';
 import '../../../auth/domain/entities/session_restore_result.dart';
 import '../../../users/presentation/pages/users_page.dart';
 import '../../../users/presentation/users_controller.dart';
-import '../../../../core/auth/offline_access.dart';
+import '../../../catalogs/presentation/catalog_controller.dart';
+import '../../../catalogs/presentation/pages/catalog_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
@@ -15,7 +20,10 @@ class DashboardPage extends StatefulWidget {
     required this.onSignOut,
     this.adminController,
     this.usersController,
+    this.catalogController,
     this.sessionStatus = SessionStatus.signedIn,
+    this.offlineReason,
+    this.networkInfo,
     super.key,
   });
 
@@ -29,10 +37,19 @@ class DashboardPage extends StatefulWidget {
   /// Controlador de la gestion de usuarios de institucion. Solo se usa cuando
   /// [user] tiene el permiso USER_MANAGE (ADMIN_INSTITUTION).
   final UsersController? usersController;
+  final CatalogController? catalogController;
 
   /// Estado de la sesion restaurada. Define si se muestra un banner de modo
   /// offline y que operaciones de escritura estan permitidas.
   final SessionStatus sessionStatus;
+
+  /// Razon de la ventana offline (noNetwork / backendUnavailable). Solo afecta
+  /// la etiqueta del banner; la autorizacion vive en [sessionStatus].
+  final OfflineReason? offlineReason;
+
+  /// Conectividad del dispositivo para ajustar la etiqueta del banner en
+  /// tiempo real. Null en tests (sin listener).
+  final NetworkInfo? networkInfo;
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -40,6 +57,48 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
+
+  /// Razon visual del banner, ajustable en vivo por la conectividad del
+  /// dispositivo (no re-autoriza ni re-valida).
+  OfflineReason? _liveReason;
+  StreamSubscription<bool>? _connectivitySub;
+
+  @override
+  void initState() {
+    super.initState();
+    _liveReason = widget.offlineReason;
+    final networkInfo = widget.networkInfo;
+    if (networkInfo != null) {
+      _connectivitySub = networkInfo.connectivityChanges.listen(
+        _onConnectivityChanged,
+      );
+    }
+  }
+
+  @override
+  void didUpdateWidget(DashboardPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.offlineReason != widget.offlineReason) {
+      _liveReason = widget.offlineReason;
+    }
+  }
+
+  @override
+  void dispose() {
+    _connectivitySub?.cancel();
+    super.dispose();
+  }
+
+  /// Solo etiqueta visual: con conectividad del dispositivo el motivo de la
+  /// ventana es "backend no disponible"; sin red, "sin conexion a Internet".
+  void _onConnectivityChanged(bool connected) {
+    if (!mounted) return;
+    setState(() {
+      _liveReason = connected
+          ? OfflineReason.backendUnavailable
+          : OfflineReason.noNetwork;
+    });
+  }
 
   List<_DashboardDestination> get _destinations =>
       [
@@ -64,7 +123,10 @@ class _DashboardPageState extends State<DashboardPage> {
               icon: Icons.inventory_2_outlined,
               selectedIcon: Icons.inventory_2_rounded,
               label: 'Inventario',
-              requiredPermission: 'INVENTORY_READ',
+              requiredPermissions: [
+                'CATALOG_GLOBAL_READ',
+                'CATALOG_CONFIG_READ',
+              ],
             ),
             const _DashboardDestination(
               icon: Icons.admin_panel_settings_outlined,
@@ -76,8 +138,13 @@ class _DashboardPageState extends State<DashboardPage> {
           ]
           .where(
             (destination) =>
-                destination.requiredPermission == null ||
-                widget.user.hasPermission(destination.requiredPermission!),
+                destination.requiredPermission == null &&
+                    (destination.requiredPermissions.isEmpty ||
+                        destination.requiredPermissions.any(
+                          widget.user.hasPermission,
+                        )) ||
+                (destination.requiredPermission != null &&
+                    widget.user.hasPermission(destination.requiredPermission!)),
           )
           .toList();
 
@@ -104,6 +171,15 @@ class _DashboardPageState extends State<DashboardPage> {
       );
     }
 
+    if (_destinations[_selectedIndex].isCatalog &&
+        widget.catalogController != null) {
+      return CatalogPage(
+        user: widget.user,
+        controller: widget.catalogController!,
+        offline: _offline,
+      );
+    }
+
     return _DashboardContent(
       userName: widget.user.name,
       permissions: widget.user.permissions,
@@ -123,7 +199,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       SessionStatus.offlineAuthorized => Column(
         children: [
-          const _OfflineModeBanner(),
+          _OfflineModeBanner(reason: _liveReason ?? OfflineReason.noNetwork),
           Expanded(child: content),
         ],
       ),
@@ -137,6 +213,20 @@ class _DashboardPageState extends State<DashboardPage> {
         appBar: AppBar(
           title: const Text('Tu Vacuna PAI'),
           actions: [
+            if (widget.catalogController != null)
+              IconButton(
+                tooltip: 'Inventario',
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => CatalogPage(
+                      user: widget.user,
+                      controller: widget.catalogController!,
+                      offline: _offline,
+                    ),
+                  ),
+                ),
+                icon: const Icon(Icons.inventory_2_outlined),
+              ),
             IconButton(
               tooltip: 'Cerrar sesion',
               onPressed: widget.onSignOut,
@@ -206,6 +296,7 @@ class _DashboardDestination {
     required this.selectedIcon,
     required this.label,
     this.requiredPermission,
+    this.requiredPermissions = const [],
     this.isUsersManagement = false,
   });
 
@@ -213,10 +304,13 @@ class _DashboardDestination {
   final IconData selectedIcon;
   final String label;
   final String? requiredPermission;
+  final List<String> requiredPermissions;
 
   /// True cuando el destino corresponde a la gestion de usuarios de la
   /// institucion (ADMIN_INSTITUTION).
   final bool isUsersManagement;
+
+  bool get isCatalog => label == 'Inventario';
 }
 
 class _DashboardContent extends StatelessWidget {
@@ -329,32 +423,51 @@ class _SyncBanner extends StatelessWidget {
 }
 
 class _OfflineModeBanner extends StatelessWidget {
-  const _OfflineModeBanner();
+  const _OfflineModeBanner({required this.reason});
+
+  final OfflineReason reason;
 
   @override
   Widget build(BuildContext context) {
+    final noNetwork = reason == OfflineReason.noNetwork;
+    final color = noNetwork ? AppColors.primary : AppColors.warning;
+    final title = noNetwork
+        ? 'Sin conexion a Internet'
+        : 'Servidor no disponible';
+    final subtitle = noNetwork
+        ? 'Trabajando con datos locales. La informacion se sincronizara '
+              'cuando haya conexion.'
+        : 'Los datos se guardaran localmente y se sincronizaran cuando el '
+              'servidor vuelva a estar disponible.';
+    final icon = noNetwork ? Icons.cloud_off_rounded : Icons.dns_rounded;
+
     return Card(
       margin: const EdgeInsets.all(16),
-      color: AppColors.primary.withValues(alpha: .1),
+      color: color.withValues(alpha: .1),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            const Icon(Icons.cloud_off_rounded, color: AppColors.primary),
+            Icon(icon, color: color),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Modo offline',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
-                    'Estas trabajando sin conexion dentro de la ventana '
-                    'autorizada. Algunas operaciones requieren reconexion.',
-                    style: TextStyle(color: AppColors.slate, fontSize: 13),
+                    subtitle,
+                    style: const TextStyle(
+                      color: AppColors.slate,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),

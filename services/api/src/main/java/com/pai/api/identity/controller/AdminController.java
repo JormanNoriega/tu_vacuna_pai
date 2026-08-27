@@ -22,6 +22,8 @@ import com.pai.api.identity.dto.CreateInstitutionAdminRequest;
 import com.pai.api.identity.dto.CreateInstitutionRequest;
 import com.pai.api.identity.dto.CreateVaccinatorRequest;
 import com.pai.api.identity.dto.InstitutionResponse;
+import com.pai.api.identity.dto.ProvisioningOperationResponse;
+import com.pai.api.identity.dto.ReconciliationResultResponse;
 import com.pai.api.identity.dto.UpdateInstitutionConfigRequest;
 import com.pai.api.identity.dto.UpdateInstitutionStatusRequest;
 import com.pai.api.identity.dto.UpdateUserRolesRequest;
@@ -29,6 +31,8 @@ import com.pai.api.identity.dto.UpdateUserStatusRequest;
 import com.pai.api.identity.dto.UserResponse;
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.InstitutionService;
+import com.pai.api.identity.service.ProvisioningReconciliationService;
+import com.pai.api.identity.service.UserProvisioningService;
 import com.pai.api.identity.service.UserService;
 
 import jakarta.validation.Valid;
@@ -44,10 +48,16 @@ public class AdminController {
 
     private final InstitutionService institutionService;
     private final UserService userService;
+    private final UserProvisioningService userProvisioningService;
+    private final ProvisioningReconciliationService reconciliationService;
 
-    public AdminController(InstitutionService institutionService, UserService userService) {
+    public AdminController(InstitutionService institutionService, UserService userService,
+            UserProvisioningService userProvisioningService,
+            ProvisioningReconciliationService reconciliationService) {
         this.institutionService = institutionService;
         this.userService = userService;
+        this.userProvisioningService = userProvisioningService;
+        this.reconciliationService = reconciliationService;
     }
 
     @PostMapping("/institutions")
@@ -92,7 +102,7 @@ public class AdminController {
             throw new IllegalStateException("No se pudo recuperar el access token.");
         }
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(userService.createInstitutionAdmin(actor.getId(), accessToken, request));
+            .body(userProvisioningService.createInstitutionAdmin(actor.getId(), accessToken, request));
     }
 
     @PostMapping("/users/vaccinators")
@@ -106,7 +116,7 @@ public class AdminController {
             throw new IllegalStateException("No se pudo recuperar el access token.");
         }
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(userService.createVaccinator(actor.getId(), accessToken, request));
+            .body(userProvisioningService.createVaccinator(actor.getId(), accessToken, request));
     }
 
     @GetMapping("/users")
@@ -144,5 +154,17 @@ public class AdminController {
             @Valid @RequestBody UpdateUserRolesRequest request) {
         AuthorizedUser actor = (AuthorizedUser) authentication.getPrincipal();
         return ResponseEntity.ok(userService.updateRoles(actor.getId(), id, request.roles()));
+    }
+
+    @PostMapping("/admin/users/reconcile")
+    @PreAuthorize("@authorization.hasPermission(authentication, 'INSTITUTION_WRITE')")
+    public ResponseEntity<List<ReconciliationResultResponse>> reconcileUsers() {
+        return ResponseEntity.ok(reconciliationService.reconcile());
+    }
+
+    @GetMapping("/admin/users/operations")
+    @PreAuthorize("@authorization.hasPermission(authentication, 'INSTITUTION_WRITE')")
+    public ResponseEntity<List<ProvisioningOperationResponse>> listProvisioningOperations() {
+        return ResponseEntity.ok(reconciliationService.listOperations());
     }
 }

@@ -32,6 +32,21 @@ interface CreateAuthUserRequest {
   email: string
   password: string
   fullName?: string
+  // Perfil ampliado del personal de salud. Spring lo envia ya normalizado
+  // (documento canonico). Vive en user_metadata para trazabilidad; la fuente
+  // de verdad de negocio es app.users.
+  documentType?: string
+  documentNumber?: string
+  phone?: string
+  birthDate?: string
+  gender?: string
+  professionCode?: string
+  professionalRegistrationNumber?: string
+  professionalRegistrationType?: string
+  // Idempotencia: el mismo operationId se reenvia en reintentos. Se escribe en
+  // app_metadata DENTRO de la misma llamada admin.createUser para que, aunque
+  // la respuesta HTTP se pierda, la correlacion ya exista en auth.users.
+  operationId?: string
 }
 
 Deno.serve(async (req: Request) => {
@@ -82,6 +97,7 @@ Deno.serve(async (req: Request) => {
   const email = (body.email ?? '').trim().toLowerCase()
   const password = body.password ?? ''
   const fullName = (body.fullName ?? '').trim()
+  const operationId = (body.operationId ?? '').trim()
 
   if (!email || !password) {
     return json({ error: 'BAD_REQUEST', message: 'Email y contrasena son obligatorios.' }, 400)
@@ -92,6 +108,12 @@ Deno.serve(async (req: Request) => {
       400,
     )
   }
+  if (!/^[0-9a-fA-F-]{36}$/.test(operationId)) {
+    return json(
+      { error: 'BAD_REQUEST', message: 'operationId invalido: se espera un UUID.' },
+      400,
+    )
+  }
 
   // 5. Crear el usuario en auth.users con el Admin API (service role).
   //    La contrasena viaja solo hasta aqui y no se devuelve ni se persiste fuera.
@@ -99,11 +121,27 @@ Deno.serve(async (req: Request) => {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
+  const userMetadata: Record<string, string> = {}
+  if (fullName) userMetadata.full_name = fullName
+  if (body.documentType) userMetadata.document_type = body.documentType
+  if (body.documentNumber) userMetadata.document_number = body.documentNumber
+  if (body.phone) userMetadata.phone = body.phone
+  if (body.birthDate) userMetadata.birth_date = body.birthDate
+  if (body.gender) userMetadata.gender = body.gender
+  if (body.professionCode) userMetadata.profession_code = body.professionCode
+  if (body.professionalRegistrationNumber) {
+    userMetadata.professional_registration_number = body.professionalRegistrationNumber
+  }
+  if (body.professionalRegistrationType) {
+    userMetadata.professional_registration_type = body.professionalRegistrationType
+  }
+
   const { data: created, error: createError } = await adminClient.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
-    user_metadata: fullName ? { full_name: fullName } : undefined,
+    user_metadata: Object.keys(userMetadata).length > 0 ? userMetadata : undefined,
+    app_metadata: { provisioning_operation_id: operationId },
   })
 
   if (createError) {

@@ -40,6 +40,9 @@ class _FakeNetworkInfo implements NetworkInfo {
 
   @override
   Future<bool> get isConnected async => connected;
+
+  @override
+  Stream<bool> get connectivityChanges => const Stream.empty();
 }
 
 void main() {
@@ -81,6 +84,7 @@ void main() {
   AuthUser profile({
     List<String> roles = const ['VACCINATOR'],
     List<String> permissions = const ['ATTENTION_CREATE'],
+    DateTime? lastOnlineValidation,
   }) => AuthUser(
     id: 'user-1',
     email: 'usuario@pai.test',
@@ -93,7 +97,7 @@ void main() {
     roles: roles,
     permissions: permissions,
     offlineWindowHours: 72,
-    lastOnlineValidation: DateTime.now(),
+    lastOnlineValidation: lastOnlineValidation ?? DateTime.now(),
   );
 
   SupabaseAuthRepository build({
@@ -193,6 +197,28 @@ void main() {
       final result = await repository.restoreSession();
 
       expect(result.status, SessionStatus.offlineAuthorized);
+      // Hay conectividad pero el backend no responde: razon backendUnavailable.
+      expect(result.offlineReason, OfflineReason.backendUnavailable);
+    },
+  );
+
+  test(
+    'ventana vencida con backend caido queda en solo lectura',
+    () async {
+      sessionManager.data = storedSession();
+      await store.saveProfile(
+        profile(lastOnlineValidation: DateTime.now().subtract(const Duration(days: 10))),
+      );
+      final repository = build(
+        httpClient: MockClient((request) async {
+          return http.Response('server error', 500);
+        }),
+      );
+
+      final result = await repository.restoreSession();
+
+      expect(result.status, SessionStatus.offlineLocked);
+      expect(result.offlineReason, OfflineReason.backendUnavailable);
     },
   );
 
@@ -209,6 +235,7 @@ void main() {
     final result = await repository.restoreSession();
 
     expect(result.status, SessionStatus.offlineAuthorized);
+    expect(result.offlineReason, OfflineReason.noNetwork);
   });
 
   test('sin conectividad un admin permanece online', () async {

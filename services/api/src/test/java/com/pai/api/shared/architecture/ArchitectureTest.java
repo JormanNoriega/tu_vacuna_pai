@@ -7,7 +7,6 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 import jakarta.persistence.Entity;
 
 import com.tngtech.archunit.base.DescribedPredicate;
-import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;

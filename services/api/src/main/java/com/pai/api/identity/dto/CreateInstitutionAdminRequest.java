@@ -22,5 +22,8 @@ public record CreateInstitutionAdminRequest(
 
         @NotBlank(message = "La contrasena temporal es obligatoria.")
         @Size(min = 8, max = 128, message = "La contrasena debe tener entre 8 y 128 caracteres.")
-        String temporaryPassword) {
+        String temporaryPassword,
+
+        @NotNull(message = "operationId es obligatorio para reintentos idempotentes.")
+        UUID operationId) {
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/network/network_info.dart';
 import '../features/admin/presentation/admin_controller.dart';
 import '../features/auth/data/in_memory_auth_repository.dart';
 import '../features/auth/domain/repositories/auth_repository.dart';
@@ -10,6 +11,7 @@ import '../features/auth/presentation/auth_controller.dart';
 import '../features/auth/presentation/pages/login_page.dart';
 import '../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../features/users/presentation/users_controller.dart';
+import '../features/catalogs/presentation/catalog_controller.dart';
 import 'theme/app_theme.dart';
 
 class TuVacunaApp extends StatefulWidget {
@@ -18,6 +20,8 @@ class TuVacunaApp extends StatefulWidget {
     this.authRepository,
     this.adminController,
     this.usersController,
+    this.catalogController,
+    this.networkInfo,
   });
 
   /// Repositorio de autenticacion. En produccion se inyecta desde [main];
@@ -32,6 +36,12 @@ class TuVacunaApp extends StatefulWidget {
   /// Controlador de la gestion de usuarios de institucion (ADMIN_INSTITUTION).
   /// Se inyecta desde [main]; es null en tests y demos.
   final UsersController? usersController;
+  final CatalogController? catalogController;
+
+  /// Conectividad del dispositivo para ajustar en tiempo real la etiqueta del
+  /// banner offline. Solo afecta lo visual; la autorizacion la define el
+  /// estado de sesion. Null en tests y demos (sin listener).
+  final NetworkInfo? networkInfo;
 
   @override
   State<TuVacunaApp> createState() => _TuVacunaAppState();
@@ -86,7 +96,10 @@ class _TuVacunaAppState extends State<TuVacunaApp> {
         onSignOut: _authController.signOut,
         adminController: widget.adminController,
         usersController: widget.usersController,
+        catalogController: widget.catalogController,
         sessionStatus: _authController.status,
+        offlineReason: _authController.offlineReason,
+        networkInfo: widget.networkInfo,
       );
     }
     return LoginPage(controller: _authController);

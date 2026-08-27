@@ -1,14 +1,11 @@
 package com.pai.api.shared.security;
 
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.IdentityService;
@@ -24,8 +21,6 @@ public class ActiveUserAuthenticationConverter
         implements Converter<Jwt, UsernamePasswordAuthenticationToken> {
 
     private final IdentityService identityService;
-    private final JwtGrantedAuthoritiesConverter defaultConverter =
-        new JwtGrantedAuthoritiesConverter();
 
     public ActiveUserAuthenticationConverter(IdentityService identityService) {
         this.identityService = identityService;
@@ -49,12 +44,7 @@ public class ActiveUserAuthenticationConverter
 
         var authorities = authorizedUser.getPermissions().stream()
             .map(permission -> new SimpleGrantedAuthority("PERMISSION_" + permission))
-            .collect(Collectors.toList());
-
-        authorities.addAll(defaultConverter.convert(jwt).stream()
-            .map(GrantedAuthority::getAuthority)
-            .map(SimpleGrantedAuthority::new)
-            .toList());
+            .toList();
 
         return new UsernamePasswordAuthenticationToken(
             authorizedUser, jwt, authorities);

@@ -308,8 +308,10 @@ Patient 1 ──── N Attention ──── professional → User
                           └─── institution → Institution
 Attention 1 ──── N AppliedDose ──── vaccine → Vaccine (catálogo global)
 
-Vaccine 1 ──── N VaccineSchedule
-Vaccine 1 ──── N VaccineConfigOption
+Vaccine 1 ──── N VaccineOption (dose, pneumococcalType)
+Vaccine 1 ──── N VaccineOptionTemplate (operational suggestions)
+Vaccine 1 ──── N InstitutionVaccine ──── Institution
+InstitutionVaccine 1 ──── N InstitutionVaccineOption
 
 Patient ── ContactData (VO), DemographicData (VO) ── Address (VO)
 Patient 1 ── 0..2 Guardian (relationship: MOTHER | FATHER | CAREGIVER | OTHER)
@@ -349,18 +351,24 @@ AuditEvent ──── actor → User (+ institution, action enum, timestamp, p
 | `Attention` | id, patient_id, professional_id, institution_id, attention_date, consecutive (nullable hasta sync), client_operation_id, status, observations, **version**, created_at, updated_at |
 | `AppliedDose` | id, attention_id, vaccine_id, schedule_id, application_date, lot_number, **vaccine_name_snapshot, dose_label_snapshot, catalog_version**, selected_*, next_dose_date, status |
 
-#### catalogs (globales, no por institución)
+#### catalogs (globales e institucionales)
 
 | Entidad | Campos clave |
 |---|---|
-| `Vaccine` | id, name, code, category, max_doses, min_months, max_months, flags de configuración, is_active, **version** |
+| `Vaccine` | id, name, code inmutable, category, max_doses, min_months, max_months, flags de configuración, is_active, created_by, updated_by, **version** |
 | `VaccineSchedule` | id, vaccine_id, dose_number, min_months, max_months, interval_from_previous_dose, is_active, **version** |
-| `VaccineConfigOption` | id, vaccine_id, field_type, value, display_name, sort_order, is_default, is_active, **version** |
+| `VaccineOption` | id, vaccine_id, field_type (`dose`/`pneumococcalType`), value, value_normalized, display_name, sort_order, is_default, is_active, audit, **version** |
+| `VaccineOptionTemplate` | id, vaccine_id, field_type (`laboratory`/`syringe`/`dropper`/`observation`), value, value_normalized, display_name, sort_order, is_default, is_active, audit |
+| `InstitutionVaccine` | id, institution_id, vaccine_id, is_enabled, enabled_at, enabled_by, **version** |
+| `InstitutionVaccineOption` | id, institution_id, vaccine_id, field_type, value, value_normalized, display_name, sort_order, is_default, is_active, source_template_id, audit, **version** |
 | `HealthInsurer` | id, code, name, is_active, **version** |
 | `Laboratory` | id, code, name, is_active, **version** |
 | `GeoCountry/Department/Municipality` | id, code, name, parent_id |
 
-Opcional para configuración local: `InstitutionVaccineConfig` (activar/desactivar disponibilidad por institución). No es necesaria en el MVP si el catálogo es 100 % global.
+Las dosis y el tipo de neumococo permanecen globales. Las opciones operativas
+se copian desde el template al habilitar una vacuna y luego pertenecen a la
+institución. El detalle operativo está en
+`docs/domain/vaccine-catalog-implementation.md`.
 
 #### synchronization / audit
 
@@ -392,17 +400,20 @@ Opcional para configuración local: `InstitutionVaccineConfig` (activar/desactiv
 | `VACCINATOR` | Sí (offline-first) | Registrar pacientes, atenciones y dosis |
 | `READ_ONLY` | Réplica local de solo lectura | Consultar información dentro de su scope |
 
-**No existe `ADMIN_HOSPITAL`.** Los catálogos son **globales (nacionales)**: solo `SUPER_ADMIN` los escribe; ningún otro rol los modifica.
+**No existe `ADMIN_HOSPITAL`.** Las definiciones clínicas y templates son
+**globales (nacionales)** y solo `SUPER_ADMIN` los escribe. La configuración
+operativa copiada en `InstitutionVaccineOption` la modifica `ADMIN_INSTITUTION`
+únicamente dentro de su institución y siempre online.
 
 ### 7.2 Permisos por rol (ejemplo)
 
 ```text
-SUPER_ADMIN:        todos, alcance global (incluye CATALOG_WRITE, INSTITUTION_WRITE)
-ADMIN_INSTITUTION:  PATIENT_READ/WRITE, CATALOG_READ, INVENTORY_READ/WRITE,
+SUPER_ADMIN:        todos, alcance global (incluye CATALOG_GLOBAL_WRITE, INSTITUTION_WRITE)
+ADMIN_INSTITUTION:  PATIENT_READ/WRITE, CATALOG_GLOBAL_READ, CATALOG_CONFIG_READ/WRITE, INVENTORY_READ/WRITE,
                     USER_READ/USER_MANAGE (solo su institución),
                     ATTENTION_READ, MERGE_RESOLVE (scope: su institución)
-VACCINATOR:         PATIENT_READ/WRITE, ATTENTION_CREATE/READ, CATALOG_READ
-READ_ONLY:          PATIENT_READ, ATTENTION_READ, CATALOG_READ
+VACCINATOR:         PATIENT_READ/WRITE, ATTENTION_CREATE/READ, CATALOG_GLOBAL_READ, CATALOG_CONFIG_READ
+READ_ONLY:          PATIENT_READ, ATTENTION_READ, CATALOG_GLOBAL_READ, CATALOG_CONFIG_READ
 ```
 
 ### 7.3 Política offline por rol
@@ -532,7 +543,7 @@ Después:
   "email": "user@example.com",
   "institution_id": "uuid-de-la-institucion",
   "roles": ["VACCINATOR"],
-  "permissions": ["PATIENT_READ", "PATIENT_WRITE", "ATTENTION_CREATE", "CATALOG_READ"],
+  "permissions": ["PATIENT_READ", "PATIENT_WRITE", "ATTENTION_CREATE", "CATALOG_GLOBAL_READ", "CATALOG_CONFIG_READ"],
   "exp": 1234567890
 }
 ```
@@ -782,8 +793,10 @@ Cada pull filtra por el scope del usuario:
 ### 11.9 Catálogos globales (D7)
 
 ```text
-Los catálogos (Vaccine, VaccineSchedule, VaccineConfigOption, HealthInsurer, Laboratory, Geo*)
-son GLOBALES: no están filtrados por institución.
+Las definiciones clínicas (Vaccine, VaccineSchedule, VaccineOption, HealthInsurer,
+Laboratory, Geo*) son GLOBALES. `VaccineOptionTemplate` también es global,
+pero sus opciones operativas se copian a `InstitutionVaccineOption` al habilitar
+una vacuna. Dosis y tipo de neumococo nunca se copian.
 
 Pull de catálogos:
   - Se descargan completos la primera vez
@@ -881,7 +894,7 @@ Si no hay conexión, no se modifica SQLite, no se crea un outbox administrativo 
 ```text
 Flutter
   → PUT /catalogs/vaccines/{id} o PUT /institutions/{id}
-  → Spring valida CATALOG_WRITE o INSTITUTION_WRITE
+  → Spring valida CATALOG_GLOBAL_WRITE o INSTITUTION_WRITE
   → No se aplica un scope institucional limitado
   → Caso de uso valida reglas globales
   → PostgreSQL confirma la transacción
@@ -1067,7 +1080,11 @@ El contrato completo se documenta en `docs/api/openapi.yaml`. Resumen de endpoin
 
 ### 13.5 Catálogos
 
-Los endpoints de lectura son públicos para usuarios autenticados. Los de escritura requieren `SUPER_ADMIN` (catálogos globales).
+Los endpoints de lectura requieren usuario autenticado y permiso de lectura.
+Las escrituras globales requieren `SUPER_ADMIN`; las escrituras de configuración
+institucional requieren `ADMIN_INSTITUTION`, scope de su institución y conexión
+online. El contrato completo y las reglas de copy-once se documentan en
+`docs/domain/vaccine-catalog-implementation.md`.
 
 | Método | Ruta | Descripción |
 |---|---|---|
@@ -1154,7 +1171,10 @@ El esquema completo se documenta en `docs/database/postgres-schema.sql`. Resumen
 **Módulo catalogs:**
 - `vaccines`
 - `vaccine_schedules`
-- `vaccine_config_options`
+- `vaccine_options`
+- `vaccine_option_templates`
+- `institution_vaccines`
+- `institution_vaccine_options`
 - `health_insurers`
 - `laboratories`
 - `geo_countries`
@@ -1193,7 +1213,9 @@ El esquema completo se documenta en `docs/database/sqlite-schema.drift`. Resumen
 **Módulo catalogs (caché):**
 - `vaccines_cache`
 - `vaccine_schedules_cache`
-- `vaccine_config_options_cache`
+- `vaccine_options_cache`
+- `institution_vaccines_cache`
+- `institution_vaccine_options_cache`
 - `health_insurers_cache`
 - `laboratories_cache`
 - `geo_cache`
@@ -1378,7 +1400,7 @@ Cada caso de uso debe probarse sin Flutter, HTTP ni base de datos real. Las prue
 |---|---|---|
 | 4.1 | Esquema PostgreSQL (catálogos) | 1.5 |
 | 4.2 | Esquema SQLite (caché de catálogos) | 1.6 |
-| 4.3 | Dominio Vaccine, VaccineSchedule, VaccineConfigOption | 4.1 |
+| 4.3 | Dominio Vaccine, VaccineSchedule, VaccineOption, VaccineOptionTemplate e InstitutionVaccine | 4.1 |
 | 4.4 | Sync de catálogos (global, versionado) | 4.2, 3.6 |
 | 4.5 | AppliedDose (append-only) | 2.8 |
 | 4.6 | Snapshot de catálogo en AppliedDose | 4.4, 4.5 |

@@ -18,6 +18,15 @@ class CreateVaccinator {
     required String email,
     required String fullName,
     required String temporaryPassword,
+    required String operationId,
+    required String documentType,
+    required String documentNumber,
+    String? phone,
+    String? birthDate,
+    String? gender,
+    required String professionCode,
+    String? professionalRegistrationNumber,
+    String? professionalRegistrationType,
   }) {
     _offlinePolicy.ensureWritable(
       status: offline.status,
@@ -29,6 +38,15 @@ class CreateVaccinator {
       email: email,
       fullName: fullName,
       temporaryPassword: temporaryPassword,
+      operationId: operationId,
+      documentType: documentType,
+      documentNumber: documentNumber,
+      phone: phone,
+      birthDate: birthDate,
+      gender: gender,
+      professionCode: professionCode,
+      professionalRegistrationNumber: professionalRegistrationNumber,
+      professionalRegistrationType: professionalRegistrationType,
     );
   }
 }

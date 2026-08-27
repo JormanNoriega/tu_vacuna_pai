@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import com.pai.api.catalog.exception.OptimisticCatalogException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -45,6 +46,12 @@ public class GlobalExceptionHandler {
             .body(new ErrorResponse("EMAIL_ALREADY_EXISTS", ex.getMessage()));
     }
 
+    @ExceptionHandler(ProvisioningPendingException.class)
+    public ResponseEntity<ErrorResponse> handleProvisioningPending(ProvisioningPendingException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(new ErrorResponse("OPERATION_IN_PROGRESS", ex.getMessage()));
+    }
+
     @ExceptionHandler(ScopeViolationException.class)
     public ResponseEntity<ErrorResponse> handleScopeViolation(ScopeViolationException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -61,6 +68,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(new ErrorResponse("BAD_REQUEST", ex.getMessage()));
+    }
+
+    @ExceptionHandler(OptimisticCatalogException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticCatalog(OptimisticCatalogException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(new ErrorResponse("OPTIMISTIC_LOCK_CONFLICT", ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

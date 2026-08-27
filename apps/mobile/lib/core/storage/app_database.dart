@@ -5,6 +5,8 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../features/catalogs/domain/entities/catalog_entities.dart';
+
 part 'app_database.g.dart';
 
 /// Perfil del usuario autenticado que se persiste localmente. No es secreto:
@@ -65,6 +67,25 @@ class UsersCache extends Table {
 
   TextColumn get status => text()();
 
+  /// Perfil ampliado del personal de salud (nullable por compatibilidad con
+  /// usuarios creados antes de la migracion V4).
+  TextColumn get documentType => text().nullable()();
+
+  TextColumn get documentNumber => text().nullable()();
+
+  TextColumn get phone => text().nullable()();
+
+  /// Fecha de nacimiento en formato ISO (yyyy-MM-dd).
+  TextColumn get birthDate => text().nullable()();
+
+  TextColumn get gender => text().nullable()();
+
+  TextColumn get professionCode => text().nullable()();
+
+  TextColumn get professionalRegistrationNumber => text().nullable()();
+
+  TextColumn get professionalRegistrationType => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -79,8 +100,79 @@ class SyncMetadata extends Table {
   Set<Column> get primaryKey => {key};
 }
 
+class VaccinesCache extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get code => text()();
+  TextColumn get category => text()();
+  IntColumn get maxDoses => integer()();
+  IntColumn get minAgeMonths => integer().nullable()();
+  IntColumn get maxAgeMonths => integer().nullable()();
+  BoolColumn get active => boolean()();
+  IntColumn get version => integer()();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Cache global de opciones clinicas (no tiene alcance institucional).
+class VaccineOptionsCache extends Table {
+  TextColumn get id => text()();
+  TextColumn get vaccineId => text()();
+  TextColumn get fieldType => text()();
+  TextColumn get value => text()();
+  TextColumn get displayName => text()();
+  IntColumn get sortOrder => integer()();
+  BoolColumn get isDefault => boolean()();
+  BoolColumn get isActive => boolean()();
+  TextColumn get sourceTemplateId => text().nullable()();
+  IntColumn get version => integer()();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Cache de la relacion vacuna-institucion. Todas las operaciones se acotan
+/// por institutionId para evitar contaminar otra institucion.
+class InstitutionVaccinesCache extends Table {
+  TextColumn get id => text()();
+  TextColumn get institutionId => text()();
+  TextColumn get vaccineId => text()();
+  TextColumn get name => text()();
+  TextColumn get code => text()();
+  TextColumn get category => text()();
+  BoolColumn get enabled => boolean()();
+  IntColumn get version => integer()();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Cache de opciones locales, aislado por institucion y vacuna.
+class InstitutionVaccineOptionsCache extends Table {
+  TextColumn get id => text()();
+  TextColumn get institutionId => text()();
+  TextColumn get vaccineId => text()();
+  TextColumn get fieldType => text()();
+  TextColumn get value => text()();
+  TextColumn get displayName => text()();
+  IntColumn get sortOrder => integer()();
+  BoolColumn get isDefault => boolean()();
+  BoolColumn get isActive => boolean()();
+  TextColumn get sourceTemplateId => text().nullable()();
+  IntColumn get version => integer()();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
-  tables: [CurrentUser, InstitutionsCache, UsersCache, SyncMetadata],
+  tables: [
+    CurrentUser,
+    InstitutionsCache,
+    UsersCache,
+    SyncMetadata,
+    VaccinesCache,
+    VaccineOptionsCache,
+    InstitutionVaccinesCache,
+    InstitutionVaccineOptionsCache,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
@@ -128,7 +220,33 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 4;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        // V2: perfil ampliado del personal de salud (columnas nullables).
+        await m.addColumn(usersCache, usersCache.documentType);
+        await m.addColumn(usersCache, usersCache.documentNumber);
+        await m.addColumn(usersCache, usersCache.phone);
+        await m.addColumn(usersCache, usersCache.birthDate);
+        await m.addColumn(usersCache, usersCache.gender);
+        await m.addColumn(usersCache, usersCache.professionCode);
+        await m.addColumn(
+          usersCache,
+          usersCache.professionalRegistrationNumber,
+        );
+        await m.addColumn(usersCache, usersCache.professionalRegistrationType);
+      }
+      if (from < 3) await m.createTable(vaccinesCache);
+      if (from < 4) {
+        await m.createTable(vaccineOptionsCache);
+        await m.createTable(institutionVaccinesCache);
+        await m.createTable(institutionVaccineOptionsCache);
+      }
+    },
+  );
 
   // ---------- UsersCache ----------
 
@@ -139,6 +257,14 @@ class AppDatabase extends _$AppDatabase {
     required String institutionId,
     required List<String> roles,
     required String status,
+    String? documentType,
+    String? documentNumber,
+    String? phone,
+    String? birthDate,
+    String? gender,
+    String? professionCode,
+    String? professionalRegistrationNumber,
+    String? professionalRegistrationType,
   }) {
     return into(usersCache).insertOnConflictUpdate(
       UsersCacheCompanion.insert(
@@ -148,6 +274,14 @@ class AppDatabase extends _$AppDatabase {
         institutionId: institutionId,
         roles: jsonEncode(roles),
         status: status,
+        documentType: Value(documentType),
+        documentNumber: Value(documentNumber),
+        phone: Value(phone),
+        birthDate: Value(birthDate),
+        gender: Value(gender),
+        professionCode: Value(professionCode),
+        professionalRegistrationNumber: Value(professionalRegistrationNumber),
+        professionalRegistrationType: Value(professionalRegistrationType),
       ),
     );
   }
@@ -230,4 +364,136 @@ class AppDatabase extends _$AppDatabase {
     )..where((t) => t.key.equals(key))).getSingleOrNull();
     return row?.value;
   }
+
+  Future<void> replaceVaccineCache(List<Vaccine> vaccines) async {
+    await transaction(() async {
+      await delete(vaccinesCache).go();
+      for (final vaccine in vaccines) {
+        await into(vaccinesCache).insert(
+          VaccinesCacheCompanion.insert(
+            id: vaccine.id,
+            name: vaccine.name,
+            code: vaccine.code,
+            category: vaccine.category,
+            maxDoses: vaccine.maxDoses,
+            minAgeMonths: Value(vaccine.minAgeMonths),
+            maxAgeMonths: Value(vaccine.maxAgeMonths),
+            active: vaccine.active,
+            version: vaccine.version,
+          ),
+        );
+      }
+    });
+  }
+
+  Future<List<VaccinesCacheData>> cachedVaccines() =>
+      select(vaccinesCache).get();
+
+  Future<void> replaceGlobalOptions(
+    String vaccineId,
+    List<VaccineOption> options,
+  ) async {
+    await transaction(() async {
+      await (delete(
+        vaccineOptionsCache,
+      )..where((t) => t.vaccineId.equals(vaccineId))).go();
+      for (final option in options) {
+        await into(vaccineOptionsCache).insert(
+          VaccineOptionsCacheCompanion.insert(
+            id: option.id,
+            vaccineId: vaccineId,
+            fieldType: option.fieldType,
+            value: option.value,
+            displayName: option.displayName,
+            sortOrder: option.sortOrder,
+            isDefault: option.isDefault,
+            isActive: option.isActive,
+            sourceTemplateId: Value(option.sourceTemplateId),
+            version: option.version,
+          ),
+        );
+      }
+    });
+  }
+
+  Future<List<VaccineOptionsCacheData>> cachedGlobalOptions(String vaccineId) =>
+      (select(
+        vaccineOptionsCache,
+      )..where((t) => t.vaccineId.equals(vaccineId))).get();
+
+  Future<void> replaceInstitutionVaccines(
+    String institutionId,
+    List<InstitutionVaccine> relations,
+  ) async {
+    await transaction(() async {
+      await (delete(
+        institutionVaccinesCache,
+      )..where((t) => t.institutionId.equals(institutionId))).go();
+      for (final relation in relations) {
+        await into(institutionVaccinesCache).insert(
+          InstitutionVaccinesCacheCompanion.insert(
+            id:
+                relation.id ??
+                '${relation.institutionId}:${relation.vaccineId}',
+            institutionId: relation.institutionId,
+            vaccineId: relation.vaccineId,
+            name: relation.name,
+            code: relation.code,
+            category: relation.category,
+            enabled: relation.enabled,
+            version: relation.version,
+          ),
+        );
+      }
+    });
+  }
+
+  Future<List<InstitutionVaccinesCacheData>> cachedInstitutionVaccines(
+    String institutionId,
+  ) => (select(
+    institutionVaccinesCache,
+  )..where((t) => t.institutionId.equals(institutionId))).get();
+
+  Future<void> replaceInstitutionOptions(
+    String institutionId,
+    String vaccineId,
+    List<VaccineOption> options,
+  ) async {
+    await transaction(() async {
+      await (delete(institutionVaccineOptionsCache)..where(
+            (t) =>
+                t.institutionId.equals(institutionId) &
+                t.vaccineId.equals(vaccineId),
+          ))
+          .go();
+      for (final option in options) {
+        await into(institutionVaccineOptionsCache).insert(
+          InstitutionVaccineOptionsCacheCompanion.insert(
+            id: option.id,
+            institutionId: institutionId,
+            vaccineId: vaccineId,
+            fieldType: option.fieldType,
+            value: option.value,
+            displayName: option.displayName,
+            sortOrder: option.sortOrder,
+            isDefault: option.isDefault,
+            isActive: option.isActive,
+            sourceTemplateId: Value(option.sourceTemplateId),
+            version: option.version,
+          ),
+        );
+      }
+    });
+  }
+
+  Future<List<InstitutionVaccineOptionsCacheData>> cachedInstitutionOptions(
+    String institutionId,
+    String vaccineId,
+  ) =>
+      (select(institutionVaccineOptionsCache)..where(
+            (t) =>
+                t.institutionId.equals(institutionId) &
+                t.vaccineId.equals(vaccineId),
+          ))
+          .get();
 }

@@ -201,6 +201,58 @@ void main() {
       expect(controller.error, contains('ventana offline vencio'));
       expect(controller.institutions.single.offlineWindowHours, 72);
     });
+
+    test('reusa el mismo operationId al reintentar el mismo destino', () async {
+      repository.failOnCreate = true;
+      await controller.createInstitutionAdmin(
+        offline: online,
+        email: 'admin@hosp-a.com',
+        fullName: 'Admin A',
+        institutionId: 'inst-1',
+        temporaryPassword: 'Secreto123!',
+      );
+      final firstId = repository.lastOperationId;
+
+      repository.failOnCreate = false;
+      final created = await controller.createInstitutionAdmin(
+        offline: online,
+        email: 'admin@hosp-a.com',
+        fullName: 'Admin A',
+        institutionId: 'inst-1',
+        temporaryPassword: 'Secreto123!',
+      );
+
+      expect(created, isNotNull);
+      expect(repository.lastOperationId, firstId);
+      expect(repository.lastOperationId, isNotNull);
+    });
+
+    test(
+      'genera un nuevo operationId tras el exito o si cambia el destino',
+      () async {
+        final first = await controller.createInstitutionAdmin(
+          offline: online,
+          email: 'admin@hosp-a.com',
+          fullName: 'Admin A',
+          institutionId: 'inst-1',
+          temporaryPassword: 'Secreto123!',
+        );
+        expect(first, isNotNull);
+        final firstId = repository.lastOperationId;
+
+        final second = await controller.createInstitutionAdmin(
+          offline: online,
+          email: 'admin-2@hosp-a.com',
+          fullName: 'Admin B',
+          institutionId: 'inst-1',
+          temporaryPassword: 'Secreto123!',
+        );
+
+        expect(second, isNotNull);
+        expect(repository.lastOperationId, isNot(firstId));
+        expect(repository.lastOperationId, isNotNull);
+      },
+    );
   });
 }
 

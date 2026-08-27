@@ -4,6 +4,7 @@ import '../../../core/auth/offline_access.dart';
 import '../../../core/auth/offline_policy.dart';
 import '../../../core/auth/session_manager.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/utils/uuid.dart';
 import '../domain/entities/vaccinator.dart';
 import '../domain/use_cases/create_vaccinator.dart';
 import '../domain/use_cases/list_users.dart';
@@ -46,6 +47,12 @@ class UsersController extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
+  /// Clave de idempotencia del aprovisionamiento: se genera por intencion de
+  /// creacion (mismo email) y se reutiliza en reintentos; se descarta tras el
+  /// exito o si cambia el correo.
+  String? _pendingOperationId;
+  String? _pendingEmail;
+
   List<Vaccinator> get users => List.unmodifiable(_users);
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -80,11 +87,24 @@ class UsersController extends ChangeNotifier {
     required String email,
     required String fullName,
     required String temporaryPassword,
+    required String documentType,
+    required String documentNumber,
+    String? phone,
+    String? birthDate,
+    String? gender,
+    required String professionCode,
+    String? professionalRegistrationNumber,
+    String? professionalRegistrationType,
   }) async {
     final token = await _currentToken();
     if (token == null) {
       _setError('Tu sesion expiro. Inicia sesion de nuevo.');
       return null;
+    }
+
+    if (_pendingOperationId == null || _pendingEmail != email) {
+      _pendingOperationId = uuidV4();
+      _pendingEmail = email;
     }
 
     _isLoading = true;
@@ -98,7 +118,18 @@ class UsersController extends ChangeNotifier {
         email: email,
         fullName: fullName,
         temporaryPassword: temporaryPassword,
+        operationId: _pendingOperationId!,
+        documentType: documentType,
+        documentNumber: documentNumber,
+        phone: phone,
+        birthDate: birthDate,
+        gender: gender,
+        professionCode: professionCode,
+        professionalRegistrationNumber: professionalRegistrationNumber,
+        professionalRegistrationType: professionalRegistrationType,
       );
+      _pendingOperationId = null;
+      _pendingEmail = null;
       _users = [..._users, created];
       return created;
     } on OfflinePolicyException catch (e) {
@@ -154,6 +185,16 @@ class UsersController extends ChangeNotifier {
         institutionId: updatedStatus.institutionId,
         roles: updatedRoles.roles,
         status: updatedStatus.status,
+        documentType: updatedStatus.documentType,
+        documentNumber: updatedStatus.documentNumber,
+        phone: updatedStatus.phone,
+        birthDate: updatedStatus.birthDate,
+        gender: updatedStatus.gender,
+        professionCode: updatedStatus.professionCode,
+        professionalRegistrationNumber:
+            updatedStatus.professionalRegistrationNumber,
+        professionalRegistrationType:
+            updatedStatus.professionalRegistrationType,
       );
       _users = [for (final u in _users) u.id == merged.id ? merged : u];
       return true;

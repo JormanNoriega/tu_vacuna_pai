@@ -45,6 +45,7 @@ public class IdentityService {
      * @throws UserNotActiveException si el usuario o su institucion no estan activos
      */
     @Transactional(readOnly = true)
+    @SuppressWarnings("null")
     public AuthorizedUser resolve(UUID userId) {
         UserEntity user = userRepository.findById(userId)
             .orElseThrow(() -> new UserNotFoundException(
@@ -106,10 +107,5 @@ public class IdentityService {
             user.getPermissions(),
             user.getInstitution().getOfflineWindowHours(),
             user.getLastOnlineValidation().toString());
-    }
-
-    public boolean hasPermission(UUID userId, String permissionCode) {
-        return userRepository.findPermissionsByUserId(userId).stream()
-            .anyMatch(permission -> permission.getCode().equals(permissionCode));
     }
 }

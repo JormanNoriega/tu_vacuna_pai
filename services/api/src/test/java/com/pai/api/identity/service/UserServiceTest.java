@@ -3,10 +3,7 @@ package com.pai.api.identity.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -21,20 +18,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-import com.pai.api.identity.dto.CreateInstitutionAdminRequest;
-import com.pai.api.identity.dto.CreateVaccinatorRequest;
 import com.pai.api.identity.dto.UserResponse;
 import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.entity.RoleEntity;
 import com.pai.api.identity.entity.UserEntity;
 import com.pai.api.identity.entity.UserRoleEntity;
-import com.pai.api.identity.repository.InstitutionRepository;
 import com.pai.api.identity.repository.RoleRepository;
 import com.pai.api.identity.repository.UserRepository;
 import com.pai.api.identity.repository.UserRoleRepository;
-import com.pai.api.shared.exceptions.EmailAlreadyExistsException;
-import com.pai.api.shared.exceptions.InstitutionNotFoundException;
-import com.pai.api.shared.exceptions.PermissionDeniedException;
 import com.pai.api.shared.exceptions.RoleNotFoundException;
 import com.pai.api.shared.exceptions.ScopeViolationException;
 
@@ -43,14 +34,10 @@ class UserServiceTest {
     private static final UUID ACTOR_ID = UUID.randomUUID();
     private static final UUID INSTITUTION_ID = UUID.randomUUID();
     private static final UUID ROLE_ID = UUID.randomUUID();
-    private static final UUID AUTH_USER_ID = UUID.randomUUID();
-    private static final String ACCESS_TOKEN = "access-token";
 
     private UserRepository userRepository;
-    private InstitutionRepository institutionRepository;
     private RoleRepository roleRepository;
     private UserRoleRepository userRoleRepository;
-    private AuthUserProvisioningClient authUserClient;
     private IdentityService identityService;
     private DataScope dataScope;
     private UserService service;
@@ -58,29 +45,21 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
-        institutionRepository = mock(InstitutionRepository.class);
         roleRepository = mock(RoleRepository.class);
         userRoleRepository = mock(UserRoleRepository.class);
-        authUserClient = mock(AuthUserProvisioningClient.class);
         identityService = mock(IdentityService.class);
         dataScope = new DataScope();
         service = new UserService(
-            userRepository, institutionRepository, roleRepository,
-            userRoleRepository, authUserClient, identityService, dataScope);
+            userRepository, roleRepository, userRoleRepository, identityService, dataScope);
     }
 
-    private CreateInstitutionAdminRequest request() {
-        return new CreateInstitutionAdminRequest(
-            "ADMIN@HOSP.A", "Admin Hospital A", INSTITUTION_ID, "TempPass123!");
+    private static <T> T mock(Class<T> type) {
+        return org.mockito.Mockito.mock(type);
     }
 
     private InstitutionEntity institution() {
         return new InstitutionEntity(INSTITUTION_ID, "HOSP-A", "Hospital A",
             InstitutionEntity.Status.ACTIVE, (short) 72, Instant.now(), Instant.now());
-    }
-
-    private CreateVaccinatorRequest vaccinatorRequest() {
-        return new CreateVaccinatorRequest("VAC@HOSP.A", "Vaca Uno", "TempPass123!");
     }
 
     private AuthorizedUser adminInstitutionActor() {
@@ -89,224 +68,9 @@ class UserServiceTest {
             List.of("USER_MANAGE"), Instant.now());
     }
 
-    @Test
-    void createInstitutionAdmin_createsAuthUserMirrorAndRole() {
-        when(institutionRepository.findById(INSTITUTION_ID))
-            .thenReturn(Optional.of(institution()));
-        when(userRepository.existsByEmail("admin@hosp.a")).thenReturn(false);
-        when(roleRepository.findByCode("ADMIN_INSTITUTION"))
-            .thenReturn(Optional.of(new RoleEntity(ROLE_ID, "ADMIN_INSTITUTION", "Admin")));
-        when(authUserClient.createAuthUser(ACCESS_TOKEN, "admin@hosp.a",
-            "TempPass123!", "Admin Hospital A")).thenReturn(AUTH_USER_ID);
-
-        UserResponse result = service.createInstitutionAdmin(ACTOR_ID, ACCESS_TOKEN, request());
-
-        assertThat(result.id()).isEqualTo(AUTH_USER_ID);
-        assertThat(result.email()).isEqualTo("admin@hosp.a");
-        assertThat(result.institutionId()).isEqualTo(INSTITUTION_ID);
-        assertThat(result.roles()).containsExactly("ADMIN_INSTITUTION");
-        verify(userRepository).save(any(UserEntity.class));
-        verify(userRoleRepository).save(any());
-    }
-
-    @Test
-    void createInstitutionAdmin_throwsWhenInstitutionMissing() {
-        when(institutionRepository.findById(INSTITUTION_ID)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.createInstitutionAdmin(ACTOR_ID, ACCESS_TOKEN, request()))
-            .isInstanceOf(InstitutionNotFoundException.class);
-        verify(authUserClient, never()).createAuthUser(anyString(), anyString(), anyString(), anyString());
-    }
-
-    @Test
-    void createInstitutionAdmin_throwsWhenEmailAlreadyRegistered() {
-        when(institutionRepository.findById(INSTITUTION_ID))
-            .thenReturn(Optional.of(institution()));
-        when(userRepository.existsByEmail("admin@hosp.a")).thenReturn(true);
-
-        assertThatThrownBy(() -> service.createInstitutionAdmin(ACTOR_ID, ACCESS_TOKEN, request()))
-            .isInstanceOf(EmailAlreadyExistsException.class);
-        verify(authUserClient, never()).createAuthUser(anyString(), anyString(), anyString(), anyString());
-    }
-
-    @Test
-    void createInstitutionAdmin_throwsWhenRoleMissing() {
-        when(institutionRepository.findById(INSTITUTION_ID))
-            .thenReturn(Optional.of(institution()));
-        when(userRepository.existsByEmail("admin@hosp.a")).thenReturn(false);
-        when(roleRepository.findByCode("ADMIN_INSTITUTION")).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.createInstitutionAdmin(ACTOR_ID, ACCESS_TOKEN, request()))
-            .isInstanceOf(RoleNotFoundException.class);
-    }
-
-    @Test
-    void createInstitutionAdmin_throwsWhenAuthUserEmailExists() {
-        when(institutionRepository.findById(INSTITUTION_ID))
-            .thenReturn(Optional.of(institution()));
-        when(userRepository.existsByEmail("admin@hosp.a")).thenReturn(false);
-        when(roleRepository.findByCode("ADMIN_INSTITUTION"))
-            .thenReturn(Optional.of(new RoleEntity(ROLE_ID, "ADMIN_INSTITUTION", "Admin")));
-        when(authUserClient.createAuthUser(ACCESS_TOKEN, "admin@hosp.a",
-            "TempPass123!", "Admin Hospital A"))
-            .thenThrow(new EmailAlreadyExistsException("Ya existe"));
-
-        assertThatThrownBy(() -> service.createInstitutionAdmin(ACTOR_ID, ACCESS_TOKEN, request()))
-            .isInstanceOf(EmailAlreadyExistsException.class);
-        verify(userRepository, never()).save(any(UserEntity.class));
-    }
-
-    @Test
-    void createInstitutionAdmin_compensatesWhenAppUserSaveFails() {
-        when(institutionRepository.findById(INSTITUTION_ID))
-            .thenReturn(Optional.of(institution()));
-        when(userRepository.existsByEmail("admin@hosp.a")).thenReturn(false);
-        when(roleRepository.findByCode("ADMIN_INSTITUTION"))
-            .thenReturn(Optional.of(new RoleEntity(ROLE_ID, "ADMIN_INSTITUTION", "Admin")));
-        when(authUserClient.createAuthUser(ACCESS_TOKEN, "admin@hosp.a",
-            "TempPass123!", "Admin Hospital A")).thenReturn(AUTH_USER_ID);
-        when(userRepository.save(any(UserEntity.class)))
-            .thenThrow(new RuntimeException("DB failure"));
-
-        assertThatThrownBy(() -> service.createInstitutionAdmin(ACTOR_ID, ACCESS_TOKEN, request()))
-            .isInstanceOf(RuntimeException.class);
-        verify(authUserClient).deleteAuthUser(ACCESS_TOKEN, AUTH_USER_ID);
-    }
-
-    @Test
-    void createInstitutionAdmin_doesNotCompensateOnSuccess() {
-        when(institutionRepository.findById(INSTITUTION_ID))
-            .thenReturn(Optional.of(institution()));
-        when(userRepository.existsByEmail("admin@hosp.a")).thenReturn(false);
-        when(roleRepository.findByCode("ADMIN_INSTITUTION"))
-            .thenReturn(Optional.of(new RoleEntity(ROLE_ID, "ADMIN_INSTITUTION", "Admin")));
-        when(authUserClient.createAuthUser(ACCESS_TOKEN, "admin@hosp.a",
-            "TempPass123!", "Admin Hospital A")).thenReturn(AUTH_USER_ID);
-
-        service.createInstitutionAdmin(ACTOR_ID, ACCESS_TOKEN, request());
-
-        verify(authUserClient, never()).deleteAuthUser(eq(ACCESS_TOKEN), any(UUID.class));
-    }
-
-    @Test
-    void createVaccinator_createsAuthUserMirrorAndRole() {
-        when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
-        when(userRepository.existsByEmail("vac@hosp.a")).thenReturn(false);
-        when(roleRepository.findByCode("VACCINATOR"))
-            .thenReturn(Optional.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
-        when(authUserClient.createAuthUser(ACCESS_TOKEN, "vac@hosp.a",
-            "TempPass123!", "Vaca Uno")).thenReturn(AUTH_USER_ID);
-
-        UserResponse result = service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest());
-
-        assertThat(result.id()).isEqualTo(AUTH_USER_ID);
-        assertThat(result.email()).isEqualTo("vac@hosp.a");
-        assertThat(result.institutionId()).isEqualTo(INSTITUTION_ID);
-        assertThat(result.roles()).containsExactly("VACCINATOR");
-        verify(userRepository).save(any(UserEntity.class));
-        verify(userRoleRepository).save(any());
-    }
-
-    @Test
-    void createVaccinator_blocksActorWithoutUserManagePermission() {
-        AuthorizedUser actor = new AuthorizedUser(ACTOR_ID, "admin@hosp.a",
-            "Admin Hospital A", institution(), List.of("ADMIN_INSTITUTION"),
-            List.of("ATTENTION_CREATE"), Instant.now());
-        when(identityService.resolve(ACTOR_ID)).thenReturn(actor);
-
-        assertThatThrownBy(() -> service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest()))
-            .isInstanceOf(PermissionDeniedException.class);
-        verify(authUserClient, never())
-            .createAuthUser(anyString(), anyString(), anyString(), anyString());
-    }
-
-    @Test
-    void createVaccinator_usesActorInstitutionAsScope() {
-        when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
-        when(userRepository.existsByEmail("vac@hosp.a")).thenReturn(false);
-        when(roleRepository.findByCode("VACCINATOR"))
-            .thenReturn(Optional.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
-        when(authUserClient.createAuthUser(ACCESS_TOKEN, "vac@hosp.a",
-            "TempPass123!", "Vaca Uno")).thenReturn(AUTH_USER_ID);
-
-        service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest());
-
-        ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
-        verify(userRepository).save(captor.capture());
-        assertThat(captor.getValue().getInstitutionId()).isEqualTo(INSTITUTION_ID);
-    }
-
-    @Test
-    void createVaccinator_throwsWhenEmailAlreadyRegistered() {
-        when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
-        when(userRepository.existsByEmail("vac@hosp.a")).thenReturn(true);
-
-        assertThatThrownBy(() -> service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest()))
-            .isInstanceOf(EmailAlreadyExistsException.class);
-        verify(authUserClient, never())
-            .createAuthUser(anyString(), anyString(), anyString(), anyString());
-    }
-
-    @Test
-    void createVaccinator_throwsWhenRoleMissing() {
-        when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
-        when(userRepository.existsByEmail("vac@hosp.a")).thenReturn(false);
-        when(roleRepository.findByCode("VACCINATOR")).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest()))
-            .isInstanceOf(RoleNotFoundException.class);
-        verify(authUserClient, never())
-            .createAuthUser(anyString(), anyString(), anyString(), anyString());
-    }
-
-    @Test
-    void createVaccinator_throwsWhenAuthUserEmailExists() {
-        when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
-        when(userRepository.existsByEmail("vac@hosp.a")).thenReturn(false);
-        when(roleRepository.findByCode("VACCINATOR"))
-            .thenReturn(Optional.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
-        when(authUserClient.createAuthUser(ACCESS_TOKEN, "vac@hosp.a",
-            "TempPass123!", "Vaca Uno"))
-            .thenThrow(new EmailAlreadyExistsException("Ya existe"));
-
-        assertThatThrownBy(() -> service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest()))
-            .isInstanceOf(EmailAlreadyExistsException.class);
-        verify(userRepository, never()).save(any(UserEntity.class));
-    }
-
-    @Test
-    void createVaccinator_compensatesWhenAppUserSaveFails() {
-        when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
-        when(userRepository.existsByEmail("vac@hosp.a")).thenReturn(false);
-        when(roleRepository.findByCode("VACCINATOR"))
-            .thenReturn(Optional.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
-        when(authUserClient.createAuthUser(ACCESS_TOKEN, "vac@hosp.a",
-            "TempPass123!", "Vaca Uno")).thenReturn(AUTH_USER_ID);
-        when(userRepository.save(any(UserEntity.class)))
-            .thenThrow(new RuntimeException("DB failure"));
-
-        assertThatThrownBy(() -> service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest()))
-            .isInstanceOf(RuntimeException.class);
-        verify(authUserClient).deleteAuthUser(ACCESS_TOKEN, AUTH_USER_ID);
-    }
-
-    @Test
-    void createVaccinator_preservesOriginalExceptionWhenCompensationFails() {
-        when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
-        when(userRepository.existsByEmail("vac@hosp.a")).thenReturn(false);
-        when(roleRepository.findByCode("VACCINATOR"))
-            .thenReturn(Optional.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
-        when(authUserClient.createAuthUser(ACCESS_TOKEN, "vac@hosp.a",
-            "TempPass123!", "Vaca Uno")).thenReturn(AUTH_USER_ID);
-        RuntimeException original = new RuntimeException("DB failure");
-        when(userRepository.save(any(UserEntity.class))).thenThrow(original);
-        doThrow(new RuntimeException("Compensation failure"))
-            .when(authUserClient).deleteAuthUser(ACCESS_TOKEN, AUTH_USER_ID);
-
-        assertThatThrownBy(() -> service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest()))
-            .isSameAs(original)
-            .satisfies(ex -> assertThat(ex.getSuppressed()).hasSize(1));
-        verify(authUserClient).deleteAuthUser(ACCESS_TOKEN, AUTH_USER_ID);
+    private UserEntity vaccinator(UUID id, String email) {
+        return new UserEntity(id, email, "Vaca", INSTITUTION_ID,
+            UserEntity.Status.ACTIVE, Instant.now(), Instant.now());
     }
 
     @Test
@@ -341,8 +105,7 @@ class UserServiceTest {
             "Admin Hospital A", institution(), List.of("ADMIN_INSTITUTION"),
             List.of("USER_MANAGE"), Instant.now());
         when(identityService.resolve(ACTOR_ID)).thenReturn(actor);
-        UserEntity vaccinator = new UserEntity(UUID.randomUUID(), "vac@hosp.a", "Vaca",
-            INSTITUTION_ID, UserEntity.Status.ACTIVE, Instant.now(), Instant.now());
+        UserEntity vaccinator = vaccinator(UUID.randomUUID(), "vac@hosp.a");
         when(userRepository.findByInstitutionIdAndRoleCodes(
             INSTITUTION_ID, Set.of("VACCINATOR", "READ_ONLY")))
             .thenReturn(List.of(vaccinator));
@@ -363,8 +126,7 @@ class UserServiceTest {
         when(identityService.resolve(ACTOR_ID)).thenReturn(actor);
         // El repositorio solo devuelve el vacunador: el admin sembrado en la
         // misma institucion queda fuera del listado de gestion.
-        UserEntity vaccinator = new UserEntity(UUID.randomUUID(), "vac@hosp.a", "Vaca",
-            INSTITUTION_ID, UserEntity.Status.ACTIVE, Instant.now(), Instant.now());
+        UserEntity vaccinator = vaccinator(UUID.randomUUID(), "vac@hosp.a");
         when(userRepository.findByInstitutionIdAndRoleCodes(
             INSTITUTION_ID, Set.of("VACCINATOR", "READ_ONLY")))
             .thenReturn(List.of(vaccinator));
@@ -383,8 +145,7 @@ class UserServiceTest {
             "Admin Hospital A", institution(), List.of("ADMIN_INSTITUTION"),
             List.of("USER_MANAGE"), Instant.now());
         when(identityService.resolve(ACTOR_ID)).thenReturn(actor);
-        UserEntity vaccinator = new UserEntity(UUID.randomUUID(), "vac@hosp.a", "Vaca",
-            INSTITUTION_ID, UserEntity.Status.ACTIVE, Instant.now(), Instant.now());
+        UserEntity vaccinator = vaccinator(UUID.randomUUID(), "vac@hosp.a");
         when(userRepository.findByInstitutionIdAndRoleCodes(
             INSTITUTION_ID, Set.of("VACCINATOR", "READ_ONLY")))
             .thenReturn(List.of(vaccinator));
@@ -427,16 +188,11 @@ class UserServiceTest {
 
     private static final UUID TARGET_ID = UUID.randomUUID();
 
-    private UserEntity targetVaccinator() {
-        return new UserEntity(TARGET_ID, "vac@hosp.a", "Vaca Uno",
-            INSTITUTION_ID, UserEntity.Status.ACTIVE, Instant.now(), Instant.now());
-    }
-
     @Test
     void updateStatus_deactivatesVaccinatorInOwnInstitution() {
         when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
         when(userRepository.findByIdAndInstitutionId(TARGET_ID, INSTITUTION_ID))
-            .thenReturn(Optional.of(targetVaccinator()));
+            .thenReturn(Optional.of(vaccinator(TARGET_ID, "vac@hosp.a")));
         when(userRepository.findRolesByUserId(TARGET_ID))
             .thenReturn(List.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
         when(userRepository.updateStatusScoped(
@@ -455,7 +211,6 @@ class UserServiceTest {
 
     @Test
     void updateStatus_blocksAdminInstitutionFromOtherInstitution() {
-        UUID other = UUID.randomUUID();
         AuthorizedUser actor = new AuthorizedUser(ACTOR_ID, "admin@hosp.a",
             "Admin Hospital A", institution(), List.of("ADMIN_INSTITUTION"),
             List.of("USER_MANAGE"), Instant.now());
@@ -481,7 +236,7 @@ class UserServiceTest {
     void updateStatus_blocksSuperAdminTargetForInstitutionAdmin() {
         when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
         when(userRepository.findByIdAndInstitutionId(TARGET_ID, INSTITUTION_ID))
-            .thenReturn(Optional.of(targetVaccinator()));
+            .thenReturn(Optional.of(vaccinator(TARGET_ID, "vac@hosp.a")));
         when(userRepository.findRolesByUserId(TARGET_ID))
             .thenReturn(List.of(new RoleEntity(ROLE_ID, "SUPER_ADMIN", "Super")));
 
@@ -495,7 +250,7 @@ class UserServiceTest {
     void updateStatus_blocksCoAdminTargetForInstitutionAdmin() {
         when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
         when(userRepository.findByIdAndInstitutionId(TARGET_ID, INSTITUTION_ID))
-            .thenReturn(Optional.of(targetVaccinator()));
+            .thenReturn(Optional.of(vaccinator(TARGET_ID, "vac@hosp.a")));
         when(userRepository.findRolesByUserId(TARGET_ID))
             .thenReturn(List.of(new RoleEntity(ROLE_ID, "ADMIN_INSTITUTION", "Admin")));
 
@@ -507,7 +262,7 @@ class UserServiceTest {
     void updateStatus_scopeGuaranteesScopedWriteForInstitutionAdmin() {
         when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
         when(userRepository.findByIdAndInstitutionId(TARGET_ID, INSTITUTION_ID))
-            .thenReturn(Optional.of(targetVaccinator()));
+            .thenReturn(Optional.of(vaccinator(TARGET_ID, "vac@hosp.a")));
         when(userRepository.findRolesByUserId(TARGET_ID))
             .thenReturn(List.of(new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador")));
         // Red de seguridad: si la UPDATE scopeada no afecta filas (no existe o
@@ -552,10 +307,11 @@ class UserServiceTest {
     // ---------- updateRoles ----------
 
     @Test
+    @SuppressWarnings("unchecked")
     void updateRoles_replacesRolesOfVaccinator() {
         when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
         when(userRepository.findByIdAndInstitutionId(TARGET_ID, INSTITUTION_ID))
-            .thenReturn(Optional.of(targetVaccinator()));
+            .thenReturn(Optional.of(vaccinator(TARGET_ID, "vac@hosp.a")));
         RoleEntity vaccinatorRole = new RoleEntity(ROLE_ID, "VACCINATOR", "Vacunador");
         RoleEntity readOnlyRole = new RoleEntity(UUID.randomUUID(), "READ_ONLY", "Consulta");
         // Primera lectura (guard de target) -> estado previo; la segunda
@@ -599,7 +355,6 @@ class UserServiceTest {
 
     @Test
     void updateRoles_blocksOtherInstitution() {
-        UUID other = UUID.randomUUID();
         AuthorizedUser actor = new AuthorizedUser(ACTOR_ID, "admin@hosp.a",
             "Admin Hospital A", institution(), List.of("ADMIN_INSTITUTION"),
             List.of("USER_MANAGE"), Instant.now());
@@ -620,7 +375,7 @@ class UserServiceTest {
         when(roleRepository.findByCode("READ_ONLY"))
             .thenReturn(Optional.of(new RoleEntity(UUID.randomUUID(), "READ_ONLY", "Consulta")));
         when(userRepository.findByIdAndInstitutionId(TARGET_ID, INSTITUTION_ID))
-            .thenReturn(Optional.of(targetVaccinator()));
+            .thenReturn(Optional.of(vaccinator(TARGET_ID, "vac@hosp.a")));
         when(userRepository.findRolesByUserId(TARGET_ID))
             .thenReturn(List.of(new RoleEntity(ROLE_ID, "ADMIN_INSTITUTION", "Admin")));
 

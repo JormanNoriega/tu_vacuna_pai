@@ -137,31 +137,42 @@ class SupabaseAuthRepository implements AuthRepository {
         await _invalidateSession();
         return SessionRestoreResult.signedOut();
       }
-      // Backend inalcanzable o 5xx con conectividad: los administradores
-      // permanecen online (online-first) y las vistas muestran el error; el
-      // resto cae a la ventana offline.
+      // Backend inalcanzable o 5xx CON conectividad del dispositivo: los
+      // administradores permanecen online (online-first) y las vistas muestran
+      // el error; el resto entra a la ventana offline con razon
+      // BACKEND_UNAVAILABLE, sin perder la capacidad de trabajar localmente.
       if (isAdmin) {
         return SessionRestoreResult.signedIn(profile);
       }
-    } else if (isAdmin) {
-      // Sin conectividad el admin tampoco entra a la ventana offline: su
-      // operacion depende del servidor, permanece autenticado y las vistas
-      // muestran los errores de conexion.
-      return SessionRestoreResult.signedIn(profile);
+      return _offlineRestore(profile, OfflineReason.backendUnavailable);
     }
 
+    // Sin conectividad real del dispositivo: los administradores permanecen
+    // online-first; el resto cae a la ventana offline por razon NO_NETWORK.
+    if (isAdmin) {
+      return SessionRestoreResult.signedIn(profile);
+    }
+    return _offlineRestore(profile, OfflineReason.noNetwork);
+  }
+
+  /// Decide entre ventana offline autorizada o vencida para el perfil local.
+  /// [reason] solo afecta la etiqueta visual; la autorizacion la define
+  /// [OfflineAuthorizationService].
+  SessionRestoreResult _offlineRestore(
+    AuthUser? profile,
+    OfflineReason reason,
+  ) {
     if (profile == null) {
       return SessionRestoreResult.signedOut();
     }
-
     final state = _offlineAuthorization.evaluate(
       lastOnlineValidation: profile.lastOnlineValidation,
       offlineWindowHours: profile.offlineWindowHours,
     );
     if (state == OfflineAuthorizationState.authorized) {
-      return SessionRestoreResult.offlineAuthorized(profile);
+      return SessionRestoreResult.offlineAuthorized(profile, reason: reason);
     }
-    return SessionRestoreResult.offlineLocked(profile);
+    return SessionRestoreResult.offlineLocked(profile, reason: reason);
   }
 
   /// Intenta validar online. Primero usa el access token vigente; solo si el

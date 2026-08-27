@@ -22,6 +22,7 @@ class AuthController extends ChangeNotifier {
 
   AuthUser? _user;
   SessionStatus _status = SessionStatus.signedOut;
+  OfflineReason? _offlineReason;
   bool _isLoading = false;
   bool _isRestoring = true;
   String? _error;
@@ -33,6 +34,10 @@ class AuthController extends ChangeNotifier {
 
   /// Estado de la sesion tras restaurar (online u offline).
   SessionStatus get status => _status;
+
+  /// Razon de la ventana offline (noNetwork / backendUnavailable). Solo es
+  /// relevante cuando [status] es offlineAuthorized u offlineLocked.
+  OfflineReason? get offlineReason => _offlineReason;
 
   /// True cuando la ventana offline vencio y solo queda lectura local.
   bool get isOfflineLocked => _status == SessionStatus.offlineLocked;
@@ -72,6 +77,7 @@ class AuthController extends ChangeNotifier {
     try {
       _user = await _signIn(email: email, password: password);
       _status = SessionStatus.signedIn;
+      _offlineReason = null;
       return true;
     } on AuthException catch (error) {
       _error = error.message;
@@ -90,6 +96,7 @@ class AuthController extends ChangeNotifier {
     }
     _user = null;
     _status = SessionStatus.signedOut;
+    _offlineReason = null;
     _error = null;
     notifyListeners();
   }
@@ -97,6 +104,7 @@ class AuthController extends ChangeNotifier {
   void _applyRestoreResult(SessionRestoreResult result) {
     _status = result.status;
     _user = result.user;
+    _offlineReason = result.offlineReason;
   }
 
   void clearError() {

@@ -1,6 +1,7 @@
 package com.pai.api.identity.entity;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -38,11 +39,42 @@ public class UserEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "document_type")
+    private String documentType;
+
+    @Column(name = "document_number")
+    private String documentNumber;
+
+    private String phone;
+
+    @Column(name = "birth_date")
+    private LocalDate birthDate;
+
+    private String gender;
+
+    @Column(name = "profession_code")
+    private String professionCode;
+
+    @Column(name = "professional_registration_number")
+    private String professionalRegistrationNumber;
+
+    @Column(name = "professional_registration_type")
+    private String professionalRegistrationType;
+
     protected UserEntity() {
     }
 
     public UserEntity(UUID id, String email, String fullName, UUID institutionId,
             Status status, Instant createdAt, Instant updatedAt) {
+        this(id, email, fullName, institutionId, status, createdAt, updatedAt,
+            null, null, null, null, null, null, null, null);
+    }
+
+    public UserEntity(UUID id, String email, String fullName, UUID institutionId,
+            Status status, Instant createdAt, Instant updatedAt,
+            String documentType, String documentNumber, String phone,
+            LocalDate birthDate, String gender, String professionCode,
+            String professionalRegistrationNumber, String professionalRegistrationType) {
         this.id = id;
         this.email = email;
         this.fullName = fullName;
@@ -50,6 +82,14 @@ public class UserEntity {
         this.status = status;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.documentType = documentType;
+        this.documentNumber = documentNumber;
+        this.phone = phone;
+        this.birthDate = birthDate;
+        this.gender = gender;
+        this.professionCode = professionCode;
+        this.professionalRegistrationNumber = professionalRegistrationNumber;
+        this.professionalRegistrationType = professionalRegistrationType;
     }
 
     public boolean isActive() {
@@ -90,5 +130,37 @@ public class UserEntity {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getDocumentType() {
+        return documentType;
+    }
+
+    public String getDocumentNumber() {
+        return documentNumber;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public LocalDate getBirthDate() {
+        return birthDate;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public String getProfessionCode() {
+        return professionCode;
+    }
+
+    public String getProfessionalRegistrationNumber() {
+        return professionalRegistrationNumber;
+    }
+
+    public String getProfessionalRegistrationType() {
+        return professionalRegistrationType;
     }
 }

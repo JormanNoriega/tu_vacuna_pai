@@ -122,13 +122,15 @@ class ApiClient {
 
   /// Crea un ADMIN_INSTITUTION para una institucion. Requiere
   /// `INSTITUTION_WRITE` (SUPER_ADMIN). La contrasena viaja solo en el request
-  /// y nunca se devuelve en la respuesta.
+  /// y nunca se devuelve en la respuesta. [operationId] es la clave de
+  /// idempotencia: se reenvia el mismo valor en reintentos del mismo intento.
   Future<Map<String, dynamic>> createInstitutionAdmin(
     String accessToken, {
     required String email,
     required String fullName,
     required String institutionId,
     required String temporaryPassword,
+    required String operationId,
   }) async {
     final uri = Uri.parse('$baseUrl/users/institution-admins');
     final response = await _send(
@@ -140,6 +142,7 @@ class ApiClient {
           'fullName': fullName,
           'institutionId': institutionId,
           'temporaryPassword': temporaryPassword,
+          'operationId': operationId,
         }),
       ),
     );
@@ -175,12 +178,23 @@ class ApiClient {
   /// Crea un VACCINATOR en la institucion del usuario autenticado. Requiere
   /// `USER_MANAGE` (ADMIN_INSTITUTION). La contrasena temporal viaja solo en el
   /// request y nunca se devuelve en la respuesta; el institutionId se deriva
-  /// del token en el servidor, no se envia en el body.
+  /// del token en el servidor, no se envia en el body. [operationId] es la
+  /// clave de idempotencia de reintentos. El perfil (documento, contacto,
+  /// profesion) viaja crudo; el backend lo normaliza y valida.
   Future<Map<String, dynamic>> createVaccinator(
     String accessToken, {
     required String email,
     required String fullName,
     required String temporaryPassword,
+    required String operationId,
+    required String documentType,
+    required String documentNumber,
+    String? phone,
+    String? birthDate,
+    String? gender,
+    required String professionCode,
+    String? professionalRegistrationNumber,
+    String? professionalRegistrationType,
   }) async {
     final uri = Uri.parse('$baseUrl/users/vaccinators');
     final response = await _send(
@@ -191,6 +205,19 @@ class ApiClient {
           'email': email,
           'fullName': fullName,
           'temporaryPassword': temporaryPassword,
+          'operationId': operationId,
+          'documentType': documentType,
+          'documentNumber': documentNumber,
+          'professionCode': professionCode,
+          if (phone != null && phone.isNotEmpty) 'phone': phone,
+          if (birthDate != null && birthDate.isNotEmpty) 'birthDate': birthDate,
+          if (gender != null && gender.isNotEmpty) 'gender': gender,
+          if (professionalRegistrationNumber != null &&
+              professionalRegistrationNumber.isNotEmpty)
+            'professionalRegistrationNumber': professionalRegistrationNumber,
+          if (professionalRegistrationType != null &&
+              professionalRegistrationType.isNotEmpty)
+            'professionalRegistrationType': professionalRegistrationType,
         }),
       ),
     );
@@ -258,6 +285,207 @@ class ApiClient {
     );
   }
 
+  Future<List<Map<String, dynamic>>> listCatalogVaccines(String token) async =>
+      _decodeList(
+        await _send(
+          _http.get(
+            Uri.parse('$baseUrl/catalogs/vaccines'),
+            headers: _jsonHeaders(token),
+          ),
+        ),
+        fallback: 'Error al consultar el catalogo.',
+      );
+
+  Future<List<Map<String, dynamic>>> listInstitutionCatalogVaccines(
+    String token,
+    String institutionId,
+  ) async => _decodeList(
+    await _send(
+      _http.get(
+        Uri.parse('$baseUrl/institutions/$institutionId/vaccines'),
+        headers: _jsonHeaders(token),
+      ),
+    ),
+    fallback: 'Error al consultar el catalogo institucional.',
+  );
+  Future<Map<String, dynamic>> createCatalogVaccine(
+    String token,
+    Map<String, dynamic> body,
+  ) async => _decodeObject(
+    await _send(
+      _http.post(
+        Uri.parse('$baseUrl/catalogs/vaccines'),
+        headers: _jsonHeaders(token),
+        body: jsonEncode(body),
+      ),
+    ),
+    fallback: 'Error al crear la vacuna.',
+  );
+  Future<Map<String, dynamic>> updateCatalogVaccine(
+    String token,
+    String id,
+    int version,
+    Map<String, dynamic> body,
+  ) async => _decodeObject(
+    await _send(
+      _http.put(
+        Uri.parse('$baseUrl/catalogs/vaccines/$id?version=$version'),
+        headers: _jsonHeaders(token),
+        body: jsonEncode(body),
+      ),
+    ),
+    fallback: 'Error al actualizar la vacuna.',
+  );
+  Future<void> deleteCatalogVaccine(
+    String token,
+    String id,
+    int version,
+  ) async {
+    _decodeEmpty(
+      await _send(
+        _http.delete(
+          Uri.parse('$baseUrl/catalogs/vaccines/$id?version=$version'),
+          headers: _jsonHeaders(token),
+        ),
+      ),
+      'Error al eliminar la vacuna.',
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> listCatalogOptions(
+    String token,
+    String vaccineId, {
+    String? institutionId,
+  }) async => _decodeList(
+    await _send(
+      _http.get(
+        Uri.parse(
+          institutionId == null
+              ? '$baseUrl/catalogs/vaccines/$vaccineId/options'
+              : '$baseUrl/institutions/$institutionId/vaccines/$vaccineId/options',
+        ),
+        headers: _jsonHeaders(token),
+      ),
+    ),
+    fallback: 'Error al consultar las opciones.',
+  );
+  Future<Map<String, dynamic>> createCatalogOption(
+    String token,
+    String vaccineId,
+    Map<String, dynamic> body, {
+    String? institutionId,
+  }) async => _decodeObject(
+    await _send(
+      _http.post(
+        Uri.parse(
+          institutionId == null
+              ? '$baseUrl/catalogs/vaccines/$vaccineId/options'
+              : '$baseUrl/institutions/$institutionId/vaccines/$vaccineId/options',
+        ),
+        headers: _jsonHeaders(token),
+        body: jsonEncode(body),
+      ),
+    ),
+    fallback: 'Error al crear la opcion.',
+  );
+  Future<Map<String, dynamic>> updateCatalogOption(
+    String token,
+    String vaccineId,
+    String id,
+    Map<String, dynamic> body, {
+    String? institutionId,
+  }) async => _decodeObject(
+    await _send(
+      _http.put(
+        Uri.parse(
+          institutionId == null
+              ? '$baseUrl/catalogs/vaccines/$vaccineId/options/$id'
+              : '$baseUrl/institutions/$institutionId/vaccines/$vaccineId/options/$id',
+        ),
+        headers: _jsonHeaders(token),
+        body: jsonEncode(body),
+      ),
+    ),
+    fallback: 'Error al actualizar la opcion.',
+  );
+  Future<void> deleteCatalogOption(
+    String token,
+    String vaccineId,
+    String id,
+    int version, {
+    String? institutionId,
+  }) async {
+    _decodeEmpty(
+      await _send(
+        _http.delete(
+          Uri.parse(
+            '${institutionId == null ? '$baseUrl/catalogs/vaccines/$vaccineId/options/$id' : '$baseUrl/institutions/$institutionId/vaccines/$vaccineId/options/$id'}?version=$version',
+          ),
+          headers: _jsonHeaders(token),
+        ),
+      ),
+      'Error al eliminar la opcion.',
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> listCatalogTemplates(
+    String token,
+    String vaccineId,
+  ) async => _decodeList(
+    await _send(
+      _http.get(
+        Uri.parse('$baseUrl/catalogs/vaccines/$vaccineId/templates'),
+        headers: _jsonHeaders(token),
+      ),
+    ),
+    fallback: 'Error al consultar las plantillas.',
+  );
+
+  Future<void> setInstitutionVaccineEnabled(
+    String token,
+    String institutionId,
+    String vaccineId,
+    bool enabled,
+  ) async {
+    final path =
+        '$baseUrl/institutions/$institutionId/vaccines/$vaccineId/${enabled ? 'enable' : 'disable'}';
+    _decodeEmpty(
+      await _send(_http.post(Uri.parse(path), headers: _jsonHeaders(token))),
+      'Error al actualizar la vacuna.',
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> suggestedCatalogOptions(
+    String token,
+    String institutionId,
+    String vaccineId,
+  ) async => _decodeList(
+    await _send(
+      _http.get(
+        Uri.parse(
+          '$baseUrl/institutions/$institutionId/vaccines/$vaccineId/suggested-options',
+        ),
+        headers: _jsonHeaders(token),
+      ),
+    ),
+    fallback: 'Error al consultar sugerencias.',
+  );
+  Future<List<Map<String, dynamic>>> importSuggestedCatalogOptions(
+    String token,
+    String institutionId,
+    String vaccineId,
+  ) async => _decodeList(
+    await _send(
+      _http.post(
+        Uri.parse(
+          '$baseUrl/institutions/$institutionId/vaccines/$vaccineId/import-suggested-options',
+        ),
+        headers: _jsonHeaders(token),
+      ),
+    ),
+    fallback: 'Error al importar sugerencias.',
+  );
+
   Map<String, String> _jsonHeaders(String accessToken) => {
     'Authorization': 'Bearer $accessToken',
     'Accept': 'application/json',
@@ -291,6 +519,30 @@ class ApiClient {
       _messageFromBody(response.body) ?? fallback,
       statusCode: response.statusCode,
     );
+  }
+
+  Future<Map<String, dynamic>> createCatalogTemplate(
+    String token,
+    String vaccineId,
+    Map<String, dynamic> body,
+  ) async => _decodeObject(
+    await _send(
+      _http.post(
+        Uri.parse('$baseUrl/catalogs/vaccines/$vaccineId/templates'),
+        headers: _jsonHeaders(token),
+        body: jsonEncode(body),
+      ),
+    ),
+    fallback: 'Error al crear la plantilla.',
+  );
+
+  void _decodeEmpty(http.Response response, String fallback) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(
+        _messageFromBody(response.body) ?? fallback,
+        statusCode: response.statusCode,
+      );
+    }
   }
 
   String? _messageFromBody(String body) {

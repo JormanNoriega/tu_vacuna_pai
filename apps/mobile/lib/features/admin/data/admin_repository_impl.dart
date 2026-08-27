@@ -39,6 +39,7 @@ class AdminRepositoryImpl implements AdminRepository {
     required String fullName,
     required String institutionId,
     required String temporaryPassword,
+    required String operationId,
   }) async {
     final json = await _apiClient.createInstitutionAdmin(
       accessToken,
@@ -46,6 +47,7 @@ class AdminRepositoryImpl implements AdminRepository {
       fullName: fullName,
       institutionId: institutionId,
       temporaryPassword: temporaryPassword,
+      operationId: operationId,
     );
     return InstitutionAdmin.fromJson(json);
   }

@@ -6,12 +6,26 @@ import '../entities/vaccinator.dart';
 /// servidor. La lista se cachea en la base local (Drift) para consulta sin red.
 abstract interface class UsersRepository {
   /// Crea un VACCINATOR. El institutionId se resuelve en el backend desde el
-  /// token del actor, no desde el cliente.
+  /// token del actor, no desde el cliente. [operationId] es la clave de
+  /// idempotencia: se reenvia el mismo valor en reintentos del mismo intento.
+  ///
+  /// El documento y la profesion viajan crudos; la normalizacion y validacion
+  /// final las aplica el backend (autoridad de unicidad). [birthDate] usa
+  /// formato ISO (yyyy-MM-dd).
   Future<Vaccinator> createVaccinator(
     String accessToken, {
     required String email,
     required String fullName,
     required String temporaryPassword,
+    required String operationId,
+    required String documentType,
+    required String documentNumber,
+    String? phone,
+    String? birthDate,
+    String? gender,
+    required String professionCode,
+    String? professionalRegistrationNumber,
+    String? professionalRegistrationType,
   });
 
   /// Lista los usuarios de la institucion indicada (scope validado en backend).

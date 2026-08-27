@@ -1,0 +1,3 @@
+package com.pai.api.catalog.repository;
+import java.util.*; import org.springframework.data.jpa.repository.*; import org.springframework.data.repository.query.Param; import com.pai.api.catalog.entity.InstitutionVaccineEntity;
+public interface InstitutionVaccineRepository extends JpaRepository<InstitutionVaccineEntity,UUID> { Optional<InstitutionVaccineEntity> findByInstitutionIdAndVaccineId(UUID i,UUID v); List<InstitutionVaccineEntity> findByInstitutionId(UUID i); @Modifying @Query("update InstitutionVaccineEntity x set x.enabled=:enabled where x.id=:id and x.version=:version") int setEnabled(@Param("id") UUID id,@Param("version") long version,@Param("enabled") boolean enabled); }

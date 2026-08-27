@@ -67,6 +67,12 @@ Deno.serve(async (req: Request) => {
   })
   const { error: deleteError } = await adminClient.auth.admin.deleteUser(id)
   if (deleteError) {
+    // Idempotencia: si el usuario ya no existe, la compensacion fue exitosa.
+    const notFound = deleteError.status === 404 ||
+      (deleteError.message ?? '').toLowerCase().includes('not found')
+    if (notFound) {
+      return json({ id }, 200)
+    }
     console.error('delete-auth-user: error eliminando usuario', deleteError.message)
     return json({ error: 'INTERNAL', message: 'No se pudo eliminar el usuario.' }, 500)
   }

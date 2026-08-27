@@ -5,10 +5,11 @@ import 'package:tu_vacuna_pai/features/users/domain/repositories/users_repositor
 class FakeUsersRepository implements UsersRepository {
   FakeUsersRepository({this.failOnCreate = false, this.failOnUpdate = false});
 
-  final bool failOnCreate;
+  bool failOnCreate;
   bool failOnUpdate;
   final List<Vaccinator> users = [];
   String? lastPassword;
+  String? lastOperationId;
 
   @override
   Future<Vaccinator> createVaccinator(
@@ -16,7 +17,17 @@ class FakeUsersRepository implements UsersRepository {
     required String email,
     required String fullName,
     required String temporaryPassword,
+    required String operationId,
+    required String documentType,
+    required String documentNumber,
+    String? phone,
+    String? birthDate,
+    String? gender,
+    required String professionCode,
+    String? professionalRegistrationNumber,
+    String? professionalRegistrationType,
   }) async {
+    lastOperationId = operationId;
     if (failOnCreate) {
       throw StateError('Fallo simulado');
     }
@@ -28,6 +39,14 @@ class FakeUsersRepository implements UsersRepository {
       institutionId: 'inst-1',
       roles: const ['VACCINATOR'],
       status: 'ACTIVE',
+      documentType: documentType,
+      documentNumber: documentNumber,
+      phone: phone,
+      birthDate: birthDate,
+      gender: gender,
+      professionCode: professionCode,
+      professionalRegistrationNumber: professionalRegistrationNumber,
+      professionalRegistrationType: professionalRegistrationType,
     );
     users.add(user);
     return user;
