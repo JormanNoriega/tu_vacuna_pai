@@ -336,7 +336,15 @@ vacunador hasta que una institucion la habilite. Al habilitarla, recibe las
 opciones activas actuales del template y consulta sus dosis directamente desde
 `vaccine_options`.
 
-Las vacunas ya habilitadas no se tocan.
+La institucion descubre las vacunas nuevas a traves de
+`GET /institutions/{id}/vaccines/available` (solo las activas sin relacion) y
+las habilita con `POST /institutions/{id}/vaccines/{vaccineId}/enable`. El
+`enable` ejecuta el copy-once: copia los templates actuales solo si la relacion
+es nueva.
+
+Las vacunas ya habilitadas no se tocan, y una relacion deshabilitada **nunca se
+reactiva por un re-clone**: la deshabilitacion es una decision de la institucion
+y se respeta.
 
 ### Nueva dosis global
 
@@ -364,6 +372,18 @@ borra, desactiva ni modifica las filas institucionales existentes.
 
 No puede habilitarse en nuevas instituciones ni seleccionarse para nuevas
 aplicaciones. No se eliminan sus relaciones institucionales ni historicos.
+
+### Re-clone del catalogo
+
+`POST /institutions/{id}/vaccines/clone` habilita las vacunas activas del
+catalogo global que aun no tienen relacion con la institucion. Es copy-once e
+idempotente y **respeta la autonomia de la institucion**:
+
+- Las relaciones existentes (habilitadas **o deshabilitadas**) nunca se tocan.
+  Un re-clone no reactiva una vacuna que la institucion deshabilito a proposito.
+- Solo las relaciones nuevas copian las opciones del template (si
+  `includeDefaultConfig` es true).
+- Las opciones locales existentes nunca se sobrescriben.
 
 ## 6. Catalogo efectivo
 
@@ -419,6 +439,16 @@ CATALOG_CONFIG_WRITE
 
 Las escrituras de catalogo son online-only. No generan outbox ni se confirman
 localmente cuando no hay respuesta exitosa del servidor.
+
+Endpoints institucionales:
+
+```text
+GET  /institutions/{id}/vaccines                 # vacunas con relacion (habilitadas o no)
+GET  /institutions/{id}/vaccines/available       # activas del global SIN relacion (ADMIN_INSTITUTION)
+POST /institutions/{id}/vaccines/{vaccineId}/enable    # habilitar (copy-once)
+POST /institutions/{id}/vaccines/{vaccineId}/disable   # deshabilitar
+POST /institutions/{id}/vaccines/clone           # habilita solo las faltantes; no reactiva
+```
 
 ## 8. Backend
 
@@ -502,6 +532,9 @@ existentes. La habilitacion explicita ejecuta el copy-once.
 - No existen dos defaults activos en el mismo contexto.
 - Dos enables simultaneos producen una sola relacion y una sola copia.
 - Rehabilitar no copia ni sobrescribe opciones.
+- El re-clone no reactiva una vacuna deshabilitada por la institucion.
+- El re-clone no sobrescribe opciones locales existentes.
+- `available` excluye vacunas ya relacionadas (habilitadas o no).
 - Importar dos veces es idempotente.
 - Importar nunca cambia el default local.
 - Desactivar un template no modifica opciones locales.

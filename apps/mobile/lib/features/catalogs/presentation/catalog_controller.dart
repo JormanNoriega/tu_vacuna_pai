@@ -13,13 +13,16 @@ class CatalogController extends AsyncController {
     required this.listVaccines,
     required this.saveVaccine,
     required this.toggle,
+    required this.listAvailableVaccines,
   });
 
   final CatalogRepository repository;
   final ListVaccines listVaccines;
   final SaveVaccine saveVaccine;
   final ToggleInstitutionVaccine toggle;
+  final ListAvailableInstitutionVaccines listAvailableVaccines;
   List<Vaccine> _vaccines = const [];
+  List<Vaccine> _availableVaccines = const [];
 
   final Map<String, bool> institutionEnabled = {};
   final Map<String, List<VaccineOption>> doseOptions = {};
@@ -27,6 +30,8 @@ class CatalogController extends AsyncController {
   String? selectedCategory;
 
   List<Vaccine> get vaccines => List.unmodifiable(_vaccines);
+  List<Vaccine> get availableVaccines => List.unmodifiable(_availableVaccines);
+  bool get hasAvailableVaccines => _availableVaccines.isNotEmpty;
   List<Vaccine> get filteredVaccines => _vaccines
       .where(
         (v) =>
@@ -76,6 +81,36 @@ class CatalogController extends AsyncController {
             .toList();
         await _loadDoseOptions(token, _vaccines);
       });
+
+  /// Carga las vacunas globales activas que la institucion aun no tiene
+  /// relacionadas (disponibles para habilitar).
+  Future<void> loadAvailable(String institutionId) async {
+    _availableVaccines = await listAvailableVaccines(
+      await _requireToken(),
+      institutionId,
+    );
+    notifyListeners();
+  }
+
+  /// Habilita una vacuna disponible en la institucion. Reutiliza el toggle
+  /// existente (enable es copy-once: copia los templates actuales solo si la
+  /// relacion es nueva, sin tocar configuraciones existentes).
+  Future<bool> enableAvailable(Vaccine vaccine, String institutionId) async {
+    var success = false;
+    await execute((token) async {
+      await toggle(token, vaccine, institutionId, true);
+      _availableVaccines = _availableVaccines
+          .where((v) => v.id != vaccine.id)
+          .toList();
+      success = true;
+    });
+    return success;
+  }
+
+  Future<String> _requireToken() async {
+    final session = await sessionManager.loadSession();
+    return session?.accessToken ?? '';
+  }
 
   Future<bool> save(
     Map<String, dynamic> body, {

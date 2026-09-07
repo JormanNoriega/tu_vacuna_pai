@@ -28,6 +28,7 @@ class _CatalogPageState extends State<CatalogPage> {
     super.initState();
     if (institutionAdmin) {
       widget.controller.loadInstitution(widget.user.institution.id);
+      widget.controller.loadAvailable(widget.user.institution.id);
     } else {
       widget.controller.load();
     }
@@ -70,6 +71,10 @@ class _CatalogPageState extends State<CatalogPage> {
           children: [
             _search(c),
             _summary(c),
+            if (institutionAdmin && c.hasAvailableVaccines) ...[
+              _availableSection(c),
+              const Divider(height: 1),
+            ],
             if (c.error != null)
               _error(c)
             else
@@ -117,6 +122,87 @@ class _CatalogPageState extends State<CatalogPage> {
       ),
     ),
   );
+  Widget _availableSection(CatalogController c) => Container(
+    width: double.infinity,
+    color: AppColors.surface,
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              Icons.new_releases_outlined,
+              size: 20,
+              color: AppColors.primary,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Vacunas disponibles',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Vacunas nuevas del catalogo global que aun no usas en tu '
+          'institucion. Al habilitarlas se copia su configuracion por '
+          'defecto sin tocar lo que ya configuraste.',
+          style: TextStyle(color: AppColors.slate, fontSize: 12, height: 1.4),
+        ),
+        const SizedBox(height: 8),
+        for (final vaccine in c.availableVaccines)
+          Card(
+            margin: const EdgeInsets.only(bottom: 6),
+            child: ListTile(
+              dense: true,
+              leading: CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.primary.withValues(alpha: .1),
+                foregroundColor: AppColors.primary,
+                child: Text(
+                  vaccine.name.substring(0, 1).toUpperCase(),
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+              title: Text(
+                vaccine.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                'Codigo: ${vaccine.code}',
+                style: const TextStyle(fontSize: 12),
+              ),
+              trailing: FilledButton.tonal(
+                onPressed: c.isLoading ? null : () => _enableAvailable(vaccine),
+                child: const Text('Habilitar'),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+
+  Future<void> _enableAvailable(Vaccine vaccine) async {
+    final ok = await widget.controller.enableAvailable(
+      vaccine,
+      widget.user.institution.id,
+    );
+    if (mounted && ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '"${vaccine.name}" habilitada en tu institucion. '
+            'Puedes configurar sus opciones.',
+          ),
+        ),
+      );
+      widget.controller.loadInstitution(widget.user.institution.id);
+    }
+  }
+
   Widget _summary(CatalogController c) => Container(
     width: double.infinity,
     padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),

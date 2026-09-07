@@ -76,6 +76,7 @@ Future<void> main() async {
     listVaccines: ListVaccines(catalogRepository),
     saveVaccine: SaveVaccine(catalogRepository),
     toggle: ToggleInstitutionVaccine(catalogRepository),
+    listAvailableVaccines: ListAvailableInstitutionVaccines(catalogRepository),
   );
 
   runApp(

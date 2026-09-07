@@ -70,6 +70,18 @@ class CatalogRepositoryImpl implements CatalogRepository {
   }
 
   @override
+  Future<List<Vaccine>> listAvailableInstitutionVaccines(
+    String token,
+    String institutionId,
+  ) async {
+    final result = (await api.listAvailableInstitutionVaccines(
+      token,
+      institutionId,
+    )).map(Vaccine.fromJson).toList();
+    return result;
+  }
+
+  @override
   Future<Vaccine> createVaccine(
     String token,
     Map<String, dynamic> body,

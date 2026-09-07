@@ -17,6 +17,8 @@ import com.pai.api.catalog.dto.CloneCatalogResponse;
 import com.pai.api.catalog.dto.OptionRequest;
 import com.pai.api.catalog.dto.OptionResponse;
 import com.pai.api.catalog.dto.InstitutionVaccineResponse;
+import com.pai.api.catalog.dto.VaccineResponse;
+import com.pai.api.catalog.entity.InstitutionVaccineEntity;
 import com.pai.api.catalog.entity.InstitutionVaccineOptionEntity;
 import com.pai.api.catalog.entity.VaccineEntity;
 import com.pai.api.catalog.entity.VaccineOptionTemplateEntity;
@@ -142,12 +144,15 @@ public class InstitutionVaccineService {
     }
 
     /**
-     * Clona el catalogo global hacia una institucion: habilita todas las vacunas
-     * activas (crea la relacion si no existe y reactiva las deshabilitadas) y,
-     * cuando [includeDefaultConfig] es true, copia las opciones operativas de los
-     * templates como configuracion por defecto. La copia es copy-once e
-     * idempotente: las vacunas ya habilitadas no se tocan y las opciones locales
-     * existentes no se sobrescriben.
+     * Clona el catalogo global hacia una institucion: habilita las vacunas
+     * activas que aun no tienen relacion con la institucion y, cuando
+     * [includeDefaultConfig] es true, copia las opciones operativas de los
+     * templates como configuracion por defecto.
+     *
+     * <p>La operacion es copy-once e idempotente y respeta la autonomia de la
+     * institucion: las vacunas con relacion existente (habilitadas o
+     * deshabilitadas) nunca se tocan, por lo que el re-clone no pisa decisiones
+     * locales. Las opciones locales existentes no se sobrescriben.
      */
     @Transactional
     public CloneCatalogResponse clone(
@@ -169,33 +174,48 @@ public class InstitutionVaccineService {
                     .setParameter("actor", actor.getId())
                     .getResultList();
 
-            if (!inserted.isEmpty()) {
-                vaccinesEnabled++;
-                if (includeDefaultConfig) {
-                    for (VaccineOptionTemplateEntity template : templates
-                            .findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(
-                                    vaccine.getId())) {
-                        local.save(new InstitutionVaccineOptionEntity(
-                                UUID.randomUUID(), institutionId, vaccine.getId(),
-                                template.getFieldType(), template.getValue(), template.getDisplayName(),
-                                template.getSortOrder(), false, template.getId(), actor.getId(),
-                                Instant.now()));
-                        optionsCopied++;
-                    }
+            if (inserted.isEmpty()) {
+                // La relacion ya existia (habilitada o deshabilitada): no se toca.
+                continue;
+            }
+
+            vaccinesEnabled++;
+            if (includeDefaultConfig) {
+                for (VaccineOptionTemplateEntity template : templates
+                        .findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(
+                                vaccine.getId())) {
+                    local.save(new InstitutionVaccineOptionEntity(
+                            UUID.randomUUID(), institutionId, vaccine.getId(),
+                            template.getFieldType(), template.getValue(), template.getDisplayName(),
+                            template.getSortOrder(), false, template.getId(), actor.getId(),
+                            Instant.now()));
+                    optionsCopied++;
                 }
-            } else {
-                // La relacion ya existia: se reactiva si estaba deshabilitada, sin
-                // volver a copiar opciones (misma regla que el enable explicito).
-                relations.findByInstitutionIdAndVaccineId(institutionId, vaccine.getId())
-                        .filter(relation -> !relation.isEnabled())
-                        .ifPresent(relation -> entityManager.createQuery(
-                                        "update InstitutionVaccineEntity relation "
-                                                + "set relation.enabled = true where relation.id = :id")
-                                .setParameter("id", relation.getId())
-                                .executeUpdate());
             }
         }
         return new CloneCatalogResponse(vaccinesEnabled, optionsCopied, active.size());
+    }
+
+    /**
+     * Devuelve las vacunas activas del catalogo global que aun no tienen
+     * relacion con la institucion, para que el ADMIN_INSTITUTION pueda
+     * habilitarlas cuando lo decida. Las deshabilitadas en la institucion no
+     * aparecen aqui: ya tienen relacion y su estado se respeta.
+     */
+    @Transactional(readOnly = true)
+    public List<VaccineResponse> available(
+            UUID actorId, UUID requestedInstitution) {
+        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_READ");
+        UUID institutionId = institution(actor, requestedInstitution);
+
+        Set<UUID> existing = relations.findByInstitutionId(institutionId).stream()
+                .map(InstitutionVaccineEntity::getVaccineId)
+                .collect(java.util.stream.Collectors.toSet());
+
+        return vaccines.findByActiveTrueOrderByNameAsc().stream()
+                .filter(vaccine -> !existing.contains(vaccine.getId()))
+                .map(this::toVaccineResponse)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -354,6 +374,16 @@ public class InstitutionVaccineService {
                 option.getId(), vaccineId, institutionId, option.getFieldType(), option.getValue(),
                 option.getDisplayName(), option.getSortOrder(), option.isDefault(), option.isActive(),
                 option.getSourceTemplateId(), option.getVersion());
+    }
+
+    private VaccineResponse toVaccineResponse(VaccineEntity vaccine) {
+        return new VaccineResponse(
+                vaccine.getId(), vaccine.getName(), vaccine.getCode(), vaccine.getCategory(),
+                vaccine.getMaxDoses(), vaccine.getMinAgeMonths(), vaccine.getMaxAgeMonths(),
+                vaccine.hasLaboratory(), vaccine.hasLot(), vaccine.hasSyringe(),
+                vaccine.hasSyringeLot(), vaccine.hasDiluent(), vaccine.hasDropper(),
+                vaccine.hasPneumococcalType(), vaccine.hasVialCount(), vaccine.hasObservation(),
+                vaccine.isActive(), vaccine.getVersion());
     }
 
     private void validateType(String fieldType) {

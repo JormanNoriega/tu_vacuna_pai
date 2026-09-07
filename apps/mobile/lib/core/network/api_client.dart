@@ -308,6 +308,21 @@ class ApiClient {
     ),
     fallback: 'Error al consultar el catalogo institucional.',
   );
+
+  /// Lista las vacunas activas del catalogo global que aun no tienen relacion
+  /// con la institucion, para que el ADMIN_INSTITUTION pueda habilitarlas.
+  Future<List<Map<String, dynamic>>> listAvailableInstitutionVaccines(
+    String token,
+    String institutionId,
+  ) async => _decodeList(
+    await _send(
+      _http.get(
+        Uri.parse('$baseUrl/institutions/$institutionId/vaccines/available'),
+        headers: _jsonHeaders(token),
+      ),
+    ),
+    fallback: 'Error al consultar las vacunas disponibles.',
+  );
   Future<Map<String, dynamic>> createCatalogVaccine(
     String token,
     Map<String, dynamic> body,

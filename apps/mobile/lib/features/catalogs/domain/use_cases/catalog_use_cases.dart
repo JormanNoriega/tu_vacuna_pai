@@ -7,6 +7,13 @@ class ListVaccines {
   Future<List<Vaccine>> call(String token) => repository.listVaccines(token);
 }
 
+class ListAvailableInstitutionVaccines {
+  const ListAvailableInstitutionVaccines(this.repository);
+  final CatalogRepository repository;
+  Future<List<Vaccine>> call(String token, String institutionId) =>
+      repository.listAvailableInstitutionVaccines(token, institutionId);
+}
+
 class SaveVaccine {
   const SaveVaccine(this.repository);
   final CatalogRepository repository;

@@ -578,4 +578,42 @@ void main() {
       expect(json['offlineWindowHours'], 24);
     });
   });
+
+  group('ApiClient.availableInstitutionVaccines', () {
+    test('lista vacunas globales disponibles para la institucion', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'GET');
+        expect(request.url.path, '/api/v1/institutions/inst-1/vaccines/available');
+        expect(request.headers['Authorization'], 'Bearer token-123');
+        return http.Response(
+          jsonEncode([
+            {
+              'id': 'v2',
+              'name': 'Vacuna B',
+              'code': 'VAC-2',
+              'category': 'PAI',
+              'maxDoses': 3,
+              'active': true,
+              'version': 0,
+            },
+          ]),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final list = await api.listAvailableInstitutionVaccines(
+        'token-123',
+        'inst-1',
+      );
+
+      expect(list, hasLength(1));
+      expect(list.first['code'], 'VAC-2');
+    });
+  });
 }

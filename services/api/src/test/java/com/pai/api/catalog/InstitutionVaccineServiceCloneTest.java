@@ -63,7 +63,8 @@ class InstitutionVaccineServiceCloneTest {
         when(identity.resolve(ACTOR))
             .thenReturn(new AuthorizedUser(
                 ACTOR, "super@pai.test", "Super Admin", institution(),
-                List.of("SUPER_ADMIN"), List.of("CATALOG_CONFIG_WRITE"), Instant.now()));
+                List.of("SUPER_ADMIN"),
+                List.of("CATALOG_CONFIG_READ", "CATALOG_CONFIG_WRITE"), Instant.now()));
         when(scope.resolveInstitutionId(any(), any())).thenReturn(INSTITUTION);
     }
 
@@ -121,28 +122,38 @@ class InstitutionVaccineServiceCloneTest {
     }
 
     @Test
-    void cloneReactivatesDisabledRelationWithoutCopying() {
+    void cloneRespectsDisabledRelationWithoutTouchingIt() {
         VaccineEntity v1 = vaccine("VAC-1");
         when(vaccines.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(v1));
         Query query = emptyInsert();
         when(entityManager.createNativeQuery(anyString())).thenReturn(query);
-        InstitutionVaccineEntity disabled = mock(InstitutionVaccineEntity.class);
-        when(disabled.isEnabled()).thenReturn(false);
-        UUID relationId = UUID.randomUUID();
-        when(disabled.getId()).thenReturn(relationId);
-        when(relations.findByInstitutionIdAndVaccineId(INSTITUTION, v1.getId()))
-            .thenReturn(Optional.of(disabled));
-
-        Query update = mock(Query.class);
-        when(update.setParameter(anyString(), any())).thenReturn(update);
-        when(entityManager.createQuery(anyString())).thenReturn(update);
 
         CloneCatalogResponse result = service.clone(ACTOR, INSTITUTION, true);
 
         assertThat(result.vaccinesEnabled()).isZero();
-        verify(update).setParameter("id", relationId);
-        verify(update).executeUpdate();
+        assertThat(result.optionsCopied()).isZero();
         verify(local, never()).save(any(InstitutionVaccineOptionEntity.class));
+        // La relacion deshabilitada NO se reactiva: el re-clone respeta la
+        // decision de la institucion y no pisa su configuracion local.
+        verify(entityManager, never()).createQuery(anyString());
+        verify(relations, never())
+            .findByInstitutionIdAndVaccineId(any(), any());
+    }
+
+    @Test
+    void availableExcludesVaccinesAlreadyRelatedToInstitution() {
+        VaccineEntity v1 = vaccine("VAC-1");
+        VaccineEntity v2 = vaccine("VAC-2");
+        when(vaccines.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(v1, v2));
+        InstitutionVaccineEntity existing = mock(InstitutionVaccineEntity.class);
+        when(existing.getVaccineId()).thenReturn(v1.getId());
+        when(relations.findByInstitutionId(INSTITUTION)).thenReturn(List.of(existing));
+
+        var result = service.available(ACTOR, INSTITUTION);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).id()).isEqualTo(v2.getId());
+        assertThat(result.get(0).code()).isEqualTo(v2.getCode());
     }
 
     private VaccineEntity vaccine(String code) {

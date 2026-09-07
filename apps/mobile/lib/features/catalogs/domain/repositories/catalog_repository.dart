@@ -6,6 +6,13 @@ abstract interface class CatalogRepository {
     String token,
     String institutionId,
   );
+
+  /// Vacunas activas del catalogo global que aun no tienen relacion con la
+  /// institucion (para que el ADMIN_INSTITUTION las habilite).
+  Future<List<Vaccine>> listAvailableInstitutionVaccines(
+    String token,
+    String institutionId,
+  );
   Future<Vaccine> createVaccine(String token, Map<String, dynamic> body);
   Future<Vaccine> updateVaccine(
     String token,
