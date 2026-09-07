@@ -1,33 +1,31 @@
-import 'package:flutter/foundation.dart';
-
 import '../../../core/auth/offline_access.dart';
 import '../../../core/auth/offline_policy.dart';
-import '../../../core/auth/session_manager.dart';
+import '../../../core/presentation/async_controller.dart';
 import '../../../core/network/api_exception.dart';
 import '../domain/repositories/catalog_repository.dart';
 import '../domain/entities/catalog_entities.dart';
 import '../domain/use_cases/catalog_use_cases.dart';
 
-class CatalogController extends ChangeNotifier {
+class CatalogController extends AsyncController {
   CatalogController({
-    required this.sessionManager,
+    required super.sessionManager,
     required this.repository,
     required this.listVaccines,
     required this.saveVaccine,
     required this.toggle,
-  }) : _vaccines = [];
-  final SessionManager sessionManager;
+  });
+
   final CatalogRepository repository;
   final ListVaccines listVaccines;
   final SaveVaccine saveVaccine;
   final ToggleInstitutionVaccine toggle;
-  List<Vaccine> _vaccines;
+  List<Vaccine> _vaccines = const [];
+
   final Map<String, bool> institutionEnabled = {};
   final Map<String, List<VaccineOption>> doseOptions = {};
-  bool isLoading = false;
-  String? error;
   String query = '';
   String? selectedCategory;
+
   List<Vaccine> get vaccines => List.unmodifiable(_vaccines);
   List<Vaccine> get filteredVaccines => _vaccines
       .where(
@@ -39,119 +37,62 @@ class CatalogController extends ChangeNotifier {
             (selectedCategory == null || v.category == selectedCategory),
       )
       .toList();
+
   void setQuery(String value) {
     query = value;
     notifyListeners();
   }
 
-  Future<void> load() async {
-    final token = await _token();
-    if (token == null) {
-      error = 'Tu sesion expiro. Inicia sesion de nuevo.';
-      notifyListeners();
-      return;
-    }
-    isLoading = true;
-    error = null;
-    notifyListeners();
-    try {
-      _vaccines = await listVaccines(token);
-      await _loadDoseOptions(token, _vaccines);
-    } on ApiException catch (e) {
-      error = e.message;
-    } catch (_) {
-      error = 'No se pudo cargar el catalogo.';
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
-  }
+  Future<void> load() => execute((token) async {
+    _vaccines = await listVaccines(token);
+    await _loadDoseOptions(token, _vaccines);
+  });
 
-  Future<void> loadInstitution(String institutionId) async {
-    final token = await _token();
-    if (token == null) {
-      error = 'Tu sesion expiro. Inicia sesion de nuevo.';
-      notifyListeners();
-      return;
-    }
-    isLoading = true;
-    error = null;
-    notifyListeners();
-    try {
-      final relations = await repository.listInstitutionVaccines(
-        token,
-        institutionId,
-      );
-      institutionEnabled
-        ..clear()
-        ..addEntries(
-          relations.map(
-            (relation) => MapEntry(relation.vaccineId, relation.enabled),
-          ),
+  Future<void> loadInstitution(String institutionId) =>
+      execute((token) async {
+        final relations = await repository.listInstitutionVaccines(
+          token,
+          institutionId,
         );
-      _vaccines = relations
-          .map(
-            (relation) => Vaccine(
-              id: relation.vaccineId,
-              name: relation.name,
-              code: relation.code,
-              category: relation.category,
-              maxDoses: 1,
-              active: true,
-              version: relation.version,
+        institutionEnabled
+          ..clear()
+          ..addEntries(
+            relations.map(
+              (relation) => MapEntry(relation.vaccineId, relation.enabled),
             ),
-          )
-          .toList();
-      await _loadDoseOptions(token, _vaccines);
-    } on ApiException catch (e) {
-      error = e.message;
-    } catch (_) {
-      error = 'No se pudo cargar el catalogo institucional.';
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
-  }
+          );
+        _vaccines = relations
+            .map(
+              (relation) => Vaccine(
+                id: relation.vaccineId,
+                name: relation.name,
+                code: relation.code,
+                category: relation.category,
+                maxDoses: 1,
+                active: true,
+                version: relation.version,
+              ),
+            )
+            .toList();
+        await _loadDoseOptions(token, _vaccines);
+      });
 
   Future<bool> save(
     Map<String, dynamic> body, {
     Vaccine? existing,
     required OfflineAccess offline,
   }) async {
-    try {
-      const OfflinePolicy().ensureWritable(
-        status: offline.status,
-        permissions: offline.permissions,
-        operation: OperationPermission.catalogGlobalWrite,
-      );
-    } on OfflinePolicyException catch (e) {
-      error = e.message;
-      notifyListeners();
+    if (!_ensureWritable(offline, OperationPermission.catalogGlobalWrite)) {
       return false;
     }
-    final token = await _token();
-    if (token == null) {
-      error = 'Tu sesion expiro. Inicia sesion de nuevo.';
-      notifyListeners();
-      return false;
-    }
-    try {
+    var success = false;
+    await execute((token) async {
       final saved = await saveVaccine(token, body, existing: existing);
       _vaccines = [..._vaccines.where((v) => v.id != saved.id), saved]
         ..sort((a, b) => a.name.compareTo(b.name));
-      notifyListeners();
-      return true;
-    } on ApiException catch (e) {
-      error = e.statusCode == 409
-          ? 'El codigo ya existe o el registro cambio. Recarga e intenta de nuevo.'
-          : e.message;
-      notifyListeners();
-      return false;
-    } catch (_) {
-      error = 'No se pudo guardar la vacuna.';
-      notifyListeners();
-      return false;
-    }
+      success = true;
+    });
+    return success;
   }
 
   Future<bool> setEnabled(
@@ -160,31 +101,16 @@ class CatalogController extends ChangeNotifier {
     bool enabled,
     OfflineAccess offline,
   ) async {
-    try {
-      const OfflinePolicy().ensureWritable(
-        status: offline.status,
-        permissions: offline.permissions,
-        operation: OperationPermission.catalogConfigWrite,
-      );
-    } on OfflinePolicyException catch (e) {
-      error = e.message;
-      notifyListeners();
+    if (!_ensureWritable(offline, OperationPermission.catalogConfigWrite)) {
       return false;
     }
-    final token = await _token();
-    if (token == null) return false;
-    try {
+    var success = false;
+    await execute((token) async {
       await toggle(token, vaccine, institutionId, enabled);
       institutionEnabled[vaccine.id] = enabled;
-      notifyListeners();
-      return true;
-    } on ApiException catch (e) {
-      error = e.statusCode == 409
-          ? 'El catalogo cambio en otro dispositivo. Recarga antes de continuar.'
-          : e.message;
-      notifyListeners();
-      return false;
-    }
+      success = true;
+    });
+    return success;
   }
 
   Future<bool> addOption(
@@ -194,16 +120,16 @@ class CatalogController extends ChangeNotifier {
     required bool institutionScoped,
     required OfflineAccess offline,
   }) async {
-    try {
-      const OfflinePolicy().ensureWritable(
-        status: offline.status,
-        permissions: offline.permissions,
-        operation: institutionScoped
-            ? OperationPermission.catalogConfigWrite
-            : OperationPermission.catalogGlobalWrite,
-      );
-      final token = await _token();
-      if (token == null) return false;
+    if (!_ensureWritable(
+      offline,
+      institutionScoped
+          ? OperationPermission.catalogConfigWrite
+          : OperationPermission.catalogGlobalWrite,
+    )) {
+      return false;
+    }
+    var success = false;
+    await execute((token) async {
       await repository.createOption(
         token,
         vaccine,
@@ -211,16 +137,9 @@ class CatalogController extends ChangeNotifier {
         institutionScoped: institutionScoped,
         institutionId: institutionId,
       );
-      return true;
-    } on OfflinePolicyException catch (e) {
-      error = e.message;
-    } on ApiException catch (e) {
-      error = e.statusCode == 409
-          ? 'La opcion cambio en otro dispositivo. Recarga e intenta de nuevo.'
-          : e.message;
-    }
-    notifyListeners();
-    return false;
+      success = true;
+    });
+    return success;
   }
 
   Future<bool> updateOption(
@@ -231,16 +150,16 @@ class CatalogController extends ChangeNotifier {
     required bool institutionScoped,
     required OfflineAccess offline,
   }) async {
-    try {
-      const OfflinePolicy().ensureWritable(
-        status: offline.status,
-        permissions: offline.permissions,
-        operation: institutionScoped
-            ? OperationPermission.catalogConfigWrite
-            : OperationPermission.catalogGlobalWrite,
-      );
-      final token = await _token();
-      if (token == null) return false;
+    if (!_ensureWritable(
+      offline,
+      institutionScoped
+          ? OperationPermission.catalogConfigWrite
+          : OperationPermission.catalogGlobalWrite,
+    )) {
+      return false;
+    }
+    var success = false;
+    await execute((token) async {
       await repository.updateOption(
         token,
         vaccine,
@@ -249,16 +168,9 @@ class CatalogController extends ChangeNotifier {
         institutionScoped: institutionScoped,
         institutionId: institutionId,
       );
-      return true;
-    } on OfflinePolicyException catch (e) {
-      error = e.message;
-    } on ApiException catch (e) {
-      error = e.statusCode == 409
-          ? 'La opcion fue modificada por otro usuario. Recarga e intenta de nuevo.'
-          : e.message;
-    }
-    notifyListeners();
-    return false;
+      success = true;
+    });
+    return success;
   }
 
   Future<bool> addTemplate(
@@ -266,48 +178,66 @@ class CatalogController extends ChangeNotifier {
     Map<String, dynamic> body, {
     required OfflineAccess offline,
   }) async {
-    try {
-      const OfflinePolicy().ensureWritable(
-        status: offline.status,
-        permissions: offline.permissions,
-        operation: OperationPermission.catalogGlobalWrite,
-      );
-      final token = await _token();
-      if (token == null) return false;
-      await repository.createTemplate(token, vaccine, body);
-      return true;
-    } on OfflinePolicyException catch (e) {
-      error = e.message;
-    } on ApiException catch (e) {
-      error = e.message;
+    if (!_ensureWritable(offline, OperationPermission.catalogGlobalWrite)) {
+      return false;
     }
-    notifyListeners();
-    return false;
+    var success = false;
+    await execute((token) async {
+      await repository.createTemplate(token, vaccine, body);
+      success = true;
+    });
+    return success;
   }
 
+  /// Desactiva una opcion. La construccion del payload (DTO) la resuelve el
+  /// repositorio; el controller no conoce el wire protocol.
   Future<bool> disableOption(
     Vaccine vaccine,
     VaccineOption option, {
     required String institutionId,
     required bool institutionScoped,
     required OfflineAccess offline,
-  }) async => updateOption(
-    vaccine,
-    option,
-    optionPayload(
-      fieldType: option.fieldType,
-      value: option.value,
-      isDefault: false,
-      sortOrder: option.sortOrder,
-      version: option.version,
-    )..['isActive'] = false,
-    institutionId: institutionId,
-    institutionScoped: institutionScoped,
-    offline: offline,
-  );
+  }) async {
+    if (!_ensureWritable(
+      offline,
+      institutionScoped
+          ? OperationPermission.catalogConfigWrite
+          : OperationPermission.catalogGlobalWrite,
+    )) {
+      return false;
+    }
+    var success = false;
+    await execute((token) async {
+      await repository.disableOption(
+        token,
+        vaccine,
+        option,
+        institutionScoped: institutionScoped,
+        institutionId: institutionId,
+      );
+      success = true;
+    });
+    return success;
+  }
 
-  Future<String?> _token() async =>
-      (await sessionManager.loadSession())?.accessToken;
+  bool _ensureWritable(OfflineAccess offline, OperationPermission operation) {
+    try {
+      const OfflinePolicy().ensureWritable(
+        status: offline.status,
+        permissions: offline.permissions,
+        operation: operation,
+      );
+      return true;
+    } on OfflinePolicyException catch (e) {
+      setError(e.message);
+      return false;
+    }
+  }
+
+  @override
+  String mapApiError(ApiException e) => e.statusCode == 409
+      ? 'El catalogo cambio en otro dispositivo. Recarga e intenta de nuevo.'
+      : e.message;
 
   Future<void> _loadDoseOptions(String token, List<Vaccine> vaccines) async {
     final results = await Future.wait(

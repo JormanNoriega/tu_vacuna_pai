@@ -166,6 +166,32 @@ class CatalogRepositoryImpl implements CatalogRepository {
     option.version,
     institutionId: institutionScoped ? institutionId : null,
   );
+
+  @override
+  Future<void> disableOption(
+    String token,
+    Vaccine vaccine,
+    VaccineOption option, {
+    required bool institutionScoped,
+    required String institutionId,
+  }) async {
+    final body =
+        optionPayload(
+          fieldType: option.fieldType,
+          value: option.value,
+          isDefault: false,
+          sortOrder: option.sortOrder,
+          version: option.version,
+        )..['isActive'] = false;
+    await updateOption(
+      token,
+      vaccine,
+      option,
+      body,
+      institutionScoped: institutionScoped,
+      institutionId: institutionId,
+    );
+  }
   @override
   Future<void> setEnabled(
     String token,

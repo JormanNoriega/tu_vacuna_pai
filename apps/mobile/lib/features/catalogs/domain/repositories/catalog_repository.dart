@@ -41,6 +41,16 @@ abstract interface class CatalogRepository {
     required bool institutionScoped,
     required String institutionId,
   });
+
+  /// Desactiva una opcion construyendo el payload de transporte (DTO) en la
+  /// capa de datos. El controller no conoce el shape del wire protocol.
+  Future<void> disableOption(
+    String token,
+    Vaccine vaccine,
+    VaccineOption option, {
+    required bool institutionScoped,
+    required String institutionId,
+  });
   Future<void> setEnabled(
     String token,
     Vaccine vaccine, {

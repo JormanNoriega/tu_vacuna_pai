@@ -1,0 +1,858 @@
+openapi: 3.0.3
+info:
+  title: Tu Vacuna PAI — API
+  description: >
+    Contrato HTTP de la API de Tu Vacuna PAI. Este documento es la AUTORIDAD del
+    transporte HTTP (endpoints, status codes, JSON). La semántica de la
+    sincronización (comandos, estados, idempotencia, cursor, conflictos) NO se
+    redefine aquí: vive en `docs/synchronization/sync-contract.md`, al que este
+    documento referencia.
+  version: v1
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: Patients
+  - name: Attentions
+  - name: Sync
+  - name: Conflicts
+paths:
+  # ------------------------------------------------------------------ Patients
+  /patients:
+    post:
+      tags: [Patients]
+      summary: Crear paciente (transporta CREATE_PATIENT)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePatientRequest'
+      responses:
+        '200':
+          description: Paciente creado o ya existente (idempotente por operationId)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    get:
+      tags: [Patients]
+      summary: Listar pacientes del scope del actor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: size
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de pacientes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Patient'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /patients/{id}:
+    get:
+      tags: [Patients]
+      summary: Obtener un paciente por id
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Paciente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Patients]
+      summary: Actualizar contacto del paciente (transporta UPDATE_PATIENT_CONTACT)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePatientContactRequest'
+      responses:
+        '200':
+          description: Paciente actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /patients/{id}/identity:
+    put:
+      tags: [Patients]
+      summary: Actualizar identidad (transporta UPDATE_PATIENT_IDENTITY; requiere justificación)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePatientIdentityRequest'
+      responses:
+        '200':
+          description: Paciente actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /patients/{id}/attentions:
+    get:
+      tags: [Patients]
+      summary: Historial de atenciones de un paciente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de atenciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Attention'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /patients/{id}/merge:
+    post:
+      tags: [Patients]
+      summary: Solicitar fusión de identidad duplicada (DUPLICATE_BUSINESS_IDENTITY)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientMergeRequest'
+      responses:
+        '201':
+          description: Solicitud de fusión creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientMergeRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  # -------------------------------------------------------------- Attentions
+  /attentions:
+    post:
+      tags: [Attentions]
+      summary: Crear atención (transporta CREATE_ATTENTION)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAttentionRequest'
+      responses:
+        '200':
+          description: Atención creada (DRAFT)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attention'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    get:
+      tags: [Attentions]
+      summary: Listar atenciones del scope del actor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: patientId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/AttentionStatus'
+      responses:
+        '200':
+          description: Lista de atenciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Attention'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /attentions/{id}:
+    get:
+      tags: [Attentions]
+      summary: Obtener una atención con sus dosis
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Atención
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attention'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Attentions]
+      summary: Modificar atención en DRAFT/IN_PROGRESS (transporta UPDATE_ATTENTION)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAttentionRequest'
+      responses:
+        '200':
+          description: Atención actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attention'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /attentions/{id}/complete:
+    post:
+      tags: [Attentions]
+      summary: Completar atención (transporta COMPLETE_ATTENTION)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Atención COMPLETED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attention'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /attentions/{id}/cancel:
+    post:
+      tags: [Attentions]
+      summary: Anular atención con motivo (transporta CANCEL_ATTENTION)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelAttentionRequest'
+      responses:
+        '200':
+          description: Atención CANCELLED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attention'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /attentions/{id}/doses:
+    post:
+      tags: [Attentions]
+      summary: Registrar dosis aplicada (transporta REGISTER_APPLIED_DOSE, append-only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDoseRequest'
+      responses:
+        '200':
+          description: Dosis registrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppliedDose'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /attentions/{id}/doses/{doseId}/cancel:
+    post:
+      tags: [Attentions]
+      summary: Anular dosis con motivo (transporta CANCEL_APPLIED_DOSE, append-only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: doseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelDoseRequest'
+      responses:
+        '200':
+          description: Dosis CANCELLED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppliedDose'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  # ------------------------------------------------------------------- Sync
+  # Semántica completa de comandos/estados/cursor en docs/synchronization/sync-contract.md
+  /sync/push:
+    post:
+      tags: [Sync]
+      summary: Enviar batch de operaciones pendientes (outbox del cliente)
+      description: >
+        Transporta los comandos definidos en sync-contract.md. Idempotente por
+        operation_id; atómico por operación. Un operation_id ya conocido devuelve
+        la respuesta original sin reprocesar.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncPushRequest'
+      responses:
+        '200':
+          description: Resultado del push (accepted / rejected)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncPushResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /sync/pull:
+    get:
+      tags: [Sync]
+      summary: Obtener operaciones del scope no vistas por el cliente
+      description: >
+        Cursor compuesto (sync_sequence + created_at). Consulta inclusiva sobre
+        sync_sequence; el cliente deduplica por operation_id. Ver sync-contract.md.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: since
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "0|"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 500
+      responses:
+        '200':
+          description: Operaciones y próximo cursor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncPullResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  # --------------------------------------------------------------- Conflicts
+  /conflicts:
+    get:
+      tags: [Conflicts]
+      summary: Listar conflictos/solicitudes de fusión pendientes (ADMIN_INSTITUTION)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de conflictos pendientes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PatientMergeRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /conflicts/{id}/resolve:
+    put:
+      tags: [Conflicts]
+      summary: Resolver una solicitud de fusión (APPROVED/REJECTED)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveMergeRequest'
+      responses:
+        '200':
+          description: Solicitud resuelta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientMergeRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /conflicts/{id}/details:
+    get:
+      tags: [Conflicts]
+      summary: Detalle de una solicitud de fusión
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalle de la solicitud
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientMergeRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT emitido por Supabase Auth. Spring valida sub, usuario activo, permiso y scope.
+  responses:
+    Unauthorized:
+      description: No autenticado o token inválido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Autenticado pero sin permiso o scope
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Conflicto de versión (optimistic locking) o de identidad
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+    # ---- Pacientes
+    CreatePatientRequest:
+      type: object
+      required: [operationId, firstName, lastName, documentType, documentNumber]
+      properties:
+        operationId:
+          type: string
+          format: uuid
+        firstName: { type: string }
+        lastName: { type: string }
+        documentType: { type: string }
+        documentNumber: { type: string }
+        birthDate: { type: string, format: date, nullable: true }
+        gender: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        addressLine: { type: string, nullable: true }
+        addressCity: { type: string, nullable: true }
+        addressDepartment: { type: string, nullable: true }
+        addressMunicipality: { type: string, nullable: true }
+        healthInsurerId: { type: string, format: uuid, nullable: true }
+        guardians:
+          type: array
+          items:
+            $ref: '#/components/schemas/Guardian'
+    UpdatePatientContactRequest:
+      type: object
+      required: [operationId, version]
+      properties:
+        operationId: { type: string, format: uuid }
+        version: { type: integer }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        addressLine: { type: string, nullable: true }
+        addressCity: { type: string, nullable: true }
+        addressDepartment: { type: string, nullable: true }
+        addressMunicipality: { type: string, nullable: true }
+        guardians:
+          type: array
+          items:
+            $ref: '#/components/schemas/Guardian'
+    UpdatePatientIdentityRequest:
+      type: object
+      required: [operationId, version, justification]
+      properties:
+        operationId: { type: string, format: uuid }
+        version: { type: integer }
+        firstName: { type: string }
+        lastName: { type: string }
+        birthDate: { type: string, format: date, nullable: true }
+        justification: { type: string }
+    Guardian:
+      type: object
+      properties:
+        id: { type: string, format: uuid, nullable: true }
+        fullName: { type: string }
+        relationship: { type: string }
+        phone: { type: string, nullable: true }
+    Patient:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        institutionId: { type: string, format: uuid }
+        documentType: { type: string }
+        documentNumber: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        birthDate: { type: string, format: date, nullable: true }
+        gender: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        status: { type: string }
+        version: { type: integer }
+        updatedAt: { type: string, format: date-time }
+    # ---- Atenciones
+    CreateAttentionRequest:
+      type: object
+      required: [operationId, patientId]
+      properties:
+        operationId: { type: string, format: uuid }
+        patientId: { type: string, format: uuid }
+    UpdateAttentionRequest:
+      type: object
+      required: [operationId, version]
+      properties:
+        operationId: { type: string, format: uuid }
+        version: { type: integer }
+    CancelAttentionRequest:
+      type: object
+      required: [operationId, reason]
+      properties:
+        operationId: { type: string, format: uuid }
+        reason: { type: string }
+    AttentionStatus:
+      type: string
+      enum: [DRAFT, IN_PROGRESS, COMPLETED, CANCELLED]
+    Attention:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        institutionId: { type: string, format: uuid }
+        patientId: { type: string, format: uuid }
+        vaccinatorId: { type: string, format: uuid, nullable: true }
+        status:
+          $ref: '#/components/schemas/AttentionStatus'
+        startedAt: { type: string, format: date-time, nullable: true }
+        completedAt: { type: string, format: date-time, nullable: true }
+        cancelReason: { type: string, nullable: true }
+        version: { type: integer }
+        doses:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppliedDose'
+    # ---- Dosis
+    RegisterDoseRequest:
+      type: object
+      required: [operationId, vaccineId, appliedAt]
+      properties:
+        operationId: { type: string, format: uuid }
+        vaccineId: { type: string, format: uuid }
+        appliedAt: { type: string, format: date-time }
+        lot: { type: string, nullable: true }
+        doseLabel: { type: string, nullable: true }
+    CancelDoseRequest:
+      type: object
+      required: [operationId, reason]
+      properties:
+        operationId: { type: string, format: uuid }
+        reason: { type: string }
+    AppliedDose:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        attentionId: { type: string, format: uuid }
+        vaccineId: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [REGISTERED, CANCELLED]
+        appliedAt: { type: string, format: date-time }
+        lot: { type: string, nullable: true }
+        vaccineNameSnapshot: { type: string }
+        doseLabelSnapshot: { type: string, nullable: true }
+        cancelReason: { type: string, nullable: true }
+        cancelledAt: { type: string, format: date-time, nullable: true }
+    # ---- Sync (semántica en sync-contract.md)
+    # Nota: los endpoints directos (/patients, /attentions) transportan los
+    # mismos comandos que /sync/push y comparten la misma idempotencia por
+    # operation_id (tabla processed_operations). Ver "Dos caminos de transporte"
+    # en docs/synchronization/sync-contract.md.
+    SyncOperation:
+      type: object
+      required: [operationId, commandType, aggregateId, payload]
+      properties:
+        operationId: { type: string, format: uuid }
+        commandType:
+          type: string
+          enum: [
+            CREATE_PATIENT, UPDATE_PATIENT_CONTACT, UPDATE_PATIENT_IDENTITY,
+            CREATE_ATTENTION, UPDATE_ATTENTION, REGISTER_APPLIED_DOSE,
+            COMPLETE_ATTENTION, CANCEL_APPLIED_DOSE, CANCEL_ATTENTION
+          ]
+        aggregateId: { type: string, format: uuid }
+        payload:
+          type: object
+          additionalProperties: true
+        dependencies:
+          type: array
+          items: { type: string, format: uuid }
+    SyncPushRequest:
+      type: object
+      required: [operations]
+      properties:
+        operations:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncOperation'
+    RejectedOperation:
+      type: object
+      properties:
+        operationId: { type: string, format: uuid }
+        reason:
+          type: string
+          enum: [
+            DEPENDENCY_NOT_FOUND, DEPENDENCY_FAILED, DUPLICATE_BUSINESS_IDENTITY,
+            PERMISSION_DENIED, USER_NOT_ACTIVE, INVALID_STATE, INVALID_PAYLOAD
+          ]
+        error: { type: string }
+    SyncPushResponse:
+      type: object
+      properties:
+        accepted:
+          type: array
+          items: { type: string, format: uuid }
+        rejected:
+          type: array
+          items:
+            $ref: '#/components/schemas/RejectedOperation'
+    SyncPullResponse:
+      type: object
+      properties:
+        operations:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncOperation'
+        nextCursor:
+          type: string
+          example: "42|2026-09-07T10:00:00Z"
+    # ---- Conflictos / fusiones
+    PatientMergeRequest:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        sourcePatientId: { type: string, format: uuid }
+        targetPatientId: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+        reason: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+    ResolveMergeRequest:
+      type: object
+      required: [decision, note]
+      properties:
+        decision:
+          type: string
+          enum: [APPROVED, REJECTED]
+        note: { type: string }

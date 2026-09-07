@@ -1331,6 +1331,51 @@ ConflictRequiresReviewException
 
 Cada caso de uso debe probarse sin Flutter, HTTP ni base de datos real. Las pruebas de integración deben verificar autorización, scope, transacciones, auditoría, idempotencia y recuperación de sincronización.
 
+### 15.6 Patrón de controladores en Flutter
+
+Los controladores de presentación (`ChangeNotifier`) resuelven **solo** la ceremonia
+transversal de la UI: obtener token, marcar `loading`, traducir errores y
+notificar. Esta ceremonia se encapsula en `core/presentation/async_controller.dart`
+(clase base `AsyncController`), que recibe `SessionManager` por inyección y
+expone `execute(...)` con el flujo:
+
+```text
+sessionManager.loadSession() → action(token) → mapOfflineError / mapApiError
+```
+
+Reglas invariables:
+
+1. `AsyncController` **no** contiene `OfflinePolicy`, `SyncEngine`, outbox,
+   permisos ni reglas de negocio. Es infraestructura de presentación, no de
+   aplicación.
+2. El controller orquesta use cases; no hace red ni DTO/wire protocol. Los
+   payloads de transporte viven en el repositorio/mapper.
+3. Los casos de uso que **coordinan** repositorios (agregación, merge de varias
+   escrituras) viven en `features/<feature>/application/use_cases/`; los que
+   envuelven una única operación de un repositorio siguen en
+   `features/<feature>/domain/use_cases/`.
+4. El controller clínico **jamás** llama directamente al `SyncEngine`. El flujo
+   offline es:
+
+```text
+UI
+ ↓
+ClinicalController          (AsyncController; solo UI + refleja syncState)
+ ↓
+Use Case
+ ↓
+Repository
+ ↓
+SQLite + Outbox
+        ↘
+        SyncEngine           (independiente del controller)
+```
+
+La sincronización (push/pull/backoff/PROCESSING) la resuelven el Repository
+(transacción atómica agregado + outbox) y el `SyncEngine`; el controller solo
+refleja el `syncState` del agregado para los estados UI definidos en §11.14.
+No aparece `await syncEngine.push()` dentro de un controller.
+
 ---
 ## 16. Plan de fases de implementación
 

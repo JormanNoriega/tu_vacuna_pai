@@ -1,11 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tu_vacuna_pai/core/auth/offline_access.dart';
 import 'package:tu_vacuna_pai/features/auth/domain/entities/session_restore_result.dart';
+import 'package:tu_vacuna_pai/features/users/application/use_cases/update_user.dart';
 import 'package:tu_vacuna_pai/features/users/domain/entities/vaccinator.dart';
 import 'package:tu_vacuna_pai/features/users/domain/use_cases/create_vaccinator.dart';
 import 'package:tu_vacuna_pai/features/users/domain/use_cases/list_users.dart';
-import 'package:tu_vacuna_pai/features/users/domain/use_cases/update_user_roles.dart';
-import 'package:tu_vacuna_pai/features/users/domain/use_cases/update_user_status.dart';
 import 'package:tu_vacuna_pai/features/users/presentation/users_controller.dart';
 
 import '../admin/fake_admin_repository.dart';
@@ -25,8 +24,7 @@ void main() {
     sessionManager: sessionManager,
     createVaccinator: CreateVaccinator(repository),
     listUsers: ListUsers(repository),
-    updateUserStatus: UpdateUserStatus(repository),
-    updateUserRoles: UpdateUserRoles(repository),
+    updateUser: UpdateUser(repository),
   );
 
   /// Helper: crea un vacunador con perfil minimo valido.

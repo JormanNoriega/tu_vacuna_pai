@@ -1,0 +1,172 @@
+// ============================================================================
+// Tu Vacuna PAI — Esquema SQLite/Drift (modelo local del móvil)
+// Fase 0 · Documento de diseño · Offline-first para VACCINATOR
+// ============================================================================
+// Este archivo es el DISEÑO objetivo de la base local. No está conectado aún:
+// se materializa como tablas Drift reales en la Fase 2 (módulo clínico + outbox).
+//
+// Estilo: sigue `apps/mobile/lib/core/storage/app_database.dart` (clases Table,
+// columnas tipadas de drift, primaryKey como Set<Column>, cadenas JSON para
+// listas/objetos).
+//
+// Convenciones del proyecto (architecture.md §14.2):
+//   * UUID -> TEXT (String)
+//   * TIMESTAMPTZ -> INTEGER (epoch en segundos) o DateTimeColumn
+//   * Timestamps y cursores de sync como enteros (epoch) para coherencia.
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// PACIENTES (working set local)
+// ----------------------------------------------------------------------------
+class PatientsLocal extends Table {
+  TextColumn get id => text()(); // UUID local (generado en el cliente)
+  TextColumn get institutionId => text()();
+  TextColumn get documentType => text()();
+  TextColumn get documentNumber => text()();
+  TextColumn get firstName => text()();
+  TextColumn get lastName => text()();
+  DateTimeColumn get birthDate => dateTime().nullable()();
+  TextColumn get gender => text().nullable()();
+  TextColumn get phone => text().nullable()();
+  TextColumn get email => text().nullable()();
+  TextColumn get addressLine => text().nullable()();
+  TextColumn get addressCity => text().nullable()();
+  TextColumn get addressDepartment => text().nullable()();
+  TextColumn get addressMunicipality => text().nullable()();
+  TextColumn get healthInsurerId => text().nullable()();
+
+  // Estado de sync del agregado (LOCAL_ONLY, PENDING_SYNC, SYNCED, ...)
+  TextColumn get syncState => text()();
+
+  // version recibida del servidor (optimistic locking, D5); 0 si es local.
+  IntColumn get version => integer()();
+
+  IntColumn get updatedAt => integer()(); // epoch
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// ----------------------------------------------------------------------------
+// TUTORES / RESPONSABLES (0..2 por paciente)
+// ----------------------------------------------------------------------------
+class PatientGuardiansLocal extends Table {
+  TextColumn get id => text()();
+  TextColumn get patientId => text()();
+  TextColumn get fullName => text()();
+  TextColumn get relationship => text()();
+  TextColumn get phone => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// ----------------------------------------------------------------------------
+// ATENCIONES (working set local)
+// ----------------------------------------------------------------------------
+class AttentionsLocal extends Table {
+  TextColumn get id => text()();
+  TextColumn get institutionId => text()();
+  TextColumn get patientId => text()();
+  TextColumn get vaccinatorId => text().nullable()();
+  TextColumn get status => text()(); // DRAFT | IN_PROGRESS | COMPLETED | CANCELLED
+  IntColumn get startedAt => integer().nullable()(); // epoch
+  IntColumn get completedAt => integer().nullable()(); // epoch
+  TextColumn get cancelReason => text().nullable()();
+  IntColumn get version => integer()();
+
+  TextColumn get syncState => text()();
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// ----------------------------------------------------------------------------
+// DOSIS APLICADAS (append-only local, D4)
+// ----------------------------------------------------------------------------
+class AppliedDosesLocal extends Table {
+  TextColumn get id => text()();
+  TextColumn get attentionId => text()();
+  TextColumn get vaccineId => text().nullable()();
+  TextColumn get status => text()(); // REGISTERED | CANCELLED
+  IntColumn get appliedAt => integer()(); // epoch
+  TextColumn get administeredBy => text().nullable()();
+  TextColumn get lot => text().nullable()();
+
+  // Snapshot del catálogo (D7) para trazabilidad histórica offline
+  TextColumn get vaccineNameSnapshot => text()();
+  TextColumn get doseLabelSnapshot => text().nullable()();
+  IntColumn get catalogVersion => integer().nullable()();
+
+  TextColumn get cancelReason => text().nullable()();
+  IntColumn get cancelledAt => integer().nullable()();
+  TextColumn get cancelledBy => text().nullable()();
+
+  TextColumn get syncState => text()();
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// ----------------------------------------------------------------------------
+// OUTBOX DE SINCRONIZACIÓN
+// ----------------------------------------------------------------------------
+// Cada fila es una operación pendiente/terminada por enviar. Aquí vive el
+// estado PROCESSING (local y transitorio; ver sync-contract.md).
+class SyncOutbox extends Table {
+  IntColumn get id => integer().autoIncrement()(); // PK local
+  TextColumn get operationId => text()(); // UUID v4, idempotency key
+  TextColumn get commandType => text()(); // CREATE_PATIENT, CREATE_ATTENTION, ...
+  TextColumn get aggregateId => text()(); // UUID del agregado afectado
+  TextColumn get payload => text()(); // JSON del comando
+  TextColumn get status => text()(); // PENDING | PROCESSING | COMPLETED | FAILED | QUARANTINED
+  IntColumn get retryCount => integer().withDefault(const Constant(0))();
+  IntColumn get nextRetryAt => integer().nullable()(); // epoch
+  TextColumn get lastError => text().nullable()();
+  IntColumn get createdAt => integer()(); // epoch
+  IntColumn get updatedAt => integer()(); // epoch
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  List<Set<Column>> get uniqueKeys => [{operationId}];
+}
+
+// ----------------------------------------------------------------------------
+// DEPENDENCIAS DEL OUTBOX (grafo simple, D12)
+// ----------------------------------------------------------------------------
+class SyncOutboxDependencies extends Table {
+  TextColumn get operationId => text()(); // operation_id de la operación
+  TextColumn get dependsOnOperationId => text()(); // operation_id del que depende
+
+  @override
+  Set<Column> get primaryKey => {operationId, dependsOnOperationId};
+}
+
+// ----------------------------------------------------------------------------
+// METADATOS / VERSIONES
+// ----------------------------------------------------------------------------
+// Reutiliza la tabla SyncMetadata existente (app_database.dart) para guardar:
+//   * last_pull_cursor  -> "sync_sequence|created_at" (cursor compuesto)
+//   * catalog_version_global -> versión del catálogo global descargado
+//   * last_online_validation -> epoch (ya existe en CurrentUser, se mantiene)
+//
+// Cursor compuesto persistido:
+//   key = 'last_pull_cursor', value = "{sync_sequence}|{created_at_iso}"
+//
+// Se documenta aquí el contrato de uso; la tabla física ya existe.
+
+// ----------------------------------------------------------------------------
+// Notas de diseño
+// ----------------------------------------------------------------------------
+// * El working set (patients/attentions/doses) guarda syncState por agregado
+//   para pintar los estados UI (LOCAL_ONLY, PENDING_SYNC, SYNCED, FAILED, ...).
+// * La escritura del agregado local + su fila SyncOutbox debe ser atómica
+//   (transacción Drift) para que nunca exista un paciente local sin su comando
+//   pendiente (sync-contract.md / architecture §11.13).
+// * PROCESSING es transitorio: al arrancar el SyncEngine, cualquier fila en
+//   PROCESSING se reinicia a PENDING (safe por idempotencia del servidor).
+// * No se persisten tokens ni secretos aquí (ADR-005): viven en secure storage.
