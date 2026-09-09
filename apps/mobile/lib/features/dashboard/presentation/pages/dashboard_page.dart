@@ -218,6 +218,7 @@ class _DashboardPageState extends State<DashboardPage> {
         user: widget.user,
         controller: widget.catalogController!,
         offline: _offline,
+        embedded: true,
       );
     }
 
@@ -236,6 +237,7 @@ class _DashboardPageState extends State<DashboardPage> {
       user: widget.user,
       controller: catalogController,
       offline: _offline,
+      embedded: true,
     );
   }
 

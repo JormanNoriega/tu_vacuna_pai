@@ -12,8 +12,14 @@ class CatalogPage extends StatefulWidget {
     required this.user,
     required this.controller,
     required this.offline,
+    this.embedded = false,
     super.key,
   });
+
+  /// Cuando [embedded] es true (p. ej. dentro del tab del dashboard) no se
+  /// muestra AppBar propia, porque la barra del contenedor ya presenta el
+  /// titulo. En rutas independientes (false) se muestra con su boton de volver.
+  final bool embedded;
   final AuthUser user;
   final CatalogController controller;
   final OfflineAccess offline;
@@ -44,18 +50,9 @@ class _CatalogPageState extends State<CatalogPage> {
   bool get institutionAdmin => widget.user.hasRole('ADMIN_INSTITUTION');
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('Inventario'),
-      actions: [
-        IconButton(
-          onPressed: () => institutionAdmin
-              ? widget.controller.loadInstitution(widget.user.institution.id)
-              : widget.controller.load,
-          tooltip: 'Actualizar',
-          icon: const Icon(Icons.refresh_rounded),
-        ),
-      ],
-    ),
+    appBar: widget.embedded
+        ? null
+        : AppBar(title: const Text('Inventario')),
     floatingActionButton: globalAdmin
         ? FloatingActionButton.extended(
             onPressed: () => _form(),
