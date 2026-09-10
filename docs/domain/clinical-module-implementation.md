@@ -292,7 +292,7 @@ patrón de V5. Por defecto se reutilizan los existentes:
 | PUT | `/patients/{id}/contact` | `UPDATE_PATIENT_CONTACT` | `PATIENT_WRITE` | Institución |
 | PUT | `/patients/{id}/identity` | `UPDATE_PATIENT_IDENTITY` | `PATIENT_WRITE` | Institución (+ justificación) |
 | GET | `/patients` | — | `PATIENT_READ` | Institución (busqueda por documento) |
-| GET | `/patients/{id}/attentions` | — | `ATTENTION_READ` | Institución (se implementa en V9, junto con `attentions`) |
+| GET | `/attentions?patientId={id}` | — | `ATTENTION_READ` | Institución (historial del paciente; implementado en V9) |
 | POST | `/attentions` | `CREATE_ATTENTION` | `ATTENTION_CREATE` | Institución |
 | GET | `/attentions/{id}` | — | `ATTENTION_READ` | Institución |
 | PUT | `/attentions/{id}` | `UPDATE_ATTENTION` | `ATTENTION_CREATE` | Institución (solo DRAFT/IN_PROGRESS) |
@@ -310,11 +310,12 @@ patrón de V5. Por defecto se reutilizan los existentes:
 
 ## 6. Próximos pasos
 
-> Estado de implementación: **Commit 1 (V8, `patients`) implementado y verificado**
-> (compila, 96 tests, arranque real contra Supabase con `ddl-auto=validate` OK).
+> Estado de implementación: **Commit 1 (V8, `patients`) y Commit 2 (V9,
+> `attentions` + `applied_doses`) implementados y verificados** (compilan, tests
+> y arranque real contra Supabase con `ddl-auto=validate` OK).
 
 1. **Paso 1 (V8)**: pacientes + `processed_operations` + `audit_events` + dominio `patients` Spring + tests. **Hecho.**
-2. **Paso 2**: Migración **V9** (atenciones + `applied_doses` + `patient_merge_requests`) + dominio `attentions` + `AppliedDose` + tests.
+2. **Paso 2 (V9)**: atenciones + `applied_doses` + `patient_merge_requests` + dominio `attentions` + `AttentionService` + tests. **Hecho.**
 3. **Paso 3**: Flutter features (Drift bump `schemaVersion` 4→5 con tablas clínicas) + pantallas "Nueva atención" e "Historial".
 4. **Paso 4**: SyncEngine + outbox (`sync_operations` en Drift) + push/pull + conflictos/merge.
 
@@ -333,6 +334,23 @@ patrón de V5. Por defecto se reutilizan los existentes:
   idempotencia (`processed_operations`) queda listo para volverse obligatorio en
   la fase de sync.
 - `GET /patients/{id}/attentions` se implementa en V9.
+
+### Notas de implementación (Commit 2)
+
+- Endpoints de atenciones en `/api/v1/attentions`; el historial del paciente es
+  `GET /attentions?patientId={id}` (en lugar de `/patients/{id}/attentions`,
+  para no cruzar modulos en el controller).
+- Invariantes aplicadas en `AttentionService`: `COMPLETED` inmutable, atencion
+  anulada no recibe dosis, `AppliedDose` append-only (sin UPDATE/DELETE; solo
+  `cancel` con motivo). Las violaciones responden `409 INVALID_STATE`.
+- Al registrar una dosis, el backend valida que la vacuna este habilitada en la
+  institucion y que las opciones (dosis, neumococo y operativas) pertenezcan al
+  contexto, y guarda el snapshot de texto + `catalog_version`.
+- `POST /attentions` y `POST /attentions/{id}/doses` aceptan `Idempotency-Key`
+  opcional.
+- `consecutive` se asigna por institucion (`max + 1`) al crear la atencion;
+  aproximacion sin bloqueo, suficiente para el MVP online-first.
+- `GET /attentions?patientId=` cubre el "Historial" del dashboard.
 
 ---
 

@@ -8,7 +8,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.pai.api.catalog.exception.OptimisticCatalogException;
 import com.pai.api.patients.exception.PatientAlreadyExistsException;
 import com.pai.api.patients.exception.PatientNotFoundException;
-
+import com.pai.api.attentions.exception.AttentionNotFoundException;
+import com.pai.api.attentions.exception.DoseNotFoundException;
+import com.pai.api.attentions.exception.InvalidClinicalStateException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -89,6 +91,26 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handlePatientNotFound(PatientNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
             .body(new ErrorResponse("PATIENT_NOT_FOUND", ex.getMessage()));
+    }
+
+    @ExceptionHandler(AttentionNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleAttentionNotFound(
+            AttentionNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(new ErrorResponse("ATTENTION_NOT_FOUND", ex.getMessage()));
+    }
+
+    @ExceptionHandler(DoseNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleDoseNotFound(DoseNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(new ErrorResponse("DOSE_NOT_FOUND", ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidClinicalStateException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidClinicalState(
+            InvalidClinicalStateException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(new ErrorResponse("INVALID_STATE", ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
