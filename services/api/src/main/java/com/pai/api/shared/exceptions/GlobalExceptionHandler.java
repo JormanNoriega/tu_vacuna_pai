@@ -6,6 +6,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.pai.api.catalog.exception.OptimisticCatalogException;
+import com.pai.api.patients.exception.PatientAlreadyExistsException;
+import com.pai.api.patients.exception.PatientNotFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -74,6 +76,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleOptimisticCatalog(OptimisticCatalogException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
             .body(new ErrorResponse("OPTIMISTIC_LOCK_CONFLICT", ex.getMessage()));
+    }
+
+    @ExceptionHandler(PatientAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handlePatientAlreadyExists(
+            PatientAlreadyExistsException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(new ErrorResponse("PATIENT_ALREADY_EXISTS", ex.getMessage()));
+    }
+
+    @ExceptionHandler(PatientNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePatientNotFound(PatientNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(new ErrorResponse("PATIENT_NOT_FOUND", ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
