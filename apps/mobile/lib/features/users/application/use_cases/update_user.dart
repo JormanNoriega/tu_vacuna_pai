@@ -63,8 +63,7 @@ class UpdateUser {
       professionCode: updatedStatus.professionCode,
       professionalRegistrationNumber:
           updatedStatus.professionalRegistrationNumber,
-      professionalRegistrationType:
-          updatedStatus.professionalRegistrationType,
+      professionalRegistrationType: updatedStatus.professionalRegistrationType,
     );
   }
 }

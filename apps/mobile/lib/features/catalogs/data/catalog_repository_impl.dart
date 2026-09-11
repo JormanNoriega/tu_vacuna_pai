@@ -2,12 +2,34 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/storage/app_database.dart';
 import '../domain/entities/catalog_entities.dart';
+import '../domain/entities/effective_catalog.dart';
+import '../domain/entities/geo.dart';
 import '../domain/repositories/catalog_repository.dart';
 
 class CatalogRepositoryImpl implements CatalogRepository {
   CatalogRepositoryImpl(this.api, this.database);
   final ApiClient api;
   final AppDatabase database;
+
+  @override
+  Future<List<EffectiveVaccine>> listEffectiveCatalog(String token) async =>
+      (await api.getEffectiveCatalog(token))
+          .map(EffectiveVaccine.fromJson)
+          .toList();
+
+  @override
+  Future<List<GeoDepartment>> listDepartments(String token) async =>
+      (await api.getDepartments(token)).map(GeoDepartment.fromJson).toList();
+
+  @override
+  Future<List<GeoMunicipality>> listMunicipalities(
+    String token,
+    String departmentId,
+  ) async => (await api.getMunicipalities(
+    token,
+    departmentId,
+  )).map(GeoMunicipality.fromJson).toList();
+
   @override
   Future<List<Vaccine>> listVaccines(String token) async {
     try {
@@ -122,13 +144,47 @@ class CatalogRepositoryImpl implements CatalogRepository {
       return result;
     } on ApiException {
       if (institutionScoped) {
-        final cached = await database.cachedInstitutionOptions(institutionId, vaccine.id);
+        final cached = await database.cachedInstitutionOptions(
+          institutionId,
+          vaccine.id,
+        );
         if (cached.isEmpty) rethrow;
-        return cached.map((o) => VaccineOption(id: o.id, vaccineId: o.vaccineId, institutionId: o.institutionId, fieldType: o.fieldType, value: o.value, displayName: o.displayName, sortOrder: o.sortOrder, isDefault: o.isDefault, isActive: o.isActive, sourceTemplateId: o.sourceTemplateId, version: o.version)).toList();
+        return cached
+            .map(
+              (o) => VaccineOption(
+                id: o.id,
+                vaccineId: o.vaccineId,
+                institutionId: o.institutionId,
+                fieldType: o.fieldType,
+                value: o.value,
+                displayName: o.displayName,
+                sortOrder: o.sortOrder,
+                isDefault: o.isDefault,
+                isActive: o.isActive,
+                sourceTemplateId: o.sourceTemplateId,
+                version: o.version,
+              ),
+            )
+            .toList();
       }
       final cached = await database.cachedGlobalOptions(vaccine.id);
       if (cached.isEmpty) rethrow;
-      return cached.map((o) => VaccineOption(id: o.id, vaccineId: o.vaccineId, fieldType: o.fieldType, value: o.value, displayName: o.displayName, sortOrder: o.sortOrder, isDefault: o.isDefault, isActive: o.isActive, sourceTemplateId: o.sourceTemplateId, version: o.version)).toList();
+      return cached
+          .map(
+            (o) => VaccineOption(
+              id: o.id,
+              vaccineId: o.vaccineId,
+              fieldType: o.fieldType,
+              value: o.value,
+              displayName: o.displayName,
+              sortOrder: o.sortOrder,
+              isDefault: o.isDefault,
+              isActive: o.isActive,
+              sourceTemplateId: o.sourceTemplateId,
+              version: o.version,
+            ),
+          )
+          .toList();
     }
   }
 
@@ -187,14 +243,13 @@ class CatalogRepositoryImpl implements CatalogRepository {
     required bool institutionScoped,
     required String institutionId,
   }) async {
-    final body =
-        optionPayload(
-          fieldType: option.fieldType,
-          value: option.value,
-          isDefault: false,
-          sortOrder: option.sortOrder,
-          version: option.version,
-        )..['isActive'] = false;
+    final body = optionPayload(
+      fieldType: option.fieldType,
+      value: option.value,
+      isDefault: false,
+      sortOrder: option.sortOrder,
+      version: option.version,
+    )..['isActive'] = false;
     await updateOption(
       token,
       vaccine,
@@ -204,6 +259,7 @@ class CatalogRepositoryImpl implements CatalogRepository {
       institutionId: institutionId,
     );
   }
+
   @override
   Future<void> setEnabled(
     String token,

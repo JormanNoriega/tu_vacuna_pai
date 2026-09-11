@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 /**
  * Actualiza los datos de contacto del paciente (telefono, correo) y sus
@@ -18,11 +19,14 @@ public record UpdatePatientContactRequest(
 
     public record ContactDto(
             @NotBlank(message = "El tipo de contacto es obligatorio.") String type,
-            @NotBlank(message = "El valor del contacto es obligatorio.") String value,
+            @NotBlank(message = "El valor del contacto es obligatorio.")
+            @Size(max = 120, message = "El contacto no puede superar 120 caracteres.")
+            String value,
             boolean primary) {
     }
 
     public record AddressDto(
+            @Size(max = 200, message = "La direccion no puede superar 200 caracteres.")
             String street,
             UUID municipalityId,
             UUID departmentId,

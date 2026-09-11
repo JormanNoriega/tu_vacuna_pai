@@ -16,6 +16,11 @@ import '../../../users/presentation/pages/users_page.dart';
 import '../../../users/presentation/users_controller.dart';
 import '../../../catalogs/presentation/catalog_controller.dart';
 import '../../../catalogs/presentation/pages/catalog_page.dart';
+import '../../../attentions/presentation/attention_controller.dart';
+import '../../../attentions/presentation/history_controller.dart';
+import '../../../attentions/presentation/pages/historial_page.dart';
+import '../../../attentions/presentation/pages/nueva_atencion_page.dart';
+import '../../../patients/presentation/patient_detail_controller.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
@@ -24,6 +29,9 @@ class DashboardPage extends StatefulWidget {
     this.adminController,
     this.usersController,
     this.catalogController,
+    this.attentionController,
+    this.historyController,
+    this.patientDetailController,
     this.sessionStatus = SessionStatus.signedIn,
     this.offlineReason,
     this.networkInfo,
@@ -41,6 +49,17 @@ class DashboardPage extends StatefulWidget {
   /// [user] tiene el permiso USER_MANAGE (ADMIN_INSTITUTION).
   final UsersController? usersController;
   final CatalogController? catalogController;
+
+  /// Controlador del flujo clinico (nueva atencion e historial). Se inyecta
+  /// desde [main]; es null en tests y demos.
+  final AttentionController? attentionController;
+
+  /// Controlador del historial de atenciones (estado independiente del flujo
+  /// de nueva atencion).
+  final HistoryController? historyController;
+
+  /// Controlador de la ficha del paciente (ver + editar).
+  final PatientDetailController? patientDetailController;
 
   /// Estado de la sesion restaurada. Define si se muestra un banner de modo
   /// offline y que operaciones de escritura estan permitidas.
@@ -115,12 +134,14 @@ class _DashboardPageState extends State<DashboardPage> {
               selectedIcon: Icons.person_add_alt_1_rounded,
               label: 'Nueva atencion',
               requiredPermission: 'ATTENTION_CREATE',
+              isNewAttention: true,
             ),
             const _DashboardDestination(
               icon: Icons.history_rounded,
               selectedIcon: Icons.history_rounded,
               label: 'Historial',
               requiredPermission: 'ATTENTION_READ',
+              isHistory: true,
             ),
             const _DashboardDestination(
               icon: Icons.inventory_2_outlined,
@@ -203,6 +224,25 @@ class _DashboardPageState extends State<DashboardPage> {
       };
     }
 
+    if (_destinations[_selectedIndex].isNewAttention &&
+        widget.attentionController != null) {
+      return NuevaAtencionPage(
+        user: widget.user,
+        controller: widget.attentionController!,
+        offline: _offline,
+      );
+    }
+
+    if (_destinations[_selectedIndex].isHistory &&
+        widget.historyController != null &&
+        widget.patientDetailController != null) {
+      return HistorialPage(
+        controller: widget.historyController!,
+        patientDetailController: widget.patientDetailController!,
+        offline: _offline,
+      );
+    }
+
     if (_destinations[_selectedIndex].isUsersManagement &&
         widget.usersController != null) {
       return UsersPage(
@@ -225,7 +265,31 @@ class _DashboardPageState extends State<DashboardPage> {
     return _DashboardContent(
       userName: widget.user.name,
       permissions: widget.user.permissions,
+      onAction: _openQuickAction,
     );
+  }
+
+  /// Resuelve las acciones de "Acciones frecuentes" llevando al destino
+  /// correspondiente del dashboard (o avisando si aun no existe).
+  void _openQuickAction(String label) {
+    final index = _destinations.indexWhere(
+      (destination) => switch (label) {
+        'Nueva atencion' => destination.isNewAttention,
+        'Buscar paciente' => destination.isHistory,
+        'Ver inventario' => destination.isCatalog,
+        'Administracion' => destination.isUsersManagement,
+        _ => false,
+      },
+    );
+    if (index >= 0) {
+      setState(() => _selectedIndex = index);
+      return;
+    }
+    if (label == 'Exportar datos') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Exportar datos: proximamente.')),
+      );
+    }
   }
 
   Widget _catalogContent() {
@@ -843,6 +907,8 @@ class _DashboardDestination {
     this.requiredPermission,
     this.requiredPermissions = const [],
     this.isUsersManagement = false,
+    this.isNewAttention = false,
+    this.isHistory = false,
   });
 
   final IconData icon;
@@ -855,14 +921,25 @@ class _DashboardDestination {
   /// institucion (ADMIN_INSTITUTION).
   final bool isUsersManagement;
 
+  /// True cuando el destino es el flujo de una nueva atencion (VACCINATOR).
+  final bool isNewAttention;
+
+  /// True cuando el destino es el historial de atenciones del paciente.
+  final bool isHistory;
+
   bool get isCatalog => label == 'Inventario';
 }
 
 class _DashboardContent extends StatelessWidget {
-  const _DashboardContent({required this.userName, required this.permissions});
+  const _DashboardContent({
+    required this.userName,
+    required this.permissions,
+    required this.onAction,
+  });
 
   final String userName;
   final List<String> permissions;
+  final ValueChanged<String> onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -906,6 +983,7 @@ class _DashboardContent extends StatelessWidget {
                   _ActionsGrid(
                     columns: columns == 1 ? 2 : 4,
                     permissions: permissions,
+                    onAction: onAction,
                   ),
                 ],
               ),
@@ -1144,10 +1222,15 @@ class _StatsGrid extends StatelessWidget {
 }
 
 class _ActionsGrid extends StatelessWidget {
-  const _ActionsGrid({required this.columns, required this.permissions});
+  const _ActionsGrid({
+    required this.columns,
+    required this.permissions,
+    required this.onAction,
+  });
 
   final int columns;
   final List<String> permissions;
+  final ValueChanged<String> onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -1209,7 +1292,7 @@ class _ActionsGrid extends StatelessWidget {
             color: action.primary ? AppColors.primary : AppColors.surface,
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
-              onTap: () {},
+              onTap: () => onAction(action.label),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(

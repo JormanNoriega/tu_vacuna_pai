@@ -53,34 +53,33 @@ class CatalogController extends AsyncController {
     await _loadDoseOptions(token, _vaccines);
   });
 
-  Future<void> loadInstitution(String institutionId) =>
-      execute((token) async {
-        final relations = await repository.listInstitutionVaccines(
-          token,
-          institutionId,
-        );
-        institutionEnabled
-          ..clear()
-          ..addEntries(
-            relations.map(
-              (relation) => MapEntry(relation.vaccineId, relation.enabled),
-            ),
-          );
-        _vaccines = relations
-            .map(
-              (relation) => Vaccine(
-                id: relation.vaccineId,
-                name: relation.name,
-                code: relation.code,
-                category: relation.category,
-                maxDoses: 1,
-                active: true,
-                version: relation.version,
-              ),
-            )
-            .toList();
-        await _loadDoseOptions(token, _vaccines);
-      });
+  Future<void> loadInstitution(String institutionId) => execute((token) async {
+    final relations = await repository.listInstitutionVaccines(
+      token,
+      institutionId,
+    );
+    institutionEnabled
+      ..clear()
+      ..addEntries(
+        relations.map(
+          (relation) => MapEntry(relation.vaccineId, relation.enabled),
+        ),
+      );
+    _vaccines = relations
+        .map(
+          (relation) => Vaccine(
+            id: relation.vaccineId,
+            name: relation.name,
+            code: relation.code,
+            category: relation.category,
+            maxDoses: 1,
+            active: true,
+            version: relation.version,
+          ),
+        )
+        .toList();
+    await _loadDoseOptions(token, _vaccines);
+  });
 
   /// Carga las vacunas globales activas que la institucion aun no tiene
   /// relacionadas (disponibles para habilitar).

@@ -583,7 +583,10 @@ void main() {
     test('lista vacunas globales disponibles para la institucion', () async {
       final mockClient = MockClient((request) async {
         expect(request.method, 'GET');
-        expect(request.url.path, '/api/v1/institutions/inst-1/vaccines/available');
+        expect(
+          request.url.path,
+          '/api/v1/institutions/inst-1/vaccines/available',
+        );
         expect(request.headers['Authorization'], 'Bearer token-123');
         return http.Response(
           jsonEncode([
@@ -614,6 +617,429 @@ void main() {
 
       expect(list, hasLength(1));
       expect(list.first['code'], 'VAC-2');
+    });
+  });
+
+  group('ApiClient.patients', () {
+    test('busca pacientes por documento con query params', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'GET');
+        expect(request.url.path, '/api/v1/patients');
+        expect(request.url.queryParameters['documentType'], 'CC');
+        expect(request.url.queryParameters['documentNumber'], '12345678');
+        expect(request.headers['Authorization'], 'Bearer token-123');
+        return http.Response(
+          jsonEncode([
+            {
+              'id': 'pat-1',
+              'documentType': 'CC',
+              'documentNumber': '12345678',
+              'firstName': 'Juan',
+              'lastName': 'Perez',
+              'birthDate': '2020-05-01',
+              'sex': 'MALE',
+              'status': 'ACTIVE',
+            },
+          ]),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final list = await api.searchPatients(
+        'token-123',
+        documentType: 'CC',
+        documentNumber: '12345678',
+      );
+
+      expect(list, hasLength(1));
+      expect(list.first['firstName'], 'Juan');
+    });
+
+    test('crea un paciente enviando el Idempotency-Key', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(request.url.path, '/api/v1/patients');
+        expect(request.headers['Idempotency-Key'], 'op-1');
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['documentNumber'], '12345678');
+        return http.Response(
+          jsonEncode({
+            'id': 'pat-1',
+            'documentType': 'CC',
+            'documentNumber': '12345678',
+            'firstName': 'Juan',
+            'lastName': 'Perez',
+            'birthDate': '2020-05-01',
+            'sex': 'MALE',
+            'status': 'ACTIVE',
+          }),
+          201,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final json = await api.createPatient('token-123', {
+        'documentType': 'CC',
+        'documentNumber': '12345678',
+      }, operationId: 'op-1');
+
+      expect(json['id'], 'pat-1');
+    });
+  });
+
+  group('ApiClient.attentions', () {
+    test('crea una atencion enviando el Idempotency-Key', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(request.url.path, '/api/v1/attentions');
+        expect(request.headers['Idempotency-Key'], 'op-2');
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['patientId'], 'pat-1');
+        return http.Response(
+          jsonEncode({
+            'id': 'att-1',
+            'patientId': 'pat-1',
+            'professionalId': 'pro-1',
+            'status': 'DRAFT',
+            'version': 0,
+            'doses': [],
+          }),
+          201,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final json = await api.createAttention('token-123', {
+        'patientId': 'pat-1',
+      }, operationId: 'op-2');
+
+      expect(json['status'], 'DRAFT');
+    });
+
+    test('registra una dosis en la atencion', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(request.url.path, '/api/v1/attentions/att-1/doses');
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['vaccineId'], 'vac-1');
+        expect(body['doseOptionId'], 'dose-1');
+        return http.Response(
+          jsonEncode({
+            'id': 'dose-1',
+            'attentionId': 'att-1',
+            'vaccineId': 'vac-1',
+            'vaccineNameSnapshot': 'Influenza',
+            'vaccineCodeSnapshot': 'INF',
+            'doseLabelSnapshot': 'Primera dosis',
+            'status': 'REGISTERED',
+          }),
+          201,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final json = await api.registerDose('token-123', 'att-1', {
+        'vaccineId': 'vac-1',
+        'doseOptionId': 'dose-1',
+      });
+
+      expect(json['status'], 'REGISTERED');
+    });
+  });
+
+  group('ApiClient.effectiveCatalog', () {
+    test('parsea la lista de vacunas del catalogo efectivo', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'GET');
+        expect(request.url.path, '/api/v1/catalogs/effective');
+        return http.Response(
+          jsonEncode({
+            'vaccines': [
+              {
+                'vaccineId': 'vac-1',
+                'name': 'Influenza',
+                'code': 'INF',
+                'category': 'PAI',
+                'maxDoses': 1,
+                'version': 0,
+                'doses': [
+                  {
+                    'id': 'dose-1',
+                    'fieldType': 'dose',
+                    'value': '1',
+                    'displayName': 'Primera dosis',
+                    'sortOrder': 0,
+                    'default': true,
+                  },
+                ],
+                'pneumococcalTypes': [],
+                'operationalOptions': [],
+              },
+            ],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final vaccines = await api.getEffectiveCatalog('token-123');
+
+      expect(vaccines, hasLength(1));
+      expect(vaccines.first['name'], 'Influenza');
+    });
+  });
+
+  group('ApiClient.geoCatalog', () {
+    test('lista departamentos', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'GET');
+        expect(request.url.path, '/api/v1/catalogs/geo/departments');
+        return http.Response(
+          jsonEncode([
+            {'id': 'd1', 'code': '05', 'name': 'Antioquia'},
+          ]),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final departments = await api.getDepartments('token-123');
+
+      expect(departments, hasLength(1));
+      expect(departments.first['code'], '05');
+    });
+
+    test('lista municipios por departamento', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'GET');
+        expect(request.url.path, '/api/v1/catalogs/geo/municipalities');
+        expect(request.url.queryParameters['departmentId'], 'd1');
+        return http.Response(
+          jsonEncode([
+            {
+              'id': 'm1',
+              'code': '05001',
+              'name': 'Medellin',
+              'departmentId': 'd1',
+            },
+          ]),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final municipalities = await api.getMunicipalities('token-123', 'd1');
+
+      expect(municipalities, hasLength(1));
+      expect(municipalities.first['code'], '05001');
+    });
+  });
+
+  group('ApiClient.patientUpdates', () {
+    test('actualiza demografia con PUT', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'PUT');
+        expect(request.url.path, '/api/v1/patients/p1/demographics');
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['gender'], 'MALE');
+        return http.Response(
+          jsonEncode({
+            'id': 'p1',
+            'documentType': 'CC',
+            'documentNumber': '12345678',
+            'firstName': 'Juan',
+            'lastName': 'Perez',
+            'birthDate': '2020-01-01',
+            'sex': 'MALE',
+            'status': 'ACTIVE',
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final json = await api.updatePatientDemographics('token-123', 'p1', {
+        'gender': 'MALE',
+      });
+
+      expect(json['id'], 'p1');
+    });
+
+    test('actualiza contacto con PUT', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'PUT');
+        expect(request.url.path, '/api/v1/patients/p1/contact');
+        return http.Response(
+          jsonEncode({
+            'id': 'p1',
+            'documentType': 'CC',
+            'documentNumber': '12345678',
+            'firstName': 'Juan',
+            'lastName': 'Perez',
+            'birthDate': '2020-01-01',
+            'sex': 'MALE',
+            'status': 'ACTIVE',
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final json = await api.updatePatientContact('token-123', 'p1', {
+        'contacts': [],
+        'addresses': [],
+      });
+
+      expect(json['id'], 'p1');
+    });
+
+    test('actualiza antecedentes con PUT', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'PUT');
+        expect(request.url.path, '/api/v1/patients/p1/medical-histories');
+        return http.Response(
+          jsonEncode({
+            'id': 'p1',
+            'documentType': 'CC',
+            'documentNumber': '12345678',
+            'firstName': 'Juan',
+            'lastName': 'Perez',
+            'birthDate': '2020-01-01',
+            'sex': 'MALE',
+            'status': 'ACTIVE',
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final json = await api.updatePatientMedicalHistories('token-123', 'p1', {
+        'medicalHistories': [],
+      });
+
+      expect(json['id'], 'p1');
+    });
+  });
+
+  group('ApiClient.attentionCancellations', () {
+    test('anula la atencion con motivo', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(request.url.path, '/api/v1/attentions/att-1/cancel');
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['reason'], 'duplicada');
+        return http.Response(
+          jsonEncode({
+            'id': 'att-1',
+            'patientId': 'p1',
+            'professionalId': 'pro-1',
+            'status': 'CANCELLED',
+            'version': 2,
+            'doses': [],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final json = await api.cancelAttention('token-123', 'att-1', {
+        'reason': 'duplicada',
+      });
+
+      expect(json['status'], 'CANCELLED');
+    });
+
+    test('anula una dosis con motivo', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(
+          request.url.path,
+          '/api/v1/attentions/att-1/doses/dose-1/cancel',
+        );
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['reason'], 'mal registro');
+        return http.Response(
+          jsonEncode({
+            'id': 'dose-1',
+            'attentionId': 'att-1',
+            'vaccineId': 'vac-1',
+            'vaccineNameSnapshot': 'Influenza',
+            'vaccineCodeSnapshot': 'INF',
+            'doseLabelSnapshot': 'Primera dosis',
+            'status': 'CANCELLED',
+            'cancelledReason': 'mal registro',
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final api = ApiClient(
+        baseUrl: 'http://localhost:8080/api/v1',
+        httpClient: mockClient,
+      );
+
+      final json = await api.cancelDose('token-123', 'att-1', 'dose-1', {
+        'reason': 'mal registro',
+      });
+
+      expect(json['status'], 'CANCELLED');
     });
   });
 }

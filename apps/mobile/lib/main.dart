@@ -26,6 +26,15 @@ import 'features/users/presentation/users_controller.dart';
 import 'features/catalogs/data/catalog_repository_impl.dart';
 import 'features/catalogs/domain/use_cases/catalog_use_cases.dart';
 import 'features/catalogs/presentation/catalog_controller.dart';
+import 'features/patients/data/patients_repository_impl.dart';
+import 'features/patients/domain/use_cases/create_patient.dart';
+import 'features/patients/domain/use_cases/patient_profile_use_cases.dart';
+import 'features/patients/domain/use_cases/search_patient.dart';
+import 'features/patients/presentation/patient_detail_controller.dart';
+import 'features/attentions/data/attentions_repository_impl.dart';
+import 'features/attentions/domain/use_cases/attentions_use_cases.dart';
+import 'features/attentions/presentation/attention_controller.dart';
+import 'features/attentions/presentation/history_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -79,12 +88,45 @@ Future<void> main() async {
     listAvailableVaccines: ListAvailableInstitutionVaccines(catalogRepository),
   );
 
+  final patientsRepository = PatientsRepositoryImpl(apiClient);
+  final attentionsRepository = AttentionsRepositoryImpl(apiClient);
+  final attentionController = AttentionController(
+    sessionManager: sessionManager,
+    searchPatient: SearchPatient(patientsRepository),
+    createPatient: CreatePatient(patientsRepository),
+    listEffectiveCatalog: ListEffectiveCatalog(catalogRepository),
+    listDepartments: ListDepartments(catalogRepository),
+    listMunicipalities: ListMunicipalities(catalogRepository),
+    createAttention: CreateAttention(attentionsRepository),
+    registerDose: RegisterDose(attentionsRepository),
+    completeAttention: CompleteAttention(attentionsRepository),
+    cancelAttention: CancelAttention(attentionsRepository),
+    cancelDose: CancelDose(attentionsRepository),
+  );
+  final historyController = HistoryController(
+    sessionManager: sessionManager,
+    searchPatient: SearchPatient(patientsRepository),
+    listPatientAttentions: ListPatientAttentions(attentionsRepository),
+  );
+  final patientDetailController = PatientDetailController(
+    sessionManager: sessionManager,
+    getPatient: GetPatient(patientsRepository),
+    updateDemographics: UpdatePatientDemographics(patientsRepository),
+    updateContact: UpdatePatientContact(patientsRepository),
+    updateMedicalHistories: UpdatePatientMedicalHistories(patientsRepository),
+    listDepartments: ListDepartments(catalogRepository),
+    listMunicipalities: ListMunicipalities(catalogRepository),
+  );
+
   runApp(
     TuVacunaApp(
       authRepository: authRepository,
       adminController: adminController,
       usersController: usersController,
       catalogController: catalogController,
+      attentionController: attentionController,
+      historyController: historyController,
+      patientDetailController: patientDetailController,
       networkInfo: networkInfo,
     ),
   );

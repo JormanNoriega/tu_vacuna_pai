@@ -15,8 +15,9 @@ class DocumentNormalizer {
     if (normalized == null || type == null) return false;
     return switch (type) {
       'CC' => RegExp(r'^\d{6,10}$').hasMatch(normalized),
-      'TI' || 'CE' || 'PASAPORTE' =>
-        RegExp(r'^[A-Z0-9]{4,20}$').hasMatch(normalized),
+      'TI' ||
+      'CE' ||
+      'PASAPORTE' => RegExp(r'^[A-Z0-9]{4,20}$').hasMatch(normalized),
       _ => false,
     };
   }

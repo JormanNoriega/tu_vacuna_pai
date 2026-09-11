@@ -247,12 +247,22 @@ CREATE TABLE app.patient_merge_requests (
 
 Estado actual del esquema local (`app_database.dart`, `schemaVersion=4`):
 - **Ya existen:** `CurrentUser`, `InstitutionsCache`, `UsersCache`, `SyncMetadata`, `VaccinesCache`, `VaccineOptionsCache`, `InstitutionVaccinesCache`, `InstitutionVaccineOptionsCache`.
-- **NO existen aún:** `sync_operations`, `sync_operation_dependencies`, ni tablas clínicas. Se crean al implementar este módulo (bump de `schemaVersion`).
 
-Tablas a agregar (sufijo `_cache` para catálogos; tablas clínicas son **datos propios**, no caché):
+**Decision de implementacion (online-first):** en el Paso 3 el flujo clinico
+lee y escribe contra el backend; **no se agregan tablas clinicas a Drift
+todavia**. Persistir pacientes/atenciones localmente sin el outbox (Paso 4)
+dejaria datos locales sin sincronizar, por lo que se difiere hasta el SyncEngine
+para no introducir estado inconsistente ni esquema muerto.
+
+Tablas a agregar **cuando se implemente el SyncEngine (Paso 4)**:
 - `patients`, `patient_contacts`, `patient_demographics`, `patient_addresses`, `patient_guardians`, `patient_medical_histories`
 - `attentions`, `applied_doses`
-- `sync_operations`, `sync_operation_dependencies` (outbox; se crean junto con el SyncEngine en el Paso 4, no antes)
+- `sync_operations`, `sync_operation_dependencies` (outbox)
+(dos bump de `schemaVersion`).
+
+El catalogo efectivo para el formulario clinico se consume en vivo desde
+`GET /catalogs/effective`; la cache de catalogo existente (Paso 4) cubre la
+lectura offline futura.
 
 ---
 
@@ -310,13 +320,13 @@ patrón de V5. Por defecto se reutilizan los existentes:
 
 ## 6. Próximos pasos
 
-> Estado de implementación: **Commit 1 (V8, `patients`) y Commit 2 (V9,
-> `attentions` + `applied_doses`) implementados y verificados** (compilan, tests
-> y arranque real contra Supabase con `ddl-auto=validate` OK).
+> Estado de implementación: **Commits 1 (V8, `patients`), 2 (V9, `attentions` +
+> `applied_doses`) y 3 (Flutter + catalogo efectivo) implementados y verificados**
+> (compilan, tests y arranque real contra Supabase con `ddl-auto=validate` OK).
 
 1. **Paso 1 (V8)**: pacientes + `processed_operations` + `audit_events` + dominio `patients` Spring + tests. **Hecho.**
 2. **Paso 2 (V9)**: atenciones + `applied_doses` + `patient_merge_requests` + dominio `attentions` + `AttentionService` + tests. **Hecho.**
-3. **Paso 3**: Flutter features (Drift bump `schemaVersion` 4→5 con tablas clínicas) + pantallas "Nueva atención" e "Historial".
+3. **Paso 3 (Flutter)**: `GET /catalogs/effective` (backend) + features `patients`/`attentions` + pantallas "Nueva atención" e "Historial". **Hecho** (sin tablas Drift clínicas; ver §3).
 4. **Paso 4**: SyncEngine + outbox (`sync_operations` en Drift) + push/pull + conflictos/merge.
 
 > `audit_events` se crea en V8 (Paso 1) porque la auditoría clínica se escribe en
@@ -351,6 +361,67 @@ patrón de V5. Por defecto se reutilizan los existentes:
 - `consecutive` se asigna por institucion (`max + 1`) al crear la atencion;
   aproximacion sin bloqueo, suficiente para el MVP online-first.
 - `GET /attentions?patientId=` cubre el "Historial" del dashboard.
+
+### Notas de implementación (Commit 3 — Flutter)
+
+- **Sin tablas Drift clinicas** en este paso: el flujo es online-first y
+  persistir localmente sin outbox dejaria datos sin sincronizar (ver §3). El
+  catalogo efectivo se lee en vivo de `GET /catalogs/effective`.
+- Backend: `GET /api/v1/catalogs/effective` (`EffectiveCatalogService`) devuelve
+  las vacunas habilitadas de la institucion con dosis, tipos de neumococo y
+  opciones operativas en un solo DTO (alcance calculado en el servidor).
+- Flutter: features `patients` (busqueda/creacion) y `attentions`
+  (crear atencion, registrar dosis, completar, historial) + `AttentionController`
+  que orquesta el flujo. Pantallas "Nueva atencion" e "Historial" conectadas a
+  los destinos del dashboard (`ATTENTION_CREATE` / `ATTENTION_READ`).
+- Online-first: las escrituras clinicas usan `OperationPermission.createPatient`
+  / `createAttention` / `registerDose` / `completeAttention` con
+  `offlineAuthorized: false` (requieren conexion hasta que exista el outbox).
+- El formulario registra dosis con `vaccineId` + `doseOptionId` y, segun los
+  flags de la vacuna, neumococo y opciones operativas (laboratorio, jeringa,
+  gotero, observacion) + lote opcional.
+
+### Catálogo geográfico (Bloque A — V10)
+
+- Migración `V10__create_geo_catalog.sql`: `app.geo_countries`,
+  `app.geo_departments`, `app.geo_municipalities` + FKs desde
+  `app.patient_addresses` (columnas nullable).
+- Seed idempotente `GeoCatalogImporter` desde
+  `resources/catalog/divipola.json` (DIVIPOLA - DANE: 33 departamentos,
+  1.122 municipios). País fijo: Colombia.
+- Endpoints: `GET /api/v1/catalogs/geo/departments` y
+  `GET /api/v1/catalogs/geo/municipalities?departmentId={id}` (permiso
+  `CATALOG_GLOBAL_READ` o `CATALOG_CONFIG_READ`).
+- Verificado contra Supabase: migración aplicada, seed 33/1.122, endpoints OK
+  (Antioquia = 125 municipios; acentos correctos en la respuesta).
+- Nota: el primer seed inserta ~1.155 filas por el pooler y puede tardar un par
+  de minutos; es una operacion unica (idempotente por conteo).
+
+### Wizard de registro de paciente (Bloque B)
+
+- `PatientWizardPage` reemplaza el formulario de alta: 6 pasos (Identidad,
+  Demografia, Contacto, Acompanante, Direccion, Antecedentes) y **un solo
+  `POST /patients` al final**. Solo el paso 1 (identidad) es obligatorio.
+- `NewPatientInput` (domain) transporta el perfil completo; el repositorio arma
+  `demographics/contacts/addresses/guardians/medicalHistories` (omite bloques
+  vacios).
+- Direccion con departamento -> municipio dependientes, alimentados por
+  `GET /catalogs/geo/departments` y `.../municipalities?departmentId=` (pais fijo
+  Colombia).
+- Verificado: `flutter analyze` sin issues y **120 tests** (incluye armado del
+  body completo y endpoints geo).
+
+### Ficha del paciente (Bloque C)
+
+- **Backend**: `PUT /patients/{id}/demographics` (upsert) y
+  `PUT /patients/{id}/medical-histories` (reemplaza la lista). Nuevos
+  `AuditAction`: `PATIENT_DEMOGRAPHICS_UPDATED`, `PATIENT_HISTORY_UPDATED`.
+  (Identidad y contacto/direccion ya existian.)
+- **Flutter**: `PatientProfile` (perfil completo), `PatientDetailController` y
+  `PatientDetailPage` con secciones y edicion (demografia, contacto/direccion,
+  antecedentes). Acceso desde **Historial** con "Ver ficha del paciente".
+- Verificado: backend 15 archivos de test sin fallos; `flutter analyze` sin
+  issues; **126 tests** Flutter; arranque del backend OK.
 
 ---
 

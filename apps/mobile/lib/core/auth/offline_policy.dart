@@ -28,7 +28,26 @@ enum OperationPermission {
   catalogConfigWrite(
     requiredPermission: 'CATALOG_CONFIG_WRITE',
     offlineAuthorized: false,
-  );
+  ),
+  createPatient(requiredPermission: 'PATIENT_WRITE', offlineAuthorized: false),
+  updatePatient(requiredPermission: 'PATIENT_WRITE', offlineAuthorized: false),
+  createAttention(
+    requiredPermission: 'ATTENTION_CREATE',
+    offlineAuthorized: false,
+  ),
+  registerDose(
+    requiredPermission: 'ATTENTION_CREATE',
+    offlineAuthorized: false,
+  ),
+  completeAttention(
+    requiredPermission: 'ATTENTION_CREATE',
+    offlineAuthorized: false,
+  ),
+  cancelAttention(
+    requiredPermission: 'ATTENTION_CREATE',
+    offlineAuthorized: false,
+  ),
+  cancelDose(requiredPermission: 'ATTENTION_CREATE', offlineAuthorized: false);
 
   const OperationPermission({
     required this.requiredPermission,

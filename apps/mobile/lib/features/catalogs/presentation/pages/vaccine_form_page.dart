@@ -325,20 +325,13 @@ class _VaccineFormPageState extends State<VaccineFormPage> {
       builder: (_) => const _OptionDialog(
         title: 'Agregar opcion',
         autofocus: true,
-        choices: [
-          ('dose', 'Dosis'),
-          ('pneumococcalType', 'Tipo neumococo'),
-        ],
+        choices: [('dose', 'Dosis'), ('pneumococcalType', 'Tipo neumococo')],
       ),
     );
     if (!mounted || result == null || result.$2.isEmpty) return;
     await widget.controller.addOption(
       vaccine,
-      optionPayload(
-        fieldType: result.$1,
-        value: result.$2,
-        isDefault: false,
-      ),
+      optionPayload(fieldType: result.$1, value: result.$2, isDefault: false),
       institutionId: '',
       institutionScoped: false,
       offline: widget.offline,
@@ -390,11 +383,7 @@ class _VaccineFormPageState extends State<VaccineFormPage> {
     if (!mounted || result == null || result.$2.isEmpty) return;
     await widget.controller.addTemplate(
       vaccine,
-      optionPayload(
-        fieldType: result.$1,
-        value: result.$2,
-        isDefault: false,
-      ),
+      optionPayload(fieldType: result.$1, value: result.$2, isDefault: false),
       offline: widget.offline,
     );
     if (mounted) _loadOptions(vaccine);
@@ -489,9 +478,7 @@ class _OptionDialogState extends State<_OptionDialog> {
       content: TextField(
         controller: _controller,
         autofocus: widget.autofocus,
-        decoration: const InputDecoration(
-          labelText: 'Nombre o valor',
-        ),
+        decoration: const InputDecoration(labelText: 'Nombre o valor'),
       ),
       actions: [
         TextButton(

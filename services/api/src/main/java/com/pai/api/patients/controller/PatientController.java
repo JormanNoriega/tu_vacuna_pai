@@ -21,7 +21,9 @@ import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.patients.dto.CreatePatientRequest;
 import com.pai.api.patients.dto.PatientResponse;
 import com.pai.api.patients.dto.UpdatePatientContactRequest;
+import com.pai.api.patients.dto.UpdatePatientDemographicsRequest;
 import com.pai.api.patients.dto.UpdatePatientIdentityRequest;
+import com.pai.api.patients.dto.UpdatePatientMedicalHistoriesRequest;
 import com.pai.api.patients.service.PatientService;
 
 import jakarta.validation.Valid;
@@ -85,5 +87,24 @@ public class PatientController {
             @Valid @RequestBody UpdatePatientIdentityRequest request) {
         UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
         return ResponseEntity.ok(service.updateIdentity(actorId, id, request));
+    }
+
+    @PutMapping("/{id}/demographics")
+    @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_WRITE')")
+    public ResponseEntity<PatientResponse> updateDemographics(Authentication authentication,
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdatePatientDemographicsRequest request) {
+        UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
+        return ResponseEntity.ok(service.updateDemographics(actorId, id, request));
+    }
+
+    @PutMapping("/{id}/medical-histories")
+    @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_WRITE')")
+    public ResponseEntity<PatientResponse> updateMedicalHistories(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdatePatientMedicalHistoriesRequest request) {
+        UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
+        return ResponseEntity.ok(service.updateMedicalHistories(actorId, id, request));
     }
 }

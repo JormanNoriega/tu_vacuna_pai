@@ -1,7 +1,22 @@
 import '../entities/catalog_entities.dart';
+import '../entities/effective_catalog.dart';
+import '../entities/geo.dart';
 
 abstract interface class CatalogRepository {
   Future<List<Vaccine>> listVaccines(String token);
+
+  /// Catalogo efectivo de la institucion del actor (vacunas habilitadas con
+  /// dosis, tipos de neumococo y opciones operativas).
+  Future<List<EffectiveVaccine>> listEffectiveCatalog(String token);
+
+  /// Departamentos del catalogo geografico (DIVIPOLA).
+  Future<List<GeoDepartment>> listDepartments(String token);
+
+  /// Municipios de un departamento.
+  Future<List<GeoMunicipality>> listMunicipalities(
+    String token,
+    String departmentId,
+  );
   Future<List<InstitutionVaccine>> listInstitutionVaccines(
     String token,
     String institutionId,

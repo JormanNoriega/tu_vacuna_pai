@@ -11,4 +11,6 @@ public interface PatientMedicalHistoryRepository
         extends JpaRepository<PatientMedicalHistoryEntity, UUID> {
 
     List<PatientMedicalHistoryEntity> findByPatientIdOrderByCreatedAtAsc(UUID patientId);
+
+    void deleteByPatientId(UUID patientId);
 }

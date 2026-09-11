@@ -26,7 +26,6 @@ class ConnectivityNetworkInfo implements NetworkInfo {
   @override
   Stream<bool> get connectivityChanges =>
       _connectivity.onConnectivityChanged.map(
-        (results) =>
-            results.any((result) => result != ConnectivityResult.none),
+        (results) => results.any((result) => result != ConnectivityResult.none),
       );
 }

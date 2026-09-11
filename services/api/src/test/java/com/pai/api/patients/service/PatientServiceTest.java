@@ -27,7 +27,11 @@ import com.pai.api.identity.service.DataScope;
 import com.pai.api.identity.service.IdentityService;
 import com.pai.api.patients.dto.CreatePatientRequest;
 import com.pai.api.patients.dto.PatientResponse;
+import com.pai.api.patients.dto.UpdatePatientDemographicsRequest;
+import com.pai.api.patients.dto.UpdatePatientMedicalHistoriesRequest;
+import com.pai.api.patients.entity.PatientDemographicEntity;
 import com.pai.api.patients.entity.PatientEntity;
+import com.pai.api.patients.entity.PatientMedicalHistoryEntity;
 import com.pai.api.patients.exception.PatientAlreadyExistsException;
 import com.pai.api.patients.exception.PatientNotFoundException;
 import com.pai.api.patients.repository.PatientAddressRepository;
@@ -86,6 +90,11 @@ class PatientServiceTest {
     private CreatePatientRequest request(String documentNumber) {
         return new CreatePatientRequest("CC", documentNumber, "Juan", "Perez",
             LocalDate.of(2020, 5, 1), "MALE", null, null, null, null, null);
+    }
+
+    private PatientEntity patient(UUID id) {
+        return new PatientEntity(id, INSTITUTION_ID, "CC", "12345678", "Juan",
+            "Perez", LocalDate.of(2020, 5, 1), PatientEntity.Sex.MALE, Instant.now());
     }
 
     private void stubEmptyChildren(UUID patientId) {
@@ -210,5 +219,60 @@ class PatientServiceTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).documentNumber()).isEqualTo("12345678");
+    }
+
+    @Test
+    void updateDemographics_normalizesGenderAndPersists() {
+        UUID patientId = UUID.randomUUID();
+        when(identity.resolve(ACTOR_ID)).thenReturn(vaccinatorActor());
+        when(patients.findByIdAndInstitutionId(patientId, INSTITUTION_ID))
+            .thenReturn(Optional.of(patient(patientId)));
+        when(demographics.findByPatientId(patientId)).thenReturn(Optional.empty());
+        stubEmptyChildren(patientId);
+
+        service.updateDemographics(ACTOR_ID, patientId,
+            new UpdatePatientDemographicsRequest("female", "Mestiza", "Primaria"));
+
+        ArgumentCaptor<PatientDemographicEntity> captor =
+            ArgumentCaptor.forClass(PatientDemographicEntity.class);
+        verify(demographics).save(captor.capture());
+        assertThat(captor.getValue().getGender()).isEqualTo("FEMALE");
+        assertThat(captor.getValue().getEthnicity()).isEqualTo("Mestiza");
+        verify(audit).record(eq(ACTOR_ID), eq(INSTITUTION_ID),
+            eq(AuditAction.PATIENT_DEMOGRAPHICS_UPDATED), eq("PATIENT"),
+            eq(patientId), any(), any());
+    }
+
+    @Test
+    void updateDemographics_rejectsInvalidGender() {
+        UUID patientId = UUID.randomUUID();
+        when(identity.resolve(ACTOR_ID)).thenReturn(vaccinatorActor());
+        when(patients.findByIdAndInstitutionId(patientId, INSTITUTION_ID))
+            .thenReturn(Optional.of(patient(patientId)));
+
+        assertThatThrownBy(() -> service.updateDemographics(ACTOR_ID, patientId,
+            new UpdatePatientDemographicsRequest("X", null, null)))
+            .isInstanceOf(IllegalArgumentException.class);
+        verify(demographics, never()).save(any());
+    }
+
+    @Test
+    void updateMedicalHistories_replacesList() {
+        UUID patientId = UUID.randomUUID();
+        when(identity.resolve(ACTOR_ID)).thenReturn(vaccinatorActor());
+        when(patients.findByIdAndInstitutionId(patientId, INSTITUTION_ID))
+            .thenReturn(Optional.of(patient(patientId)));
+        stubEmptyChildren(patientId);
+
+        service.updateMedicalHistories(ACTOR_ID, patientId,
+            new UpdatePatientMedicalHistoriesRequest(List.of(
+                new UpdatePatientMedicalHistoriesRequest.MedicalHistoryDto(
+                    "Asma", LocalDate.of(2020, 1, 1), null))));
+
+        verify(medicalHistories).deleteByPatientId(patientId);
+        verify(medicalHistories).save(any(PatientMedicalHistoryEntity.class));
+        verify(audit).record(eq(ACTOR_ID), eq(INSTITUTION_ID),
+            eq(AuditAction.PATIENT_HISTORY_UPDATED), eq("PATIENT"),
+            eq(patientId), any(), any());
     }
 }

@@ -3,6 +3,7 @@ package com.pai.api.patients.service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -16,7 +17,9 @@ import com.pai.api.identity.service.IdentityService;
 import com.pai.api.patients.dto.CreatePatientRequest;
 import com.pai.api.patients.dto.PatientResponse;
 import com.pai.api.patients.dto.UpdatePatientContactRequest;
+import com.pai.api.patients.dto.UpdatePatientDemographicsRequest;
 import com.pai.api.patients.dto.UpdatePatientIdentityRequest;
+import com.pai.api.patients.dto.UpdatePatientMedicalHistoriesRequest;
 import com.pai.api.patients.entity.PatientAddressEntity;
 import com.pai.api.patients.entity.PatientContactEntity;
 import com.pai.api.patients.entity.PatientDemographicEntity;
@@ -194,9 +197,64 @@ public class PatientService {
         return response;
     }
 
+    @Transactional
+    public PatientResponse updateDemographics(UUID actorId, UUID patientId,
+            UpdatePatientDemographicsRequest request) {
+        AuthorizedUser actor = identity.resolve(actorId);
+        PatientEntity patient = requireScoped(actor, patientId);
+        Instant now = Instant.now();
+
+        String gender = normalizeGender(request.gender());
+        demographics.findByPatientId(patientId).ifPresent(demographics::delete);
+        demographics.save(new PatientDemographicEntity(
+            patientId, gender, blankToNull(request.ethnicity()),
+            blankToNull(request.educationLevel()), now));
+
+        PatientResponse response = toResponse(patient);
+        audit.record(actor.getId(), patient.getInstitutionId(),
+            AuditAction.PATIENT_DEMOGRAPHICS_UPDATED, RESOURCE_TYPE, patientId, null,
+            response);
+        return response;
+    }
+
+    @Transactional
+    public PatientResponse updateMedicalHistories(UUID actorId, UUID patientId,
+            UpdatePatientMedicalHistoriesRequest request) {
+        AuthorizedUser actor = identity.resolve(actorId);
+        PatientEntity patient = requireScoped(actor, patientId);
+        Instant now = Instant.now();
+
+        medicalHistories.deleteByPatientId(patientId);
+        for (UpdatePatientMedicalHistoriesRequest.MedicalHistoryDto dto
+                : safe(request.medicalHistories())) {
+            medicalHistories.save(new PatientMedicalHistoryEntity(
+                UUID.randomUUID(), patientId, dto.condition().trim(),
+                dto.diagnosedAt(), blankToNull(dto.notes()), now));
+        }
+
+        PatientResponse response = toResponse(patient);
+        audit.record(actor.getId(), patient.getInstitutionId(),
+            AuditAction.PATIENT_HISTORY_UPDATED, RESOURCE_TYPE, patientId, null,
+            response);
+        return response;
+    }
+
     // ---------- helpers ----------
 
     private record IdentityChange(PatientResponse patient, String justification) {
+    }
+
+    private String normalizeGender(String raw) {
+        String value = blankToNull(raw);
+        if (value == null) {
+            return null;
+        }
+        String upper = value.toUpperCase();
+        if (!Set.of("FEMALE", "MALE", "OTHER").contains(upper)) {
+            throw new IllegalArgumentException(
+                "Genero invalido. Usa FEMALE, MALE u OTHER.");
+        }
+        return upper;
     }
 
     private UUID institution(AuthorizedUser actor) {

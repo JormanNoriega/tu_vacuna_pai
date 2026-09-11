@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 /**
  * Creacion de una atencion (nace en {@code DRAFT}). El profesional y la
@@ -16,5 +17,6 @@ public record CreateAttentionRequest(
 
         Instant attentionDate,
 
+        @Size(max = 2000, message = "Las observaciones no pueden superar 2000 caracteres.")
         String observations) {
 }

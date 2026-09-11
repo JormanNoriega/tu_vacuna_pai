@@ -46,16 +46,25 @@ public record CreatePatientRequest(
 
         @Valid List<MedicalHistoryDto> medicalHistories) {
 
-    public record DemographicDto(String gender, String ethnicity, String educationLevel) {
+    public record DemographicDto(
+            @Size(max = 20, message = "El genero no puede superar 20 caracteres.")
+            String gender,
+            @Size(max = 80, message = "La etnia no puede superar 80 caracteres.")
+            String ethnicity,
+            @Size(max = 120, message = "La escolaridad no puede superar 120 caracteres.")
+            String educationLevel) {
     }
 
     public record ContactDto(
             @NotBlank(message = "El tipo de contacto es obligatorio.") String type,
-            @NotBlank(message = "El valor del contacto es obligatorio.") String value,
+            @NotBlank(message = "El valor del contacto es obligatorio.")
+            @Size(max = 120, message = "El contacto no puede superar 120 caracteres.")
+            String value,
             boolean primary) {
     }
 
     public record AddressDto(
+            @Size(max = 200, message = "La direccion no puede superar 200 caracteres.")
             String street,
             UUID municipalityId,
             UUID departmentId,
@@ -65,15 +74,23 @@ public record CreatePatientRequest(
 
     public record GuardianDto(
             @NotBlank(message = "El parentesco es obligatorio.") String relationship,
-            @NotBlank(message = "El nombre del tutor es obligatorio.") String fullName,
+            @NotBlank(message = "El nombre del tutor es obligatorio.")
+            @Size(max = 120, message = "El nombre del tutor no puede superar 120 caracteres.")
+            String fullName,
+            @Size(max = 20, message = "El tipo de documento no puede superar 20 caracteres.")
             String documentType,
+            @Size(max = 20, message = "El documento no puede superar 20 caracteres.")
             String documentNumber,
+            @Size(max = 20, message = "El telefono no puede superar 20 caracteres.")
             String phone) {
     }
 
     public record MedicalHistoryDto(
-            @NotBlank(message = "El antecedente es obligatorio.") String condition,
+            @NotBlank(message = "El antecedente es obligatorio.")
+            @Size(max = 200, message = "El antecedente no puede superar 200 caracteres.")
+            String condition,
             LocalDate diagnosedAt,
+            @Size(max = 500, message = "Las notas no pueden superar 500 caracteres.")
             String notes) {
     }
 }

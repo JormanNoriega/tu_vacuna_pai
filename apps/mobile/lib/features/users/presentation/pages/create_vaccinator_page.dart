@@ -68,11 +68,7 @@ class _CreateVaccinatorPageState extends State<CreateVaccinatorPage> {
       label: 'Promotor de salud',
       requiresRegistration: false,
     ),
-    _ProfessionOption(
-      code: 'OTRO',
-      label: 'Otro',
-      requiresRegistration: false,
-    ),
+    _ProfessionOption(code: 'OTRO', label: 'Otro', requiresRegistration: false),
   ];
 
   final _formKey = GlobalKey<FormState>();
@@ -317,8 +313,7 @@ class _CreateVaccinatorPageState extends State<CreateVaccinatorPage> {
                                 child: Text(_genderLabel(gender)),
                               ),
                           ],
-                          onChanged: (value) =>
-                              setState(() => _gender = value),
+                          onChanged: (value) => setState(() => _gender = value),
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<_ProfessionOption>(
@@ -336,9 +331,8 @@ class _CreateVaccinatorPageState extends State<CreateVaccinatorPage> {
                           ],
                           onChanged: (value) =>
                               setState(() => _profession = value),
-                          validator: (value) => value == null
-                              ? 'Selecciona la profesion.'
-                              : null,
+                          validator: (value) =>
+                              value == null ? 'Selecciona la profesion.' : null,
                         ),
                         if (_showRegistration) ...[
                           const SizedBox(height: 16),
@@ -368,8 +362,7 @@ class _CreateVaccinatorPageState extends State<CreateVaccinatorPage> {
                             textCapitalization: TextCapitalization.words,
                             decoration: const InputDecoration(
                               labelText: 'Tipo de registro (opcional)',
-                              helperText:
-                                  'Ej: Registro ministerial, tarjeta profesional.',
+                              helperText: 'Ej: Registro ministerial, tarjeta profesional.',
                               prefixIcon: Icon(Icons.description_outlined),
                             ),
                           ),
@@ -380,8 +373,7 @@ class _CreateVaccinatorPageState extends State<CreateVaccinatorPage> {
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
                             labelText: 'Contrasena temporal',
-                            helperText:
-                                'Minimo 8 caracteres. Se la compartes al nuevo vacunador.',
+                            helperText: 'Minimo 8 caracteres. Se la compartes al nuevo vacunador.',
                             prefixIcon: const Icon(Icons.lock_outline_rounded),
                             suffixIcon: IconButton(
                               tooltip: _obscurePassword

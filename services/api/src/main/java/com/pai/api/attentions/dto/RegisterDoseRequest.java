@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 /**
  * Registro de una dosis aplicada (append-only). El backend toma el snapshot del
@@ -26,6 +27,7 @@ public record RegisterDoseRequest(
 
         UUID lotId,
 
+        @Size(max = 60, message = "El lote no puede superar 60 caracteres.")
         String lotNumber,
 
         UUID selectedLaboratoryId,

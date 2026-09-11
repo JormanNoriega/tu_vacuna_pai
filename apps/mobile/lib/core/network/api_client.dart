@@ -522,10 +522,247 @@ class ApiClient {
     fallback: 'Error al importar sugerencias.',
   );
 
-  Map<String, String> _jsonHeaders(String accessToken) => {
+  // ---------- Pacientes ----------
+
+  /// Busca pacientes por documento dentro de la institucion del actor.
+  Future<List<Map<String, dynamic>>> searchPatients(
+    String token, {
+    required String documentType,
+    required String documentNumber,
+  }) async {
+    final uri = Uri.parse('$baseUrl/patients').replace(
+      queryParameters: {
+        'documentType': documentType,
+        'documentNumber': documentNumber,
+      },
+    );
+    return _decodeList(
+      await _send(_http.get(uri, headers: _jsonHeaders(token))),
+      fallback: 'Error al buscar pacientes.',
+    );
+  }
+
+  /// Obtiene un paciente por id (scope validado en el backend).
+  Future<Map<String, dynamic>> getPatient(
+    String token,
+    String patientId,
+  ) async => _decodeObject(
+    await _send(
+      _http.get(
+        Uri.parse('$baseUrl/patients/$patientId'),
+        headers: _jsonHeaders(token),
+      ),
+    ),
+    fallback: 'Error al consultar el paciente.',
+  );
+
+  /// Crea un paciente. [operationId] es la clave de idempotencia opcional.
+  Future<Map<String, dynamic>> createPatient(
+    String token,
+    Map<String, dynamic> body, {
+    String? operationId,
+  }) async => _decodeObject(
+    await _send(
+      _http.post(
+        Uri.parse('$baseUrl/patients'),
+        headers: _jsonHeaders(token, idempotencyKey: operationId),
+        body: jsonEncode(body),
+      ),
+    ),
+    fallback: 'Error al crear el paciente.',
+  );
+
+  Future<Map<String, dynamic>> updatePatientDemographics(
+    String token,
+    String patientId,
+    Map<String, dynamic> body,
+  ) async => _decodeObject(
+    await _send(
+      _http.put(
+        Uri.parse('$baseUrl/patients/$patientId/demographics'),
+        headers: _jsonHeaders(token),
+        body: jsonEncode(body),
+      ),
+    ),
+    fallback: 'Error al actualizar la demografia.',
+  );
+
+  Future<Map<String, dynamic>> updatePatientContact(
+    String token,
+    String patientId,
+    Map<String, dynamic> body,
+  ) async => _decodeObject(
+    await _send(
+      _http.put(
+        Uri.parse('$baseUrl/patients/$patientId/contact'),
+        headers: _jsonHeaders(token),
+        body: jsonEncode(body),
+      ),
+    ),
+    fallback: 'Error al actualizar el contacto.',
+  );
+
+  Future<Map<String, dynamic>> updatePatientMedicalHistories(
+    String token,
+    String patientId,
+    Map<String, dynamic> body,
+  ) async => _decodeObject(
+    await _send(
+      _http.put(
+        Uri.parse('$baseUrl/patients/$patientId/medical-histories'),
+        headers: _jsonHeaders(token),
+        body: jsonEncode(body),
+      ),
+    ),
+    fallback: 'Error al actualizar los antecedentes.',
+  );
+
+  // ---------- Atenciones y dosis ----------
+  Future<Map<String, dynamic>> createAttention(
+    String token,
+    Map<String, dynamic> body, {
+    String? operationId,
+  }) async => _decodeObject(
+    await _send(
+      _http.post(
+        Uri.parse('$baseUrl/attentions'),
+        headers: _jsonHeaders(token, idempotencyKey: operationId),
+        body: jsonEncode(body),
+      ),
+    ),
+    fallback: 'Error al crear la atencion.',
+  );
+
+  Future<Map<String, dynamic>> completeAttention(
+    String token,
+    String attentionId,
+  ) async => _decodeObject(
+    await _send(
+      _http.post(
+        Uri.parse('$baseUrl/attentions/$attentionId/complete'),
+        headers: _jsonHeaders(token),
+      ),
+    ),
+    fallback: 'Error al completar la atencion.',
+  );
+
+  Future<List<Map<String, dynamic>>> listAttentionsByPatient(
+    String token,
+    String patientId,
+  ) async {
+    final uri = Uri.parse('$baseUrl/attentions')
+        .replace(queryParameters: {'patientId': patientId});
+    return _decodeList(
+      await _send(_http.get(uri, headers: _jsonHeaders(token))),
+      fallback: 'Error al consultar el historial.',
+    );
+  }
+
+  Future<Map<String, dynamic>> registerDose(
+    String token,
+    String attentionId,
+    Map<String, dynamic> body, {
+    String? operationId,
+  }) async => _decodeObject(
+    await _send(
+      _http.post(
+        Uri.parse('$baseUrl/attentions/$attentionId/doses'),
+        headers: _jsonHeaders(token, idempotencyKey: operationId),
+        body: jsonEncode(body),
+      ),
+    ),
+    fallback: 'Error al registrar la dosis.',
+  );
+
+  Future<Map<String, dynamic>> cancelAttention(
+    String token,
+    String attentionId,
+    Map<String, dynamic> body,
+  ) async => _decodeObject(
+    await _send(
+      _http.post(
+        Uri.parse('$baseUrl/attentions/$attentionId/cancel'),
+        headers: _jsonHeaders(token),
+        body: jsonEncode(body),
+      ),
+    ),
+    fallback: 'Error al anular la atencion.',
+  );
+
+  Future<Map<String, dynamic>> cancelDose(
+    String token,
+    String attentionId,
+    String doseId,
+    Map<String, dynamic> body,
+  ) async => _decodeObject(
+    await _send(
+      _http.post(
+        Uri.parse('$baseUrl/attentions/$attentionId/doses/$doseId/cancel'),
+        headers: _jsonHeaders(token),
+        body: jsonEncode(body),
+      ),
+    ),
+    fallback: 'Error al anular la dosis.',
+  );
+
+  // ---------- Catalogo efectivo ----------
+
+  /// Catalogo efectivo de la institucion del actor (vacunas habilitadas con
+  /// sus dosis, tipos de neumococo y opciones operativas).
+  Future<List<Map<String, dynamic>>> getEffectiveCatalog(String token) async {
+    final response = await _send(
+      _http.get(
+        Uri.parse('$baseUrl/catalogs/effective'),
+        headers: _jsonHeaders(token),
+      ),
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return (decoded['vaccines'] as List<dynamic>)
+          .map((item) => item as Map<String, dynamic>)
+          .toList();
+    }
+    throw ApiException(
+      _messageFromBody(response.body) ??
+          'Error al consultar el catalogo efectivo.',
+      statusCode: response.statusCode,
+    );
+  }
+
+  // ---------- Catalogo geografico ----------
+
+  Future<List<Map<String, dynamic>>> getDepartments(String token) async =>
+      _decodeList(
+        await _send(
+          _http.get(
+            Uri.parse('$baseUrl/catalogs/geo/departments'),
+            headers: _jsonHeaders(token),
+          ),
+        ),
+        fallback: 'Error al consultar los departamentos.',
+      );
+
+  Future<List<Map<String, dynamic>>> getMunicipalities(
+    String token,
+    String departmentId,
+  ) async {
+    final uri = Uri.parse('$baseUrl/catalogs/geo/municipalities')
+        .replace(queryParameters: {'departmentId': departmentId});
+    return _decodeList(
+      await _send(_http.get(uri, headers: _jsonHeaders(token))),
+      fallback: 'Error al consultar los municipios.',
+    );
+  }
+
+  Map<String, String> _jsonHeaders(
+    String accessToken, {
+    String? idempotencyKey,
+  }) => {
     'Authorization': 'Bearer $accessToken',
     'Accept': 'application/json',
     'Content-Type': 'application/json',
+    if (idempotencyKey != null && idempotencyKey.isNotEmpty)
+      'Idempotency-Key': idempotencyKey,
   };
 
   Map<String, dynamic> _decodeObject(

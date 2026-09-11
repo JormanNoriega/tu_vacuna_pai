@@ -50,9 +50,7 @@ class _CatalogPageState extends State<CatalogPage> {
   bool get institutionAdmin => widget.user.hasRole('ADMIN_INSTITUTION');
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: widget.embedded
-        ? null
-        : AppBar(title: const Text('Inventario')),
+    appBar: widget.embedded ? null : AppBar(title: const Text('Inventario')),
     floatingActionButton: globalAdmin
         ? FloatingActionButton.extended(
             onPressed: () => _form(),
@@ -166,7 +164,10 @@ class _CatalogPageState extends State<CatalogPage> {
                 vaccine.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               subtitle: Text(
                 'Codigo: ${vaccine.code}',
@@ -591,11 +592,7 @@ class _CatalogPageState extends State<CatalogPage> {
     if (!mounted || result == null || result.$2.isEmpty) return;
     final ok = await widget.controller.addOption(
       vaccine,
-      optionPayload(
-        fieldType: result.$1,
-        value: result.$2,
-        isDefault: false,
-      ),
+      optionPayload(fieldType: result.$1, value: result.$2, isDefault: false),
       institutionId: widget.user.institution.id,
       institutionScoped: institutionAdmin,
       offline: widget.offline,
@@ -652,11 +649,7 @@ class _CatalogPageState extends State<CatalogPage> {
     if (!mounted || result == null || result.$2.isEmpty) return;
     await widget.controller.addTemplate(
       vaccine,
-      optionPayload(
-        fieldType: result.$1,
-        value: result.$2,
-        isDefault: false,
-      ),
+      optionPayload(fieldType: result.$1, value: result.$2, isDefault: false),
       offline: widget.offline,
     );
   }
