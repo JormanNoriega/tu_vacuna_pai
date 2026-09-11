@@ -1,11 +1,10 @@
 package com.pai.api.catalog.entity;
 
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.UUID;
 
 /** Pais del catalogo geografico. */
 @Entity
@@ -21,8 +20,7 @@ public class GeoCountryEntity {
     @Column(nullable = false)
     private String name;
 
-    protected GeoCountryEntity() {
-    }
+    protected GeoCountryEntity() {}
 
     public GeoCountryEntity(UUID id, String code, String name) {
         this.id = id;

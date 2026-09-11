@@ -1,12 +1,10 @@
 package com.pai.api.attentions.repository;
 
+import com.pai.api.attentions.entity.AppliedDoseEntity;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
 import org.springframework.data.jpa.repository.JpaRepository;
-
-import com.pai.api.attentions.entity.AppliedDoseEntity;
 
 /**
  * Acceso a {@link AppliedDoseEntity}. Las dosis son append-only: no se exponen

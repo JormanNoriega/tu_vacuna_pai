@@ -1,15 +1,13 @@
 package com.pai.api.audit.entity;
 
-import java.time.Instant;
-import java.util.UUID;
-
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * Evento de auditoria de una operacion sensible. Se escribe en la misma
@@ -48,12 +46,18 @@ public class AuditEventEntity {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    protected AuditEventEntity() {
-    }
+    protected AuditEventEntity() {}
 
-    public AuditEventEntity(UUID id, UUID actorId, UUID institutionId, String action,
-            String resourceType, UUID resourceId, UUID clientOperationId,
-            String payload, Instant now) {
+    public AuditEventEntity(
+            UUID id,
+            UUID actorId,
+            UUID institutionId,
+            String action,
+            String resourceType,
+            UUID resourceId,
+            UUID clientOperationId,
+            String payload,
+            Instant now) {
         this.id = id;
         this.actorId = actorId;
         this.institutionId = institutionId;

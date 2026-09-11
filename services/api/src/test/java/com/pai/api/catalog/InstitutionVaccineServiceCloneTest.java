@@ -9,17 +9,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import com.pai.api.catalog.dto.CloneCatalogResponse;
 import com.pai.api.catalog.entity.InstitutionVaccineEntity;
 import com.pai.api.catalog.entity.InstitutionVaccineOptionEntity;
@@ -34,6 +23,14 @@ import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.DataScope;
 import com.pai.api.identity.service.IdentityService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 class InstitutionVaccineServiceCloneTest {
 
@@ -58,13 +55,16 @@ class InstitutionVaccineServiceCloneTest {
         identity = mock(IdentityService.class);
         scope = mock(DataScope.class);
         entityManager = mock(EntityManager.class);
-        service = new InstitutionVaccineService(
-            relations, local, vaccines, templates, identity, scope, entityManager);
+        service = new InstitutionVaccineService(relations, local, vaccines, templates, identity, scope, entityManager);
         when(identity.resolve(ACTOR))
-            .thenReturn(new AuthorizedUser(
-                ACTOR, "super@pai.test", "Super Admin", institution(),
-                List.of("SUPER_ADMIN"),
-                List.of("CATALOG_CONFIG_READ", "CATALOG_CONFIG_WRITE"), Instant.now()));
+                .thenReturn(new AuthorizedUser(
+                        ACTOR,
+                        "super@pai.test",
+                        "Super Admin",
+                        institution(),
+                        List.of("SUPER_ADMIN"),
+                        List.of("CATALOG_CONFIG_READ", "CATALOG_CONFIG_WRITE"),
+                        Instant.now()));
         when(scope.resolveInstitutionId(any(), any())).thenReturn(INSTITUTION);
     }
 
@@ -76,9 +76,9 @@ class InstitutionVaccineServiceCloneTest {
         Query query = inserted();
         when(entityManager.createNativeQuery(anyString())).thenReturn(query);
         when(templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(v1.getId()))
-            .thenReturn(List.of(template(v1.getId(), "laboratory"), template(v1.getId(), "syringe")));
+                .thenReturn(List.of(template(v1.getId(), "laboratory"), template(v1.getId(), "syringe")));
         when(templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(v2.getId()))
-            .thenReturn(List.of());
+                .thenReturn(List.of());
 
         CloneCatalogResponse result = service.clone(ACTOR, INSTITUTION, true);
 
@@ -110,8 +110,7 @@ class InstitutionVaccineServiceCloneTest {
         when(entityManager.createNativeQuery(anyString())).thenReturn(query);
         InstitutionVaccineEntity enabled = mock(InstitutionVaccineEntity.class);
         when(enabled.isEnabled()).thenReturn(true);
-        when(relations.findByInstitutionIdAndVaccineId(INSTITUTION, v1.getId()))
-            .thenReturn(Optional.of(enabled));
+        when(relations.findByInstitutionIdAndVaccineId(INSTITUTION, v1.getId())).thenReturn(Optional.of(enabled));
 
         CloneCatalogResponse result = service.clone(ACTOR, INSTITUTION, true);
 
@@ -136,8 +135,7 @@ class InstitutionVaccineServiceCloneTest {
         // La relacion deshabilitada NO se reactiva: el re-clone respeta la
         // decision de la institucion y no pisa su configuracion local.
         verify(entityManager, never()).createQuery(anyString());
-        verify(relations, never())
-            .findByInstitutionIdAndVaccineId(any(), any());
+        verify(relations, never()).findByInstitutionIdAndVaccineId(any(), any());
     }
 
     @Test
@@ -157,18 +155,24 @@ class InstitutionVaccineServiceCloneTest {
     }
 
     private VaccineEntity vaccine(String code) {
-        return new VaccineEntity(UUID.randomUUID(), "V " + code, code, "PAI", (short) 3,
-            null, null, ACTOR, Instant.now());
+        return new VaccineEntity(
+                UUID.randomUUID(), "V " + code, code, "PAI", (short) 3, null, null, ACTOR, Instant.now());
     }
 
     private VaccineOptionTemplateEntity template(UUID vaccineId, String type) {
-        return new VaccineOptionTemplateEntity(UUID.randomUUID(), vaccineId, type, "valor",
-            "Valor", 0, false, ACTOR, Instant.now());
+        return new VaccineOptionTemplateEntity(
+                UUID.randomUUID(), vaccineId, type, "valor", "Valor", 0, false, ACTOR, Instant.now());
     }
 
     private InstitutionEntity institution() {
-        return new InstitutionEntity(UUID.randomUUID(), "PAI-DEMO", "Institucion Demo PAI",
-            InstitutionEntity.Status.ACTIVE, (short) 72, Instant.now(), Instant.now());
+        return new InstitutionEntity(
+                UUID.randomUUID(),
+                "PAI-DEMO",
+                "Institucion Demo PAI",
+                InstitutionEntity.Status.ACTIVE,
+                (short) 72,
+                Instant.now(),
+                Instant.now());
     }
 
     private Query inserted() {

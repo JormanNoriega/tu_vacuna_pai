@@ -1,15 +1,13 @@
 package com.pai.api.synchronization.entity;
 
-import java.time.Instant;
-import java.util.UUID;
-
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * Registro de idempotencia de un comando clinico (D3). Guarda la respuesta
@@ -41,11 +39,10 @@ public class ProcessedOperationEntity {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    protected ProcessedOperationEntity() {
-    }
+    protected ProcessedOperationEntity() {}
 
-    public ProcessedOperationEntity(UUID operationId, String commandType,
-            UUID aggregateId, String responsePayload, Instant now) {
+    public ProcessedOperationEntity(
+            UUID operationId, String commandType, UUID aggregateId, String responsePayload, Instant now) {
         this.operationId = operationId;
         this.commandType = commandType;
         this.aggregateId = aggregateId;

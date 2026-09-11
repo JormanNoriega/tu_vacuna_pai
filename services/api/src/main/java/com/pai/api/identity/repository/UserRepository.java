@@ -1,19 +1,17 @@
 package com.pai.api.identity.repository;
 
+import com.pai.api.identity.entity.PermissionEntity;
+import com.pai.api.identity.entity.RoleEntity;
+import com.pai.api.identity.entity.UserEntity;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
-import com.pai.api.identity.entity.PermissionEntity;
-import com.pai.api.identity.entity.RoleEntity;
-import com.pai.api.identity.entity.UserEntity;
 
 /**
  * Acceso a {@link UserEntity}. Regla de alcance (equivalente a RLS en la capa
@@ -52,8 +50,7 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
         ORDER BY u.fullName
         """)
     List<UserEntity> findByInstitutionIdAndRoleCodes(
-            @Param("institutionId") UUID institutionId,
-            @Param("roleCodes") Collection<String> roleCodes);
+            @Param("institutionId") UUID institutionId, @Param("roleCodes") Collection<String> roleCodes);
 
     /**
      * Actualiza el estado de un usuario con la institucion en el propio WHERE:
@@ -65,7 +62,8 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
         SET u.status = :status, u.updatedAt = :updatedAt
         WHERE u.id = :id AND u.institutionId = :institutionId
         """)
-    int updateStatusScoped(@Param("id") UUID id,
+    int updateStatusScoped(
+            @Param("id") UUID id,
             @Param("institutionId") UUID institutionId,
             @Param("status") UserEntity.Status status,
             @Param("updatedAt") Instant updatedAt);
@@ -79,9 +77,8 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
         SET u.updatedAt = :updatedAt
         WHERE u.id = :id AND u.institutionId = :institutionId
         """)
-    int touchUpdatedAtScoped(@Param("id") UUID id,
-            @Param("institutionId") UUID institutionId,
-            @Param("updatedAt") Instant updatedAt);
+    int touchUpdatedAtScoped(
+            @Param("id") UUID id, @Param("institutionId") UUID institutionId, @Param("updatedAt") Instant updatedAt);
 
     boolean existsByEmail(String email);
 

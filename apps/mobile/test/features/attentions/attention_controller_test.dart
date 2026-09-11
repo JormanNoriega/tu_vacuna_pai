@@ -201,6 +201,36 @@ void main() {
       expect(ok, isTrue);
       expect(controller.attention?.status, 'CANCELLED');
     });
+
+    test('marca el catalogo efectivo como cargado', () async {
+      expect(controller.effectiveCatalogLoaded, isFalse);
+
+      await controller.loadEffectiveCatalog();
+
+      expect(controller.effectiveCatalogLoaded, isTrue);
+    });
+
+    test('clearSession limpia el estado de la sesion', () async {
+      controller.selectPatient(existing);
+      await controller.addDose(
+        offline: online,
+        vaccineId: 'vac-1',
+        doseOptionId: 'dose-1',
+      );
+      await controller.loadEffectiveCatalog();
+      expect(controller.patient, isNotNull);
+      expect(controller.attention, isNotNull);
+
+      controller.clearSession();
+
+      expect(controller.patient, isNull);
+      expect(controller.attention, isNull);
+      expect(controller.doses, isEmpty);
+      expect(controller.searchResults, isEmpty);
+      expect(controller.effectiveVaccines, isEmpty);
+      expect(controller.effectiveCatalogLoaded, isFalse);
+      expect(controller.error, isNull);
+    });
   });
 
   group('HistoryController', () {

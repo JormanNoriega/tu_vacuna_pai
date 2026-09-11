@@ -17,5 +17,4 @@ public record AttentionResponse(
         long version,
         Instant createdAt,
         Instant updatedAt,
-        List<AppliedDoseResponse> doses) {
-}
+        List<AppliedDoseResponse> doses) {}

@@ -1,21 +1,23 @@
 package com.pai.api.identity.entity;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.UUID;
 
 @Entity
 @Table(name = "users", schema = "app")
 public class UserEntity {
 
-    public enum Status { ACTIVE, INACTIVE }
+    public enum Status {
+        ACTIVE,
+        INACTIVE
+    }
 
     @Id
     private UUID id;
@@ -61,20 +63,50 @@ public class UserEntity {
     @Column(name = "professional_registration_type")
     private String professionalRegistrationType;
 
-    protected UserEntity() {
+    protected UserEntity() {}
+
+    public UserEntity(
+            UUID id,
+            String email,
+            String fullName,
+            UUID institutionId,
+            Status status,
+            Instant createdAt,
+            Instant updatedAt) {
+        this(
+                id,
+                email,
+                fullName,
+                institutionId,
+                status,
+                createdAt,
+                updatedAt,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
     }
 
-    public UserEntity(UUID id, String email, String fullName, UUID institutionId,
-            Status status, Instant createdAt, Instant updatedAt) {
-        this(id, email, fullName, institutionId, status, createdAt, updatedAt,
-            null, null, null, null, null, null, null, null);
-    }
-
-    public UserEntity(UUID id, String email, String fullName, UUID institutionId,
-            Status status, Instant createdAt, Instant updatedAt,
-            String documentType, String documentNumber, String phone,
-            LocalDate birthDate, String gender, String professionCode,
-            String professionalRegistrationNumber, String professionalRegistrationType) {
+    public UserEntity(
+            UUID id,
+            String email,
+            String fullName,
+            UUID institutionId,
+            Status status,
+            Instant createdAt,
+            Instant updatedAt,
+            String documentType,
+            String documentNumber,
+            String phone,
+            LocalDate birthDate,
+            String gender,
+            String professionCode,
+            String professionalRegistrationNumber,
+            String professionalRegistrationType) {
         this.id = id;
         this.email = email;
         this.fullName = fullName;

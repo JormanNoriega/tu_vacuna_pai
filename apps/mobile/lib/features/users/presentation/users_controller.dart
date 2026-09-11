@@ -44,6 +44,15 @@ class UsersController extends AsyncController {
 
   List<Vaccinator> get users => List.unmodifiable(_users);
 
+  /// Limpia el estado de la sesion (al cerrar sesion o cambiar de usuario).
+  void clearSession() {
+    _users = const [];
+    _pendingOperationId = null;
+    _pendingEmail = null;
+    clearError();
+    notifyListeners();
+  }
+
   /// Carga los usuarios de la institucion del admin autenticado.
   Future<void> loadUsers({required String institutionId}) =>
       execute((token) async {

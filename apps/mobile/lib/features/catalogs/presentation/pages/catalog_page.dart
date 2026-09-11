@@ -35,8 +35,12 @@ class _CatalogPageState extends State<CatalogPage> {
     if (institutionAdmin) {
       widget.controller.loadInstitution(widget.user.institution.id);
       widget.controller.loadAvailable(widget.user.institution.id);
-    } else {
+    } else if (globalAdmin) {
       widget.controller.load();
+    } else {
+      // VACCINATOR / READ_ONLY: catalogo efectivo de su institucion (las
+      // vacunas habilitadas), en solo lectura.
+      widget.controller.loadEffective();
     }
   }
 
@@ -81,7 +85,9 @@ class _CatalogPageState extends State<CatalogPage> {
                     : RefreshIndicator(
                         onRefresh: () => institutionAdmin
                             ? c.loadInstitution(widget.user.institution.id)
-                            : c.load(),
+                            : globalAdmin
+                            ? c.load()
+                            : c.loadEffective(),
                         child: ListView.builder(
                           padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
                           itemCount: c.filteredVaccines.length,

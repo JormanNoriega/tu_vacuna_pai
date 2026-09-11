@@ -1,12 +1,11 @@
 package com.pai.api.patients.entity;
 
-import java.time.Instant;
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
 
 /** Direccion de residencia de un paciente. */
 @Entity
@@ -36,12 +35,17 @@ public class PatientAddressEntity {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    protected PatientAddressEntity() {
-    }
+    protected PatientAddressEntity() {}
 
-    public PatientAddressEntity(UUID id, UUID patientId, String street,
-            UUID municipalityId, UUID departmentId, UUID countryId,
-            boolean primary, Instant now) {
+    public PatientAddressEntity(
+            UUID id,
+            UUID patientId,
+            String street,
+            UUID municipalityId,
+            UUID departmentId,
+            UUID countryId,
+            boolean primary,
+            Instant now) {
         this.id = id;
         this.patientId = patientId;
         this.street = street;

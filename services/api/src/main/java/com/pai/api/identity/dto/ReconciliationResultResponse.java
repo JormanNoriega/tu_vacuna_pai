@@ -7,11 +7,7 @@ import java.util.UUID;
  * espejo en app.users).
  */
 public record ReconciliationResultResponse(
-        UUID operationId,
-        UUID authUserId,
-        String email,
-        Outcome outcome,
-        String detail) {
+        UUID operationId, UUID authUserId, String email, Outcome outcome, String detail) {
 
     public enum Outcome {
         RECONCILED,

@@ -1,15 +1,13 @@
 package com.pai.api.identity.dto;
 
-import java.time.LocalDate;
-import java.util.UUID;
-
 import com.fasterxml.jackson.annotation.JsonFormat;
-
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * Solicitud para crear un {@code VACCINATOR} en la institucion del actor
@@ -48,8 +46,9 @@ public record CreateVaccinatorRequest(
         UUID operationId,
 
         @NotBlank(message = "El tipo de documento es obligatorio.")
-        @Pattern(regexp = "(?i:CC|TI|CE|PASAPORTE)",
-            message = "Tipo de documento invalido. Usa CC, TI, CE o PASAPORTE.")
+        @Pattern(
+                regexp = "(?i:CC|TI|CE|PASAPORTE)",
+                message = "Tipo de documento invalido. Usa CC, TI, CE o PASAPORTE.")
         String documentType,
 
         @NotBlank(message = "El numero de documento es obligatorio.")
@@ -59,11 +58,9 @@ public record CreateVaccinatorRequest(
         @Size(max = 20, message = "El telefono no puede superar 20 caracteres.")
         String phone,
 
-        @JsonFormat(pattern = "yyyy-MM-dd")
-        LocalDate birthDate,
+        @JsonFormat(pattern = "yyyy-MM-dd") LocalDate birthDate,
 
-        @Pattern(regexp = "(?i:FEMALE|MALE|OTHER)",
-            message = "Genero invalido. Usa FEMALE, MALE u OTHER.")
+        @Pattern(regexp = "(?i:FEMALE|MALE|OTHER)", message = "Genero invalido. Usa FEMALE, MALE u OTHER.")
         String gender,
 
         @NotBlank(message = "La profesion es obligatoria.")
@@ -80,9 +77,7 @@ public record CreateVaccinatorRequest(
      * Constructor compacto para escenarios sin perfil ampliado (pruebas). En
      * produccion el movil siempre envia el perfil completo.
      */
-    public CreateVaccinatorRequest(String email, String fullName,
-            String temporaryPassword, UUID operationId) {
-        this(email, fullName, temporaryPassword, operationId,
-            null, null, null, null, null, null, null, null);
+    public CreateVaccinatorRequest(String email, String fullName, String temporaryPassword, UUID operationId) {
+        this(email, fullName, temporaryPassword, operationId, null, null, null, null, null, null, null, null);
     }
 }

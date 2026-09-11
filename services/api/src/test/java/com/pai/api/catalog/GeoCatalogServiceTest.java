@@ -5,12 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
-import java.util.UUID;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import com.pai.api.catalog.dto.GeoDepartmentResponse;
 import com.pai.api.catalog.dto.GeoMunicipalityResponse;
 import com.pai.api.catalog.entity.GeoDepartmentEntity;
@@ -18,6 +12,10 @@ import com.pai.api.catalog.entity.GeoMunicipalityEntity;
 import com.pai.api.catalog.repository.GeoDepartmentRepository;
 import com.pai.api.catalog.repository.GeoMunicipalityRepository;
 import com.pai.api.catalog.service.GeoCatalogService;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 class GeoCatalogServiceTest {
 
@@ -36,8 +34,7 @@ class GeoCatalogServiceTest {
     void departments_mapsEntitiesOrderedByName() {
         UUID id = UUID.randomUUID();
         when(departments.findAllByOrderByNameAsc())
-            .thenReturn(List.of(new GeoDepartmentEntity(id, UUID.randomUUID(),
-                "05", "Antioquia")));
+                .thenReturn(List.of(new GeoDepartmentEntity(id, UUID.randomUUID(), "05", "Antioquia")));
 
         List<GeoDepartmentResponse> result = service.departments();
 
@@ -52,8 +49,7 @@ class GeoCatalogServiceTest {
         UUID departmentId = UUID.randomUUID();
         UUID municipalityId = UUID.randomUUID();
         when(municipalities.findByDepartmentIdOrderByNameAsc(departmentId))
-            .thenReturn(List.of(new GeoMunicipalityEntity(municipalityId, departmentId,
-                "05001", "Medellin")));
+                .thenReturn(List.of(new GeoMunicipalityEntity(municipalityId, departmentId, "05001", "Medellin")));
 
         List<GeoMunicipalityResponse> result = service.municipalities(departmentId);
 
@@ -64,7 +60,6 @@ class GeoCatalogServiceTest {
 
     @Test
     void municipalities_rejectsMissingDepartment() {
-        assertThatThrownBy(() -> service.municipalities(null))
-            .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.municipalities(null)).isInstanceOf(IllegalArgumentException.class);
     }
 }

@@ -1,11 +1,10 @@
 package com.pai.api.catalog.entity;
 
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.UUID;
 
 /** Departamento (codigo DANE de 2 digitos). */
 @Entity
@@ -24,8 +23,7 @@ public class GeoDepartmentEntity {
     @Column(nullable = false)
     private String name;
 
-    protected GeoDepartmentEntity() {
-    }
+    protected GeoDepartmentEntity() {}
 
     public GeoDepartmentEntity(UUID id, UUID countryId, String code, String name) {
         this.id = id;

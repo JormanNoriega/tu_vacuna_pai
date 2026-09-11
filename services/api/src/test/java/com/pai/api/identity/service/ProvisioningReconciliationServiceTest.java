@@ -9,22 +9,20 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.Sort;
-
 import com.pai.api.identity.dto.ProvisioningOperationResponse;
 import com.pai.api.identity.dto.ReconciliationResultResponse;
 import com.pai.api.identity.entity.ProvisioningOperationEntity;
 import com.pai.api.identity.entity.ProvisioningOperationStatus;
 import com.pai.api.identity.repository.ProvisioningOperationRepository;
 import com.pai.api.identity.service.AuthUserLookupService.OrphanRecord;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Sort;
 
 class ProvisioningReconciliationServiceTest {
 
@@ -42,8 +40,7 @@ class ProvisioningReconciliationServiceTest {
         authUserLookup = mock(AuthUserLookupService.class);
         operationRepository = mock(ProvisioningOperationRepository.class);
         mirrorWriter = mock(UserMirrorWriter.class);
-        service = new ProvisioningReconciliationService(
-            authUserLookup, operationRepository, mirrorWriter);
+        service = new ProvisioningReconciliationService(authUserLookup, operationRepository, mirrorWriter);
     }
 
     private OrphanRecord orphan() {
@@ -53,17 +50,26 @@ class ProvisioningReconciliationServiceTest {
     private ProvisioningOperationEntity operation(ProvisioningOperationStatus status) {
         Instant now = Instant.now();
         return new ProvisioningOperationEntity(
-            OPERATION_ID, AUTH_USER_ID, "vac@hosp.a", "Vaca Uno", INSTITUTION_ID,
-            "VACCINATOR", UUID.randomUUID(), status, (short) 1, null, now, now);
+                OPERATION_ID,
+                AUTH_USER_ID,
+                "vac@hosp.a",
+                "Vaca Uno",
+                INSTITUTION_ID,
+                "VACCINATOR",
+                UUID.randomUUID(),
+                status,
+                (short) 1,
+                null,
+                now,
+                now);
     }
 
     @Test
     void reconcile_completesMirrorForOrphanWithMatchingOperation() {
         when(authUserLookup.listOrphans()).thenReturn(List.of(orphan()));
         when(operationRepository.findById(OPERATION_ID))
-            .thenReturn(Optional.of(operation(ProvisioningOperationStatus.UNCERTAIN)));
-        when(mirrorWriter.writeMirrorAndRoles(any(), eq("VACCINATOR")))
-            .thenReturn(null);
+                .thenReturn(Optional.of(operation(ProvisioningOperationStatus.UNCERTAIN)));
+        when(mirrorWriter.writeMirrorAndRoles(any(), eq("VACCINATOR"))).thenReturn(null);
 
         List<ReconciliationResultResponse> results = service.reconcile();
 
@@ -79,8 +85,7 @@ class ProvisioningReconciliationServiceTest {
 
         List<ReconciliationResultResponse> results = service.reconcile();
 
-        assertThat(results.get(0).outcome())
-            .isEqualTo(ReconciliationResultResponse.Outcome.SKIPPED_WITHOUT_OPERATION);
+        assertThat(results.get(0).outcome()).isEqualTo(ReconciliationResultResponse.Outcome.SKIPPED_WITHOUT_OPERATION);
         verify(mirrorWriter, never()).writeMirrorAndRoles(any(), anyString());
     }
 
@@ -89,15 +94,23 @@ class ProvisioningReconciliationServiceTest {
         when(authUserLookup.listOrphans()).thenReturn(List.of(orphan()));
         // La operacion registro otro correo: correlacion rota, no se reclama.
         when(operationRepository.findById(OPERATION_ID))
-            .thenReturn(Optional.of(new ProvisioningOperationEntity(
-                OPERATION_ID, AUTH_USER_ID, "otro@hosp.a", "Otro", INSTITUTION_ID,
-                "VACCINATOR", UUID.randomUUID(), ProvisioningOperationStatus.UNCERTAIN,
-                (short) 1, null, Instant.now(), Instant.now())));
+                .thenReturn(Optional.of(new ProvisioningOperationEntity(
+                        OPERATION_ID,
+                        AUTH_USER_ID,
+                        "otro@hosp.a",
+                        "Otro",
+                        INSTITUTION_ID,
+                        "VACCINATOR",
+                        UUID.randomUUID(),
+                        ProvisioningOperationStatus.UNCERTAIN,
+                        (short) 1,
+                        null,
+                        Instant.now(),
+                        Instant.now())));
 
         List<ReconciliationResultResponse> results = service.reconcile();
 
-        assertThat(results.get(0).outcome())
-            .isEqualTo(ReconciliationResultResponse.Outcome.SKIPPED_EMAIL_MISMATCH);
+        assertThat(results.get(0).outcome()).isEqualTo(ReconciliationResultResponse.Outcome.SKIPPED_EMAIL_MISMATCH);
         verify(mirrorWriter, never()).writeMirrorAndRoles(any(), anyString());
     }
 
@@ -106,15 +119,23 @@ class ProvisioningReconciliationServiceTest {
         when(authUserLookup.listOrphans()).thenReturn(List.of(orphan()));
         // La operacion apunta a otro auth.user: la correlacion no coincide.
         when(operationRepository.findById(OPERATION_ID))
-            .thenReturn(Optional.of(new ProvisioningOperationEntity(
-                OPERATION_ID, UUID.randomUUID(), "vac@hosp.a", "Vaca Uno", INSTITUTION_ID,
-                "VACCINATOR", UUID.randomUUID(), ProvisioningOperationStatus.UNCERTAIN,
-                (short) 1, null, Instant.now(), Instant.now())));
+                .thenReturn(Optional.of(new ProvisioningOperationEntity(
+                        OPERATION_ID,
+                        UUID.randomUUID(),
+                        "vac@hosp.a",
+                        "Vaca Uno",
+                        INSTITUTION_ID,
+                        "VACCINATOR",
+                        UUID.randomUUID(),
+                        ProvisioningOperationStatus.UNCERTAIN,
+                        (short) 1,
+                        null,
+                        Instant.now(),
+                        Instant.now())));
 
         List<ReconciliationResultResponse> results = service.reconcile();
 
-        assertThat(results.get(0).outcome())
-            .isEqualTo(ReconciliationResultResponse.Outcome.SKIPPED_EMAIL_MISMATCH);
+        assertThat(results.get(0).outcome()).isEqualTo(ReconciliationResultResponse.Outcome.SKIPPED_EMAIL_MISMATCH);
         verify(mirrorWriter, never()).writeMirrorAndRoles(any(), anyString());
     }
 
@@ -122,12 +143,11 @@ class ProvisioningReconciliationServiceTest {
     void reconcile_returnsAlreadyReconciledWhenAlreadyCompleted() {
         when(authUserLookup.listOrphans()).thenReturn(List.of(orphan()));
         when(operationRepository.findById(OPERATION_ID))
-            .thenReturn(Optional.of(operation(ProvisioningOperationStatus.COMPLETED)));
+                .thenReturn(Optional.of(operation(ProvisioningOperationStatus.COMPLETED)));
 
         List<ReconciliationResultResponse> results = service.reconcile();
 
-        assertThat(results.get(0).outcome())
-            .isEqualTo(ReconciliationResultResponse.Outcome.ALREADY_RECONCILED);
+        assertThat(results.get(0).outcome()).isEqualTo(ReconciliationResultResponse.Outcome.ALREADY_RECONCILED);
         verify(mirrorWriter, never()).writeMirrorAndRoles(any(), anyString());
     }
 
@@ -135,23 +155,21 @@ class ProvisioningReconciliationServiceTest {
     void reconcile_handlesConcurrentDuplicateWithoutError() {
         when(authUserLookup.listOrphans()).thenReturn(List.of(orphan()));
         when(operationRepository.findById(OPERATION_ID))
-            .thenReturn(Optional.of(operation(ProvisioningOperationStatus.UNCERTAIN)));
+                .thenReturn(Optional.of(operation(ProvisioningOperationStatus.UNCERTAIN)));
         when(mirrorWriter.writeMirrorAndRoles(any(), anyString()))
-            .thenThrow(new DataIntegrityViolationException("duplicate key"));
+                .thenThrow(new DataIntegrityViolationException("duplicate key"));
 
         List<ReconciliationResultResponse> results = service.reconcile();
 
-        assertThat(results.get(0).outcome())
-            .isEqualTo(ReconciliationResultResponse.Outcome.ALREADY_RECONCILED);
+        assertThat(results.get(0).outcome()).isEqualTo(ReconciliationResultResponse.Outcome.ALREADY_RECONCILED);
     }
 
     @Test
     void reconcile_returnsFailedOnOtherError() {
         when(authUserLookup.listOrphans()).thenReturn(List.of(orphan()));
         when(operationRepository.findById(OPERATION_ID))
-            .thenReturn(Optional.of(operation(ProvisioningOperationStatus.UNCERTAIN)));
-        when(mirrorWriter.writeMirrorAndRoles(any(), anyString()))
-            .thenThrow(new RuntimeException("boom"));
+                .thenReturn(Optional.of(operation(ProvisioningOperationStatus.UNCERTAIN)));
+        when(mirrorWriter.writeMirrorAndRoles(any(), anyString())).thenThrow(new RuntimeException("boom"));
 
         List<ReconciliationResultResponse> results = service.reconcile();
 

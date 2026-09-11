@@ -1,10 +1,8 @@
 package com.pai.api.identity.service;
 
-import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-
 import com.pai.api.shared.exceptions.ScopeViolationException;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
 
 /**
  * Mecanismo de alcance institucional equivalente a RLS en la capa de datos.
@@ -52,8 +50,7 @@ public class DataScope {
             return requestedInstitutionId;
         }
         if (!scope.institutionId().equals(requestedInstitutionId)) {
-            throw new ScopeViolationException(
-                "No tienes permiso para consultar datos de otra institucion.");
+            throw new ScopeViolationException("No tienes permiso para consultar datos de otra institucion.");
         }
         return scope.institutionId();
     }
@@ -68,8 +65,7 @@ public class DataScope {
             return;
         }
         if (!scope.institutionId().equals(targetInstitutionId)) {
-            throw new ScopeViolationException(
-                "No tienes permiso para acceder a recursos de otra institucion.");
+            throw new ScopeViolationException("No tienes permiso para acceder a recursos de otra institucion.");
         }
     }
 }

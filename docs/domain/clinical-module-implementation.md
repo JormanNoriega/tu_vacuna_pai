@@ -423,6 +423,22 @@ patrón de V5. Por defecto se reutilizan los existentes:
 - Verificado: backend 15 archivos de test sin fallos; `flutter analyze` sin
   issues; **126 tests** Flutter; arranque del backend OK.
 
+### Aislamiento de sesión entre usuarios (Bloque D)
+
+- **Problema**: los controladores se construyen una sola vez en `main.dart`, así
+  que al cerrar sesión e ingresar con otra cuenta se arrastraba estado del
+  usuario anterior (paciente seleccionado, atención en curso, catálogo efectivo,
+  búsquedas, geografía, etc.).
+- **Flutter**: se agrego `clearSession()` a `AdminController`, `UsersController`,
+  `CatalogController`, `AttentionController`, `HistoryController` y
+  `PatientDetailController` (estos dos ultimos renombrados desde `reset()` y
+  `clear()`). `TuVacunaApp` hace seguimiento de `user.id` y limpia todos los
+  controladores cuando cambia (logout o login con otra cuenta).
+- **Catálogo efectivo**: `AttentionController.effectiveCatalogLoaded` distingue
+  "cargando" de "sin vacunas habilitadas". `NuevaAtencionPage` muestra un spinner
+  mientras carga y el reintento de error recarga el catálogo.
+- Verificado: `flutter analyze` sin issues; **137 tests** Flutter.
+
 ---
 
 **Estado:** Borrador para revisión.  

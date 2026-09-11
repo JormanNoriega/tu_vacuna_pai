@@ -1,19 +1,23 @@
 package com.pai.api.patients.entity;
 
-import java.time.Instant;
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
 
 /** Tutor o responsable de un paciente (madre, padre, cuidador u otro). */
 @Entity
 @Table(name = "patient_guardians", schema = "app")
 public class PatientGuardianEntity {
 
-    public enum Relationship { MOTHER, FATHER, CAREGIVER, OTHER }
+    public enum Relationship {
+        MOTHER,
+        FATHER,
+        CAREGIVER,
+        OTHER
+    }
 
     @Id
     private UUID id;
@@ -38,12 +42,17 @@ public class PatientGuardianEntity {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    protected PatientGuardianEntity() {
-    }
+    protected PatientGuardianEntity() {}
 
-    public PatientGuardianEntity(UUID id, UUID patientId, Relationship relationship,
-            String fullName, String documentType, String documentNumber,
-            String phone, Instant now) {
+    public PatientGuardianEntity(
+            UUID id,
+            UUID patientId,
+            Relationship relationship,
+            String fullName,
+            String documentType,
+            String documentNumber,
+            String phone,
+            Instant now) {
         this.id = id;
         this.patientId = patientId;
         this.relationship = relationship.name();

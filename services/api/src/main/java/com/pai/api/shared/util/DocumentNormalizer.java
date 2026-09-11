@@ -12,8 +12,7 @@ import java.util.Locale;
  */
 public final class DocumentNormalizer {
 
-    private DocumentNormalizer() {
-    }
+    private DocumentNormalizer() {}
 
     /**
      * Forma canonica de un numero de documento: sin espacios, puntos ni

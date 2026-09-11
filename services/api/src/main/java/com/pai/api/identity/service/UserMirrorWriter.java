@@ -1,11 +1,5 @@
 package com.pai.api.identity.service;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Set;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.pai.api.identity.dto.UserResponse;
 import com.pai.api.identity.entity.ProvisioningOperationEntity;
 import com.pai.api.identity.entity.ProvisioningOperationStatus;
@@ -17,6 +11,11 @@ import com.pai.api.identity.repository.RoleRepository;
 import com.pai.api.identity.repository.UserRepository;
 import com.pai.api.identity.repository.UserRoleRepository;
 import com.pai.api.shared.exceptions.RoleNotFoundException;
+import java.time.Instant;
+import java.util.List;
+import java.util.Set;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Fase espejo del aprovisionamiento: crea {@code app.users} + roles y marca la
@@ -34,19 +33,21 @@ import com.pai.api.shared.exceptions.RoleNotFoundException;
 public class UserMirrorWriter {
 
     private static final Set<ProvisioningOperationStatus> COMPLETABLE_FROM = Set.of(
-        ProvisioningOperationStatus.AUTH_CREATED,
-        ProvisioningOperationStatus.MIRROR_CREATED,
-        ProvisioningOperationStatus.ROLE_ASSIGNED,
-        ProvisioningOperationStatus.UNCERTAIN,
-        ProvisioningOperationStatus.COMPENSATING,
-        ProvisioningOperationStatus.COMPENSATION_FAILED);
+            ProvisioningOperationStatus.AUTH_CREATED,
+            ProvisioningOperationStatus.MIRROR_CREATED,
+            ProvisioningOperationStatus.ROLE_ASSIGNED,
+            ProvisioningOperationStatus.UNCERTAIN,
+            ProvisioningOperationStatus.COMPENSATING,
+            ProvisioningOperationStatus.COMPENSATION_FAILED);
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
     private final ProvisioningOperationRepository operationRepository;
 
-    public UserMirrorWriter(UserRepository userRepository, RoleRepository roleRepository,
+    public UserMirrorWriter(
+            UserRepository userRepository,
+            RoleRepository roleRepository,
             UserRoleRepository userRoleRepository,
             ProvisioningOperationRepository operationRepository) {
         this.userRepository = userRepository;
@@ -57,56 +58,53 @@ public class UserMirrorWriter {
 
     @Transactional
     public UserResponse writeMirrorAndRoles(ProvisioningOperationEntity operation, String roleCode) {
-        RoleEntity role = roleRepository.findByCode(roleCode)
-            .orElseThrow(() -> new RoleNotFoundException(
-                "El rol " + roleCode + " no esta configurado."));
+        RoleEntity role = roleRepository
+                .findByCode(roleCode)
+                .orElseThrow(() -> new RoleNotFoundException("El rol " + roleCode + " no esta configurado."));
 
         Instant now = Instant.now();
         UserEntity user = new UserEntity(
-            operation.getAuthUserId(),
-            operation.getEmail(),
-            operation.getFullName(),
-            operation.getInstitutionId(),
-            UserEntity.Status.ACTIVE,
-            now,
-            now,
-            operation.getDocumentType(),
-            operation.getDocumentNumber(),
-            operation.getPhone(),
-            operation.getBirthDate(),
-            operation.getGender(),
-            operation.getProfessionCode(),
-            operation.getProfessionalRegistrationNumber(),
-            operation.getProfessionalRegistrationType());
+                operation.getAuthUserId(),
+                operation.getEmail(),
+                operation.getFullName(),
+                operation.getInstitutionId(),
+                UserEntity.Status.ACTIVE,
+                now,
+                now,
+                operation.getDocumentType(),
+                operation.getDocumentNumber(),
+                operation.getPhone(),
+                operation.getBirthDate(),
+                operation.getGender(),
+                operation.getProfessionCode(),
+                operation.getProfessionalRegistrationNumber(),
+                operation.getProfessionalRegistrationType());
         userRepository.save(user);
         userRoleRepository.save(new UserRoleEntity(operation.getAuthUserId(), role.getId()));
 
-        int rows = operationRepository.markCompleted(
-            operation.getOperationId(), COMPLETABLE_FROM, now);
+        int rows = operationRepository.markCompleted(operation.getOperationId(), COMPLETABLE_FROM, now);
         if (rows == 0) {
             ProvisioningOperationEntity fresh =
-                operationRepository.findById(operation.getOperationId())
-                    .orElseThrow();
+                    operationRepository.findById(operation.getOperationId()).orElseThrow();
             if (fresh.getStatus() != ProvisioningOperationStatus.COMPLETED) {
-                throw new IllegalStateException(
-                    "La operacion no pudo marcarse como completada.");
+                throw new IllegalStateException("La operacion no pudo marcarse como completada.");
             }
         }
 
         return new UserResponse(
-            operation.getAuthUserId(),
-            operation.getEmail(),
-            operation.getFullName(),
-            operation.getInstitutionId(),
-            List.of(roleCode),
-            UserEntity.Status.ACTIVE.name(),
-            operation.getDocumentType(),
-            operation.getDocumentNumber(),
-            operation.getPhone(),
-            operation.getBirthDate(),
-            operation.getGender(),
-            operation.getProfessionCode(),
-            operation.getProfessionalRegistrationNumber(),
-            operation.getProfessionalRegistrationType());
+                operation.getAuthUserId(),
+                operation.getEmail(),
+                operation.getFullName(),
+                operation.getInstitutionId(),
+                List.of(roleCode),
+                UserEntity.Status.ACTIVE.name(),
+                operation.getDocumentType(),
+                operation.getDocumentNumber(),
+                operation.getPhone(),
+                operation.getBirthDate(),
+                operation.getGender(),
+                operation.getProfessionCode(),
+                operation.getProfessionalRegistrationNumber(),
+                operation.getProfessionalRegistrationType());
     }
 }

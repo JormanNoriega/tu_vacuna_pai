@@ -16,5 +16,4 @@ public record AuthUserProfile(
         String gender,
         String professionCode,
         String professionalRegistrationNumber,
-        String professionalRegistrationType) {
-}
+        String professionalRegistrationType) {}

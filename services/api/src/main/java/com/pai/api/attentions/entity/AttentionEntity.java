@@ -1,8 +1,5 @@
 package com.pai.api.attentions.entity;
 
-import java.time.Instant;
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -10,6 +7,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Agregado raiz de la atencion de vacunacion. Es mutable solo en
@@ -21,7 +20,12 @@ import jakarta.persistence.Version;
 @Table(name = "attentions", schema = "app")
 public class AttentionEntity {
 
-    public enum Status { DRAFT, IN_PROGRESS, COMPLETED, CANCELLED }
+    public enum Status {
+        DRAFT,
+        IN_PROGRESS,
+        COMPLETED,
+        CANCELLED
+    }
 
     @Id
     private UUID id;
@@ -58,12 +62,17 @@ public class AttentionEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    protected AttentionEntity() {
-    }
+    protected AttentionEntity() {}
 
-    public AttentionEntity(UUID id, UUID patientId, UUID professionalId,
-            UUID institutionId, Instant attentionDate, Long consecutive,
-            UUID clientOperationId, Instant now) {
+    public AttentionEntity(
+            UUID id,
+            UUID patientId,
+            UUID professionalId,
+            UUID institutionId,
+            Instant attentionDate,
+            Long consecutive,
+            UUID clientOperationId,
+            Instant now) {
         this.id = id;
         this.patientId = patientId;
         this.professionalId = professionalId;

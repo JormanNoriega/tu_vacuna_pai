@@ -1,14 +1,13 @@
 package com.pai.api.attentions.entity;
 
-import java.time.Instant;
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Dosis aplicada dentro de una atencion. Es append-only: no admite UPDATE ni
@@ -24,7 +23,10 @@ import jakarta.persistence.Table;
 @Table(name = "applied_doses", schema = "app")
 public class AppliedDoseEntity {
 
-    public enum Status { REGISTERED, CANCELLED }
+    public enum Status {
+        REGISTERED,
+        CANCELLED
+    }
 
     @Id
     private UUID id;
@@ -108,18 +110,32 @@ public class AppliedDoseEntity {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    protected AppliedDoseEntity() {
-    }
+    protected AppliedDoseEntity() {}
 
-    public AppliedDoseEntity(UUID id, UUID attentionId, UUID vaccineId, UUID lotId,
-            String lotNumber, Instant applicationDate, UUID doseOptionId,
-            UUID pneumococcalTypeOptionId, String vaccineNameSnapshot,
-            String vaccineCodeSnapshot, String doseLabelSnapshot, String doseValueSnapshot,
-            String pneumococcalTypeSnapshot, long catalogVersion,
-            UUID selectedLaboratoryId, String selectedLaboratorySnapshot,
-            UUID selectedSyringeId, String selectedSyringeSnapshot,
-            UUID selectedDropperId, String selectedDropperSnapshot,
-            UUID selectedObservationId, String selectedObservationSnapshot, Instant now) {
+    public AppliedDoseEntity(
+            UUID id,
+            UUID attentionId,
+            UUID vaccineId,
+            UUID lotId,
+            String lotNumber,
+            Instant applicationDate,
+            UUID doseOptionId,
+            UUID pneumococcalTypeOptionId,
+            String vaccineNameSnapshot,
+            String vaccineCodeSnapshot,
+            String doseLabelSnapshot,
+            String doseValueSnapshot,
+            String pneumococcalTypeSnapshot,
+            long catalogVersion,
+            UUID selectedLaboratoryId,
+            String selectedLaboratorySnapshot,
+            UUID selectedSyringeId,
+            String selectedSyringeSnapshot,
+            UUID selectedDropperId,
+            String selectedDropperSnapshot,
+            UUID selectedObservationId,
+            String selectedObservationSnapshot,
+            Instant now) {
         this.id = id;
         this.attentionId = attentionId;
         this.vaccineId = vaccineId;

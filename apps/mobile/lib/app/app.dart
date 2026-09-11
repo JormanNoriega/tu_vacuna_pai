@@ -69,9 +69,30 @@ class _TuVacunaAppState extends State<TuVacunaApp> {
       widget.authRepository ?? InMemoryAuthRepository(),
     ),
     signOut: SignOut(widget.authRepository ?? InMemoryAuthRepository()),
-  )..addListener(_onAuthChanged);
+  )..addListener(_handleAuthChanged);
 
-  void _onAuthChanged() => setState(() {});
+  /// Id del usuario de la sesion actual. Se usa para limpiar el estado en
+  /// memoria de los controladores cuando cambia el usuario (logout o login con
+  /// otra cuenta), evitando que se arrastren datos de la cuenta anterior.
+  String? _sessionUserId;
+
+  void _handleAuthChanged() {
+    final userId = _authController.user?.id;
+    if (userId != _sessionUserId) {
+      _sessionUserId = userId;
+      _resetSessionState();
+    }
+    setState(() {});
+  }
+
+  void _resetSessionState() {
+    widget.adminController?.clearSession();
+    widget.usersController?.clearSession();
+    widget.catalogController?.clearSession();
+    widget.attentionController?.clearSession();
+    widget.historyController?.clearSession();
+    widget.patientDetailController?.clearSession();
+  }
 
   @override
   void initState() {
@@ -84,7 +105,7 @@ class _TuVacunaAppState extends State<TuVacunaApp> {
   @override
   void dispose() {
     _authController
-      ..removeListener(_onAuthChanged)
+      ..removeListener(_handleAuthChanged)
       ..dispose();
     super.dispose();
   }

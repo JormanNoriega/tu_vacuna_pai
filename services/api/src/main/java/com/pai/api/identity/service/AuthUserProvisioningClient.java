@@ -26,8 +26,13 @@ public interface AuthUserProvisioningClient {
      * @throws UncertainProvisioningException si el resultado es incierto
      *         (timeout, 5xx o sin id): el usuario puede existir
      */
-    UUID createAuthUser(String accessToken, UUID operationId,
-            String email, String password, String fullName, AuthUserProfile profile);
+    UUID createAuthUser(
+            String accessToken,
+            UUID operationId,
+            String email,
+            String password,
+            String fullName,
+            AuthUserProfile profile);
 
     /**
      * Elimina un usuario de {@code auth.users} (compensacion cuando falla la

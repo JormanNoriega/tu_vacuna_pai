@@ -1,15 +1,14 @@
 package com.pai.api.identity.entity;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * Registro de una operacion de aprovisionamiento de identidad. Ver
@@ -79,25 +78,65 @@ public class ProvisioningOperationEntity {
     @Column(name = "professional_registration_type")
     private String professionalRegistrationType;
 
-    protected ProvisioningOperationEntity() {
+    protected ProvisioningOperationEntity() {}
+
+    public ProvisioningOperationEntity(
+            UUID operationId,
+            UUID authUserId,
+            String email,
+            String fullName,
+            UUID institutionId,
+            String role,
+            UUID actorId,
+            ProvisioningOperationStatus status,
+            short attempts,
+            String error,
+            Instant createdAt,
+            Instant updatedAt) {
+        this(
+                operationId,
+                authUserId,
+                email,
+                fullName,
+                institutionId,
+                role,
+                actorId,
+                status,
+                attempts,
+                error,
+                createdAt,
+                updatedAt,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
     }
 
-    public ProvisioningOperationEntity(UUID operationId, UUID authUserId, String email,
-            String fullName, UUID institutionId, String role, UUID actorId,
-            ProvisioningOperationStatus status, short attempts, String error,
-            Instant createdAt, Instant updatedAt) {
-        this(operationId, authUserId, email, fullName, institutionId, role, actorId,
-            status, attempts, error, createdAt, updatedAt,
-            null, null, null, null, null, null, null, null);
-    }
-
-    public ProvisioningOperationEntity(UUID operationId, UUID authUserId, String email,
-            String fullName, UUID institutionId, String role, UUID actorId,
-            ProvisioningOperationStatus status, short attempts, String error,
-            Instant createdAt, Instant updatedAt,
-            String documentType, String documentNumber, String phone,
-            LocalDate birthDate, String gender, String professionCode,
-            String professionalRegistrationNumber, String professionalRegistrationType) {
+    public ProvisioningOperationEntity(
+            UUID operationId,
+            UUID authUserId,
+            String email,
+            String fullName,
+            UUID institutionId,
+            String role,
+            UUID actorId,
+            ProvisioningOperationStatus status,
+            short attempts,
+            String error,
+            Instant createdAt,
+            Instant updatedAt,
+            String documentType,
+            String documentNumber,
+            String phone,
+            LocalDate birthDate,
+            String gender,
+            String professionCode,
+            String professionalRegistrationNumber,
+            String professionalRegistrationType) {
         this.operationId = operationId;
         this.authUserId = authUserId;
         this.email = email;

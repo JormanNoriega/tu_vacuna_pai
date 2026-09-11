@@ -8,15 +8,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-
 import com.pai.api.identity.dto.UserResponse;
 import com.pai.api.identity.entity.ProvisioningOperationEntity;
 import com.pai.api.identity.entity.ProvisioningOperationStatus;
@@ -28,6 +19,13 @@ import com.pai.api.identity.repository.RoleRepository;
 import com.pai.api.identity.repository.UserRepository;
 import com.pai.api.identity.repository.UserRoleRepository;
 import com.pai.api.shared.exceptions.RoleNotFoundException;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class UserMirrorWriterTest {
 
@@ -48,17 +46,25 @@ class UserMirrorWriterTest {
         roleRepository = mock(RoleRepository.class);
         userRoleRepository = mock(UserRoleRepository.class);
         operationRepository = mock(ProvisioningOperationRepository.class);
-        writer = new UserMirrorWriter(
-            userRepository, roleRepository, userRoleRepository, operationRepository);
-        when(userRepository.save(any(UserEntity.class)))
-            .thenAnswer(invocation -> invocation.getArgument(0));
+        writer = new UserMirrorWriter(userRepository, roleRepository, userRoleRepository, operationRepository);
+        when(userRepository.save(any(UserEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     private ProvisioningOperationEntity operation(ProvisioningOperationStatus status) {
         Instant now = Instant.now();
         return new ProvisioningOperationEntity(
-            OPERATION_ID, AUTH_USER_ID, "vac@hosp.a", "Vaca Uno", INSTITUTION_ID,
-            "VACCINATOR", UUID.randomUUID(), status, (short) 1, null, now, now);
+                OPERATION_ID,
+                AUTH_USER_ID,
+                "vac@hosp.a",
+                "Vaca Uno",
+                INSTITUTION_ID,
+                "VACCINATOR",
+                UUID.randomUUID(),
+                status,
+                (short) 1,
+                null,
+                now,
+                now);
     }
 
     private RoleEntity vaccinatorRole() {
@@ -71,7 +77,7 @@ class UserMirrorWriterTest {
         when(operationRepository.markCompleted(eq(OPERATION_ID), any(), any())).thenReturn(1);
 
         UserResponse result =
-            writer.writeMirrorAndRoles(operation(ProvisioningOperationStatus.AUTH_CREATED), "VACCINATOR");
+                writer.writeMirrorAndRoles(operation(ProvisioningOperationStatus.AUTH_CREATED), "VACCINATOR");
 
         assertThat(result.id()).isEqualTo(AUTH_USER_ID);
         assertThat(result.roles()).containsExactly("VACCINATOR");
@@ -96,9 +102,9 @@ class UserMirrorWriterTest {
     void writeMirrorAndRoles_throwsWhenRoleMissing() {
         when(roleRepository.findByCode("VACCINATOR")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> writer.writeMirrorAndRoles(
-            operation(ProvisioningOperationStatus.AUTH_CREATED), "VACCINATOR"))
-            .isInstanceOf(RoleNotFoundException.class);
+        assertThatThrownBy(() ->
+                        writer.writeMirrorAndRoles(operation(ProvisioningOperationStatus.AUTH_CREATED), "VACCINATOR"))
+                .isInstanceOf(RoleNotFoundException.class);
     }
 
     @Test
@@ -106,10 +112,10 @@ class UserMirrorWriterTest {
         when(roleRepository.findByCode("VACCINATOR")).thenReturn(Optional.of(vaccinatorRole()));
         when(operationRepository.markCompleted(eq(OPERATION_ID), any(), any())).thenReturn(0);
         when(operationRepository.findById(OPERATION_ID))
-            .thenReturn(Optional.of(operation(ProvisioningOperationStatus.COMPLETED)));
+                .thenReturn(Optional.of(operation(ProvisioningOperationStatus.COMPLETED)));
 
         UserResponse result =
-            writer.writeMirrorAndRoles(operation(ProvisioningOperationStatus.AUTH_CREATED), "VACCINATOR");
+                writer.writeMirrorAndRoles(operation(ProvisioningOperationStatus.AUTH_CREATED), "VACCINATOR");
 
         assertThat(result.id()).isEqualTo(AUTH_USER_ID);
     }
@@ -119,25 +125,24 @@ class UserMirrorWriterTest {
         when(roleRepository.findByCode("VACCINATOR")).thenReturn(Optional.of(vaccinatorRole()));
         when(operationRepository.markCompleted(eq(OPERATION_ID), any(), any())).thenReturn(0);
         when(operationRepository.findById(OPERATION_ID))
-            .thenReturn(Optional.of(operation(ProvisioningOperationStatus.PENDING)));
+                .thenReturn(Optional.of(operation(ProvisioningOperationStatus.PENDING)));
 
-        assertThatThrownBy(() -> writer.writeMirrorAndRoles(
-            operation(ProvisioningOperationStatus.AUTH_CREATED), "VACCINATOR"))
-            .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() ->
+                        writer.writeMirrorAndRoles(operation(ProvisioningOperationStatus.AUTH_CREATED), "VACCINATOR"))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void writeMirrorAndRoles_completesFromReconciliableStates() {
         List<ProvisioningOperationStatus> statuses = List.of(
-            ProvisioningOperationStatus.UNCERTAIN,
-            ProvisioningOperationStatus.COMPENSATION_FAILED,
-            ProvisioningOperationStatus.COMPENSATING);
+                ProvisioningOperationStatus.UNCERTAIN,
+                ProvisioningOperationStatus.COMPENSATION_FAILED,
+                ProvisioningOperationStatus.COMPENSATING);
         when(roleRepository.findByCode("VACCINATOR")).thenReturn(Optional.of(vaccinatorRole()));
         when(operationRepository.markCompleted(eq(OPERATION_ID), any(), any())).thenReturn(1);
 
         for (ProvisioningOperationStatus status : statuses) {
-            UserResponse result =
-                writer.writeMirrorAndRoles(operation(status), "VACCINATOR");
+            UserResponse result = writer.writeMirrorAndRoles(operation(status), "VACCINATOR");
             assertThat(result.id()).isEqualTo(AUTH_USER_ID);
         }
     }

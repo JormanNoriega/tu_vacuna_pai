@@ -247,7 +247,13 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
         if (controller.error != null) {
           return _ErrorView(
             message: controller.error!,
-            onRetry: controller.clearError,
+            onRetry: () {
+              controller.clearError();
+              if (controller.patient != null &&
+                  !controller.effectiveCatalogLoaded) {
+                controller.loadEffectiveCatalog();
+              }
+            },
           );
         }
         if (controller.isLoading &&
@@ -357,7 +363,12 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
             ),
           ),
         const SizedBox(height: 16),
-        if (controller.effectiveVaccines.isEmpty)
+        if (!controller.effectiveCatalogLoaded)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 32),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (controller.effectiveVaccines.isEmpty)
           _emptyCatalog()
         else ...[
           Text(

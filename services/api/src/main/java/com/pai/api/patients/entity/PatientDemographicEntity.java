@@ -1,12 +1,11 @@
 package com.pai.api.patients.entity;
 
-import java.time.Instant;
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Datos demograficos del paciente (1:1). {@code gender} es un dato
@@ -31,11 +30,10 @@ public class PatientDemographicEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    protected PatientDemographicEntity() {
-    }
+    protected PatientDemographicEntity() {}
 
-    public PatientDemographicEntity(UUID patientId, String gender,
-            String ethnicity, String educationLevel, Instant now) {
+    public PatientDemographicEntity(
+            UUID patientId, String gender, String ethnicity, String educationLevel, Instant now) {
         this.patientId = patientId;
         this.gender = gender;
         this.ethnicity = ethnicity;

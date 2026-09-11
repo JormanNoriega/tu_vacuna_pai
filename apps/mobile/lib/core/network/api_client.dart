@@ -12,7 +12,7 @@ class ApiClient {
   ApiClient({
     required this.baseUrl,
     http.Client? httpClient,
-    this._timeout = const Duration(seconds: 10),
+    this._timeout = const Duration(seconds: 30),
   }) : _http = httpClient ?? http.Client();
 
   final String baseUrl;

@@ -1,11 +1,10 @@
 package com.pai.api.identity.entity;
 
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.UUID;
 
 /**
  * Catalogo de profesiones/cargos del personal de salud (catálogo, no texto
@@ -24,8 +23,7 @@ public class ProfessionEntity {
     @Column(nullable = false)
     private String name;
 
-    protected ProfessionEntity() {
-    }
+    protected ProfessionEntity() {}
 
     public ProfessionEntity(UUID id, String code, String name) {
         this.id = id;

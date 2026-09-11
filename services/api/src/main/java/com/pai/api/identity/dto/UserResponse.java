@@ -24,9 +24,7 @@ public record UserResponse(
      * Constructor compacto (perfil sin campos ampliados), usado por operaciones
      * que no gestionan documento/contacto.
      */
-    public UserResponse(UUID id, String email, String fullName, UUID institutionId,
-            List<String> roles, String status) {
-        this(id, email, fullName, institutionId, roles, status,
-            null, null, null, null, null, null, null, null);
+    public UserResponse(UUID id, String email, String fullName, UUID institutionId, List<String> roles, String status) {
+        this(id, email, fullName, institutionId, roles, status, null, null, null, null, null, null, null, null);
     }
 }

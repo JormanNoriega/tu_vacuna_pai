@@ -3,14 +3,12 @@ package com.pai.api.identity.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.pai.api.identity.entity.InstitutionEntity;
+import com.pai.api.shared.exceptions.ScopeViolationException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-
 import org.junit.jupiter.api.Test;
-
-import com.pai.api.identity.entity.InstitutionEntity;
-import com.pai.api.shared.exceptions.ScopeViolationException;
 
 class DataScopeTest {
 
@@ -20,20 +18,30 @@ class DataScopeTest {
     private final DataScope dataScope = new DataScope();
 
     private AuthorizedUser restrictedActor() {
-        return new AuthorizedUser(UUID.randomUUID(), "admin@hosp.a",
-            "Admin Hospital A", institution(INSTITUTION_ID), List.of("ADMIN_INSTITUTION"),
-            List.of("USER_MANAGE"), Instant.now());
+        return new AuthorizedUser(
+                UUID.randomUUID(),
+                "admin@hosp.a",
+                "Admin Hospital A",
+                institution(INSTITUTION_ID),
+                List.of("ADMIN_INSTITUTION"),
+                List.of("USER_MANAGE"),
+                Instant.now());
     }
 
     private AuthorizedUser unrestrictedActor() {
-        return new AuthorizedUser(UUID.randomUUID(), "super@admin.test",
-            "Super Admin", institution(INSTITUTION_ID), List.of("SUPER_ADMIN"),
-            List.of("INSTITUTION_WRITE", "USER_MANAGE"), Instant.now());
+        return new AuthorizedUser(
+                UUID.randomUUID(),
+                "super@admin.test",
+                "Super Admin",
+                institution(INSTITUTION_ID),
+                List.of("SUPER_ADMIN"),
+                List.of("INSTITUTION_WRITE", "USER_MANAGE"),
+                Instant.now());
     }
 
     private InstitutionEntity institution(UUID id) {
-        return new InstitutionEntity(id, "HOSP-A", "Hospital A",
-            InstitutionEntity.Status.ACTIVE, (short) 72, Instant.now(), Instant.now());
+        return new InstitutionEntity(
+                id, "HOSP-A", "Hospital A", InstitutionEntity.Status.ACTIVE, (short) 72, Instant.now(), Instant.now());
     }
 
     @Test
@@ -61,9 +69,8 @@ class DataScopeTest {
 
     @Test
     void resolveInstitutionId_rejectsOtherInstitutionForRestrictedActor() {
-        assertThatThrownBy(() ->
-            dataScope.resolveInstitutionId(restrictedActor(), OTHER_INSTITUTION_ID))
-            .isInstanceOf(ScopeViolationException.class);
+        assertThatThrownBy(() -> dataScope.resolveInstitutionId(restrictedActor(), OTHER_INSTITUTION_ID))
+                .isInstanceOf(ScopeViolationException.class);
     }
 
     @Test
@@ -80,9 +87,8 @@ class DataScopeTest {
 
     @Test
     void requireSameInstitution_rejectsOutOfScopeResource() {
-        assertThatThrownBy(() ->
-            dataScope.requireSameInstitution(restrictedActor(), OTHER_INSTITUTION_ID))
-            .isInstanceOf(ScopeViolationException.class);
+        assertThatThrownBy(() -> dataScope.requireSameInstitution(restrictedActor(), OTHER_INSTITUTION_ID))
+                .isInstanceOf(ScopeViolationException.class);
     }
 
     @Test

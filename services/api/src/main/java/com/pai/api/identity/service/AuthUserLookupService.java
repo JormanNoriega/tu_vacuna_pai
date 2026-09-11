@@ -3,7 +3,6 @@ package com.pai.api.identity.service;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -28,11 +27,9 @@ public class AuthUserLookupService {
      */
     public Optional<AuthUserRecord> findByOperation(UUID operationId) {
         List<AuthUserRecord> rows = jdbcTemplate.query(
-            "SELECT auth_user_id, email FROM public.find_auth_user_by_operation(?)",
-            (rs, i) -> new AuthUserRecord(
-                UUID.fromString(rs.getString("auth_user_id")),
-                rs.getString("email")),
-            operationId);
+                "SELECT auth_user_id, email FROM public.find_auth_user_by_operation(?)",
+                (rs, i) -> new AuthUserRecord(UUID.fromString(rs.getString("auth_user_id")), rs.getString("email")),
+                operationId);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
     }
 
@@ -42,16 +39,14 @@ public class AuthUserLookupService {
      */
     public List<OrphanRecord> listOrphans() {
         return jdbcTemplate.query(
-            "SELECT operation_id, auth_user_id, email FROM public.list_provisioning_orphans()",
-            (rs, i) -> new OrphanRecord(
-                UUID.fromString(rs.getString("operation_id")),
-                UUID.fromString(rs.getString("auth_user_id")),
-                rs.getString("email")));
+                "SELECT operation_id, auth_user_id, email FROM public.list_provisioning_orphans()",
+                (rs, i) -> new OrphanRecord(
+                        UUID.fromString(rs.getString("operation_id")),
+                        UUID.fromString(rs.getString("auth_user_id")),
+                        rs.getString("email")));
     }
 
-    public record AuthUserRecord(UUID authUserId, String email) {
-    }
+    public record AuthUserRecord(UUID authUserId, String email) {}
 
-    public record OrphanRecord(UUID operationId, UUID authUserId, String email) {
-    }
+    public record OrphanRecord(UUID operationId, UUID authUserId, String email) {}
 }

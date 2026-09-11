@@ -1,9 +1,8 @@
 package com.pai.api.shared.security;
 
+import com.pai.api.identity.service.AuthorizedUser;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
-
-import com.pai.api.identity.service.AuthorizedUser;
 
 /**
  * Autorizacion de operaciones sensibles. Recibe el {@link Authentication} que

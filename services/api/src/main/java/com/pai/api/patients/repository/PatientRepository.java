@@ -1,12 +1,10 @@
 package com.pai.api.patients.repository;
 
+import com.pai.api.patients.entity.PatientEntity;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
 import org.springframework.data.jpa.repository.JpaRepository;
-
-import com.pai.api.patients.entity.PatientEntity;
 
 /**
  * Acceso a {@link PatientEntity}. Regla de alcance: los pacientes se leen y
@@ -20,8 +18,7 @@ public interface PatientRepository extends JpaRepository<PatientEntity, UUID> {
     Optional<PatientEntity> findByInstitutionIdAndDocumentTypeAndDocumentNumber(
             UUID institutionId, String documentType, String documentNumber);
 
-    List<PatientEntity> findByInstitutionIdAndDocumentNumber(
-            UUID institutionId, String documentNumber);
+    List<PatientEntity> findByInstitutionIdAndDocumentNumber(UUID institutionId, String documentNumber);
 
     boolean existsByInstitutionIdAndDocumentTypeAndDocumentNumber(
             UUID institutionId, String documentType, String documentNumber);

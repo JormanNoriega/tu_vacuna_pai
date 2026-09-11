@@ -1,11 +1,10 @@
 package com.pai.api.identity.entity;
 
-import java.util.UUID;
-
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.Table;
+import java.util.UUID;
 
 @Entity
 @Table(name = "user_roles", schema = "app")
@@ -18,8 +17,7 @@ public class UserRoleEntity {
     @Id
     private UUID roleId;
 
-    protected UserRoleEntity() {
-    }
+    protected UserRoleEntity() {}
 
     public UserRoleEntity(UUID userId, UUID roleId) {
         this.userId = userId;

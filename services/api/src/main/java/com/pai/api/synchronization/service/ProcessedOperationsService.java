@@ -1,14 +1,11 @@
 package com.pai.api.synchronization.service;
 
+import com.pai.api.synchronization.entity.ProcessedOperationEntity;
+import com.pai.api.synchronization.repository.ProcessedOperationRepository;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
-
 import org.springframework.stereotype.Service;
-
-import com.pai.api.synchronization.entity.ProcessedOperationEntity;
-import com.pai.api.synchronization.repository.ProcessedOperationRepository;
-
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -46,14 +43,12 @@ public class ProcessedOperationsService {
      * Registra la respuesta de una operacion procesada. No hace nada si el
      * {@code operationId} es nulo, vacio o no UUID (camino sin idempotencia).
      */
-    public void record(String operationId, String commandType, UUID aggregateId,
-            Object response) {
+    public void record(String operationId, String commandType, UUID aggregateId, Object response) {
         UUID id = parse(operationId);
         if (id == null) {
             return;
         }
-        repository.save(new ProcessedOperationEntity(
-            id, commandType, aggregateId, serialize(response), Instant.now()));
+        repository.save(new ProcessedOperationEntity(id, commandType, aggregateId, serialize(response), Instant.now()));
     }
 
     private UUID parse(String operationId) {
@@ -79,8 +74,7 @@ public class ProcessedOperationsService {
         try {
             return MAPPER.readValue(entity.getResponsePayload(), type);
         } catch (Exception ex) {
-            throw new IllegalStateException(
-                "No se pudo reconstruir la respuesta idempotente.", ex);
+            throw new IllegalStateException("No se pudo reconstruir la respuesta idempotente.", ex);
         }
     }
 }

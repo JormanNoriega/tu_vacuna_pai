@@ -1,18 +1,16 @@
 package com.pai.api.identity.service;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-
 import com.pai.api.identity.dto.ProvisioningOperationResponse;
 import com.pai.api.identity.dto.ReconciliationResultResponse;
 import com.pai.api.identity.entity.ProvisioningOperationEntity;
 import com.pai.api.identity.entity.ProvisioningOperationStatus;
 import com.pai.api.identity.repository.ProvisioningOperationRepository;
 import com.pai.api.identity.service.AuthUserLookupService.OrphanRecord;
+import java.util.ArrayList;
+import java.util.List;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
 
 /**
  * Reconciliacion de huerfanos de aprovisionamiento: auth.users con
@@ -35,7 +33,8 @@ public class ProvisioningReconciliationService {
     private final ProvisioningOperationRepository operationRepository;
     private final UserMirrorWriter mirrorWriter;
 
-    public ProvisioningReconciliationService(AuthUserLookupService authUserLookup,
+    public ProvisioningReconciliationService(
+            AuthUserLookupService authUserLookup,
             ProvisioningOperationRepository operationRepository,
             UserMirrorWriter mirrorWriter) {
         this.authUserLookup = authUserLookup;
@@ -58,36 +57,43 @@ public class ProvisioningReconciliationService {
 
     private ReconciliationResultResponse reconcileOrphan(OrphanRecord orphan) {
         ProvisioningOperationEntity op =
-            operationRepository.findById(orphan.operationId()).orElse(null);
+                operationRepository.findById(orphan.operationId()).orElse(null);
         if (op == null) {
-            return result(orphan, ReconciliationResultResponse.Outcome.SKIPPED_WITHOUT_OPERATION,
-                "Huerfano sin operacion registrada: no se reclama por email.");
+            return result(
+                    orphan,
+                    ReconciliationResultResponse.Outcome.SKIPPED_WITHOUT_OPERATION,
+                    "Huerfano sin operacion registrada: no se reclama por email.");
         }
         if (!op.getEmail().equals(orphan.email())) {
-            return result(orphan, ReconciliationResultResponse.Outcome.SKIPPED_EMAIL_MISMATCH,
-                "Correlacion rota: el email no coincide con la operacion.");
+            return result(
+                    orphan,
+                    ReconciliationResultResponse.Outcome.SKIPPED_EMAIL_MISMATCH,
+                    "Correlacion rota: el email no coincide con la operacion.");
         }
         if (op.getAuthUserId() != null && !op.getAuthUserId().equals(orphan.authUserId())) {
-            return result(orphan, ReconciliationResultResponse.Outcome.SKIPPED_EMAIL_MISMATCH,
-                "El auth.user no coincide con la operacion registrada.");
+            return result(
+                    orphan,
+                    ReconciliationResultResponse.Outcome.SKIPPED_EMAIL_MISMATCH,
+                    "El auth.user no coincide con la operacion registrada.");
         }
         if (op.getStatus() == ProvisioningOperationStatus.COMPLETED) {
-            return result(orphan, ReconciliationResultResponse.Outcome.ALREADY_RECONCILED,
-                "El espejo ya existe.");
+            return result(orphan, ReconciliationResultResponse.Outcome.ALREADY_RECONCILED, "El espejo ya existe.");
         }
 
         try {
             mirrorWriter.writeMirrorAndRoles(op, op.getRole());
-            return result(orphan, ReconciliationResultResponse.Outcome.RECONCILED,
-                "Espejo y roles creados a partir de la operacion registrada.");
+            return result(
+                    orphan,
+                    ReconciliationResultResponse.Outcome.RECONCILED,
+                    "Espejo y roles creados a partir de la operacion registrada.");
         } catch (DataIntegrityViolationException ex) {
             // Concurrencia: otra request o el reconciler ya creo el espejo.
-            return result(orphan, ReconciliationResultResponse.Outcome.ALREADY_RECONCILED,
-                "Ya reconciliado por otro proceso.");
+            return result(
+                    orphan,
+                    ReconciliationResultResponse.Outcome.ALREADY_RECONCILED,
+                    "Ya reconciliado por otro proceso.");
         } catch (RuntimeException ex) {
-            String detail = ex.getMessage() == null
-                ? ex.getClass().getSimpleName()
-                : ex.getMessage();
+            String detail = ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage();
             return result(orphan, ReconciliationResultResponse.Outcome.FAILED, detail);
         }
     }
@@ -97,16 +103,14 @@ public class ProvisioningReconciliationService {
      * primero.
      */
     public List<ProvisioningOperationResponse> listOperations() {
-        return operationRepository
-            .findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
-            .stream()
-            .map(ProvisioningOperationResponse::from)
-            .toList();
+        return operationRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
+                .map(ProvisioningOperationResponse::from)
+                .toList();
     }
 
-    private ReconciliationResultResponse result(OrphanRecord orphan,
-            ReconciliationResultResponse.Outcome outcome, String detail) {
+    private ReconciliationResultResponse result(
+            OrphanRecord orphan, ReconciliationResultResponse.Outcome outcome, String detail) {
         return new ReconciliationResultResponse(
-            orphan.operationId(), orphan.authUserId(), orphan.email(), outcome, detail);
+                orphan.operationId(), orphan.authUserId(), orphan.email(), outcome, detail);
     }
 }

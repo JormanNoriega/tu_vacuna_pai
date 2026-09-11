@@ -1,14 +1,5 @@
 package com.pai.api.identity.service;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.pai.api.identity.dto.UserResponse;
 import com.pai.api.identity.entity.RoleEntity;
 import com.pai.api.identity.entity.UserEntity;
@@ -19,6 +10,13 @@ import com.pai.api.identity.repository.UserRoleRepository;
 import com.pai.api.shared.exceptions.RoleNotFoundException;
 import com.pai.api.shared.exceptions.ScopeViolationException;
 import com.pai.api.shared.exceptions.UserNotFoundException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Gestion de usuarios administrativos (listado, estado y roles). La creacion de
@@ -43,8 +41,7 @@ public class UserService {
      * fuerza a estos roles en el servidor: un admin nunca ve ni toca perfiles
      * de otros administradores.
      */
-    private static final Set<String> MANAGED_ROLES =
-        Set.of(VACCINATOR_ROLE, READ_ONLY_ROLE);
+    private static final Set<String> MANAGED_ROLES = Set.of(VACCINATOR_ROLE, READ_ONLY_ROLE);
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -85,23 +82,19 @@ public class UserService {
      *                               INSTITUTION_WRITE)
      */
     @Transactional(readOnly = true)
-    public List<UserResponse> listByInstitution(UUID actorId, UUID requestedInstitutionId,
-            Set<String> roles) {
+    public List<UserResponse> listByInstitution(UUID actorId, UUID requestedInstitutionId, Set<String> roles) {
         AuthorizedUser actor = identityService.resolve(actorId);
         InstitutionScope scope = dataScope.currentScope(actor);
 
         UUID institutionId = dataScope.resolveInstitutionId(actor, requestedInstitutionId);
 
-        Set<String> effectiveRoles = scope.unrestricted()
-            ? (roles == null || roles.isEmpty() ? null : roles)
-            : MANAGED_ROLES;
+        Set<String> effectiveRoles =
+                scope.unrestricted() ? (roles == null || roles.isEmpty() ? null : roles) : MANAGED_ROLES;
 
         List<UserEntity> users = (effectiveRoles == null || effectiveRoles.isEmpty())
-            ? userRepository.findByInstitutionId(institutionId)
-            : userRepository.findByInstitutionIdAndRoleCodes(institutionId, effectiveRoles);
-        return users.stream()
-            .map(this::toResponse)
-            .toList();
+                ? userRepository.findByInstitutionId(institutionId)
+                : userRepository.findByInstitutionIdAndRoleCodes(institutionId, effectiveRoles);
+        return users.stream().map(this::toResponse).toList();
     }
 
     /**
@@ -136,29 +129,27 @@ public class UserService {
         }
 
         UserEntity user = requireScopedManagedUser(userId, scope);
-        int updated = userRepository.updateStatusScoped(
-            userId, scope.institutionId(), parsed, now);
+        int updated = userRepository.updateStatusScoped(userId, scope.institutionId(), parsed, now);
         if (updated == 0) {
-            throw new ScopeViolationException(
-                "El usuario no existe o no pertenece a tu institucion.");
+            throw new ScopeViolationException("El usuario no existe o no pertenece a tu institucion.");
         }
         return new UserResponse(
-            user.getId(),
-            user.getEmail(),
-            user.getFullName(),
-            user.getInstitutionId(),
-            userRepository.findRolesByUserId(user.getId()).stream()
-                .map(RoleEntity::getCode)
-                .toList(),
-            parsed.name(),
-            user.getDocumentType(),
-            user.getDocumentNumber(),
-            user.getPhone(),
-            user.getBirthDate(),
-            user.getGender(),
-            user.getProfessionCode(),
-            user.getProfessionalRegistrationNumber(),
-            user.getProfessionalRegistrationType());
+                user.getId(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getInstitutionId(),
+                userRepository.findRolesByUserId(user.getId()).stream()
+                        .map(RoleEntity::getCode)
+                        .toList(),
+                parsed.name(),
+                user.getDocumentType(),
+                user.getDocumentNumber(),
+                user.getPhone(),
+                user.getBirthDate(),
+                user.getGender(),
+                user.getProfessionCode(),
+                user.getProfessionalRegistrationNumber(),
+                user.getProfessionalRegistrationType());
     }
 
     /**
@@ -201,18 +192,16 @@ public class UserService {
      */
     @SuppressWarnings("null")
     private UserEntity requireScopedManagedUser(UUID userId, InstitutionScope scope) {
-        UserEntity user = userRepository.findByIdAndInstitutionId(
-                userId, scope.institutionId())
-            .orElseThrow(() -> new ScopeViolationException(
-                "El usuario no existe o no pertenece a tu institucion."));
+        UserEntity user = userRepository
+                .findByIdAndInstitutionId(userId, scope.institutionId())
+                .orElseThrow(
+                        () -> new ScopeViolationException("El usuario no existe o no pertenece a tu institucion."));
 
         boolean privileged = userRepository.findRolesByUserId(userId).stream()
-            .map(RoleEntity::getCode)
-            .anyMatch(code -> SUPER_ADMIN_ROLE.equals(code)
-                || ADMIN_INSTITUTION_ROLE.equals(code));
+                .map(RoleEntity::getCode)
+                .anyMatch(code -> SUPER_ADMIN_ROLE.equals(code) || ADMIN_INSTITUTION_ROLE.equals(code));
         if (privileged) {
-            throw new ScopeViolationException(
-                "No tienes permiso para administrar a otro administrador.");
+            throw new ScopeViolationException("No tienes permiso para administrar a otro administrador.");
         }
         return user;
     }
@@ -222,8 +211,7 @@ public class UserService {
      * {@code INSTITUTION_WRITE}, cuyo alcance es global por diseno.
      */
     private UserEntity findById(UUID userId) {
-        return userRepository.findById(userId)
-            .orElseThrow(() -> new UserNotFoundException("El usuario no existe."));
+        return userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("El usuario no existe."));
     }
 
     private void replaceRoles(UUID userId, List<RoleEntity> roles) {
@@ -237,8 +225,7 @@ public class UserService {
         try {
             return UserEntity.Status.valueOf(status.trim().toUpperCase());
         } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException(
-                "Estado invalido. Usa ACTIVE o INACTIVE.");
+            throw new IllegalArgumentException("Estado invalido. Usa ACTIVE o INACTIVE.");
         }
     }
 
@@ -247,12 +234,11 @@ public class UserService {
         for (String code : roleCodes) {
             String normalized = code.trim().toUpperCase();
             if (SUPER_ADMIN_ROLE.equals(normalized)) {
-                throw new IllegalArgumentException(
-                    "El rol SUPER_ADMIN no se puede asignar desde la aplicacion.");
+                throw new IllegalArgumentException("El rol SUPER_ADMIN no se puede asignar desde la aplicacion.");
             }
-            RoleEntity role = roleRepository.findByCode(normalized)
-                .orElseThrow(() -> new RoleNotFoundException(
-                    "El rol " + normalized + " no esta configurado."));
+            RoleEntity role = roleRepository
+                    .findByCode(normalized)
+                    .orElseThrow(() -> new RoleNotFoundException("El rol " + normalized + " no esta configurado."));
             roles.add(role);
         }
         return roles;
@@ -261,21 +247,21 @@ public class UserService {
     @SuppressWarnings("null")
     private UserResponse toResponse(UserEntity user) {
         return new UserResponse(
-            user.getId(),
-            user.getEmail(),
-            user.getFullName(),
-            user.getInstitutionId(),
-            userRepository.findRolesByUserId(user.getId()).stream()
-                .map(RoleEntity::getCode)
-                .toList(),
-            user.getStatus().name(),
-            user.getDocumentType(),
-            user.getDocumentNumber(),
-            user.getPhone(),
-            user.getBirthDate(),
-            user.getGender(),
-            user.getProfessionCode(),
-            user.getProfessionalRegistrationNumber(),
-            user.getProfessionalRegistrationType());
+                user.getId(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getInstitutionId(),
+                userRepository.findRolesByUserId(user.getId()).stream()
+                        .map(RoleEntity::getCode)
+                        .toList(),
+                user.getStatus().name(),
+                user.getDocumentType(),
+                user.getDocumentNumber(),
+                user.getPhone(),
+                user.getBirthDate(),
+                user.getGender(),
+                user.getProfessionCode(),
+                user.getProfessionalRegistrationNumber(),
+                user.getProfessionalRegistrationType());
     }
 }

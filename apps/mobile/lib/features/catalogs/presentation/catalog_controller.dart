@@ -48,6 +48,18 @@ class CatalogController extends AsyncController {
     notifyListeners();
   }
 
+  /// Limpia el estado de la sesion (al cerrar sesion o cambiar de usuario).
+  void clearSession() {
+    _vaccines = const [];
+    _availableVaccines = const [];
+    institutionEnabled.clear();
+    doseOptions.clear();
+    query = '';
+    selectedCategory = null;
+    clearError();
+    notifyListeners();
+  }
+
   Future<void> load() => execute((token) async {
     _vaccines = await listVaccines(token);
     await _loadDoseOptions(token, _vaccines);
@@ -79,6 +91,50 @@ class CatalogController extends AsyncController {
         )
         .toList();
     await _loadDoseOptions(token, _vaccines);
+  });
+
+  /// Carga el catalogo efectivo de la institucion del actor: solo las vacunas
+  /// habilitadas para esa institucion. Es lo que el VACCINATOR/READ_ONLY puede
+  /// ver (y aplicar), en modo solo lectura.
+  Future<void> loadEffective() => execute((token) async {
+    final effective = await repository.listEffectiveCatalog(token);
+    _vaccines = effective
+        .map(
+          (item) => Vaccine(
+            id: item.vaccineId,
+            name: item.name,
+            code: item.code,
+            category: item.category,
+            maxDoses: item.maxDoses,
+            active: true,
+            version: item.version,
+          ),
+        )
+        .toList();
+    doseOptions
+      ..clear()
+      ..addEntries(
+        effective.map(
+          (item) => MapEntry(
+            item.vaccineId,
+            item.doses
+                .map(
+                  (dose) => VaccineOption(
+                    id: dose.id,
+                    vaccineId: item.vaccineId,
+                    fieldType: dose.fieldType,
+                    value: dose.value,
+                    displayName: dose.displayName,
+                    sortOrder: dose.sortOrder,
+                    isDefault: dose.isDefault,
+                    isActive: true,
+                    version: 0,
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+      );
   });
 
   /// Carga las vacunas globales activas que la institucion aun no tiene

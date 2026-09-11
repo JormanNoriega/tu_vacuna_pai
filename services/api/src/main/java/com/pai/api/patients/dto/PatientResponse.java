@@ -25,21 +25,15 @@ public record PatientResponse(
         List<GuardianDto> guardians,
         List<MedicalHistoryDto> medicalHistories) {
 
-    public record DemographicDto(String gender, String ethnicity, String educationLevel) {
-    }
+    public record DemographicDto(String gender, String ethnicity, String educationLevel) {}
 
-    public record ContactDto(UUID id, String type, String value, boolean primary) {
-    }
+    public record ContactDto(UUID id, String type, String value, boolean primary) {}
 
-    public record AddressDto(UUID id, String street, UUID municipalityId,
-            UUID departmentId, UUID countryId, boolean primary) {
-    }
+    public record AddressDto(
+            UUID id, String street, UUID municipalityId, UUID departmentId, UUID countryId, boolean primary) {}
 
-    public record GuardianDto(UUID id, String relationship, String fullName,
-            String documentType, String documentNumber, String phone) {
-    }
+    public record GuardianDto(
+            UUID id, String relationship, String fullName, String documentType, String documentNumber, String phone) {}
 
-    public record MedicalHistoryDto(UUID id, String condition, LocalDate diagnosedAt,
-            String notes) {
-    }
+    public record MedicalHistoryDto(UUID id, String condition, LocalDate diagnosedAt, String notes) {}
 }

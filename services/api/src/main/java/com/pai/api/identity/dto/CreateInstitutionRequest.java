@@ -16,5 +16,4 @@ public record CreateInstitutionRequest(
 
         @Min(value = 1, message = "La ventana offline debe ser mayor a 0.")
         @Max(value = 168, message = "La ventana offline no puede superar 168 horas.")
-        Short offlineWindowHours) {
-}
+        Short offlineWindowHours) {}

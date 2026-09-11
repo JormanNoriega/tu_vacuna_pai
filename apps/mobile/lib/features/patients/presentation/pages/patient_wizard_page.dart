@@ -370,6 +370,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: DropdownButtonFormField<String>(
@@ -543,6 +544,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
       ),
       const SizedBox(height: 16),
       Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: DropdownButtonFormField<String>(

@@ -1,10 +1,9 @@
 package com.pai.api.identity.service;
 
+import com.pai.api.identity.entity.InstitutionEntity;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-
-import com.pai.api.identity.entity.InstitutionEntity;
 
 /**
  * Resultado de autorizacion para un usuario autenticado, resuelto por Spring
@@ -30,8 +29,7 @@ public class AuthorizedUser {
             List<String> roles,
             List<String> permissions,
             Instant lastOnlineValidation) {
-        this(id, email, fullName, institution, roles, permissions,
-            lastOnlineValidation, null);
+        this(id, email, fullName, institution, roles, permissions, lastOnlineValidation, null);
     }
 
     public AuthorizedUser(
@@ -61,8 +59,7 @@ public class AuthorizedUser {
      */
     public AuthorizedUser withAccessToken(String accessToken) {
         return new AuthorizedUser(
-            id, email, fullName, institution, roles, permissions,
-            lastOnlineValidation, accessToken);
+                id, email, fullName, institution, roles, permissions, lastOnlineValidation, accessToken);
     }
 
     public UUID getId() {

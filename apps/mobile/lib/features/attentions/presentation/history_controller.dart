@@ -39,8 +39,8 @@ class HistoryController extends AsyncController {
         : await listPatientAttentions(token, patients.first.id);
   });
 
-  /// Limpia el resultado y el error (al cambiar de busqueda).
-  void reset() {
+  /// Limpia el resultado y el error (al cambiar de busqueda o de sesion).
+  void clearSession() {
     _patient = null;
     _history = const [];
     clearError();

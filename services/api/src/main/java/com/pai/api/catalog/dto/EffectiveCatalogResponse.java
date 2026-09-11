@@ -31,15 +31,8 @@ public record EffectiveCatalogResponse(List<EffectiveVaccine> vaccines) {
             boolean hasObservation,
             List<OptionItem> doses,
             List<OptionItem> pneumococcalTypes,
-            List<OptionItem> operationalOptions) {
-    }
+            List<OptionItem> operationalOptions) {}
 
     public record OptionItem(
-            UUID id,
-            String fieldType,
-            String value,
-            String displayName,
-            int sortOrder,
-            boolean isDefault) {
-    }
+            UUID id, String fieldType, String value, String displayName, int sortOrder, boolean isDefault) {}
 }

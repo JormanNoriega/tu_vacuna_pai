@@ -1,10 +1,9 @@
 package com.pai.api.patients.dto;
 
-import java.time.LocalDate;
-
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.time.LocalDate;
 
 /**
  * Actualiza la identidad del paciente (nombres, fecha de nacimiento y sexo).
@@ -23,11 +22,8 @@ public record UpdatePatientIdentityRequest(
         @NotNull(message = "La fecha de nacimiento es obligatoria.")
         LocalDate birthDate,
 
-        @NotBlank(message = "El sexo es obligatorio.")
-        String sex,
+        @NotBlank(message = "El sexo es obligatorio.") String sex,
 
         @NotBlank(message = "La justificacion es obligatoria.")
-        @Size(min = 5, max = 500,
-                message = "La justificacion debe tener entre 5 y 500 caracteres.")
-        String justification) {
-}
+        @Size(min = 5, max = 500, message = "La justificacion debe tener entre 5 y 500 caracteres.")
+        String justification) {}

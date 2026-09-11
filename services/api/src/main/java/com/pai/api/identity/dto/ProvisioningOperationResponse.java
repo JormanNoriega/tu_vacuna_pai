@@ -1,10 +1,9 @@
 package com.pai.api.identity.dto;
 
-import java.time.Instant;
-import java.util.UUID;
-
 import com.pai.api.identity.entity.ProvisioningOperationEntity;
 import com.pai.api.identity.entity.ProvisioningOperationStatus;
+import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Vista de auditoria de una operacion de aprovisionamiento: quien, cuando, que
@@ -26,17 +25,17 @@ public record ProvisioningOperationResponse(
 
     public static ProvisioningOperationResponse from(ProvisioningOperationEntity entity) {
         return new ProvisioningOperationResponse(
-            entity.getOperationId(),
-            entity.getAuthUserId(),
-            entity.getEmail(),
-            entity.getFullName(),
-            entity.getInstitutionId(),
-            entity.getRole(),
-            entity.getActorId(),
-            entity.getStatus(),
-            entity.getAttempts(),
-            entity.getError(),
-            entity.getCreatedAt(),
-            entity.getUpdatedAt());
+                entity.getOperationId(),
+                entity.getAuthUserId(),
+                entity.getEmail(),
+                entity.getFullName(),
+                entity.getInstitutionId(),
+                entity.getRole(),
+                entity.getActorId(),
+                entity.getStatus(),
+                entity.getAttempts(),
+                entity.getError(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt());
     }
 }

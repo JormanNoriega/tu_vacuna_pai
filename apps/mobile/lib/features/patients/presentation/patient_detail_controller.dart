@@ -119,7 +119,7 @@ class PatientDetailController extends AsyncController {
     return ok;
   }
 
-  void clear() {
+  void clearSession() {
     _profile = null;
     _municipalities = const [];
     clearError();

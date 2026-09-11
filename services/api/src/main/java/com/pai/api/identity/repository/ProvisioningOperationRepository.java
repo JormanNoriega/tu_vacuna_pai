@@ -1,17 +1,15 @@
 package com.pai.api.identity.repository;
 
+import com.pai.api.identity.entity.ProvisioningOperationEntity;
+import com.pai.api.identity.entity.ProvisioningOperationStatus;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.UUID;
-
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.pai.api.identity.entity.ProvisioningOperationEntity;
-import com.pai.api.identity.entity.ProvisioningOperationStatus;
 
 /**
  * Acceso a {@link ProvisioningOperationEntity}. Las transiciones de estado se
@@ -19,8 +17,7 @@ import com.pai.api.identity.entity.ProvisioningOperationStatus;
  * de modo que un reintento o un request concurrente nunca pisan un estado que
  * ya avanzo.
  */
-public interface ProvisioningOperationRepository
-        extends JpaRepository<ProvisioningOperationEntity, UUID> {
+public interface ProvisioningOperationRepository extends JpaRepository<ProvisioningOperationEntity, UUID> {
 
     /**
      * Transicion de estado con guarda. Devuelve 1 si el estado previo coincidia
@@ -55,7 +52,8 @@ public interface ProvisioningOperationRepository
             o.updatedAt = :updatedAt, o.error = NULL
         WHERE o.operationId = :operationId AND o.status IN :allowedFrom
         """)
-    int adoptAuthUser(@Param("operationId") UUID operationId,
+    int adoptAuthUser(
+            @Param("operationId") UUID operationId,
             @Param("allowedFrom") Collection<ProvisioningOperationStatus> allowedFrom,
             @Param("authUserId") UUID authUserId,
             @Param("updatedAt") Instant updatedAt);
@@ -72,7 +70,8 @@ public interface ProvisioningOperationRepository
         SET o.status = 'COMPLETED', o.updatedAt = :updatedAt
         WHERE o.operationId = :operationId AND o.status IN :allowedFrom
         """)
-    int markCompleted(@Param("operationId") UUID operationId,
+    int markCompleted(
+            @Param("operationId") UUID operationId,
             @Param("allowedFrom") Collection<ProvisioningOperationStatus> allowedFrom,
             @Param("updatedAt") Instant updatedAt);
 }

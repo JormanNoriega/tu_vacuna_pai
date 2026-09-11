@@ -385,6 +385,19 @@ idempotente y **respeta la autonomia de la institucion**:
   `includeDefaultConfig` es true).
 - Las opciones locales existentes nunca se sobrescriben.
 
+### Creacion de institucion
+
+- **Al crear una institucion**, el backend siembra automaticamente el catalogo
+  global activo habilitado (con su configuracion por defecto) en la **misma
+  transaccion** (`InstitutionService.create` -> `InstitutionVaccineService.seedInstitution`).
+  Asi toda institucion nueva ya trae vacunas para aplicar; luego deshabilita las
+  que no use.
+- Las instituciones creadas **antes** de esta regla se resolvieron con una
+  siembra puntual; ya no queda ninguna con **0 relaciones**, por lo que no existe
+  un backfill al arrancar. Para reintegrar el catalogo a una institucion que
+  quedo sin relaciones, el ADMIN_INSTITUTION usa el clonado manual
+  (`POST /institutions/{id}/vaccines/clone`).
+
 ## 6. Catalogo efectivo
 
 El backend devuelve el catalogo efectivo combinando:
@@ -418,6 +431,24 @@ ORDER BY sort_order ASC, display_name ASC;
 
 El servidor no confia en un `institutionId` enviado por el cliente sin validar
 identidad, permisos y scope.
+
+### 6.1 Carga en bloque (sin N+1)
+
+`EffectiveCatalogService.list` resuelve el catalogo con un numero fijo de
+consultas, independiente de cuantas vacunas tenga habilitada la institucion:
+
+1. relaciones habilitadas (`institution_vaccines`, 1 query);
+2. vacunas activas en bloque (`vaccines.findAllById`, 1 query);
+3. dosis/neumococo globales en bloque (`vaccine_options` por `vaccine_id IN (...)`,
+   1 query);
+4. opciones operativas institucionales en bloque (`institution_vaccine_options`
+   por `institution_id` + `vaccine_id IN (...)`, 1 query).
+
+Las opciones se agrupan en memoria por `vaccine_id`. Antes se hacia un
+`findById`/`findBy` por vacuna (N+1): con 31 vacunas eran ~98 round trips y, con
+la BD de Supabase a ~145 ms, superaba el timeout del cliente. `InstitutionVaccineService.list`
+(Inventario admin) tambien se paso a `findAllById`. Medido con un VACCINATOR real:
+~2 s para 31 vacunas (antes ~14 s).
 
 ## 7. API y permisos
 

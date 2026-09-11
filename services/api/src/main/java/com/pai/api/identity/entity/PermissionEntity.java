@@ -1,11 +1,10 @@
 package com.pai.api.identity.entity;
 
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.UUID;
 
 @Entity
 @Table(name = "permissions", schema = "app")
@@ -20,8 +19,7 @@ public class PermissionEntity {
     @Column(nullable = false)
     private String name;
 
-    protected PermissionEntity() {
-    }
+    protected PermissionEntity() {}
 
     public PermissionEntity(UUID id, String code, String name) {
         this.id = id;

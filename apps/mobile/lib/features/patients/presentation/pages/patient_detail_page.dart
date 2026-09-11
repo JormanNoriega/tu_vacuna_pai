@@ -58,7 +58,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
 
   @override
   void dispose() {
-    widget.controller.clear();
+    widget.controller.clearSession();
     super.dispose();
   }
 

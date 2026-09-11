@@ -1,8 +1,7 @@
 package com.pai.api.attentions.dto;
 
-import java.time.Instant;
-
 import jakarta.validation.constraints.Size;
+import java.time.Instant;
 
 /**
  * Modificacion de una atencion. Solo permitida en {@code DRAFT}/
@@ -15,5 +14,4 @@ public record UpdateAttentionRequest(
         @Size(max = 2000, message = "Las observaciones no pueden superar 2000 caracteres.")
         String observations,
 
-        long version) {
-}
+        long version) {}

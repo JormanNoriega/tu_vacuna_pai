@@ -1,10 +1,9 @@
 package com.pai.api.attentions.dto;
 
-import java.time.Instant;
-import java.util.UUID;
-
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Registro de una dosis aplicada (append-only). El backend toma el snapshot del
@@ -15,11 +14,9 @@ import jakarta.validation.constraints.Size;
  * se guarda {@code lotNumber} (texto).
  */
 public record RegisterDoseRequest(
-        @NotNull(message = "La vacuna es obligatoria.")
-        UUID vaccineId,
+        @NotNull(message = "La vacuna es obligatoria.") UUID vaccineId,
 
-        @NotNull(message = "La dosis es obligatoria.")
-        UUID doseOptionId,
+        @NotNull(message = "La dosis es obligatoria.") UUID doseOptionId,
 
         UUID pneumococcalTypeOptionId,
 
@@ -36,5 +33,4 @@ public record RegisterDoseRequest(
 
         UUID selectedDropperId,
 
-        UUID selectedObservationId) {
-}
+        UUID selectedObservationId) {}

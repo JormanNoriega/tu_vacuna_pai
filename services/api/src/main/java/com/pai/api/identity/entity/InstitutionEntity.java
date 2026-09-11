@@ -1,20 +1,22 @@
 package com.pai.api.identity.entity;
 
-import java.time.Instant;
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "institutions", schema = "app")
 public class InstitutionEntity {
 
-    public enum Status { ACTIVE, INACTIVE }
+    public enum Status {
+        ACTIVE,
+        INACTIVE
+    }
 
     @Id
     private UUID id;
@@ -38,11 +40,16 @@ public class InstitutionEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    protected InstitutionEntity() {
-    }
+    protected InstitutionEntity() {}
 
-    public InstitutionEntity(UUID id, String code, String name, Status status,
-            short offlineWindowHours, Instant createdAt, Instant updatedAt) {
+    public InstitutionEntity(
+            UUID id,
+            String code,
+            String name,
+            Status status,
+            short offlineWindowHours,
+            Instant createdAt,
+            Instant updatedAt) {
         this.id = id;
         this.code = code;
         this.name = name;

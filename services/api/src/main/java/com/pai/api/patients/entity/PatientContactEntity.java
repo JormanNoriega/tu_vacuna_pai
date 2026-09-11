@@ -1,19 +1,22 @@
 package com.pai.api.patients.entity;
 
-import java.time.Instant;
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
 
 /** Dato de contacto de un paciente (telefono, correo u otro). */
 @Entity
 @Table(name = "patient_contacts", schema = "app")
 public class PatientContactEntity {
 
-    public enum Type { PHONE, EMAIL, OTHER }
+    public enum Type {
+        PHONE,
+        EMAIL,
+        OTHER
+    }
 
     @Id
     private UUID id;
@@ -33,11 +36,9 @@ public class PatientContactEntity {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    protected PatientContactEntity() {
-    }
+    protected PatientContactEntity() {}
 
-    public PatientContactEntity(UUID id, UUID patientId, Type type, String value,
-            boolean primary, Instant now) {
+    public PatientContactEntity(UUID id, UUID patientId, Type type, String value, boolean primary, Instant now) {
         this.id = id;
         this.patientId = patientId;
         this.type = type.name();

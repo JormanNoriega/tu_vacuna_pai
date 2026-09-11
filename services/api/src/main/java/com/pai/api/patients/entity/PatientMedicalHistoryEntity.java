@@ -1,13 +1,12 @@
 package com.pai.api.patients.entity;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.UUID;
 
 /** Antecedente medico de un paciente. */
 @Entity
@@ -31,11 +30,10 @@ public class PatientMedicalHistoryEntity {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    protected PatientMedicalHistoryEntity() {
-    }
+    protected PatientMedicalHistoryEntity() {}
 
-    public PatientMedicalHistoryEntity(UUID id, UUID patientId, String condition,
-            LocalDate diagnosedAt, String notes, Instant now) {
+    public PatientMedicalHistoryEntity(
+            UUID id, UUID patientId, String condition, LocalDate diagnosedAt, String notes, Instant now) {
         this.id = id;
         this.patientId = patientId;
         this.condition = condition;

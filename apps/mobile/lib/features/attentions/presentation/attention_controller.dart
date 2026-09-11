@@ -48,6 +48,7 @@ class AttentionController extends AsyncController {
   List<GeoMunicipality> _municipalities = const [];
   Patient? _patient;
   Attention? _attention;
+  bool _effectiveCatalogLoaded = false;
 
   List<EffectiveVaccine> get effectiveVaccines =>
       List.unmodifiable(_effectiveVaccines);
@@ -59,11 +60,17 @@ class AttentionController extends AsyncController {
   Attention? get attention => _attention;
   List<AppliedDose> get doses => _attention?.doses ?? const [];
 
-  /// Carga el catalogo efectivo de la institucion (una sola vez).
+  /// True cuando el catalogo efectivo ya se intento cargar en esta sesion
+  /// (aunque haya venido vacio). Permite distinguir "cargando" de "sin
+  /// vacunas habilitadas".
+  bool get effectiveCatalogLoaded => _effectiveCatalogLoaded;
+
+  /// Carga el catalogo efectivo de la institucion (una sola vez por sesion).
   Future<void> loadEffectiveCatalog() async {
-    if (_effectiveVaccines.isNotEmpty) return;
+    if (_effectiveCatalogLoaded) return;
     await execute((token) async {
       _effectiveVaccines = await listEffectiveCatalog(token);
+      _effectiveCatalogLoaded = true;
     });
   }
 
@@ -257,6 +264,20 @@ class AttentionController extends AsyncController {
     _patient = null;
     _attention = null;
     _searchResults = const [];
+    clearError();
+    notifyListeners();
+  }
+
+  /// Limpia todo el estado de la sesion (al cerrar sesion o cambiar de
+  /// usuario): paciente, atencion, catalogo efectivo y geografia.
+  void clearSession() {
+    _patient = null;
+    _attention = null;
+    _searchResults = const [];
+    _effectiveVaccines = const [];
+    _effectiveCatalogLoaded = false;
+    _departments = const [];
+    _municipalities = const [];
     clearError();
     notifyListeners();
   }

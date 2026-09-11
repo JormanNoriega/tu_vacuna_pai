@@ -11,5 +11,4 @@ public record UpdatePatientDemographicsRequest(
         String ethnicity,
 
         @Size(max = 120, message = "La escolaridad no puede superar 120 caracteres.")
-        String educationLevel) {
-}
+        String educationLevel) {}

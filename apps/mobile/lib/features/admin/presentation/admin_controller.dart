@@ -202,5 +202,17 @@ class AdminController extends AsyncController {
     return result;
   }
 
+  /// Limpia el estado de la sesion (al cerrar sesion o cambiar de usuario).
+  void clearSession() {
+    _institutions = const [];
+    _admins = const [];
+    _adminsLoading = false;
+    _pendingOperationId = null;
+    _pendingEmail = null;
+    _pendingInstitutionId = null;
+    clearError();
+    notifyListeners();
+  }
+
   void _setError(String message) => setError(message);
 }

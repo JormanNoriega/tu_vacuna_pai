@@ -1,12 +1,5 @@
 package com.pai.api.identity.service;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.pai.api.identity.dto.MeResponse;
 import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.entity.PermissionEntity;
@@ -16,6 +9,11 @@ import com.pai.api.identity.repository.InstitutionRepository;
 import com.pai.api.identity.repository.UserRepository;
 import com.pai.api.shared.exceptions.UserNotActiveException;
 import com.pai.api.shared.exceptions.UserNotFoundException;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Autoridad de autorizacion de la aplicacion. Resuelve el estado vigente de un
@@ -31,9 +29,7 @@ public class IdentityService {
     private final UserRepository userRepository;
     private final InstitutionRepository institutionRepository;
 
-    public IdentityService(
-            UserRepository userRepository,
-            InstitutionRepository institutionRepository) {
+    public IdentityService(UserRepository userRepository, InstitutionRepository institutionRepository) {
         this.userRepository = userRepository;
         this.institutionRepository = institutionRepository;
     }
@@ -47,42 +43,34 @@ public class IdentityService {
     @Transactional(readOnly = true)
     @SuppressWarnings("null")
     public AuthorizedUser resolve(UUID userId) {
-        UserEntity user = userRepository.findById(userId)
-            .orElseThrow(() -> new UserNotFoundException(
-                "El usuario no existe o no esta configurado en la aplicacion."));
+        UserEntity user = userRepository
+                .findById(userId)
+                .orElseThrow(() ->
+                        new UserNotFoundException("El usuario no existe o no esta configurado en la aplicacion."));
 
         if (!user.isActive()) {
-            throw new UserNotActiveException(
-                "El usuario esta desactivado. No puede acceder a la aplicacion.");
+            throw new UserNotActiveException("El usuario esta desactivado. No puede acceder a la aplicacion.");
         }
 
-        InstitutionEntity institution =
-            institutionRepository.findById(user.getInstitutionId())
-                .orElseThrow(() -> new UserNotFoundException(
-                    "La institucion del usuario no existe o no esta configurada."));
+        InstitutionEntity institution = institutionRepository
+                .findById(user.getInstitutionId())
+                .orElseThrow(
+                        () -> new UserNotFoundException("La institucion del usuario no existe o no esta configurada."));
 
         if (!institution.isActive()) {
-            throw new UserNotActiveException(
-                "La institucion del usuario esta inactiva.");
+            throw new UserNotActiveException("La institucion del usuario esta inactiva.");
         }
 
         List<String> roles = userRepository.findRolesByUserId(userId).stream()
-            .map(RoleEntity::getCode)
-            .toList();
+                .map(RoleEntity::getCode)
+                .toList();
 
-        List<String> permissions =
-            userRepository.findPermissionsByUserId(userId).stream()
+        List<String> permissions = userRepository.findPermissionsByUserId(userId).stream()
                 .map(PermissionEntity::getCode)
                 .toList();
 
         return new AuthorizedUser(
-            user.getId(),
-            user.getEmail(),
-            user.getFullName(),
-            institution,
-            roles,
-            permissions,
-            Instant.now());
+                user.getId(), user.getEmail(), user.getFullName(), institution, roles, permissions, Instant.now());
     }
 
     /**
@@ -94,18 +82,18 @@ public class IdentityService {
         AuthorizedUser user = resolve(userId);
 
         MeResponse.InstitutionDto institution = new MeResponse.InstitutionDto(
-            user.getInstitution().getId(),
-            user.getInstitution().getCode(),
-            user.getInstitution().getName());
+                user.getInstitution().getId(),
+                user.getInstitution().getCode(),
+                user.getInstitution().getName());
 
         return new MeResponse(
-            user.getId(),
-            user.getEmail(),
-            user.getFullName(),
-            institution,
-            user.getRoles(),
-            user.getPermissions(),
-            user.getInstitution().getOfflineWindowHours(),
-            user.getLastOnlineValidation().toString());
+                user.getId(),
+                user.getEmail(),
+                user.getFullName(),
+                institution,
+                user.getRoles(),
+                user.getPermissions(),
+                user.getInstitution().getOfflineWindowHours(),
+                user.getLastOnlineValidation().toString());
     }
 }

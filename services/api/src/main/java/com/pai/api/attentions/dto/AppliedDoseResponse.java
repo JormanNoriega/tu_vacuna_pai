@@ -26,5 +26,4 @@ public record AppliedDoseResponse(
         String status,
         String cancelledReason,
         Instant cancelledAt,
-        Instant createdAt) {
-}
+        Instant createdAt) {}

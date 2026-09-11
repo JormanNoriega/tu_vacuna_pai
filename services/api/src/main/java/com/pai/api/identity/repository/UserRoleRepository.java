@@ -1,14 +1,12 @@
 package com.pai.api.identity.repository;
 
+import com.pai.api.identity.entity.UserRoleEntity;
+import com.pai.api.identity.entity.UserRoleId;
 import java.util.UUID;
-
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
-import com.pai.api.identity.entity.UserRoleEntity;
-import com.pai.api.identity.entity.UserRoleId;
 
 /**
  * Acceso a {@link UserRoleEntity}. La eliminacion de roles de un usuario solo
@@ -32,6 +30,5 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, UserRo
           AND EXISTS (SELECT 1 FROM UserEntity u
                       WHERE u.id = :userId AND u.institutionId = :institutionId)
         """)
-    int deleteByUserIdScoped(@Param("userId") UUID userId,
-            @Param("institutionId") UUID institutionId);
+    int deleteByUserIdScoped(@Param("userId") UUID userId, @Param("institutionId") UUID institutionId);
 }

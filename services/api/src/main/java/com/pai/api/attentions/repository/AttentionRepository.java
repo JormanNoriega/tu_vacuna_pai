@@ -1,14 +1,12 @@
 package com.pai.api.attentions.repository;
 
+import com.pai.api.attentions.entity.AttentionEntity;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
-import com.pai.api.attentions.entity.AttentionEntity;
 
 /**
  * Acceso a {@link AttentionEntity}. Regla de alcance: las atenciones se leen y
@@ -19,8 +17,7 @@ public interface AttentionRepository extends JpaRepository<AttentionEntity, UUID
 
     Optional<AttentionEntity> findByIdAndInstitutionId(UUID id, UUID institutionId);
 
-    List<AttentionEntity> findByInstitutionIdAndPatientIdOrderByAttentionDateDesc(
-            UUID institutionId, UUID patientId);
+    List<AttentionEntity> findByInstitutionIdAndPatientIdOrderByAttentionDateDesc(UUID institutionId, UUID patientId);
 
     /**
      * Ultimo consecutivo de la institucion. El servicio le suma uno para el

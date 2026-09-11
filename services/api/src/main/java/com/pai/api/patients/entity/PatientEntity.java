@@ -1,9 +1,5 @@
 package com.pai.api.patients.entity;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,6 +7,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * Paciente registrado por una institucion. El identificador es un UUID
@@ -26,9 +25,15 @@ import jakarta.persistence.Version;
 @Table(name = "patients", schema = "app")
 public class PatientEntity {
 
-    public enum Sex { MALE, FEMALE }
+    public enum Sex {
+        MALE,
+        FEMALE
+    }
 
-    public enum Status { ACTIVE, INACTIVE }
+    public enum Status {
+        ACTIVE,
+        INACTIVE
+    }
 
     @Id
     private UUID id;
@@ -68,12 +73,18 @@ public class PatientEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    protected PatientEntity() {
-    }
+    protected PatientEntity() {}
 
-    public PatientEntity(UUID id, UUID institutionId, String documentType,
-            String documentNumber, String firstName, String lastName,
-            LocalDate birthDate, Sex sex, Instant now) {
+    public PatientEntity(
+            UUID id,
+            UUID institutionId,
+            String documentType,
+            String documentNumber,
+            String firstName,
+            String lastName,
+            LocalDate birthDate,
+            Sex sex,
+            Instant now) {
         this.id = id;
         this.institutionId = institutionId;
         this.documentType = documentType;
@@ -87,8 +98,7 @@ public class PatientEntity {
         this.updatedAt = now;
     }
 
-    public void updateIdentity(String firstName, String lastName,
-            LocalDate birthDate, Sex sex, Instant now) {
+    public void updateIdentity(String firstName, String lastName, LocalDate birthDate, Sex sex, Instant now) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.birthDate = birthDate;

@@ -9,8 +9,7 @@ public class UserRoleId implements Serializable {
     private UUID userId;
     private UUID roleId;
 
-    public UserRoleId() {
-    }
+    public UserRoleId() {}
 
     public UserRoleId(UUID userId, UUID roleId) {
         this.userId = userId;

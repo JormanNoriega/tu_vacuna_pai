@@ -8,40 +8,42 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
+import com.pai.api.catalog.service.InstitutionVaccineService;
 import com.pai.api.identity.dto.CreateInstitutionRequest;
 import com.pai.api.identity.dto.InstitutionResponse;
 import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.repository.InstitutionRepository;
 import com.pai.api.shared.exceptions.InstitutionCodeAlreadyExistsException;
 import com.pai.api.shared.exceptions.InstitutionNotFoundException;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 class InstitutionServiceTest {
 
+    private static final UUID ACTOR_ID = UUID.randomUUID();
+
     private InstitutionRepository institutionRepository;
+    private InstitutionVaccineService institutionVaccineService;
     private InstitutionService service;
 
     @BeforeEach
     void setUp() {
         institutionRepository = mock(InstitutionRepository.class);
-        service = new InstitutionService(institutionRepository);
+        institutionVaccineService = mock(InstitutionVaccineService.class);
+        service = new InstitutionService(institutionRepository, institutionVaccineService);
     }
 
     @Test
     void create_savesActiveInstitutionWithDefaults() {
         when(institutionRepository.findByCode("HOSP-A")).thenReturn(Optional.empty());
-        when(institutionRepository.save(any(InstitutionEntity.class)))
-            .thenAnswer(inv -> inv.getArgument(0));
+        when(institutionRepository.save(any(InstitutionEntity.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        InstitutionResponse result = service.create(
-            new CreateInstitutionRequest(" hosp-a ", " Hospital A ", null));
+        InstitutionResponse result =
+                service.create(ACTOR_ID, new CreateInstitutionRequest(" hosp-a ", " Hospital A ", null));
 
         assertThat(result.code()).isEqualTo("HOSP-A");
         assertThat(result.name()).isEqualTo("Hospital A");
@@ -51,32 +53,39 @@ class InstitutionServiceTest {
     }
 
     @Test
+    void create_seedsInstitutionCatalog() {
+        when(institutionRepository.findByCode("HOSP-A")).thenReturn(Optional.empty());
+        when(institutionRepository.save(any(InstitutionEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        InstitutionResponse result =
+                service.create(ACTOR_ID, new CreateInstitutionRequest("HOSP-A", "Hospital A", null));
+
+        verify(institutionVaccineService).seedInstitution(result.id(), ACTOR_ID);
+    }
+
+    @Test
     void create_usesProvidedOfflineWindow() {
         when(institutionRepository.findByCode("HOSP-A")).thenReturn(Optional.empty());
-        when(institutionRepository.save(any(InstitutionEntity.class)))
-            .thenAnswer(inv -> inv.getArgument(0));
+        when(institutionRepository.save(any(InstitutionEntity.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        InstitutionResponse result = service.create(
-            new CreateInstitutionRequest("HOSP-A", "Hospital A", (short) 48));
+        InstitutionResponse result =
+                service.create(ACTOR_ID, new CreateInstitutionRequest("HOSP-A", "Hospital A", (short) 48));
 
         assertThat(result.offlineWindowHours()).isEqualTo((short) 48);
     }
 
     @Test
     void create_rejectsDuplicateCode() {
-        when(institutionRepository.findByCode("HOSP-A"))
-            .thenReturn(Optional.of(entity("HOSP-A")));
+        when(institutionRepository.findByCode("HOSP-A")).thenReturn(Optional.of(entity("HOSP-A")));
 
-        assertThatThrownBy(() -> service.create(
-            new CreateInstitutionRequest("HOSP-A", "Hospital A", null)))
-            .isInstanceOf(InstitutionCodeAlreadyExistsException.class);
+        assertThatThrownBy(() -> service.create(ACTOR_ID, new CreateInstitutionRequest("HOSP-A", "Hospital A", null)))
+                .isInstanceOf(InstitutionCodeAlreadyExistsException.class);
         verify(institutionRepository, never()).save(any(InstitutionEntity.class));
     }
 
     @Test
     void list_returnsAllInstitutionsOrdered() {
-        when(institutionRepository.findAllByOrderByNameAsc())
-            .thenReturn(List.of(entity("HOSP-A"), entity("HOSP-B")));
+        when(institutionRepository.findAllByOrderByNameAsc()).thenReturn(List.of(entity("HOSP-A"), entity("HOSP-B")));
 
         List<InstitutionResponse> result = service.list();
 
@@ -86,10 +95,8 @@ class InstitutionServiceTest {
     @Test
     void updateStatus_activatesOrDeactivates() {
         InstitutionEntity entity = entity("HOSP-A");
-        when(institutionRepository.findById(entity.getId()))
-            .thenReturn(Optional.of(entity));
-        when(institutionRepository.save(any(InstitutionEntity.class)))
-            .thenAnswer(inv -> inv.getArgument(0));
+        when(institutionRepository.findById(entity.getId())).thenReturn(Optional.of(entity));
+        when(institutionRepository.save(any(InstitutionEntity.class))).thenAnswer(inv -> inv.getArgument(0));
 
         InstitutionResponse result = service.updateStatus(entity.getId(), "INACTIVE");
 
@@ -101,27 +108,23 @@ class InstitutionServiceTest {
         UUID id = UUID.randomUUID();
         when(institutionRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.updateStatus(id, "ACTIVE"))
-            .isInstanceOf(InstitutionNotFoundException.class);
+        assertThatThrownBy(() -> service.updateStatus(id, "ACTIVE")).isInstanceOf(InstitutionNotFoundException.class);
     }
 
     @Test
     void updateStatus_rejectsInvalidStatus() {
         InstitutionEntity entity = entity("HOSP-A");
-        when(institutionRepository.findById(entity.getId()))
-            .thenReturn(Optional.of(entity));
+        when(institutionRepository.findById(entity.getId())).thenReturn(Optional.of(entity));
 
         assertThatThrownBy(() -> service.updateStatus(entity.getId(), "BANANA"))
-            .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void updateConfig_updatesOfflineWindow() {
         InstitutionEntity entity = entity("HOSP-A");
-        when(institutionRepository.findById(entity.getId()))
-            .thenReturn(Optional.of(entity));
-        when(institutionRepository.save(any(InstitutionEntity.class)))
-            .thenAnswer(inv -> inv.getArgument(0));
+        when(institutionRepository.findById(entity.getId())).thenReturn(Optional.of(entity));
+        when(institutionRepository.save(any(InstitutionEntity.class))).thenAnswer(inv -> inv.getArgument(0));
 
         InstitutionResponse result = service.updateConfig(entity.getId(), (short) 48);
 
@@ -133,24 +136,28 @@ class InstitutionServiceTest {
         UUID id = UUID.randomUUID();
         when(institutionRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.updateConfig(id, (short) 48))
-            .isInstanceOf(InstitutionNotFoundException.class);
+        assertThatThrownBy(() -> service.updateConfig(id, (short) 48)).isInstanceOf(InstitutionNotFoundException.class);
     }
 
     @Test
     void updateConfig_rejectsOutOfRange() {
         InstitutionEntity entity = entity("HOSP-A");
-        when(institutionRepository.findById(entity.getId()))
-            .thenReturn(Optional.of(entity));
+        when(institutionRepository.findById(entity.getId())).thenReturn(Optional.of(entity));
 
         assertThatThrownBy(() -> service.updateConfig(entity.getId(), (short) 0))
-            .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.updateConfig(entity.getId(), (short) 200))
-            .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     private InstitutionEntity entity(String code) {
-        return new InstitutionEntity(UUID.randomUUID(), code, "Inst " + code,
-            InstitutionEntity.Status.ACTIVE, (short) 72, Instant.now(), Instant.now());
+        return new InstitutionEntity(
+                UUID.randomUUID(),
+                code,
+                "Inst " + code,
+                InstitutionEntity.Status.ACTIVE,
+                (short) 72,
+                Instant.now(),
+                Instant.now());
     }
 }
