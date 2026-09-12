@@ -43,6 +43,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import tools.jackson.databind.ObjectMapper;
 
 class AttentionServiceTest {
 
@@ -88,7 +89,8 @@ class AttentionServiceTest {
                 identity,
                 dataScope,
                 audit,
-                processedOperations);
+                processedOperations,
+                new ObjectMapper());
     }
 
     private InstitutionEntity institution() {
@@ -177,7 +179,7 @@ class AttentionServiceTest {
                         any(),
                         any(),
                         any());
-        verify(processedOperations).record(eq(OPERATION_ID), eq("CREATE_ATTENTION"), any(), any());
+        verify(processedOperations).record(eq(OPERATION_ID), eq("CREATE_ATTENTION"), any(), any(), any(), any());
     }
 
     @Test

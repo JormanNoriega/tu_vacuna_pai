@@ -73,8 +73,11 @@ public class AttentionController {
 
     @PostMapping("/{id}/complete")
     @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
-    public ResponseEntity<AttentionResponse> complete(Authentication authentication, @PathVariable UUID id) {
-        return ResponseEntity.ok(service.complete(actorId(authentication), id));
+    public ResponseEntity<AttentionResponse> complete(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @RequestHeader(value = "Idempotency-Key", required = false) String operationId) {
+        return ResponseEntity.ok(service.complete(actorId(authentication), operationId, id));
     }
 
     @PostMapping("/{id}/cancel")

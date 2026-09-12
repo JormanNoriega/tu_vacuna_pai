@@ -1,6 +1,6 @@
 # Implementación del Motor Offline (Fase 3)
 
-- Estado: Plan aprobado (decisiones D1–D12 cerradas)
+- Estado: Plan aprobado. Hito 1 (motor offline móvil) y Hito 2 (backend) implementados.
 - Fecha: 2026-09-11
 - Autoridad semántica: [`sync-contract.md`](sync-contract.md)
 - Contrato HTTP: [`docs/api/openapi.yaml`](../api/openapi.yaml) (`/sync/push`, `/sync/pull`, `SyncOperation`, `SyncPushResponse`, `SyncPullResponse`)
@@ -28,13 +28,14 @@ operaciones clínicas del `VACCINATOR` es offline; el resto es online-only.
 | `VACCINATOR` clínico online-only: `UPDATE_PATIENT_CONTACT`, `CANCEL_ATTENTION`, `CANCEL_APPLIED_DOSE` | **Online** | `offline_policy.dart:32-50` |
 | `READ_ONLY` | Solo lectura local (sin escritura) | `architecture.md:401, 425` |
 
-Hoy el motor offline no existe:
+Hoy el motor offline móvil ya existe (Hito 1); el backend aún no expone sync:
 
 - El móvil tiene Drift cifrado (`apps/mobile/lib/core/storage/app_database.dart`,
-  `schemaVersion: 4`) pero **solo cachea** usuario, instituciones, usuarios,
-  metadatos y catálogo de vacunas. No hay tablas clínicas ni outbox.
-- `offline_policy.dart:32-50` marca **todas** las operaciones clínicas con
-  `offlineAuthorized: false`.
+  `schemaVersion: 5`) con tablas clínicas (`PatientsLocal`, `AttentionsLocal`,
+  `AppliedDosesLocal`) y outbox (`SyncOutbox`, `SyncOutboxDependencies`), además
+  del módulo `lib/core/synchronization/` (`SyncEngine`, `SyncScheduler`,
+  `SyncOutboxRepository`, `ClinicalOfflineRepository`).
+- `offline_policy.dart` ya habilita `offlineAuthorized: true` en la cadena MVP.
 - El backend tiene idempotencia (`processed_operations`, V8) y `sync_scopes`
   (V1), pero **no** tiene controladores `/sync/push` ni `/sync/pull`.
 
@@ -72,8 +73,9 @@ Las dependencias son un asunto exclusivo del cliente (orden topológico del batc
 
 **Incluye**
 
-- Backend: `/sync/push`, `/sync/pull` (con sección `catalogs`), conflictos/merge
-  y auditoría de operaciones sincronizadas.
+- Backend: `/sync/push`, `/sync/pull` (cursor inclusivo sobre
+  `processed_operations` enriquecida) y registro de auditoría de las operaciones
+  sincronizadas.
 - Móvil: tablas Drift clínicas + outbox, `SyncEngine`/`SyncScheduler`, clonado de
   catálogos, repositorios local-first, proyección de estado de sync en UI.
 - Habilitar `offlineAuthorized: true` para las operaciones de la cadena MVP.
@@ -99,71 +101,108 @@ Las dependencias son un asunto exclusivo del cliente (orden topológico del batc
 Paquete objetivo: `com.pai.api.synchronization` (hoy solo tiene `entity`,
 `repository` y `service/ProcessedOperationsService`).
 
-### B1. `SyncController`
+> **Decisiones de implementación cerradas (2026-09-11).** Corrigen supuestos del
+> plan original tras analizar el estado real del backend:
+>
+> - El pull se construye **enriqueciendo `processed_operations`** con
+>   `institution_id` y el `payload` original del request (V11); no se usa
+>   `audit_events` como fuente. El `sync_sequence` ya existe pero no estaba
+>   mapeado en la entidad.
+> - `COMPLETE_ATTENTION` se vuelve idempotente añadiendo `operationId` a
+>   `AttentionService.complete` (hoy no registra en `processed_operations`, por lo
+>   que un reintento fallaba con `INVALID_STATE`).
+> - La sección `catalogs` del pull se **difiere**: `SyncPullResponse` en
+>   `openapi.yaml` solo define `operations` + `nextCursor`, el móvil tolera su
+>   ausencia y ya existe `/catalogs/effective`.
+> - Los endpoints `/conflicts` y `/conflicts/{id}/resolve` se **difieren**; en
+>   este hito el push solo crea el `PatientMergeRequest` en `PENDING_REVIEW`.
+> - El scope del pull es la **institución del actor** (`DataScope`); el scope
+>   granular de `sync_scopes` (municipio/departamento/ALL) queda para después.
+> - `accepted[]` devuelve **`operation_id`** (no el response embebido), conforme a
+>   `openapi.yaml:819-828`.
 
-`com.pai.api.synchronization.controller.SyncController`, base `/api/v1/sync`:
+### B1. DTOs y `SyncController`
 
-- `POST /push` → `SyncPushRequest` → `SyncPushResponse`.
-- `GET /pull?since={cursor}&limit={n}` → `SyncPullResponse`.
-- `@PreAuthorize` de lectura/escritura de atención y paciente según comando.
-- DTOs según `openapi.yaml:781-838`.
+- `dto/`: `SyncOperation`, `SyncPushRequest`, `SyncPushResponse` (+
+  `RejectedOperation`), `SyncPullResponse` — records según `openapi.yaml:781-838`.
+- `controller/SyncController`, base `/api/v1/sync`:
+  - `POST /push` → `SyncPushRequest` → `SyncPushResponse`.
+  - `GET /pull?since={cursor}&limit={n}` → `SyncPullResponse`.
+  - Solo exige autenticación; el permiso se valida **por comando** dentro del
+    servicio (para poder rechazar con `PERMISSION_DENIED` sin abortar el batch).
+  - Devuelve DTOs (cumple `ArchitectureTest`).
 
 ### B2. `SyncPushService`
 
-- Procesa `operations` en el orden recibido (topológico; el cliente ya ordenó).
-- Por operación:
-  1. Valida dependencias presentes (`DEPENDENCY_NOT_FOUND`/`DEPENDENCY_FAILED`).
-  2. Idempotencia: `ProcessedOperationsService.find(operationId, ...)`; si existe,
-     devuelve la respuesta original como `accepted`.
-  3. Valida scope con `app.sync_scopes` (`architecture.md` §11.8).
-  4. Despacha por `commandType`.
-  5. `ProcessedOperationsService.record(...)` con la respuesta.
-- Devuelve `accepted[]` y `rejected[]` con `RejectedOperation.reason`.
+- No es `@Transactional` a nivel de batch: cada comando se aplica en la
+  transacción propia del servicio de dominio (atomicidad por operación).
+- Procesa `operations` en el orden recibido (el cliente ya envía orden
+  topológico) y valida dependencias:
+  - ausente del batch y no procesada antes → `DEPENDENCY_NOT_FOUND`;
+  - rechazada dentro del mismo batch → `DEPENDENCY_FAILED`.
+- Idempotencia: `ProcessedOperationsService.find(operationId, ...)`; si existe,
+  devuelve `accepted` sin reprocesar.
+- Verifica permiso del comando resuelto (`AuthorizedUser.getPermissions()`); si
+  falta → `PERMISSION_DENIED`.
+- Despacha por `commandType` y mapea excepciones de dominio a `reason`.
+- Devuelve `accepted[]` y `rejected[]` con `RejectedOperation.reason`/`error`.
 
 ### B3. Command handlers (reutilizan servicios existentes)
 
-Mapea `payload` (JSON libre) a los DTOs existentes:
+Mapea `payload` (JSON libre) a los DTOs existentes con `ObjectMapper`; **no
+reimplementa reglas de dominio**.
 
 | `command_type` | Servicio reutilizado |
 | --- | --- |
 | `CREATE_PATIENT` | `PatientService.create(actorId, operationId, CreatePatientRequest)` |
 | `CREATE_ATTENTION` | `AttentionService.create(actorId, operationId, CreateAttentionRequest)` |
-| `REGISTER_APPLIED_DOSE` | `AttentionService.registerDose(actorId, operationId, id, RegisterDoseRequest)` |
-| `COMPLETE_ATTENTION` | `AttentionService.complete(actorId, id)` |
+| `REGISTER_APPLIED_DOSE` | `AttentionService.registerDose(actorId, operationId, attentionId, RegisterDoseRequest)` |
+| `COMPLETE_ATTENTION` | `AttentionService.complete(actorId, operationId, attentionId)` |
 
+- `REGISTER_APPLIED_DOSE` toma `attentionId` del `payload` (no viaja en la URL).
+- **IDs de cliente**: el servidor respeta el `aggregate_id` del cliente como PK
+  del paciente/atención/dosis (`PatientService.create`, `AttentionService.create`
+  y `registerDose` admiten un UUID opcional). Sin esto, el pull generaría un
+  agregado con otro id y el working set local duplicaría la entidad. En el camino
+  REST directo el id llega `null` y el servidor genera el UUID.
+- El `payload` registrado de la dosis incluye `attentionId` (el DTO REST
+  `RegisterDoseRequest` no lo tiene) para que el cliente pueda aplicar el pull.
 - `DUPLICATE_BUSINESS_IDENTITY` en `CREATE_PATIENT` → crear `PatientMergeRequest`
-  y rechazar la operación con esa razón (D11).
-- Registrar auditoría en `app.audit_events` con `client_operation_id`.
+  `PENDING_REVIEW` (deduplicando por institución+documento) y rechazar con esa
+  razón (D11).
+- Auditoría: la registran los propios servicios de dominio (`audit_events`).
 
 ### B4. `SyncPullService`
 
 - Cursor compuesto `"{sync_sequence}|{created_at_iso}"`; consulta **inclusiva**
   sobre `sync_sequence` (`sync-contract.md` §Cursor).
-- Fuente: `app.processed_operations` con `sync_sequence > cursor`, filtrado por
-  scope del actor.
-- Devuelve `operations[]` + `nextCursor` + sección `catalogs` (B5).
+- Fuente: `app.processed_operations` con `institution_id` del actor y
+  `sync_sequence > cursor`, ordenado por `sync_sequence`, con `limit` (default
+  500). Sin sección `catalogs` (diferida).
+- Devuelve `operations[]` reconstruidos con el `payload` original + `nextCursor`.
 
-### B5. Sección `catalogs` en el pull
+### B5. Sección `catalogs` en el pull (diferida)
 
-- DTO `CatalogSnapshot`: geo (países/departamentos/municipios) + catálogo
-  efectivo de vacunas de la institución.
-- Extensible: en Fase 2 se agregan los catálogos nuevos sin cambiar el contrato
-  de operaciones.
-- Versionado por `catalogVersion` para que el cliente no recargue si no cambió.
+- El móvil ya obtiene catálogos por `/catalogs/effective` y su `catalogsApplier`
+  es opcional. Se documenta como pendiente en el backlog; cuando se implemente,
+  `SyncPullResponse` ganará la sección sin romper `operations`.
 
 ### B6. Conflictos y merge
 
-- Migración nueva: tabla `app.patient_merge_requests` (`id`, `source_patient_id`,
-  `target_patient_id`, `institution_id`, `status`, `created_at`, `resolved_at`,
-  `resolved_by`).
-- `GET /conflicts` (ADMIN_INSTITUTION) y endpoint de resolución, según
-  `openapi.yaml:518-525, 839-845`.
-- La resolución es online (no entra al outbox).
+- La tabla `app.patient_merge_requests` **ya existe** (`V9__create_attentions.sql:113`);
+  no requiere migración nueva.
+- En este hito solo se **crea** el registro al detectar duplicado
+  (`duplicate_patient_id` = paciente existente, `canonical_patient_id` = null,
+  `status` = `PENDING_REVIEW`).
+- `GET /conflicts` y la resolución online quedan en el backlog.
 
-### B7. Migración
+### B7. Migración `V11__enrich_processed_operations.sql`
 
-- `V11__create_patient_merge_requests.sql` (la única tabla faltante; el registro
-  temporal de operaciones ya existe).
+- `ALTER TABLE app.processed_operations`:
+  - `ADD COLUMN institution_id UUID` (+ FK a `institutions`, índice);
+  - `ADD COLUMN payload JSONB` (payload original del request, para el pull);
+  - backfill de `institution_id` desde `patients`/`attentions`/`applied_doses`
+    por `aggregate_id`; backfill de `payload` con `'{}'`.
 - No crear `sync_operations`/`sync_operation_dependencies`.
 
 ---
@@ -286,7 +325,7 @@ dosis) creada offline debe sincronizar y no duplicarse al reintentar.
 ## 7. Verificación
 
 - `flutter analyze` y `flutter test` (mobile).
-- `gradlew test` (backend).
+- `services/api/mvnw.cmd test` (backend).
 - **Pruebas espejo** Dart + Java con el mismo nombre (`sync-contract.md:305-319`):
   - `rejects_operation_without_accepted_dependency`
   - `replays_same_operation_id_returns_original_response`
@@ -329,4 +368,8 @@ dosis) creada offline debe sincronizar y no duplicarse al reintentar.
   régimen/EPS, comuna, área, autorizaciones, contraindicaciones/reacciones,
   condición de usuaria, condiciones especiales, madre/cuidador completos).
 - Campos de dosis: `syringeLot`, `diluent`, `vialCount`, `customObservation`.
+- Sección `catalogs` en `SyncPullResponse` y su `catalogsApplier` en el móvil.
+- `GET /conflicts` y `/conflicts/{id}/resolve` (resolución online por
+  `ADMIN_INSTITUTION`).
+- Scope granular de `sync_scopes` (municipio/departamento/ALL) en el pull.
 - Plan e implementación del wizard "Nueva atención" de 4 pasos sobre este motor.

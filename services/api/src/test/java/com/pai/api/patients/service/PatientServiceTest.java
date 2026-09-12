@@ -159,7 +159,7 @@ class PatientServiceTest {
                         any(),
                         eq(UUID.fromString(OPERATION_ID)),
                         any());
-        verify(processedOperations).record(eq(OPERATION_ID), eq("CREATE_PATIENT"), any(), any());
+        verify(processedOperations).record(eq(OPERATION_ID), eq("CREATE_PATIENT"), any(), any(), any(), any());
     }
 
     @Test

@@ -33,10 +33,13 @@ import com.pai.api.patients.repository.PatientRepository;
 import com.pai.api.synchronization.service.ProcessedOperationsService;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Gestion clinica de atenciones y dosis aplicadas.
@@ -73,6 +76,7 @@ public class AttentionService {
     private final DataScope dataScope;
     private final AuditService audit;
     private final ProcessedOperationsService processedOperations;
+    private final ObjectMapper mapper;
 
     public AttentionService(
             AttentionRepository attentions,
@@ -85,7 +89,8 @@ public class AttentionService {
             IdentityService identity,
             DataScope dataScope,
             AuditService audit,
-            ProcessedOperationsService processedOperations) {
+            ProcessedOperationsService processedOperations,
+            ObjectMapper mapper) {
         this.attentions = attentions;
         this.doses = doses;
         this.patients = patients;
@@ -97,10 +102,22 @@ public class AttentionService {
         this.dataScope = dataScope;
         this.audit = audit;
         this.processedOperations = processedOperations;
+        this.mapper = mapper;
     }
 
     @Transactional
     public AttentionResponse create(UUID actorId, String operationId, CreateAttentionRequest request) {
+        return create(actorId, operationId, null, request);
+    }
+
+    /**
+     * Crea una atencion. Para el camino offline-first, {@code attentionId} es el
+     * {@code aggregate_id} del cliente y el servidor lo respeta como PK; en el
+     * camino REST directo llega {@code null} y el servidor genera el UUID.
+     */
+    @Transactional
+    public AttentionResponse create(
+            UUID actorId, String operationId, UUID attentionId, CreateAttentionRequest request) {
         var previous = processedOperations.find(operationId, AttentionResponse.class);
         if (previous.isPresent()) {
             return previous.get();
@@ -115,7 +132,7 @@ public class AttentionService {
         long consecutive = attentions.maxConsecutive(institutionId) + 1;
 
         AttentionEntity attention = attentions.save(new AttentionEntity(
-                UUID.randomUUID(),
+                attentionId != null ? attentionId : UUID.randomUUID(),
                 request.patientId(),
                 actor.getId(),
                 institutionId,
@@ -135,7 +152,7 @@ public class AttentionService {
                 attention.getId(),
                 parseOperationId(operationId),
                 response);
-        processedOperations.record(operationId, "CREATE_ATTENTION", attention.getId(), response);
+        processedOperations.record(operationId, "CREATE_ATTENTION", attention.getId(), institutionId, request, response);
         return response;
     }
 
@@ -184,6 +201,16 @@ public class AttentionService {
 
     @Transactional
     public AttentionResponse complete(UUID actorId, UUID attentionId) {
+        return complete(actorId, null, attentionId);
+    }
+
+    @Transactional
+    public AttentionResponse complete(UUID actorId, String operationId, UUID attentionId) {
+        var previous = processedOperations.find(operationId, AttentionResponse.class);
+        if (previous.isPresent()) {
+            return previous.get();
+        }
+
         AuthorizedUser actor = identity.resolve(actorId);
         AttentionEntity attention = requireScoped(actor, attentionId);
         requireEditable(attention);
@@ -199,7 +226,14 @@ public class AttentionService {
                 AuditAction.ATTENTION_COMPLETED,
                 RESOURCE_TYPE_ATTENTION,
                 attentionId,
-                null,
+                parseOperationId(operationId),
+                response);
+        processedOperations.record(
+                operationId,
+                "COMPLETE_ATTENTION",
+                attentionId,
+                attention.getInstitutionId(),
+                Map.of(),
                 response);
         return response;
     }
@@ -231,6 +265,17 @@ public class AttentionService {
     @Transactional
     public AppliedDoseResponse registerDose(
             UUID actorId, String operationId, UUID attentionId, RegisterDoseRequest request) {
+        return registerDose(actorId, operationId, attentionId, null, request);
+    }
+
+    /**
+     * Registra una dosis aplicada. Para el camino offline-first, {@code doseId}
+     * es el {@code aggregate_id} del cliente y el servidor lo respeta como PK; en
+     * el camino REST directo llega {@code null} y el servidor genera el UUID.
+     */
+    @Transactional
+    public AppliedDoseResponse registerDose(
+            UUID actorId, String operationId, UUID attentionId, UUID doseId, RegisterDoseRequest request) {
         var previous = processedOperations.find(operationId, AppliedDoseResponse.class);
         if (previous.isPresent()) {
             return previous.get();
@@ -268,7 +313,7 @@ public class AttentionService {
         Instant applicationDate = request.applicationDate() != null ? request.applicationDate() : now;
 
         AppliedDoseEntity dose = doses.save(new AppliedDoseEntity(
-                UUID.randomUUID(),
+                doseId != null ? doseId : UUID.randomUUID(),
                 attentionId,
                 vaccine.getId(),
                 request.lotId(),
@@ -301,7 +346,11 @@ public class AttentionService {
                 dose.getId(),
                 parseOperationId(operationId),
                 response);
-        processedOperations.record(operationId, "REGISTER_APPLIED_DOSE", dose.getId(), response);
+        // El payload del comando conserva attentionId (no forma parte del DTO
+        // REST) para que /sync/pull pueda reconstruir la operacion.
+        Map<String, Object> commandPayload = doseCommandPayload(attentionId, request);
+        processedOperations.record(
+                operationId, "REGISTER_APPLIED_DOSE", dose.getId(), institutionId, commandPayload, response);
         return response;
     }
 
@@ -409,6 +458,13 @@ public class AttentionService {
 
     private String label(ResolvedOption option) {
         return option == null ? null : option.displayName();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> doseCommandPayload(UUID attentionId, RegisterDoseRequest request) {
+        Map<String, Object> payload = new LinkedHashMap<>(mapper.convertValue(request, Map.class));
+        payload.put("attentionId", attentionId);
+        return payload;
     }
 
     private String blankToNull(String value) {

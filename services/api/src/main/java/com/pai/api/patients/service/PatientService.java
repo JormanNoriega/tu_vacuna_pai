@@ -85,6 +85,18 @@ public class PatientService {
 
     @Transactional
     public PatientResponse create(UUID actorId, String operationId, CreatePatientRequest request) {
+        return create(actorId, operationId, null, request);
+    }
+
+    /**
+     * Alta de paciente. Para el camino offline-first, {@code patientId} es el
+     * {@code aggregate_id} generado por el cliente y el servidor lo respeta como
+     * PK para que el pull reconcilie el mismo agregado; en el camino REST directo
+     * llega {@code null} y el servidor genera el UUID.
+     */
+    @Transactional
+    public PatientResponse create(
+            UUID actorId, String operationId, UUID patientId, CreatePatientRequest request) {
         var previous = processedOperations.find(operationId, PatientResponse.class);
         if (previous.isPresent()) {
             return previous.get();
@@ -100,12 +112,17 @@ public class PatientService {
 
         if (patients.existsByInstitutionIdAndDocumentTypeAndDocumentNumber(
                 institutionId, documentType, documentNumber)) {
-            throw new PatientAlreadyExistsException("Ya existe un paciente con ese documento en la institucion.");
+            UUID existingId = patients
+                    .findByInstitutionIdAndDocumentTypeAndDocumentNumber(institutionId, documentType, documentNumber)
+                    .map(PatientEntity::getId)
+                    .orElse(null);
+            throw new PatientAlreadyExistsException(
+                    "Ya existe un paciente con ese documento en la institucion.", existingId);
         }
 
         Instant now = Instant.now();
         PatientEntity patient = patients.save(new PatientEntity(
-                UUID.randomUUID(),
+                patientId != null ? patientId : UUID.randomUUID(),
                 institutionId,
                 documentType,
                 documentNumber,
@@ -130,7 +147,7 @@ public class PatientService {
                 patient.getId(),
                 parseOperationId(operationId),
                 response);
-        processedOperations.record(operationId, "CREATE_PATIENT", patient.getId(), response);
+        processedOperations.record(operationId, "CREATE_PATIENT", patient.getId(), institutionId, request, response);
         return response;
     }
 
