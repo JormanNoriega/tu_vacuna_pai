@@ -30,6 +30,7 @@ import com.pai.api.patients.repository.PatientDemographicRepository;
 import com.pai.api.patients.repository.PatientGuardianRepository;
 import com.pai.api.patients.repository.PatientMedicalHistoryRepository;
 import com.pai.api.patients.repository.PatientRepository;
+import com.pai.api.shared.application.IdempotencyCoordinator;
 import com.pai.api.synchronization.service.ProcessedOperationsService;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -70,6 +71,7 @@ class PatientServiceTest {
         dataScope = new DataScope();
         audit = mock(AuditService.class);
         processedOperations = mock(ProcessedOperationsService.class);
+        IdempotencyCoordinator coordinator = new IdempotencyCoordinator(audit, processedOperations);
         service = new PatientService(
                 patients,
                 contacts,
@@ -80,7 +82,8 @@ class PatientServiceTest {
                 identity,
                 dataScope,
                 audit,
-                processedOperations);
+                coordinator,
+                new PatientMapper());
     }
 
     private InstitutionEntity institution() {
@@ -209,8 +212,8 @@ class PatientServiceTest {
         PatientResponse response = service.create(ACTOR_ID, OPERATION_ID, request("99999999"));
 
         assertThat(response).isEqualTo(original);
-        verify(identity, never()).resolve(any());
         verify(patients, never()).save(any());
+        verify(audit, never()).record(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test

@@ -1,0 +1,357 @@
+% ======================================================================
+% Informe: Aplicación de SOLID al backend clínico y de catálogo
+% Proyecto: tu_vacuna_pai (backend Spring Boot, modulo API)
+% Academia: ejercicio de patrones de diseño / Java / Spring
+%
+% NOTA: se entrega únicamente el fuente LaTeX; no se compila el PDF.
+% Compilación sugerida: pdflatex -interaction=nonstopmode
+%   solid-backend-informe.tex
+% ======================================================================
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+
+\geometry{margin=2.5cm}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  columns=fullflexible,
+  frame=single,
+  rulecolor=\color{gray},
+  backgroundcolor=\color{gray!8},
+}
+
+\title{\textbf{Aplicación de los principios SOLID al backend}\\
+  \large Módulos clínico (\texttt{patients}, \texttt{attentions}),
+  catálogo (\texttt{catalog}) y \texttt{shared} \\[4pt]
+  \normalsize Proyecto \texttt{tu\_vacuna\_pai} --- Spring Boot 4.1.1 / Java 21}
+\author{Equipo de desarrollo --- refactor académico}
+\date{12 de septiembre de 2026}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+% ----------------------------------------------------------------------
+\section{Resumen}
+% ----------------------------------------------------------------------
+
+Este informe documenta el refactor del backend Spring Boot aplicando los
+principios SOLID a los módulos clínico (\texttt{patients},
+\texttt{attentions}), al catálogo (\texttt{catalog}) y a utilidades
+compartidas (\texttt{shared}). Se trata de un ejercicio académico: el
+\textit{frontend} Flutter no se tocó, la arquitectura por capas declarada en
+ADR-006 se respeta, y toda verificación se hace sin base de datos
+(112 tests unitarios de negocio + 4 reglas ArchUnit = \textbf{116 tests, 0
+fallos}).
+
+Los cuatro problemas atacados son:
+
+\begin{enumerate}
+  \item \textbf{Inversión de dependencias (DIP)}: el módulo clínico dejó de
+        depender de los repositorios JPA del catálogo; hoy consulta un puerto
+        propio (\texttt{VaccineCatalogPolicy}).
+  \item \textbf{Responsabilidad única (SRP)}: el mapeo entidad\texttt{-}$>$DTO
+        se extrajo a mappers (\texttt{AttentionMapper}, \texttt{PatientMapper}).
+  \item \textbf{Abierto/cerrado (OCP)}: la ceremonia idempotente y la auditoría
+        se encapsularon en \texttt{IdempotencyCoordinator}.
+  \item \textbf{DRY y gobierno de permisos}: helpers y chequeos de permiso
+        duplicados se centralizaron (\texttt{PermissionGuard}, \texttt{Strings});
+        se eliminó código muerto y SQL nativo duplicado.
+\end{enumerate}
+
+\section{Contexto y alcance}
+
+El \texttt{AttentionService} (429 líneas) y el \texttt{PatientService} (502
+líneas) concentraban varias responsabilidades y dependencias:
+\texttt{AttentionService} inyectaba 11 colaboradores, entre ellos cuatro
+repositorios del catálogo. \texttt{InstitutionVaccineService} usaba
+\texttt{EntityManager} con la misma consulta SQL nativa duplicada para el
+upsert ``copy-once'' de habilitación y clonado de catálogo.
+
+Los módulos \texttt{patients} y \texttt{attentions} implementan funcionalidad
+completa y probada (\texttt{docs/domain/clinical-module-implementation.md} y
+\texttt{vaccine-catalog-implementation.md}), lo que los hace seguros para
+refactorizar sin riesgo de regresión funcional (\texttt{mvnw test} como red de
+seguridad).
+
+\section{Antes} \label{sec:antes}
+
+A continuación se detallan las violaciones detectadas con su ubicación
+(\texttt{archivo:línea}).
+
+\subsection{DIP --- \texttt{AttentionService} depende de la persistencia del catálogo}
+
+\begin{itemize}
+  \item \texttt{AttentionService.java:65-75} (antes): inyecta 11 colaboradores,
+        entre ellos \texttt{VaccineRepository} (línea 68),
+        \texttt{VaccineOptionRepository} (línea 69),
+        \texttt{InstitutionVaccineRepository} (línea 70) e
+        \texttt{InstitutionVaccineOptionRepository} (línea 71), además de
+        \texttt{PatientRepository}.
+  \item Validación de catálogo embebida en el servicio:
+        \texttt{AttentionService.java:366-404} (antes):
+        \texttt{requireEnabledVaccine}, \texttt{requireOption},
+        \texttt{resolveInstitutionOption}.
+\end{itemize}
+
+\textbf{Consecuencia}: el módulo clínico no podía probarse sin mockear la
+persistencia del catálogo, y cualquier cambio en las entidades/repositorios del
+catálogo podía romperlo.
+
+\subsection{SRP --- mapeo entidad\texttt{-}$>$DTO dentro de los servicios}
+
+\begin{itemize}
+  \item \texttt{AttentionService.java:433-477} (antes):
+        \texttt{toResponse}/\texttt{toDoseResponse} (mapeo privado de 45
+        líneas).
+  \item \texttt{PatientService.java:439-501} (antes):
+        \texttt{toResponse} (mapeo privado de 62 líneas, incluye las 5
+        subentidades del agregado).
+\end{itemize}
+
+\subsection{OCP --- ceremonia idempotente duplicada}
+
+El patrón \texttt{find $\to$ cuerpo $\to$ auditar $\to$ registrar} se repetía en:
+
+\begin{itemize}
+  \item \texttt{AttentionService.java:104-139} (antes):
+        \texttt{create} ($\approx$35 líneas de ceremonia).
+  \item \texttt{AttentionService.java:234-305} (antes):
+        \texttt{registerDose} ($\approx$70 líneas mezclando ceremonia y cuerpo).
+  \item \texttt{PatientService.java:88-133} (antes):
+        \texttt{PatientService.create}.
+\end{itemize}
+
+\subsection{DRY y gobierno de permisos}
+
+\begin{itemize}
+  \item \texttt{VaccineService.java:29-34} (antes) e
+        \texttt{InstitutionVaccineService.java:63-69} (antes):
+        método privado \texttt{actor(actorId, permission)} duplicado.
+  \item \texttt{AttentionService.java:414-431} y \texttt{PatientService.java:416-437}
+        (antes): helpers privados \texttt{blankToNull}, \texttt{safe},
+        \texttt{parseOperationId} duplicados.
+  \item \texttt{InstitutionVaccineService.java:119-127} y \texttt{205-213}
+        (antes): la misma consulta SQL nativa
+        \texttt{INSERT \ldots ON CONFLICT \ldots RETURNING id} duplicada en
+        \texttt{enable} y \texttt{doClone} usando \texttt{EntityManager}.
+  \item \texttt{InstitutionVaccineRepository.java:13-15} (antes):
+        \texttt{setEnabled(id, version, enabled)} era código muerto (sin
+        llamadores); el commit remoto \texttt{16460fc} ya lo había borrado.
+\end{itemize}
+
+\subsection{LSP}
+
+No existen jerarquías de herencia en el alcance; el principio de sustitución de
+Liskov no aplica y no introdujo ningún cambio.
+
+\section{Después} \label{sec:despues}
+
+\subsection{DIP: puerto de selección del catálogo}
+
+\textbf{Nueva pieza} \texttt{attentions/service/VaccineCatalogPolicy.java}: un
+puerto con un único método
+
+\begin{lstlisting}
+DoseSelection resolve(ResolutionRequest request);
+\end{lstlisting}
+
+que devuelve un valor inerte (\texttt{DoseSelection}) con el snapshot que la
+dosis necesita; \emph{no} expone entidades JPA del catálogo.
+
+\textbf{Nueva pieza} \texttt{catalog/service/CatalogSelectionService.java}:
+implementación del puerto que encapsula la validación que antes vivía en el
+módulo clínico (vacuna activa y habilitada en la institución, opciones globales
+válidas por \texttt{fieldType}, opciones operativas institucionales). El registro
+de intereses queda así:
+
+\begin{lstlisting}
+AttentionService --usar--> VaccineCatalogPolicy (interfaz, atentions)
+CatalogSelectionService (catalog) --implementar--> VaccineCatalogPolicy
+\end{lstlisting}
+
+\textbf{Resultado}: \texttt{AttentionService.java:65-75} (después) pasa de 11 a
+9 colaboradores y elimina los 4 repositorios de catálogo y las validaciones
+listadas en la sección~\ref{sec:antes}. Un \texttt{@ArchTest} nuevo
+(\texttt{ArchitectureTest.java}) prohíbe que el módulo \texttt{attentions}
+dependa de \texttt{.catalog.repository} o \texttt{.catalog.entity}, y otro exige
+que toda implementación del puerto viva en \texttt{catalog}.
+
+\subsection{SRP: mappers de respuesta}
+
+\textbf{Nuevas piezas} \texttt{AttentionMapper.java} (mapeo de
+\texttt{AttentionResponse} y \texttt{AppliedDoseResponse}) y
+\texttt{PatientMapper.java} (mapeo de \texttt{PatientResponse} con sus cinco
+subentidades). Cada servicio inyecta su mapper y conserva solo la
+orquestación, la validación de dominio y la persistencia.
+
+\subsection{OCP: coordinador de escrituras idempotentes}
+
+\textbf{Nueva pieza} \texttt{shared/application/IdempotencyCoordinator.java}
+encapsula la ceremonia:
+
+\begin{lstlisting}
+T execute(operationId, commandType, responseType,
+          Supplier<AuditContext> context, Supplier<WriteResult<T>> body) {
+  var previous = processed.find(operationId, responseType);
+  if (previous.isPresent()) return previous.get();          // replay: no hace nada
+  WriteResult<T> result = body.get();                        // dominio del servicio
+  audit.record(context.get().actorId(), ..., operationId, result.response());
+  processed.record(operationId, commandType, result.aggregateId(), result.response());
+  return result.response();
+}
+\end{lstlisting}
+
+El contexto de auditoría es diferido a propósito: en una repetición idempotente
+\textbf{no se ejecuta absolutamente nada}, ni siquiera la resolución del actor.
+Se usa \texttt{execute} en \texttt{create} y \texttt{registerDose}, y
+\texttt{executeAudited} (sin idempotencia) en \texttt{update},
+\texttt{complete}, \texttt{updateContact}, \texttt{updateDemographics} y
+\texttt{updateMedicalHistories}. Las cancelaciones conservan su auditoría
+específica (\texttt{Cancellation}) dentro de los servicios.
+
+\textbf{Resultado}: la gestión transversal quedó en una sola clase; los
+servicios aportan únicamente el cuerpo, cumpliendo el OCP.
+
+\subsection{DRY y gobierno de permisos}
+
+\textbf{Nueva pieza} \texttt{shared/security/PermissionGuard.java}: guardia de
+autorización por permiso; sustituye el \texttt{actor()} duplicado en
+\texttt{VaccineService} e \texttt{InstitutionVaccineService}.
+
+\textbf{Nueva pieza} \texttt{shared/util/Strings.java}: centraliza
+\texttt{blankToNull}, \texttt{trimToNull} y \texttt{safe}.
+
+\textbf{Repositorio}: \texttt{InstitutionVaccineRepository.java} (después)
+elimina el \texttt{setEnabled} muerto y declara:
+
+\begin{lstlisting}
+int setEnabledById(UUID id, boolean enabled);                    // JPQL con WHERE id
+int insertEnabledIfAbsent(UUID institution, UUID vaccine, UUID actor); // INSERT ... ON CONFLICT
+\end{lstlisting}
+
+el upsert \texttt{copy-once} regresa 1/0 (filas insertadas), preservando la
+semántica del \texttt{RETURNING id} previo sin necesidad de
+\texttt{EntityManager}. Con esto \texttt{InstitutionVaccineService.java:34-61}
+(después) elimina el \texttt{EntityManager} y el \texttt{IdentityService},
+inyectando \texttt{PermissionGuard}.
+
+\section{Comparación antes/después}
+
+\begin{longtable}{@{}p{4.6cm}p{5.2cm}p{5.2cm}@{}}
+\toprule
+\textbf{Clase} & \textbf{Antes} & \textbf{Después} \\
+\midrule
+\endhead
+\texttt{AttentionService}
+ & 429 líneas; 11 colaboradores; 4 repos de \texttt{catalog} +
+   \texttt{PatientRepository}; validación de catálogo embebida (líneas
+   366-404); mapeo privado (433-477); helpers duplicados (414-431).
+ & 336 líneas; 9 colaboradores; consulta vía \texttt{VaccineCatalogPolicy};
+   mapeo en \texttt{AttentionMapper}; ceremonia en
+   \texttt{IdempotencyCoordinator}; helpers en \texttt{Strings}.
+\\
+\texttt{PatientService}
+ & 502 líneas; 10 colaboradores; mapeo privado de 62 líneas (439-501);
+   helpers \texttt{blankToNull}/\texttt{safe}/\texttt{parseOperationId}
+   (416-437).
+ & 433 líneas; mapeo en \texttt{PatientMapper}; ceremonia en
+   \texttt{IdempotencyCoordinator}; helpers en \texttt{Strings}.
+\\
+\texttt{VaccineService}
+ & \texttt{IdentityService} + \texttt{actor()} privado (29-34); lógica
+   \texttt{isDefault} y \texttt{lockActive} en \texttt{updateOption}/
+   \texttt{updateTemplate}.
+ & \texttt{PermissionGuard}; misma lógica de dominio.
+\\
+\texttt{InstitutionVaccineService}
+ & \texttt{IdentityService} + \texttt{actor()} (63-69); \texttt{EntityManager}
+   con SQL nativo duplicado en \texttt{enable} (119-127) y \texttt{doClone}
+   (205-213).
+ & \texttt{PermissionGuard}; upsert declarado en el repositorio;
+   sin \texttt{EntityManager}.
+\\
+\texttt{InstitutionVaccineRepository}
+ & \texttt{setEnabled(id, version, enabled)} muerto (13-15).
+ & \texttt{setEnabledById} + \texttt{insertEnabledIfAbsent} (nativo
+   copy-once).
+\\
+\bottomrule
+\end{longtable}
+
+\section{Arquitectura resultante}
+
+\begin{itemize}
+  \item \texttt{attentions} $\to$ \texttt{VaccineCatalogPolicy} (puerto).
+  \item \texttt{catalog} $\to$ \texttt{CatalogSelectionService} (implementa el
+        puerto; es la única dependencia entre módulos, fuera de \texttt{shared}).
+  \item \texttt{shared.application} $\to$ \texttt{IdempotencyCoordinator}.
+  \item \texttt{shared.security} $\to$ \texttt{PermissionGuard}.
+  \item \texttt{shared.util} $\to$ \texttt{Strings}.
+  \item Reglas ArchUnit nuevas en
+        \texttt{shared/architecture/ArchitectureTest.java}: frontera
+        \texttt{attentions} {$\nrightarrow$} \texttt{catalog.repository/entity}
+        y radicación del puerto en \texttt{catalog}.
+\end{itemize}
+
+\section{Verificación}
+
+\begin{lstlisting}
+mvnw.cmd compile && mvnw.cmd test
+\end{lstlisting}
+
+\begin{itemize}
+  \item Sin base de datos: todos los tests son JUnit 5 + Mockito puros.
+  \item Línea base: 114 tests, 0 fallos.
+  \item Tras el refactor: \textbf{116 tests, 0 fallos} (se añaden 2 reglas
+        ArchUnit). \texttt{BUILD SUCCESS}.
+  \item Tests actualizados: \texttt{AttentionServiceTest},
+        \texttt{PatientServiceTest}, \texttt{InstitutionVaccineServiceCloneTest}
+        (ya no mockean \texttt{EntityManager} ni repositorios de catálogo;
+        mockean los nuevos colaboradores).
+  \item El backend también compila y arranca con \texttt{spring-boot:run}
+        (health \texttt{UP}) usando el JDK real
+        \texttt{C:\textbackslash Program Files\textbackslash Java\textbackslash jdk-26.0.2.1}.
+\end{itemize}
+
+\section{Recomendaciones futuras}
+
+\begin{enumerate}
+  \item \textbf{Integrar \texttt{UserProvisioningService}} con
+        \texttt{PermissionGuard} y \texttt{Strings} (quedó fuera del alcance por
+        riesgo; ya tiene los recursos listos).
+  \item \textbf{Cancelaciones en el coordinador}: añadir un overload de
+        \texttt{executeAudited} con \texttt{payloadFn} para llevar
+        \texttt{cancel}/\texttt{cancelDose} a la misma ceremonia sin perder su
+        payload de auditoría compuesto.
+  \item \textbf{Evitar la doble resolución del actor} en cuerpos que ya lo
+        resuelven: evaluar que \texttt{AuditContext} transporte el
+        \texttt{AuthorizedUser} en lugar de solo el id.
+  \item \textbf{Dependencia residual}: \texttt{AttentionService} aún importa
+        \texttt{catalog.exception.OptimisticCatalogException}; migrar esa
+        excepción genérica de versión optimista a \texttt{shared.exceptions}.
+  \item \textbf{Tests}: cubrir \texttt{CatalogSelectionService} con casos de
+        vacuna inactiva, no habilitada y opciones inválidas; cubrir
+        \texttt{PermissionGuard}.
+  \item \textbf{Mappers}: si el volumen de mapeo crece, evaluar MapStruct en
+        lugar de mappers manuales (sin cambiar la estructura expuesta).
+  \item \textbf{Sync}: cuando se implemente el \texttt{SyncEngine}, reutilizar
+        \texttt{IdempotencyCoordinator} para que el camino \texttt{/sync/push}
+        comparta la misma garantía D3.
+\end{enumerate}
+
+\end{document}

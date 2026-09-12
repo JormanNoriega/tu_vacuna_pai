@@ -16,9 +16,7 @@ import com.pai.api.catalog.repository.VaccineOptionTemplateRepository;
 import com.pai.api.catalog.repository.VaccineRepository;
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.DataScope;
-import com.pai.api.identity.service.IdentityService;
-import com.pai.api.shared.exceptions.PermissionDeniedException;
-import jakarta.persistence.EntityManager;
+import com.pai.api.shared.security.PermissionGuard;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -39,33 +37,22 @@ public class InstitutionVaccineService {
     private final InstitutionVaccineOptionRepository local;
     private final VaccineRepository vaccines;
     private final VaccineOptionTemplateRepository templates;
-    private final IdentityService identity;
     private final DataScope scope;
-    private final EntityManager entityManager;
+    private final PermissionGuard guard;
 
     public InstitutionVaccineService(
             InstitutionVaccineRepository relations,
             InstitutionVaccineOptionRepository local,
             VaccineRepository vaccines,
             VaccineOptionTemplateRepository templates,
-            IdentityService identity,
             DataScope scope,
-            EntityManager entityManager) {
+            PermissionGuard guard) {
         this.relations = relations;
         this.local = local;
         this.vaccines = vaccines;
         this.templates = templates;
-        this.identity = identity;
         this.scope = scope;
-        this.entityManager = entityManager;
-    }
-
-    private AuthorizedUser actor(UUID actorId, String permission) {
-        AuthorizedUser actor = identity.resolve(actorId);
-        if (!actor.getPermissions().contains(permission)) {
-            throw new PermissionDeniedException("Permiso insuficiente: " + permission);
-        }
-        return actor;
+        this.guard = guard;
     }
 
     private UUID institution(AuthorizedUser actor, UUID requestedInstitution) {
@@ -74,7 +61,7 @@ public class InstitutionVaccineService {
 
     @Transactional(readOnly = true)
     public List<InstitutionVaccineResponse> list(UUID actorId, UUID requestedInstitution) {
-        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_READ");
+        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_READ");
         UUID institutionId = institution(actor, requestedInstitution);
 
         List<InstitutionVaccineEntity> relationList = relations.findByInstitutionId(institutionId);
@@ -108,7 +95,7 @@ public class InstitutionVaccineService {
 
     @Transactional
     public void enable(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
-        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_WRITE");
+        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
         UUID institutionId = institution(actor, requestedInstitution);
         VaccineEntity vaccine =
                 vaccines.findById(vaccineId).orElseThrow(() -> new IllegalArgumentException("Vacuna no existe."));
@@ -116,17 +103,9 @@ public class InstitutionVaccineService {
             throw new IllegalArgumentException("La vacuna esta inactiva.");
         }
 
-        List<?> inserted = entityManager
-                .createNativeQuery("INSERT INTO app.institution_vaccines "
-                        + "(institution_id, vaccine_id, is_enabled, enabled_at, enabled_by) "
-                        + "VALUES (:institution, :vaccine, true, now(), :actor) "
-                        + "ON CONFLICT (institution_id, vaccine_id) DO NOTHING RETURNING id")
-                .setParameter("institution", institutionId)
-                .setParameter("vaccine", vaccineId)
-                .setParameter("actor", actor.getId())
-                .getResultList();
+        int inserted = relations.insertEnabledIfAbsent(institutionId, vaccineId, actor.getId());
 
-        if (!inserted.isEmpty()) {
+        if (inserted > 0) {
             for (VaccineOptionTemplateEntity template :
                     templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccineId)) {
                 local.save(new InstitutionVaccineOptionEntity(
@@ -148,24 +127,16 @@ public class InstitutionVaccineService {
         relations
                 .findByInstitutionIdAndVaccineId(institutionId, vaccineId)
                 .filter(relation -> !relation.isEnabled())
-                .ifPresent(relation -> entityManager
-                        .createQuery("update InstitutionVaccineEntity relation "
-                                + "set relation.enabled = true where relation.id = :id")
-                        .setParameter("id", relation.getId())
-                        .executeUpdate());
+                .ifPresent(relation -> relations.setEnabledById(relation.getId(), true));
     }
 
     @Transactional
     public void disable(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
-        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_WRITE");
+        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
         UUID institutionId = institution(actor, requestedInstitution);
         relations
                 .findByInstitutionIdAndVaccineId(institutionId, vaccineId)
-                .ifPresent(relation -> entityManager
-                        .createQuery("update InstitutionVaccineEntity relation "
-                                + "set relation.enabled = false where relation.id = :id")
-                        .setParameter("id", relation.getId())
-                        .executeUpdate());
+                .ifPresent(relation -> relations.setEnabledById(relation.getId(), false));
     }
 
     /**
@@ -181,7 +152,7 @@ public class InstitutionVaccineService {
      */
     @Transactional
     public CloneCatalogResponse clone(UUID actorId, UUID requestedInstitution, boolean includeDefaultConfig) {
-        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_WRITE");
+        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
         UUID institutionId = institution(actor, requestedInstitution);
         return doClone(institutionId, actor.getId(), includeDefaultConfig);
     }
@@ -202,17 +173,9 @@ public class InstitutionVaccineService {
         int optionsCopied = 0;
 
         for (VaccineEntity vaccine : active) {
-            List<?> inserted = entityManager
-                    .createNativeQuery("INSERT INTO app.institution_vaccines "
-                            + "(institution_id, vaccine_id, is_enabled, enabled_at, enabled_by) "
-                            + "VALUES (:institution, :vaccine, true, now(), :actor) "
-                            + "ON CONFLICT (institution_id, vaccine_id) DO NOTHING RETURNING id")
-                    .setParameter("institution", institutionId)
-                    .setParameter("vaccine", vaccine.getId())
-                    .setParameter("actor", actorId)
-                    .getResultList();
+            int inserted = relations.insertEnabledIfAbsent(institutionId, vaccine.getId(), actorId);
 
-            if (inserted.isEmpty()) {
+            if (inserted == 0) {
                 // La relacion ya existia (habilitada o deshabilitada): no se toca.
                 continue;
             }
@@ -248,7 +211,7 @@ public class InstitutionVaccineService {
      */
     @Transactional(readOnly = true)
     public List<VaccineResponse> available(UUID actorId, UUID requestedInstitution) {
-        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_READ");
+        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_READ");
         UUID institutionId = institution(actor, requestedInstitution);
 
         Set<UUID> existing = relations.findByInstitutionId(institutionId).stream()
@@ -263,7 +226,7 @@ public class InstitutionVaccineService {
 
     @Transactional(readOnly = true)
     public List<OptionResponse> options(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
-        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_READ");
+        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_READ");
         UUID institutionId = institution(actor, requestedInstitution);
         requireEnabled(institutionId, vaccineId);
 
@@ -276,7 +239,7 @@ public class InstitutionVaccineService {
 
     @Transactional
     public OptionResponse createOption(UUID actorId, UUID requestedInstitution, UUID vaccineId, OptionRequest request) {
-        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_WRITE");
+        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
         UUID institutionId = institution(actor, requestedInstitution);
         requireEnabled(institutionId, vaccineId);
         validateType(request.fieldType());
@@ -303,7 +266,7 @@ public class InstitutionVaccineService {
     @Transactional
     public OptionResponse updateOption(
             UUID actorId, UUID requestedInstitution, UUID vaccineId, UUID optionId, OptionRequest request) {
-        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_WRITE");
+        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
         UUID institutionId = institution(actor, requestedInstitution);
         requireEnabled(institutionId, vaccineId);
         validateType(request.fieldType());
@@ -330,7 +293,7 @@ public class InstitutionVaccineService {
 
     @Transactional
     public void deleteOption(UUID actorId, UUID requestedInstitution, UUID vaccineId, UUID optionId, long version) {
-        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_WRITE");
+        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
         UUID institutionId = institution(actor, requestedInstitution);
         requireEnabled(institutionId, vaccineId);
 
@@ -345,7 +308,7 @@ public class InstitutionVaccineService {
 
     @Transactional(readOnly = true)
     public List<OptionResponse> suggested(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
-        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_READ");
+        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_READ");
         UUID institutionId = institution(actor, requestedInstitution);
         Set<String> existing = new HashSet<>(local
                 .findByInstitutionIdAndVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(institutionId, vaccineId)
@@ -372,7 +335,7 @@ public class InstitutionVaccineService {
 
     @Transactional
     public List<OptionResponse> importSuggested(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
-        AuthorizedUser actor = actor(actorId, "CATALOG_CONFIG_WRITE");
+        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
         UUID institutionId = institution(actor, requestedInstitution);
         requireEnabled(institutionId, vaccineId);
         Set<String> existing = new HashSet<>(local

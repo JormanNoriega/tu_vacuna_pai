@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.pai.api.attentions.dto.AppliedDoseResponse;
 import com.pai.api.attentions.dto.AttentionResponse;
 import com.pai.api.attentions.dto.CancelDoseRequest;
 import com.pai.api.attentions.dto.CreateAttentionRequest;
@@ -22,19 +23,14 @@ import com.pai.api.attentions.repository.AppliedDoseRepository;
 import com.pai.api.attentions.repository.AttentionRepository;
 import com.pai.api.audit.AuditAction;
 import com.pai.api.audit.service.AuditService;
-import com.pai.api.catalog.entity.InstitutionVaccineEntity;
-import com.pai.api.catalog.entity.VaccineEntity;
-import com.pai.api.catalog.entity.VaccineOptionEntity;
-import com.pai.api.catalog.repository.InstitutionVaccineOptionRepository;
-import com.pai.api.catalog.repository.InstitutionVaccineRepository;
-import com.pai.api.catalog.repository.VaccineOptionRepository;
-import com.pai.api.catalog.repository.VaccineRepository;
+import com.pai.api.attentions.service.VaccineCatalogPolicy.DoseSelection;
 import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.DataScope;
 import com.pai.api.identity.service.IdentityService;
 import com.pai.api.patients.entity.PatientEntity;
 import com.pai.api.patients.repository.PatientRepository;
+import com.pai.api.shared.application.IdempotencyCoordinator;
 import com.pai.api.synchronization.service.ProcessedOperationsService;
 import java.time.Instant;
 import java.util.List;
@@ -54,10 +50,7 @@ class AttentionServiceTest {
     private AttentionRepository attentions;
     private AppliedDoseRepository doses;
     private PatientRepository patients;
-    private VaccineRepository vaccines;
-    private VaccineOptionRepository vaccineOptions;
-    private InstitutionVaccineRepository institutionVaccines;
-    private InstitutionVaccineOptionRepository institutionOptions;
+    private VaccineCatalogPolicy catalogPolicy;
     private IdentityService identity;
     private DataScope dataScope;
     private AuditService audit;
@@ -69,26 +62,23 @@ class AttentionServiceTest {
         attentions = mock(AttentionRepository.class);
         doses = mock(AppliedDoseRepository.class);
         patients = mock(PatientRepository.class);
-        vaccines = mock(VaccineRepository.class);
-        vaccineOptions = mock(VaccineOptionRepository.class);
-        institutionVaccines = mock(InstitutionVaccineRepository.class);
-        institutionOptions = mock(InstitutionVaccineOptionRepository.class);
+        catalogPolicy = mock(VaccineCatalogPolicy.class);
         identity = mock(IdentityService.class);
         dataScope = new DataScope();
         audit = mock(AuditService.class);
         processedOperations = mock(ProcessedOperationsService.class);
+        IdempotencyCoordinator coordinator = new IdempotencyCoordinator(audit, processedOperations);
+        AttentionMapper mapper = new AttentionMapper();
         service = new AttentionService(
                 attentions,
                 doses,
                 patients,
-                vaccines,
-                vaccineOptions,
-                institutionVaccines,
-                institutionOptions,
+                catalogPolicy,
                 identity,
                 dataScope,
                 audit,
-                processedOperations);
+                coordinator,
+                mapper);
     }
 
     private InstitutionEntity institution() {
@@ -149,6 +139,27 @@ class AttentionServiceTest {
                 null,
                 null,
                 Instant.now());
+    }
+
+    private DoseSelection selection(UUID vaccineId, UUID doseOptionId) {
+        return new DoseSelection(
+                vaccineId,
+                "Influenza",
+                "INF",
+                1L,
+                doseOptionId,
+                "Primera dosis",
+                "1",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
     }
 
     @Test
@@ -226,17 +237,8 @@ class AttentionServiceTest {
         UUID doseOptionId = UUID.randomUUID();
         when(identity.resolve(ACTOR_ID)).thenReturn(actor());
         when(attentions.findByIdAndInstitutionId(draft.getId(), INSTITUTION_ID)).thenReturn(Optional.of(draft));
-
-        VaccineEntity vaccine =
-                new VaccineEntity(vaccineId, "Influenza", "INF", "PAI", (short) 1, null, null, ACTOR_ID, Instant.now());
-        when(vaccines.findById(vaccineId)).thenReturn(Optional.of(vaccine));
-        InstitutionVaccineEntity relation = mock(InstitutionVaccineEntity.class);
-        when(relation.isEnabled()).thenReturn(true);
-        when(institutionVaccines.findByInstitutionIdAndVaccineId(INSTITUTION_ID, vaccineId))
-                .thenReturn(Optional.of(relation));
-        VaccineOptionEntity doseOption = new VaccineOptionEntity(
-                doseOptionId, vaccineId, "dose", "1", "Primera dosis", 0, true, ACTOR_ID, Instant.now());
-        when(vaccineOptions.findByIdAndVaccineId(doseOptionId, vaccineId)).thenReturn(Optional.of(doseOption));
+        when(processedOperations.find(OPERATION_ID, AppliedDoseResponse.class)).thenReturn(Optional.empty());
+        when(catalogPolicy.resolve(any())).thenReturn(selection(vaccineId, doseOptionId));
         when(doses.save(any(AppliedDoseEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = service.registerDose(
@@ -248,7 +250,7 @@ class AttentionServiceTest {
         assertThat(response.vaccineNameSnapshot()).isEqualTo("Influenza");
         assertThat(response.vaccineCodeSnapshot()).isEqualTo("INF");
         assertThat(response.doseLabelSnapshot()).isEqualTo("Primera dosis");
-        assertThat(response.catalogVersion()).isEqualTo(vaccine.getVersion());
+        assertThat(response.catalogVersion()).isEqualTo(1);
         assertThat(response.status()).isEqualTo("REGISTERED");
 
         ArgumentCaptor<AppliedDoseEntity> captor = ArgumentCaptor.forClass(AppliedDoseEntity.class);

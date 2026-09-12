@@ -16,23 +16,15 @@ import com.pai.api.attentions.repository.AppliedDoseRepository;
 import com.pai.api.attentions.repository.AttentionRepository;
 import com.pai.api.audit.AuditAction;
 import com.pai.api.audit.service.AuditService;
-import com.pai.api.catalog.entity.InstitutionVaccineEntity;
-import com.pai.api.catalog.entity.InstitutionVaccineOptionEntity;
-import com.pai.api.catalog.entity.VaccineEntity;
-import com.pai.api.catalog.entity.VaccineOptionEntity;
 import com.pai.api.catalog.exception.OptimisticCatalogException;
-import com.pai.api.catalog.repository.InstitutionVaccineOptionRepository;
-import com.pai.api.catalog.repository.InstitutionVaccineRepository;
-import com.pai.api.catalog.repository.VaccineOptionRepository;
-import com.pai.api.catalog.repository.VaccineRepository;
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.DataScope;
 import com.pai.api.identity.service.IdentityService;
 import com.pai.api.patients.exception.PatientNotFoundException;
 import com.pai.api.patients.repository.PatientRepository;
-import com.pai.api.synchronization.service.ProcessedOperationsService;
+import com.pai.api.shared.application.IdempotencyCoordinator;
+import com.pai.api.shared.util.Strings;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -53,96 +45,88 @@ import org.springframework.transaction.annotation.Transactional;
  * </ul>
  * El alcance institucional se deriva del actor (ADR-007); la institucion nunca
  * se confia al cliente.
+ *
+ * <p>Sosten del refactor SOLID:
+ * <ul>
+ *   <li><b>DIP</b>: el catalogo se consulta via {@link VaccineCatalogPolicy};
+ *       no inyecta repositorios del modulo {@code catalog}.</li>
+ *   <li><b>OCP</b>: la ceremonia idempotencia + auditoria la ejecuta
+ *       {@link IdempotencyCoordinator}; el servicio solo aporta el cuerpo.</li>
+ *   <li><b>SRP</b>: el mapeo entidad {@literal ->} DTO esta en
+ *       {@link AttentionMapper}.</li>
+ * </ul>
  */
 @Service
 public class AttentionService {
 
     private static final String RESOURCE_TYPE_ATTENTION = "ATTENTION";
     private static final String RESOURCE_TYPE_DOSE = "APPLIED_DOSE";
-    private static final String FIELD_DOSE = "dose";
-    private static final String FIELD_PNEUMOCOCCAL = "pneumococcalType";
 
     private final AttentionRepository attentions;
     private final AppliedDoseRepository doses;
     private final PatientRepository patients;
-    private final VaccineRepository vaccines;
-    private final VaccineOptionRepository vaccineOptions;
-    private final InstitutionVaccineRepository institutionVaccines;
-    private final InstitutionVaccineOptionRepository institutionOptions;
+    private final VaccineCatalogPolicy catalogPolicy;
     private final IdentityService identity;
     private final DataScope dataScope;
     private final AuditService audit;
-    private final ProcessedOperationsService processedOperations;
+    private final IdempotencyCoordinator coordinator;
+    private final AttentionMapper mapper;
 
     public AttentionService(
             AttentionRepository attentions,
             AppliedDoseRepository doses,
             PatientRepository patients,
-            VaccineRepository vaccines,
-            VaccineOptionRepository vaccineOptions,
-            InstitutionVaccineRepository institutionVaccines,
-            InstitutionVaccineOptionRepository institutionOptions,
+            VaccineCatalogPolicy catalogPolicy,
             IdentityService identity,
             DataScope dataScope,
             AuditService audit,
-            ProcessedOperationsService processedOperations) {
+            IdempotencyCoordinator coordinator,
+            AttentionMapper mapper) {
         this.attentions = attentions;
         this.doses = doses;
         this.patients = patients;
-        this.vaccines = vaccines;
-        this.vaccineOptions = vaccineOptions;
-        this.institutionVaccines = institutionVaccines;
-        this.institutionOptions = institutionOptions;
+        this.catalogPolicy = catalogPolicy;
         this.identity = identity;
         this.dataScope = dataScope;
         this.audit = audit;
-        this.processedOperations = processedOperations;
+        this.coordinator = coordinator;
+        this.mapper = mapper;
     }
 
     @Transactional
     public AttentionResponse create(UUID actorId, String operationId, CreateAttentionRequest request) {
-        var previous = processedOperations.find(operationId, AttentionResponse.class);
-        if (previous.isPresent()) {
-            return previous.get();
-        }
+        return coordinator.execute(
+                operationId,
+                "CREATE_ATTENTION",
+                AttentionResponse.class,
+                () -> auditContext(actorId, AuditAction.ATTENTION_CREATED, RESOURCE_TYPE_ATTENTION),
+                () -> {
+                    AuthorizedUser actor = identity.resolve(actorId);
+                    UUID institutionId = institution(actor);
+                    requirePatientScoped(institutionId, request.patientId());
+                    Instant now = Instant.now();
+                    Instant attentionDate = request.attentionDate() != null ? request.attentionDate() : now;
+                    long consecutive = attentions.maxConsecutive(institutionId) + 1;
 
-        AuthorizedUser actor = identity.resolve(actorId);
-        UUID institutionId = institution(actor);
-        requirePatientScoped(institutionId, request.patientId());
-
-        Instant now = Instant.now();
-        Instant attentionDate = request.attentionDate() != null ? request.attentionDate() : now;
-        long consecutive = attentions.maxConsecutive(institutionId) + 1;
-
-        AttentionEntity attention = attentions.save(new AttentionEntity(
-                UUID.randomUUID(),
-                request.patientId(),
-                actor.getId(),
-                institutionId,
-                attentionDate,
-                consecutive,
-                parseOperationId(operationId),
-                now));
-        attention.updateDetails(attentionDate, blankToNull(request.observations()), now);
-        attentions.save(attention);
-
-        AttentionResponse response = toResponse(attention);
-        audit.record(
-                actor.getId(),
-                institutionId,
-                AuditAction.ATTENTION_CREATED,
-                RESOURCE_TYPE_ATTENTION,
-                attention.getId(),
-                parseOperationId(operationId),
-                response);
-        processedOperations.record(operationId, "CREATE_ATTENTION", attention.getId(), response);
-        return response;
+                    AttentionEntity attention = attentions.save(new AttentionEntity(
+                            UUID.randomUUID(),
+                            request.patientId(),
+                            actor.getId(),
+                            institutionId,
+                            attentionDate,
+                            consecutive,
+                            coordinator.parseOperationId(operationId),
+                            now));
+                    attention.updateDetails(attentionDate, Strings.blankToNull(request.observations()), now);
+                    attentions.save(attention);
+                    return new IdempotencyCoordinator.WriteResult<>(attention.getId(), response(attention));
+                });
     }
 
     @Transactional(readOnly = true)
     public AttentionResponse get(UUID actorId, UUID attentionId) {
         AuthorizedUser actor = identity.resolve(actorId);
-        return toResponse(requireScoped(actor, attentionId));
+        return response(requireScoped(actor, attentionId));
     }
 
     @Transactional(readOnly = true)
@@ -150,7 +134,7 @@ public class AttentionService {
         AuthorizedUser actor = identity.resolve(actorId);
         UUID institutionId = institution(actor);
         return attentions.findByInstitutionIdAndPatientIdOrderByAttentionDateDesc(institutionId, patientId).stream()
-                .map(this::toResponse)
+                .map(this::response)
                 .toList();
     }
 
@@ -164,22 +148,20 @@ public class AttentionService {
             throw new OptimisticCatalogException("La atencion fue modificada por otro usuario.");
         }
 
-        Instant now = Instant.now();
-        Instant attentionDate =
-                request.attentionDate() != null ? request.attentionDate() : attention.getAttentionDate();
-        attention.updateDetails(attentionDate, blankToNull(request.observations()), now);
-        attentions.save(attention);
-
-        AttentionResponse response = toResponse(attention);
-        audit.record(
+        return coordinator.executeAudited(
                 actor.getId(),
                 attention.getInstitutionId(),
                 AuditAction.ATTENTION_UPDATED,
                 RESOURCE_TYPE_ATTENTION,
                 attentionId,
-                null,
-                response);
-        return response;
+                () -> {
+                    Instant now = Instant.now();
+                    Instant attentionDate =
+                            request.attentionDate() != null ? request.attentionDate() : attention.getAttentionDate();
+                    attention.updateDetails(attentionDate, Strings.blankToNull(request.observations()), now);
+                    attentions.save(attention);
+                    return response(attention);
+                });
     }
 
     @Transactional
@@ -188,20 +170,17 @@ public class AttentionService {
         AttentionEntity attention = requireScoped(actor, attentionId);
         requireEditable(attention);
 
-        Instant now = Instant.now();
-        attention.complete(now);
-        attentions.save(attention);
-
-        AttentionResponse response = toResponse(attention);
-        audit.record(
+        return coordinator.executeAudited(
                 actor.getId(),
                 attention.getInstitutionId(),
                 AuditAction.ATTENTION_COMPLETED,
                 RESOURCE_TYPE_ATTENTION,
                 attentionId,
-                null,
-                response);
-        return response;
+                () -> {
+                    attention.complete(Instant.now());
+                    attentions.save(attention);
+                    return response(attention);
+                });
     }
 
     @Transactional
@@ -212,11 +191,10 @@ public class AttentionService {
             throw new InvalidClinicalStateException("La atencion ya esta anulada.");
         }
 
-        Instant now = Instant.now();
-        attention.cancel(now);
+        attention.cancel(Instant.now());
         attentions.save(attention);
 
-        AttentionResponse response = toResponse(attention);
+        AttentionResponse response = response(attention);
         audit.record(
                 actor.getId(),
                 attention.getInstitutionId(),
@@ -231,11 +209,6 @@ public class AttentionService {
     @Transactional
     public AppliedDoseResponse registerDose(
             UUID actorId, String operationId, UUID attentionId, RegisterDoseRequest request) {
-        var previous = processedOperations.find(operationId, AppliedDoseResponse.class);
-        if (previous.isPresent()) {
-            return previous.get();
-        }
-
         AuthorizedUser actor = identity.resolve(actorId);
         AttentionEntity attention = requireScoped(actor, attentionId);
         if (!attention.acceptsDoses()) {
@@ -244,65 +217,52 @@ public class AttentionService {
         }
         UUID institutionId = attention.getInstitutionId();
 
-        VaccineEntity vaccine = requireEnabledVaccine(institutionId, request.vaccineId());
-        VaccineOptionEntity doseOption = requireOption(
-                request.doseOptionId(), vaccine.getId(), FIELD_DOSE, "La dosis seleccionada no es valida.");
-        VaccineOptionEntity pneumo = request.pneumococcalTypeOptionId() == null
-                ? null
-                : requireOption(
-                        request.pneumococcalTypeOptionId(),
-                        vaccine.getId(),
-                        FIELD_PNEUMOCOCCAL,
-                        "El tipo de neumococo seleccionado no es valido.");
+        return coordinator.execute(
+                operationId,
+                "REGISTER_APPLIED_DOSE",
+                AppliedDoseResponse.class,
+                () -> auditContext(actor.getId(), AuditAction.DOSE_REGISTERED, RESOURCE_TYPE_DOSE),
+                () -> {
+                    VaccineCatalogPolicy.DoseSelection selection = catalogPolicy.resolve(
+                            new VaccineCatalogPolicy.ResolutionRequest(
+                                    institutionId,
+                                    request.vaccineId(),
+                                    request.doseOptionId(),
+                                    request.pneumococcalTypeOptionId(),
+                                    request.selectedLaboratoryId(),
+                                    request.selectedSyringeId(),
+                                    request.selectedDropperId(),
+                                    request.selectedObservationId()));
 
-        ResolvedOption laboratory =
-                resolveInstitutionOption(institutionId, vaccine.getId(), request.selectedLaboratoryId(), "laboratory");
-        ResolvedOption syringe =
-                resolveInstitutionOption(institutionId, vaccine.getId(), request.selectedSyringeId(), "syringe");
-        ResolvedOption dropper =
-                resolveInstitutionOption(institutionId, vaccine.getId(), request.selectedDropperId(), "dropper");
-        ResolvedOption observation = resolveInstitutionOption(
-                institutionId, vaccine.getId(), request.selectedObservationId(), "observation");
+                    Instant now = Instant.now();
+                    Instant applicationDate = request.applicationDate() != null ? request.applicationDate() : now;
 
-        Instant now = Instant.now();
-        Instant applicationDate = request.applicationDate() != null ? request.applicationDate() : now;
-
-        AppliedDoseEntity dose = doses.save(new AppliedDoseEntity(
-                UUID.randomUUID(),
-                attentionId,
-                vaccine.getId(),
-                request.lotId(),
-                blankToNull(request.lotNumber()),
-                applicationDate,
-                doseOption.getId(),
-                pneumo != null ? pneumo.getId() : null,
-                vaccine.getName(),
-                vaccine.getCode(),
-                doseOption.getDisplayName(),
-                doseOption.getValue(),
-                pneumo != null ? pneumo.getDisplayName() : null,
-                vaccine.getVersion(),
-                id(laboratory),
-                label(laboratory),
-                id(syringe),
-                label(syringe),
-                id(dropper),
-                label(dropper),
-                id(observation),
-                label(observation),
-                now));
-
-        AppliedDoseResponse response = toDoseResponse(dose);
-        audit.record(
-                actor.getId(),
-                institutionId,
-                AuditAction.DOSE_REGISTERED,
-                RESOURCE_TYPE_DOSE,
-                dose.getId(),
-                parseOperationId(operationId),
-                response);
-        processedOperations.record(operationId, "REGISTER_APPLIED_DOSE", dose.getId(), response);
-        return response;
+                    AppliedDoseEntity dose = doses.save(new AppliedDoseEntity(
+                            UUID.randomUUID(),
+                            attentionId,
+                            selection.vaccineId(),
+                            request.lotId(),
+                            Strings.blankToNull(request.lotNumber()),
+                            applicationDate,
+                            selection.doseOptionId(),
+                            selection.pneumococcalTypeOptionId(),
+                            selection.vaccineName(),
+                            selection.vaccineCode(),
+                            selection.doseLabel(),
+                            selection.doseValue(),
+                            selection.pneumococcalTypeSnapshot(),
+                            selection.catalogVersion(),
+                            selection.laboratoryId(),
+                            selection.laboratorySnapshot(),
+                            selection.syringeId(),
+                            selection.syringeSnapshot(),
+                            selection.dropperId(),
+                            selection.dropperSnapshot(),
+                            selection.observationId(),
+                            selection.observationSnapshot(),
+                            now));
+                    return new IdempotencyCoordinator.WriteResult<>(dose.getId(), mapper.toDoseResponse(dose));
+                });
     }
 
     @Transactional
@@ -316,11 +276,10 @@ public class AttentionService {
             throw new InvalidClinicalStateException("La dosis ya esta anulada.");
         }
 
-        Instant now = Instant.now();
-        dose.cancel(request.reason(), actor.getId(), now);
+        dose.cancel(request.reason(), actor.getId(), Instant.now());
         doses.save(dose);
 
-        AppliedDoseResponse response = toDoseResponse(dose);
+        AppliedDoseResponse response = mapper.toDoseResponse(dose);
         audit.record(
                 actor.getId(),
                 attention.getInstitutionId(),
@@ -336,7 +295,12 @@ public class AttentionService {
 
     private record Cancellation(Object resource, String reason) {}
 
-    private record ResolvedOption(UUID id, String displayName) {}
+    private IdempotencyCoordinator.AuditContext auditContext(
+            UUID actorId, AuditAction action, String resourceType) {
+        AuthorizedUser actor = identity.resolve(actorId);
+        return new IdempotencyCoordinator.AuditContext(
+                actor.getId(), institution(actor), action, resourceType);
+    }
 
     private UUID institution(AuthorizedUser actor) {
         return dataScope.resolveInstitutionId(actor, actor.getInstitution().getId());
@@ -363,116 +327,10 @@ public class AttentionService {
         }
     }
 
-    private VaccineEntity requireEnabledVaccine(UUID institutionId, UUID vaccineId) {
-        VaccineEntity vaccine =
-                vaccines.findById(vaccineId).orElseThrow(() -> new IllegalArgumentException("La vacuna no existe."));
-        if (!vaccine.isActive()) {
-            throw new InvalidClinicalStateException("La vacuna esta inactiva.");
-        }
-        boolean enabled = institutionVaccines
-                .findByInstitutionIdAndVaccineId(institutionId, vaccineId)
-                .filter(InstitutionVaccineEntity::isEnabled)
-                .isPresent();
-        if (!enabled) {
-            throw new InvalidClinicalStateException("La vacuna no esta habilitada en tu institucion.");
-        }
-        return vaccine;
-    }
-
-    private VaccineOptionEntity requireOption(UUID optionId, UUID vaccineId, String expectedType, String message) {
-        VaccineOptionEntity option = vaccineOptions
-                .findByIdAndVaccineId(optionId, vaccineId)
-                .orElseThrow(() -> new IllegalArgumentException(message));
-        if (!option.isActive() || !expectedType.equals(option.getFieldType())) {
-            throw new IllegalArgumentException(message);
-        }
-        return option;
-    }
-
-    private ResolvedOption resolveInstitutionOption(
-            UUID institutionId, UUID vaccineId, UUID optionId, String expectedType) {
-        if (optionId == null) {
-            return null;
-        }
-        InstitutionVaccineOptionEntity option = institutionOptions
-                .findByIdAndInstitutionIdAndVaccineId(optionId, institutionId, vaccineId)
-                .orElseThrow(() -> new IllegalArgumentException("La opcion operativa seleccionada no es valida."));
-        if (!option.isActive() || !expectedType.equals(option.getFieldType())) {
-            throw new IllegalArgumentException("La opcion operativa seleccionada no es valida.");
-        }
-        return new ResolvedOption(option.getId(), option.getDisplayName());
-    }
-
-    private UUID id(ResolvedOption option) {
-        return option == null ? null : option.id();
-    }
-
-    private String label(ResolvedOption option) {
-        return option == null ? null : option.displayName();
-    }
-
-    private String blankToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
-
-    private UUID parseOperationId(String operationId) {
-        if (operationId == null || operationId.isBlank()) {
-            return null;
-        }
-        try {
-            return UUID.fromString(operationId.trim());
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
-    }
-
-    private AttentionResponse toResponse(AttentionEntity attention) {
-        List<AppliedDoseResponse> doseResponses = new ArrayList<>();
-        for (AppliedDoseEntity dose : doses.findByAttentionIdOrderByCreatedAtAsc(attention.getId())) {
-            doseResponses.add(toDoseResponse(dose));
-        }
-        return new AttentionResponse(
-                attention.getId(),
-                attention.getPatientId(),
-                attention.getProfessionalId(),
-                attention.getInstitutionId(),
-                attention.getAttentionDate(),
-                attention.getConsecutive(),
-                attention.getStatus().name(),
-                attention.getObservations(),
-                attention.getVersion(),
-                attention.getCreatedAt(),
-                attention.getUpdatedAt(),
-                doseResponses);
-    }
-
-    private AppliedDoseResponse toDoseResponse(AppliedDoseEntity dose) {
-        return new AppliedDoseResponse(
-                dose.getId(),
-                dose.getAttentionId(),
-                dose.getVaccineId(),
-                dose.getVaccineNameSnapshot(),
-                dose.getVaccineCodeSnapshot(),
-                dose.getDoseOptionId(),
-                dose.getDoseLabelSnapshot(),
-                dose.getDoseValueSnapshot(),
-                dose.getPneumococcalTypeOptionId(),
-                dose.getPneumococcalTypeSnapshot(),
-                dose.getLotId(),
-                dose.getLotNumber(),
-                dose.getApplicationDate(),
-                dose.getCatalogVersion(),
-                dose.getSelectedLaboratorySnapshot(),
-                dose.getSelectedSyringeSnapshot(),
-                dose.getSelectedDropperSnapshot(),
-                dose.getSelectedObservationSnapshot(),
-                dose.getStatus().name(),
-                dose.getCancelledReason(),
-                dose.getCancelledAt(),
-                dose.getCreatedAt());
+    private AttentionResponse response(AttentionEntity attention) {
+        List<AppliedDoseResponse> doseResponses = doses.findByAttentionIdOrderByCreatedAtAsc(attention.getId()).stream()
+                .map(mapper::toDoseResponse)
+                .toList();
+        return mapper.toResponse(attention, doseResponses);
     }
 }

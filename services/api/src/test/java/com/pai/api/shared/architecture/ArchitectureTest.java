@@ -4,6 +4,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 
+import com.pai.api.attentions.service.VaccineCatalogPolicy;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
@@ -88,4 +89,25 @@ public class ArchitectureTest {
             .dependOnClassesThat()
             .resideInAPackage("..repository..")
             .as("la seguridad se mantiene separada de controllers y repositories (ADR-006)");
+
+    @ArchTest
+    static final ArchRule attentions_must_not_depend_on_catalog_repositories_or_entities = noClasses()
+            .that()
+            .resideInAPackage("..attentions..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("..catalog.repository..")
+            .orShould()
+            .dependOnClassesThat()
+            .resideInAPackage("..catalog.entity..")
+            .as("el modulo clinico no depende de la persistencia del catalogo;"
+                    + " consulta el catalogo via VaccineCatalogPolicy (DIP)");
+
+    @ArchTest
+    static final ArchRule policy_implementations_live_in_catalog = classes()
+            .that()
+            .implement(VaccineCatalogPolicy.class)
+            .should()
+            .resideInAPackage("..catalog..")
+            .as("las implementaciones del puerto VaccineCatalogPolicy viven en el modulo catalogo (DIP)");
 }

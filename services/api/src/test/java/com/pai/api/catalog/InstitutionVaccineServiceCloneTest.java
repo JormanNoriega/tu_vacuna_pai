@@ -2,7 +2,7 @@ package com.pai.api.catalog;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -23,8 +23,7 @@ import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.DataScope;
 import com.pai.api.identity.service.IdentityService;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
+import com.pai.api.shared.security.PermissionGuard;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -41,9 +40,8 @@ class InstitutionVaccineServiceCloneTest {
     private InstitutionVaccineOptionRepository local;
     private VaccineRepository vaccines;
     private VaccineOptionTemplateRepository templates;
-    private IdentityService identity;
     private DataScope scope;
-    private EntityManager entityManager;
+    private PermissionGuard guard;
     private InstitutionVaccineService service;
 
     @BeforeEach
@@ -52,10 +50,10 @@ class InstitutionVaccineServiceCloneTest {
         local = mock(InstitutionVaccineOptionRepository.class);
         vaccines = mock(VaccineRepository.class);
         templates = mock(VaccineOptionTemplateRepository.class);
-        identity = mock(IdentityService.class);
+        IdentityService identity = mock(IdentityService.class);
         scope = mock(DataScope.class);
-        entityManager = mock(EntityManager.class);
-        service = new InstitutionVaccineService(relations, local, vaccines, templates, identity, scope, entityManager);
+        guard = new PermissionGuard(identity);
+        service = new InstitutionVaccineService(relations, local, vaccines, templates, scope, guard);
         when(identity.resolve(ACTOR))
                 .thenReturn(new AuthorizedUser(
                         ACTOR,
@@ -73,8 +71,8 @@ class InstitutionVaccineServiceCloneTest {
         VaccineEntity v1 = vaccine("VAC-1");
         VaccineEntity v2 = vaccine("VAC-2");
         when(vaccines.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(v1, v2));
-        Query query = inserted();
-        when(entityManager.createNativeQuery(anyString())).thenReturn(query);
+        when(relations.insertEnabledIfAbsent(INSTITUTION, v1.getId(), ACTOR)).thenReturn(1);
+        when(relations.insertEnabledIfAbsent(INSTITUTION, v2.getId(), ACTOR)).thenReturn(1);
         when(templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(v1.getId()))
                 .thenReturn(List.of(template(v1.getId(), "laboratory"), template(v1.getId(), "syringe")));
         when(templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(v2.getId()))
@@ -92,8 +90,7 @@ class InstitutionVaccineServiceCloneTest {
     void cloneWithoutDefaultConfigSkipsOptions() {
         VaccineEntity v1 = vaccine("VAC-1");
         when(vaccines.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(v1));
-        Query query = inserted();
-        when(entityManager.createNativeQuery(anyString())).thenReturn(query);
+        when(relations.insertEnabledIfAbsent(INSTITUTION, v1.getId(), ACTOR)).thenReturn(1);
 
         CloneCatalogResponse result = service.clone(ACTOR, INSTITUTION, false);
 
@@ -106,8 +103,7 @@ class InstitutionVaccineServiceCloneTest {
     void cloneIsIdempotentForAlreadyEnabledVaccines() {
         VaccineEntity v1 = vaccine("VAC-1");
         when(vaccines.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(v1));
-        Query query = emptyInsert();
-        when(entityManager.createNativeQuery(anyString())).thenReturn(query);
+        when(relations.insertEnabledIfAbsent(INSTITUTION, v1.getId(), ACTOR)).thenReturn(0);
         InstitutionVaccineEntity enabled = mock(InstitutionVaccineEntity.class);
         when(enabled.isEnabled()).thenReturn(true);
         when(relations.findByInstitutionIdAndVaccineId(INSTITUTION, v1.getId())).thenReturn(Optional.of(enabled));
@@ -117,15 +113,14 @@ class InstitutionVaccineServiceCloneTest {
         assertThat(result.vaccinesEnabled()).isZero();
         assertThat(result.optionsCopied()).isZero();
         verify(local, never()).save(any(InstitutionVaccineOptionEntity.class));
-        verify(entityManager, never()).createQuery(anyString());
+        verify(relations, never()).setEnabledById(any(), anyBoolean());
     }
 
     @Test
     void cloneRespectsDisabledRelationWithoutTouchingIt() {
         VaccineEntity v1 = vaccine("VAC-1");
         when(vaccines.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(v1));
-        Query query = emptyInsert();
-        when(entityManager.createNativeQuery(anyString())).thenReturn(query);
+        when(relations.insertEnabledIfAbsent(INSTITUTION, v1.getId(), ACTOR)).thenReturn(0);
 
         CloneCatalogResponse result = service.clone(ACTOR, INSTITUTION, true);
 
@@ -134,7 +129,7 @@ class InstitutionVaccineServiceCloneTest {
         verify(local, never()).save(any(InstitutionVaccineOptionEntity.class));
         // La relacion deshabilitada NO se reactiva: el re-clone respeta la
         // decision de la institucion y no pisa su configuracion local.
-        verify(entityManager, never()).createQuery(anyString());
+        verify(relations, never()).setEnabledById(any(), anyBoolean());
         verify(relations, never()).findByInstitutionIdAndVaccineId(any(), any());
     }
 
@@ -173,19 +168,5 @@ class InstitutionVaccineServiceCloneTest {
                 (short) 72,
                 Instant.now(),
                 Instant.now());
-    }
-
-    private Query inserted() {
-        Query query = mock(Query.class);
-        when(query.setParameter(anyString(), any())).thenReturn(query);
-        when(query.getResultList()).thenReturn(List.of(UUID.randomUUID()));
-        return query;
-    }
-
-    private Query emptyInsert() {
-        Query query = mock(Query.class);
-        when(query.setParameter(anyString(), any())).thenReturn(query);
-        when(query.getResultList()).thenReturn(List.of());
-        return query;
     }
 }
