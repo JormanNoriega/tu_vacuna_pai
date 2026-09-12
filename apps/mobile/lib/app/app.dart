@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../core/network/network_info.dart';
+import '../core/synchronization/clinical_offline_repository.dart';
+import '../core/synchronization/sync_status_controller.dart';
 import '../features/admin/presentation/admin_controller.dart';
 import '../features/auth/data/in_memory_auth_repository.dart';
 import '../features/auth/domain/repositories/auth_repository.dart';
@@ -28,6 +30,8 @@ class TuVacunaApp extends StatefulWidget {
     this.historyController,
     this.patientDetailController,
     this.networkInfo,
+    this.syncStatusController,
+    this.clinicalOfflineRepository,
   });
 
   /// Repositorio de autenticacion. En produccion se inyecta desde [main];
@@ -57,6 +61,14 @@ class TuVacunaApp extends StatefulWidget {
   /// banner offline. Solo afecta lo visual; la autorizacion la define el
   /// estado de sesion. Null en tests y demos (sin listener).
   final NetworkInfo? networkInfo;
+
+  /// Proyeccion observable del estado de sincronizacion (outbox + ultimo
+  /// resultado del engine). Se inyecta desde [main]; null en tests y demos.
+  final SyncStatusController? syncStatusController;
+
+  /// Repositorio local-first del flujo clinico offline que consumira el wizard.
+  /// Se inyecta desde [main]; null en tests y demos.
+  final ClinicalOfflineRepository? clinicalOfflineRepository;
 
   @override
   State<TuVacunaApp> createState() => _TuVacunaAppState();

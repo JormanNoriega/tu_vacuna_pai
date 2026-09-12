@@ -8,6 +8,11 @@ import 'core/auth/session_manager.dart';
 import 'core/network/api_client.dart';
 import 'core/network/network_info.dart';
 import 'core/storage/app_database.dart';
+import 'core/synchronization/clinical_offline_repository.dart';
+import 'core/synchronization/sync_engine.dart';
+import 'core/synchronization/sync_outbox.dart';
+import 'core/synchronization/sync_scheduler.dart';
+import 'core/synchronization/sync_status_controller.dart';
 import 'features/admin/application/use_cases/list_institution_admins.dart';
 import 'features/admin/data/admin_repository_impl.dart';
 import 'features/admin/domain/use_cases/clone_catalog_to_institution.dart';
@@ -50,6 +55,25 @@ Future<void> main() async {
   final networkInfo = ConnectivityNetworkInfo();
   final appDatabase = await AppDatabase.open(secureStorage);
   final localSessionStore = LocalSessionStore(appDatabase);
+  final syncOutbox = SyncOutboxRepository(appDatabase);
+  final syncEngine = SyncEngine(
+    apiClient: apiClient,
+    outbox: syncOutbox,
+    database: appDatabase,
+    sessionManager: sessionManager,
+  );
+  final syncScheduler = SyncScheduler(
+    engine: syncEngine,
+    networkInfo: networkInfo,
+  );
+  final syncStatusController = SyncStatusController(
+    outbox: syncOutbox,
+    engine: syncEngine,
+  );
+  final clinicalOfflineRepository = ClinicalOfflineRepository(
+    database: appDatabase,
+    outboxRepository: syncOutbox,
+  );
   final authRepository = SupabaseAuthRepository(
     apiClient,
     sessionManager,
@@ -128,6 +152,10 @@ Future<void> main() async {
       historyController: historyController,
       patientDetailController: patientDetailController,
       networkInfo: networkInfo,
+      syncStatusController: syncStatusController,
+      clinicalOfflineRepository: clinicalOfflineRepository,
     ),
   );
+
+  syncScheduler.start();
 }
