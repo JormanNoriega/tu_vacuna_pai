@@ -94,6 +94,17 @@ public class AppliedDoseEntity {
     @Column(name = "selected_observation_snapshot")
     private String selectedObservationSnapshot;
 
+    @Column(name = "syringe_lot")
+    private String syringeLot;
+
+    private String diluent;
+
+    @Column(name = "vial_count")
+    private Integer vialCount;
+
+    @Column(name = "custom_observation")
+    private String customObservation;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Status status;
@@ -167,6 +178,30 @@ public class AppliedDoseEntity {
         this.cancelledReason = reason;
         this.cancelledBy = actorId;
         this.cancelledAt = now;
+    }
+
+    /** Campos operativos opcionales capturados por el wizard (Paso 3). */
+    public void applyOperationalFields(String syringeLot, String diluent, Integer vialCount, String customObservation) {
+        this.syringeLot = syringeLot;
+        this.diluent = diluent;
+        this.vialCount = vialCount;
+        this.customObservation = customObservation;
+    }
+
+    public String getSyringeLot() {
+        return syringeLot;
+    }
+
+    public String getDiluent() {
+        return diluent;
+    }
+
+    public Integer getVialCount() {
+        return vialCount;
+    }
+
+    public String getCustomObservation() {
+        return customObservation;
     }
 
     public UUID getId() {

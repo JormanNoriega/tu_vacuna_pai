@@ -6,7 +6,9 @@ import 'command_payloads.dart';
 import 'sync_operation.dart';
 import 'sync_outbox.dart';
 import 'sync_status.dart';
+import '../../features/attentions/domain/entities/attention.dart';
 import '../../features/patients/domain/entities/new_patient.dart';
+import '../../features/patients/domain/entities/patient.dart';
 
 /// Resultado de una escritura clinica local: la entidad persistida y la
 /// operacion encolada (para encadenar dependencias).
@@ -193,6 +195,156 @@ class ClinicalOfflineRepository {
     final entity = await _db.attentionLocalById(attentionId);
     return ClinicalWrite(entity: entity!, operationId: operation.operationId);
   }
+
+  // ---------------------------------------------------------------------------
+  // Fachada de dominio (lectura/escritura tipada para controladores offline).
+  //
+  // Los metodos anteriores devuelven filas Drift; estos devuelven entidades de
+  // dominio listas para la UI. La institucion se resuelve del perfil local
+  // (nunca del cliente), igual que en el backend.
+  // ---------------------------------------------------------------------------
+
+  Future<String> _institutionId() async {
+    final profile = await _db.currentUserProfile();
+    return profile?.institutionId ?? '';
+  }
+
+  /// Busca pacientes en el working set local. Con documento filtra exacto;
+  /// sin documento devuelve los del scope institucional.
+  Future<List<Patient>> findPatients({
+    String? documentType,
+    String? documentNumber,
+  }) async {
+    final institutionId = await _institutionId();
+    if (institutionId.isEmpty) return const [];
+    final rows = (documentType != null && documentNumber != null)
+        ? await _db.searchPatientsLocal(
+            institutionId: institutionId,
+            documentType: documentType,
+            documentNumber: documentNumber,
+          )
+        : await _db.patientsLocalByInstitution(institutionId);
+    return rows.map(_toPatient).toList();
+  }
+
+  Future<Patient> createPatientLocal(NewPatientInput input) async {
+    final write = await createPatient(
+      institutionId: await _institutionId(),
+      input: input,
+    );
+    return _toPatient(write.entity);
+  }
+
+  Future<Attention> createAttentionLocal({
+    required String patientId,
+    String? attentionDate,
+    String? observations,
+    List<String> dependencies = const [],
+  }) async {
+    final write = await createAttention(
+      institutionId: await _institutionId(),
+      patientId: patientId,
+      attentionDate: attentionDate,
+      observations: observations,
+      dependencies: dependencies,
+    );
+    return _toAttention(write.entity);
+  }
+
+  Future<AppliedDose> registerDoseLocal({
+    required String attentionId,
+    required String vaccineId,
+    required String doseOptionId,
+    required String vaccineNameSnapshot,
+    String? pneumococcalTypeOptionId,
+    String? doseLabelSnapshot,
+    String? lotNumber,
+    String? applicationDate,
+    String? selectedLaboratoryId,
+    String? selectedSyringeId,
+    String? selectedDropperId,
+    String? selectedObservationId,
+    List<String> dependencies = const [],
+  }) async {
+    final write = await registerDose(
+      attentionId: attentionId,
+      vaccineId: vaccineId,
+      doseOptionId: doseOptionId,
+      vaccineNameSnapshot: vaccineNameSnapshot,
+      pneumococcalTypeOptionId: pneumococcalTypeOptionId,
+      doseLabelSnapshot: doseLabelSnapshot,
+      lotNumber: lotNumber,
+      applicationDate: applicationDate,
+      selectedLaboratoryId: selectedLaboratoryId,
+      selectedSyringeId: selectedSyringeId,
+      selectedDropperId: selectedDropperId,
+      selectedObservationId: selectedObservationId,
+      dependencies: dependencies,
+    );
+    return _toDose(write.entity);
+  }
+
+  Future<Attention> completeAttentionLocal({
+    required String attentionId,
+    List<String> dependencies = const [],
+  }) async {
+    await completeAttention(
+      attentionId: attentionId,
+      dependencies: dependencies,
+    );
+    return attentionLocalWithDoses(attentionId);
+  }
+
+  Future<Attention> attentionLocalWithDoses(String attentionId) async {
+    final attention = await _db.attentionLocalById(attentionId);
+    if (attention == null) {
+      throw StateError('Atencion local no encontrada: $attentionId');
+    }
+    final doseRows = await _db.appliedDosesLocalByAttention(attentionId);
+    return _toAttention(attention, doseRows.map(_toDose).toList());
+  }
+
+  Patient _toPatient(PatientsLocalData row) => Patient(
+    id: row.id,
+    documentType: row.documentType,
+    documentNumber: row.documentNumber,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    birthDate: row.birthDate,
+    sex: row.sex ?? '',
+    status: 'ACTIVE',
+  );
+
+  Attention _toAttention(
+    AttentionsLocalData row, [
+    List<AppliedDose> doses = const [],
+  ]) => Attention(
+    id: row.id,
+    patientId: row.patientId,
+    professionalId: row.vaccinatorId ?? '',
+    status: row.status,
+    version: row.version,
+    doses: doses,
+    attentionDate: _fromEpoch(row.attentionDate),
+    observations: row.observations,
+  );
+
+  AppliedDose _toDose(AppliedDosesLocalData row) => AppliedDose(
+    id: row.id,
+    attentionId: row.attentionId,
+    vaccineId: row.vaccineId ?? '',
+    vaccineNameSnapshot: row.vaccineNameSnapshot,
+    vaccineCodeSnapshot: '',
+    doseLabelSnapshot: row.doseLabelSnapshot ?? '',
+    status: row.status,
+    lotNumber: row.lot,
+    applicationDate: _fromEpoch(row.appliedAt),
+    catalogVersion: row.catalogVersion ?? 0,
+  );
+
+  static DateTime? _fromEpoch(int? epoch) => epoch == null
+      ? null
+      : DateTime.fromMillisecondsSinceEpoch(epoch * 1000, isUtc: true);
 
   PatientsLocalCompanion _patientCompanion(
     String institutionId,

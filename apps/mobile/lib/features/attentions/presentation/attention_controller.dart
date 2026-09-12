@@ -1,7 +1,9 @@
 import '../../../core/auth/offline_access.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/presentation/async_controller.dart';
+import '../../../core/synchronization/clinical_offline_repository.dart';
 import '../../../core/utils/uuid.dart';
+import '../../auth/domain/entities/session_restore_result.dart';
 import '../../catalogs/domain/entities/effective_catalog.dart';
 import '../../catalogs/domain/entities/geo.dart';
 import '../../catalogs/domain/use_cases/catalog_use_cases.dart';
@@ -14,8 +16,13 @@ import '../domain/use_cases/attentions_use_cases.dart';
 
 /// Orquesta el flujo clinico del vacunador: busqueda/creacion de paciente,
 /// seleccion de vacuna del catalogo efectivo, registro de dosis y cierre de la
-/// atencion. Online-first: ninguna escritura se confirma hasta la respuesta del
-/// servidor.
+/// atencion.
+///
+/// Camino offline: cuando la sesion esta en [SessionStatus.offlineAuthorized],
+/// la cadena clinica escribe en el working set local + outbox a traves de
+/// [offlineRepository]; el [SyncEngine] la empuja al reconectar. Con sesion
+/// online se mantiene el camino online-first contra la API. Las cancelaciones y
+/// ediciones siguen siendo online-only.
 class AttentionController extends AsyncController {
   AttentionController({
     required super.sessionManager,
@@ -29,6 +36,7 @@ class AttentionController extends AsyncController {
     required this.completeAttention,
     required this.cancelAttention,
     required this.cancelDose,
+    this.offlineRepository,
   });
 
   final SearchPatient searchPatient;
@@ -41,6 +49,14 @@ class AttentionController extends AsyncController {
   final CompleteAttention completeAttention;
   final CancelAttention cancelAttention;
   final CancelDose cancelDose;
+
+  /// Repositorio local-first de la cadena clinica. Null en tests/demos, donde
+  /// el flujo opera solo online.
+  final ClinicalOfflineRepository? offlineRepository;
+
+  bool _isOffline(OfflineAccess offline) =>
+      offlineRepository != null &&
+      offline.status == SessionStatus.offlineAuthorized;
 
   List<EffectiveVaccine> _effectiveVaccines = const [];
   List<Patient> _searchResults = const [];
@@ -89,15 +105,22 @@ class AttentionController extends AsyncController {
       });
 
   /// Busca pacientes por documento. Deja el resultado en [searchResults].
+  /// Offline consulta el working set local; online consulta la API.
   Future<void> findPatients({
+    required OfflineAccess offline,
     required String documentType,
     required String documentNumber,
   }) => execute((token) async {
-    _searchResults = await searchPatient(
-      token,
-      documentType: documentType,
-      documentNumber: documentNumber,
-    );
+    _searchResults = _isOffline(offline)
+        ? await offlineRepository!.findPatients(
+            documentType: documentType,
+            documentNumber: documentNumber,
+          )
+        : await searchPatient(
+            token,
+            documentType: documentType,
+            documentNumber: documentNumber,
+          );
   });
 
   void selectPatient(Patient patient) {
@@ -113,12 +136,14 @@ class AttentionController extends AsyncController {
   }) async {
     Patient? created;
     await execute((token) async {
-      created = await createPatient(
-        token,
-        offline: offline,
-        input: input,
-        operationId: uuidV4(),
-      );
+      created = _isOffline(offline)
+          ? await offlineRepository!.createPatientLocal(input)
+          : await createPatient(
+              token,
+              offline: offline,
+              input: input,
+              operationId: uuidV4(),
+            );
       _patient = created;
       _searchResults = [created!];
     });
@@ -146,6 +171,43 @@ class AttentionController extends AsyncController {
       setError('Selecciona un paciente antes de registrar la dosis.');
       return false;
     }
+
+    if (_isOffline(offline)) {
+      final repository = offlineRepository!;
+      var success = false;
+      await execute((token) async {
+        var attention = _attention;
+        if (attention == null) {
+          attention = await repository.createAttentionLocal(
+            patientId: patient.id,
+            observations: observations,
+          );
+          _attention = attention;
+        }
+        final vaccine = _vaccineById(vaccineId);
+        final doseOption = vaccine == null
+            ? null
+            : _doseOptionById(vaccine, doseOptionId);
+        final dose = await repository.registerDoseLocal(
+          attentionId: attention.id,
+          vaccineId: vaccineId,
+          doseOptionId: doseOptionId,
+          vaccineNameSnapshot: vaccine?.name ?? '',
+          doseLabelSnapshot: doseOption?.displayName,
+          pneumococcalTypeOptionId: pneumococcalTypeOptionId,
+          lotNumber: lotNumber,
+          applicationDate: applicationDate,
+          selectedLaboratoryId: selectedLaboratoryId,
+          selectedSyringeId: selectedSyringeId,
+          selectedDropperId: selectedDropperId,
+          selectedObservationId: selectedObservationId,
+        );
+        _attention = _withDose(attention, dose);
+        success = true;
+      });
+      return success;
+    }
+
     var success = false;
     await execute((token) async {
       _attention ??= await createAttention(
@@ -171,21 +233,37 @@ class AttentionController extends AsyncController {
         selectedObservationId: selectedObservationId,
         operationId: uuidV4(),
       );
-      _attention = Attention(
-        id: attention.id,
-        patientId: attention.patientId,
-        professionalId: attention.professionalId,
-        status: attention.status,
-        version: attention.version,
-        doses: [...attention.doses, dose],
-        attentionDate: attention.attentionDate,
-        consecutive: attention.consecutive,
-        observations: attention.observations,
-      );
+      _attention = _withDose(attention, dose);
       success = true;
     });
     return success;
   }
+
+  EffectiveVaccine? _vaccineById(String vaccineId) {
+    for (final vaccine in _effectiveVaccines) {
+      if (vaccine.vaccineId == vaccineId) return vaccine;
+    }
+    return null;
+  }
+
+  EffectiveOption? _doseOptionById(EffectiveVaccine vaccine, String doseId) {
+    for (final option in vaccine.doses) {
+      if (option.id == doseId) return option;
+    }
+    return null;
+  }
+
+  Attention _withDose(Attention attention, AppliedDose dose) => Attention(
+    id: attention.id,
+    patientId: attention.patientId,
+    professionalId: attention.professionalId,
+    status: attention.status,
+    version: attention.version,
+    doses: [...attention.doses, dose],
+    attentionDate: attention.attentionDate,
+    consecutive: attention.consecutive,
+    observations: attention.observations,
+  );
 
   /// Cierra la atencion (COMPLETED).
   Future<bool> finishAttention({required OfflineAccess offline}) async {
@@ -193,11 +271,11 @@ class AttentionController extends AsyncController {
     if (attention == null) return false;
     var success = false;
     await execute((token) async {
-      _attention = await completeAttention(
-        token,
-        attention.id,
-        offline: offline,
-      );
+      _attention = _isOffline(offline)
+          ? await offlineRepository!.completeAttentionLocal(
+              attentionId: attention.id,
+            )
+          : await completeAttention(token, attention.id, offline: offline);
       success = true;
     });
     return success;

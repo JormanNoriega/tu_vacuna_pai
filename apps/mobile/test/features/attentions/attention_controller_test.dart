@@ -64,6 +64,7 @@ void main() {
   group('AttentionController', () {
     test('busca y selecciona un paciente', () async {
       await controller.findPatients(
+        offline: online,
         documentType: 'CC',
         documentNumber: '12345678',
       );

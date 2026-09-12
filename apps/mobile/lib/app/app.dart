@@ -151,6 +151,7 @@ class _TuVacunaAppState extends State<TuVacunaApp> {
         sessionStatus: _authController.status,
         offlineReason: _authController.offlineReason,
         networkInfo: widget.networkInfo,
+        syncStatusController: widget.syncStatusController,
       );
     }
     return LoginPage(controller: _authController);

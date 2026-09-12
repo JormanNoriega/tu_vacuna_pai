@@ -281,6 +281,9 @@ class SyncEngine {
 
     switch (operation.commandType) {
       case SyncCommandType.createPatient:
+        final demographics = payload['demographics'];
+        final contacts = (payload['contacts'] as List<dynamic>?) ?? const [];
+        final addresses = (payload['addresses'] as List<dynamic>?) ?? const [];
         await _db.upsertPatientLocal(
           PatientsLocalCompanion.insert(
             id: operation.aggregateId,
@@ -291,6 +294,18 @@ class SyncEngine {
             lastName: _str(payload['lastName']),
             birthDate: Value(_date(payload['birthDate'])),
             sex: Value(_nullable(payload['sex'])),
+            gender: Value(
+              demographics is Map ? _nullable(demographics['gender']) : null,
+            ),
+            phone: Value(_contactValue(contacts, 'PHONE')),
+            email: Value(_contactValue(contacts, 'EMAIL')),
+            addressLine: Value(_firstAddressField(addresses, 'street')),
+            addressDepartment: Value(
+              _firstAddressField(addresses, 'departmentId'),
+            ),
+            addressMunicipality: Value(
+              _firstAddressField(addresses, 'municipalityId'),
+            ),
             syncState: SyncAggregateState.synced.value,
             version: 0,
             updatedAt: _epochNow(),
@@ -320,7 +335,9 @@ class SyncEngine {
             vaccineId: Value(_nullable(payload['vaccineId'])),
             status: 'REGISTERED',
             appliedAt: _epoch(payload['applicationDate']) ?? _epochNow(),
+            lot: Value(_nullable(payload['lotNumber'])),
             vaccineNameSnapshot: _str(payload['vaccineId']),
+            doseLabelSnapshot: Value(_nullable(payload['doseOptionId'])),
             syncState: SyncAggregateState.synced.value,
             updatedAt: _epochNow(),
           ),
@@ -375,6 +392,25 @@ class SyncEngine {
   static String? _nullable(Object? value) {
     final text = value?.toString();
     return (text == null || text.isEmpty) ? null : text;
+  }
+
+  static String? _contactValue(List<dynamic> contacts, String type) {
+    for (final contact in contacts) {
+      if (contact is Map && contact['type'] == type) {
+        return _nullable(contact['value']);
+      }
+    }
+    return null;
+  }
+
+  static String? _firstAddressField(List<dynamic> addresses, String field) {
+    for (final address in addresses) {
+      if (address is Map) {
+        final value = _nullable(address[field]);
+        if (value != null) return value;
+      }
+    }
+    return null;
   }
 
   static DateTime? _date(Object? value) {

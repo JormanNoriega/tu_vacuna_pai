@@ -12,26 +12,36 @@ class SyncScheduler {
     required this.engine,
     required this.networkInfo,
     this.interval = const Duration(seconds: 60),
+    this.onAfterSync,
   });
 
   final SyncEngine engine;
   final NetworkInfo networkInfo;
   final Duration interval;
 
+  /// Callback opcional tras cada ciclo (exito o error). Sirve para refrescar la
+  /// proyeccion de estado en la UI ([SyncStatusController.refresh]).
+  final Future<void> Function()? onAfterSync;
+
   StreamSubscription<bool>? _connectivitySubscription;
   Timer? _timer;
   bool _started = false;
+
+  Future<void> _run() async {
+    await engine.syncOnce();
+    await onAfterSync?.call();
+  }
 
   void start() {
     if (_started) return;
     _started = true;
     _connectivitySubscription = networkInfo.connectivityChanges.listen(
       (connected) {
-        if (connected) unawaited(engine.syncOnce());
+        if (connected) unawaited(_run());
       },
     );
-    _timer = Timer.periodic(interval, (_) => unawaited(engine.syncOnce()));
-    unawaited(engine.syncOnce());
+    _timer = Timer.periodic(interval, (_) => unawaited(_run()));
+    unawaited(_run());
   }
 
   Future<SyncOutcome> trigger() => engine.syncOnce();

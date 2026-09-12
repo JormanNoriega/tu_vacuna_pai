@@ -62,13 +62,14 @@ Future<void> main() async {
     database: appDatabase,
     sessionManager: sessionManager,
   );
-  final syncScheduler = SyncScheduler(
-    engine: syncEngine,
-    networkInfo: networkInfo,
-  );
   final syncStatusController = SyncStatusController(
     outbox: syncOutbox,
     engine: syncEngine,
+  );
+  final syncScheduler = SyncScheduler(
+    engine: syncEngine,
+    networkInfo: networkInfo,
+    onAfterSync: syncStatusController.refresh,
   );
   final clinicalOfflineRepository = ClinicalOfflineRepository(
     database: appDatabase,
@@ -126,6 +127,7 @@ Future<void> main() async {
     completeAttention: CompleteAttention(attentionsRepository),
     cancelAttention: CancelAttention(attentionsRepository),
     cancelDose: CancelDose(attentionsRepository),
+    offlineRepository: clinicalOfflineRepository,
   );
   final historyController = HistoryController(
     sessionManager: sessionManager,

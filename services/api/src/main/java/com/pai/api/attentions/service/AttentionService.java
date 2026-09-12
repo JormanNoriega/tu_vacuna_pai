@@ -312,7 +312,7 @@ public class AttentionService {
         Instant now = Instant.now();
         Instant applicationDate = request.applicationDate() != null ? request.applicationDate() : now;
 
-        AppliedDoseEntity dose = doses.save(new AppliedDoseEntity(
+        AppliedDoseEntity dose = new AppliedDoseEntity(
                 doseId != null ? doseId : UUID.randomUUID(),
                 attentionId,
                 vaccine.getId(),
@@ -335,7 +335,13 @@ public class AttentionService {
                 label(dropper),
                 id(observation),
                 label(observation),
-                now));
+                now);
+        dose.applyOperationalFields(
+                blankToNull(request.syringeLot()),
+                blankToNull(request.diluent()),
+                request.vialCount(),
+                blankToNull(request.customObservation()));
+        doses.save(dose);
 
         AppliedDoseResponse response = toDoseResponse(dose);
         audit.record(

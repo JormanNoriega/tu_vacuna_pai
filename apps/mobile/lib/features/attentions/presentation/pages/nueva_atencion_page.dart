@@ -104,6 +104,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
       return;
     }
     await widget.controller.findPatients(
+      offline: widget.offline,
       documentType: _searchDocType,
       documentNumber: number,
     );

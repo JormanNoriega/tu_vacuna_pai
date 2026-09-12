@@ -25,11 +25,14 @@ import com.pai.api.patients.entity.PatientMedicalHistoryEntity;
 import com.pai.api.patients.exception.PatientAlreadyExistsException;
 import com.pai.api.patients.exception.PatientNotFoundException;
 import com.pai.api.patients.repository.PatientAddressRepository;
+import com.pai.api.patients.repository.PatientAffiliationRepository;
 import com.pai.api.patients.repository.PatientContactRepository;
 import com.pai.api.patients.repository.PatientDemographicRepository;
 import com.pai.api.patients.repository.PatientGuardianRepository;
 import com.pai.api.patients.repository.PatientMedicalHistoryRepository;
 import com.pai.api.patients.repository.PatientRepository;
+import com.pai.api.patients.repository.PatientSpecialConditionRepository;
+import com.pai.api.patients.repository.PatientUserConditionRepository;
 import com.pai.api.synchronization.service.ProcessedOperationsService;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -52,6 +55,9 @@ class PatientServiceTest {
     private PatientAddressRepository addresses;
     private PatientGuardianRepository guardians;
     private PatientMedicalHistoryRepository medicalHistories;
+    private PatientAffiliationRepository affiliations;
+    private PatientSpecialConditionRepository specialConditions;
+    private PatientUserConditionRepository userConditions;
     private IdentityService identity;
     private DataScope dataScope;
     private AuditService audit;
@@ -66,6 +72,9 @@ class PatientServiceTest {
         addresses = mock(PatientAddressRepository.class);
         guardians = mock(PatientGuardianRepository.class);
         medicalHistories = mock(PatientMedicalHistoryRepository.class);
+        affiliations = mock(PatientAffiliationRepository.class);
+        specialConditions = mock(PatientSpecialConditionRepository.class);
+        userConditions = mock(PatientUserConditionRepository.class);
         identity = mock(IdentityService.class);
         dataScope = new DataScope();
         audit = mock(AuditService.class);
@@ -77,6 +86,9 @@ class PatientServiceTest {
                 addresses,
                 guardians,
                 medicalHistories,
+                affiliations,
+                specialConditions,
+                userConditions,
                 identity,
                 dataScope,
                 audit,
@@ -107,7 +119,8 @@ class PatientServiceTest {
 
     private CreatePatientRequest request(String documentNumber) {
         return new CreatePatientRequest(
-                "CC", documentNumber, "Juan", "Perez", LocalDate.of(2020, 5, 1), "MALE", null, null, null, null, null);
+                "CC", documentNumber, "Juan", null, "Perez", null, LocalDate.of(2020, 5, 1), "MALE", null, null, null,
+                null, null, false, false, null, null, null, null, null, null, null, null);
     }
 
     private PatientEntity patient(UUID id) {
@@ -129,6 +142,9 @@ class PatientServiceTest {
         when(addresses.findByPatientIdOrderByCreatedAtAsc(patientId)).thenReturn(List.of());
         when(guardians.findByPatientIdOrderByCreatedAtAsc(patientId)).thenReturn(List.of());
         when(medicalHistories.findByPatientIdOrderByCreatedAtAsc(patientId)).thenReturn(List.of());
+        when(affiliations.findByPatientId(patientId)).thenReturn(Optional.empty());
+        when(specialConditions.findByPatientId(patientId)).thenReturn(Optional.empty());
+        when(userConditions.findByPatientId(patientId)).thenReturn(Optional.empty());
     }
 
     @Test
@@ -192,9 +208,18 @@ class PatientServiceTest {
                 "CC",
                 "12345678",
                 "Juan",
+                null,
                 "Perez",
+                null,
                 LocalDate.of(2020, 5, 1),
                 "MALE",
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
                 "ACTIVE",
                 0,
                 Instant.now(),
@@ -203,7 +228,10 @@ class PatientServiceTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                null,
+                null,
+                null);
         when(processedOperations.find(OPERATION_ID, PatientResponse.class)).thenReturn(Optional.of(original));
 
         PatientResponse response = service.create(ACTOR_ID, OPERATION_ID, request("99999999"));

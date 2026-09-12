@@ -11,10 +11,20 @@ void main() {
   late SyncOutboxRepository outbox;
   late ClinicalOfflineRepository clinical;
 
-  setUp(() {
+  setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
     outbox = SyncOutboxRepository(db);
     clinical = ClinicalOfflineRepository(database: db, outboxRepository: outbox);
+    await db.upsertCurrentUser(
+      id: 'user-1',
+      email: 'vac@test.co',
+      fullName: 'Vacunador',
+      institutionId: 'inst-1',
+      roles: const ['VACCINATOR'],
+      permissions: const ['ATTENTION_CREATE', 'PATIENT_WRITE'],
+      offlineWindowHours: 24,
+      lastOnlineValidation: 0,
+    );
   });
 
   tearDown(() => db.close());
@@ -83,5 +93,39 @@ void main() {
 
     final doseEntry = await outbox.byOperationId(dose.operationId);
     expect(doseEntry!.operation.dependencies, [attention.operationId]);
+  });
+
+  test('fachada de dominio: busca y encadena toda la cadena clinica', () async {
+    final patient = await clinical.createPatientLocal(input);
+    expect(patient.documentNumber, '10203040');
+    expect(patient.fullName, 'Maria Gomez');
+
+    final found = await clinical.findPatients(
+      documentType: 'CC',
+      documentNumber: '10203040',
+    );
+    expect(found.single.id, patient.id);
+
+    final attention = await clinical.createAttentionLocal(
+      patientId: patient.id,
+      observations: 'Control',
+    );
+    expect(attention.patientId, patient.id);
+
+    final dose = await clinical.registerDoseLocal(
+      attentionId: attention.id,
+      vaccineId: 'vac-1',
+      doseOptionId: 'dose-1',
+      vaccineNameSnapshot: 'BCG',
+      doseLabelSnapshot: 'Recien nacido',
+    );
+    expect(dose.vaccineNameSnapshot, 'BCG');
+
+    final completed = await clinical.completeAttentionLocal(
+      attentionId: attention.id,
+    );
+    expect(completed.status, 'COMPLETED');
+    expect(completed.doses.single.id, dose.id);
+    expect(await outbox.pendingCount(), 4);
   });
 }

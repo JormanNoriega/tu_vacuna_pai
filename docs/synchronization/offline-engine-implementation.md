@@ -1,6 +1,6 @@
 # Implementación del Motor Offline (Fase 3)
 
-- Estado: Plan aprobado. Hito 1 (motor offline móvil) y Hito 2 (backend) implementados.
+- Estado: Hito 1 (motor offline móvil), Hito 2 (backend sync), Hito 3A (cableado local-first real) y Fase 2 backend (campos de paciente + catálogos de referencia) implementados. Pendiente: wizard "Nueva atención".
 - Fecha: 2026-09-11
 - Autoridad semántica: [`sync-contract.md`](sync-contract.md)
 - Contrato HTTP: [`docs/api/openapi.yaml`](../api/openapi.yaml) (`/sync/push`, `/sync/pull`, `SyncOperation`, `SyncPushResponse`, `SyncPullResponse`)
@@ -301,6 +301,44 @@ de presentación, no en los controladores (`architecture.md` §Controladores).
 Actualizar `apps/mobile/lib/main.dart` y `apps/mobile/lib/app/app.dart` para
 inyectar `AppDatabase`, outbox, `SyncEngine`/`SyncScheduler` y los repos
 local-first.
+
+---
+
+## 5b. Hito 3A — Cableado local-first (implementado)
+
+- `ClinicalOfflineRepository` expone una fachada de dominio (`findPatients`,
+  `createPatientLocal`, `createAttentionLocal`, `registerDoseLocal`,
+  `completeAttentionLocal`, `attentionLocalWithDoses`) que resuelve la
+  institución del perfil local y devuelve entidades de dominio.
+- `AttentionController` recibe `offlineRepository` y, con sesión
+  `offlineAuthorized`, escribe la cadena clínica en Drift + outbox; con sesión
+  online mantiene el camino online-first. Las cancelaciones/ediciones siguen
+  online-only.
+- `CatalogRepositoryImpl` persiste catálogo efectivo y geografía en
+  `SyncMetadata` (JSON) con respaldo offline ante `ApiException`.
+- `SyncEngine._applyPulledOperation` aplica al working set género, teléfono,
+  email y dirección del paciente, y lote/etiqueta de dosis.
+- `SyncScheduler` acepta `onAfterSync`; en `main.dart` refresca
+  `SyncStatusController`. El dashboard muestra la insignia de sync (pendientes +
+  "sincronizar ahora").
+- Tests: `sync_engine_test.dart` (accepted/dedupe/quarantine/dependencia) y
+  fachada de dominio en `clinical_offline_repository_test.dart`.
+
+## 5c. Backend Fase 2 — campos de paciente y catálogos (implementado)
+
+- Migraciones: `V12` (identidad/demografía/dirección/contacto/antecedentes/
+  `attentions.complete_scheme`), `V13` (`patient_affiliation`,
+  `patient_special_conditions`, `patient_user_condition`), `V14` (guardianes y
+  dosis ampliadas), `V15` (`reference_catalogs` + `reference_options` con el seed
+  de las listas del legacy). `V11` se hizo idempotente.
+- Backend: entidades/repositorios de las nuevas tablas; `CreatePatientRequest`,
+  `PatientResponse` y `PatientService` ampliados; `RegisterDoseRequest` y
+  `AppliedDoseEntity` con `syringeLot`/`diluent`/`vialCount`/`customObservation`;
+  endpoint `GET /api/v1/catalogs/reference`.
+- Nota Jackson 3: los booleanos opcionales de request se declaran como `Boolean`
+  (no primitivos) para tolerar payloads que los omiten.
+- Verificación: `services/api/mvnw.cmd test` (125 tests).
+
 
 ---
 

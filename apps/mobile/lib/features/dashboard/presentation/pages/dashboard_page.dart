@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/auth/offline_access.dart';
 import '../../../../core/network/network_info.dart';
+import '../../../../core/synchronization/sync_status_controller.dart';
 import '../../../admin/presentation/admin_controller.dart';
 import '../../../admin/presentation/pages/admin_page.dart';
 import '../../../admin/presentation/pages/create_institution_admin_page.dart';
@@ -35,6 +36,7 @@ class DashboardPage extends StatefulWidget {
     this.sessionStatus = SessionStatus.signedIn,
     this.offlineReason,
     this.networkInfo,
+    this.syncStatusController,
     super.key,
   });
 
@@ -73,6 +75,10 @@ class DashboardPage extends StatefulWidget {
   /// tiempo real. Null en tests (sin listener).
   final NetworkInfo? networkInfo;
 
+  /// Proyeccion observable del estado de sincronizacion (outbox + ultimo
+  /// resultado del engine). Null en tests y demos.
+  final SyncStatusController? syncStatusController;
+
   @override
   State<DashboardPage> createState() => _DashboardPageState();
 }
@@ -89,6 +95,7 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _liveReason = widget.offlineReason;
+    unawaited(widget.syncStatusController?.refresh());
     final networkInfo = widget.networkInfo;
     if (networkInfo != null) {
       _connectivitySub = networkInfo.connectivityChanges.listen(
@@ -370,6 +377,8 @@ class _DashboardPageState extends State<DashboardPage> {
           ],
         ),
         actions: [
+          if (widget.syncStatusController != null)
+            _SyncStatusBadge(controller: widget.syncStatusController!),
           IconButton(
             tooltip: 'Cerrar sesion',
             onPressed: widget.onSignOut,
@@ -384,6 +393,62 @@ class _DashboardPageState extends State<DashboardPage> {
         selectedIndex: selectedIndex,
         onSelected: (value) => setState(() => _selectedIndex = value),
       ),
+    );
+  }
+}
+
+/// Insignia de sincronizacion en la barra superior: pendientes del outbox y
+/// accion de forzar un ciclo. Se actualiza con [SyncStatusController].
+class _SyncStatusBadge extends StatelessWidget {
+  const _SyncStatusBadge({required this.controller});
+
+  final SyncStatusController controller;
+
+  String _tooltip(int pending, bool syncing) {
+    if (syncing) return 'Sincronizando...';
+    if (pending > 0) return '$pending operacion(es) pendiente(s). Toca para sincronizar.';
+    return 'Todo sincronizado.';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final pending = controller.pendingCount;
+        final syncing = controller.syncing;
+        final active = syncing || pending > 0;
+        return IconButton(
+          tooltip: _tooltip(pending, syncing),
+          onPressed: syncing
+              ? null
+              : () async {
+                  final outcome = await controller.syncNow();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        outcome.isSuccess
+                            ? 'Sincronizacion completada.'
+                            : 'No se pudo sincronizar: ${outcome.error}',
+                      ),
+                    ),
+                  );
+                },
+          icon: Badge(
+            isLabelVisible: pending > 0,
+            label: Text('$pending'),
+            child: Icon(
+              syncing
+                  ? Icons.cloud_sync_rounded
+                  : active
+                  ? Icons.cloud_upload_rounded
+                  : Icons.cloud_done_rounded,
+              color: active ? AppColors.primary : AppColors.slate,
+            ),
+          ),
+        );
+      },
     );
   }
 }

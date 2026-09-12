@@ -17,11 +17,12 @@
 --   * institution_id queda nullable para filas historicas cuyo agregado
 --     ya no exista; las filas nuevas siempre la traen.
 --   * El backfill se deriva del agregado segun el command_type.
+--   * Idempotente: puede reejecutarse (Flyway + aplicacion manual).
 -- ============================================================
 
 ALTER TABLE app.processed_operations
-    ADD COLUMN institution_id UUID,
-    ADD COLUMN payload JSONB;
+    ADD COLUMN IF NOT EXISTS institution_id UUID,
+    ADD COLUMN IF NOT EXISTS payload JSONB;
 
 -- CREATE_PATIENT -> institucion del paciente.
 UPDATE app.processed_operations po
@@ -56,10 +57,18 @@ WHERE payload IS NULL;
 ALTER TABLE app.processed_operations
     ALTER COLUMN payload SET NOT NULL;
 
-ALTER TABLE app.processed_operations
-    ADD CONSTRAINT fk_processed_operations_institution FOREIGN KEY (institution_id)
-        REFERENCES app.institutions (id);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'fk_processed_operations_institution'
+    ) THEN
+        ALTER TABLE app.processed_operations
+            ADD CONSTRAINT fk_processed_operations_institution
+            FOREIGN KEY (institution_id) REFERENCES app.institutions (id);
+    END IF;
+END $$;
 
 -- Cursor del pull: operaciones por institucion ordenadas por sync_sequence.
-CREATE INDEX idx_processed_operations_institution_seq
+CREATE INDEX IF NOT EXISTS idx_processed_operations_institution_seq
     ON app.processed_operations (institution_id, sync_sequence);

@@ -216,7 +216,7 @@ class AttentionServiceTest {
                         OPERATION_ID,
                         cancelled.getId(),
                         new RegisterDoseRequest(
-                                UUID.randomUUID(), UUID.randomUUID(), null, null, null, null, null, null, null, null)))
+                                UUID.randomUUID(), UUID.randomUUID(), null, null, null, null, null, null, null, null, null, null, null, null)))
                 .isInstanceOf(InvalidClinicalStateException.class);
         verify(doses, never()).save(any());
     }
@@ -245,7 +245,7 @@ class AttentionServiceTest {
                 ACTOR_ID,
                 OPERATION_ID,
                 draft.getId(),
-                new RegisterDoseRequest(vaccineId, doseOptionId, null, null, null, null, null, null, null, null));
+                new RegisterDoseRequest(vaccineId, doseOptionId, null, null, null, null, null, null, null, null, null, null, null, null));
 
         assertThat(response.vaccineNameSnapshot()).isEqualTo("Influenza");
         assertThat(response.vaccineCodeSnapshot()).isEqualTo("INF");
