@@ -601,6 +601,13 @@ antipatrón detectado, la ubicación exacta, la mejora aplicada y su severidad
 B = Baja, mejora la legibilidad). Se documentan \textbf{11 registros} (el
 mínimo exigido es 5).
 
+El control de cambios documenta la trazabilidad \textbf{fallo $\leftrightarrow$ clase
+$\leftrightarrow$ mejora} sobre las clases más representativas de los módulos auditados
+(\texttt{attentions}, \texttt{patients}, \texttt{catalog}, \texttt{identity}, \texttt{shared}):
+las columnas \textit{Archivo/Clase Modificada} se corresponden con los módulos descritos en
+las secciones \ref{sec:antes} y \ref{sec:despues} (clases preexistentes afectadas y clases nuevas
+extraídas en la mejora).
+
 \begin{footnotesize}
 \begin{longtable}{@{}p{0.9cm}p{3.1cm}p{2.4cm}p{3.5cm}p{3.7cm}p{1.0cm}@{}}
 \toprule
@@ -615,52 +622,49 @@ mínimo exigido es 5).
 \textbf{Mejora Aplicada} & \textbf{Severidad} \\
 \midrule
 \endhead
-CC-01 & \texttt{attentions/service/AttentionService.java} & DIP &
-El servicio clínico inyectaba 11 colaboradores, entre ellos 4 repositorios JPA
-del catálogo, e implementaba la validación de catálogo (vacuna activa y
-habilitada, opciones globales/institucionales) dentro del módulo \texttt{attentions}, haciendo el módulo clínico dependiente de la persistencia y entidades de \texttt{catalog}. &
-Dependencia invertida vía el puerto \texttt{attentions/service/VaccineCatalogPolicy}; la validación se movió a \texttt{catalog/service/CatalogSelectionService.java} (implementación del puerto). \texttt{AttentionService} pasa a 9 colaboradores y no referencia \texttt{.catalog.repository} ni \texttt{.catalog.entity} (regla ArchUnit nueva). &
+CC-01 & \texttt{patients/service/PatientService.java} & God Object / SRP &
+El servicio de $\sim$600 líneas orquestaba la creación, el mapeo entidad{}${}\to{}$DTO, la ceremonia de idempotencia y auditoría, y helpers repetidos (\texttt{blankToNull}, \texttt{parseOperationId}) en un solo lugar, dificultando testing y evolución. &
+Se separaron responsabilidades: \texttt{PatientMapper} (mapeo), \texttt{IdempotencyCoordinator} (find $\to$ ejecutar $\to$ auditar $\to$ registrar) y \texttt{Strings} (helpers); el servicio quedó como orquestador del agregado, incluida la fase 2 (afiliación, condiciones, perfil extendido). &
 A \\
-CC-02 & \texttt{patients/service/PatientMapper.java}, \texttt{attentions/service/AttentionMapper.java} & SRP &
-El mapeo entidad{}${}\to{}$DTO vivía dentro de los servicios: \texttt{AttentionService} con \texttt{toResponse}/\texttt{toDoseResponse} (45 líneas) y \texttt{PatientService} con \texttt{toResponse} (62 líneas, incluidas las 5 subentidades del agregado). &
-Mapeo extraído a mappers dedicados (\texttt{PatientMapper}, \texttt{AttentionMapper}); cada servicio orquesta, valida y persiste, delegando la conversión. &
-M \\
-CC-03 & \texttt{shared/application/IdempotencyCoordinator.java} & OCP &
-La ceremonia transversal \texttt{find$\to$ejecutar$\to$auditar$\to$registrar} y el parseo de \texttt{operationId} estaban duplicados en \texttt{PatientService} y \texttt{AttentionService}; añadir una operación exigía replicarla. &
-Coordinador transversal: los servicios aportan solo el cuerpo (\texttt{Supplier\textless WriteResult\textless T\textgreater\textgreater}),
-el contexto de auditoría y el payload; el coordinador ejecuta, audita y registra. &
+CC-02 & \texttt{attentions/service/AttentionService.java} & DIP &
+El servicio inyectaba repositorios y entidades del módulo \texttt{catalog} (\texttt{VaccineRepository}, \texttt{InstitutionVaccineOptionRepository}, etc.), acoplando módulos de dominio distintos y atando la resolución del catálogo a la implementación concreta. &
+Se introdujo \texttt{VaccineCatalogPolicy} como puerto en el dominio de attenciones (resuelto por una implementación en \texttt{catalog}); el servicio solo declara la política. Una regla ArchUnit impide importar \texttt{catalog.entity}/\texttt{catalog.repository} desde \texttt{attentions}. &
+A \\
+CC-03 & \texttt{shared/application/IdempotencyCoordinator.java} & OCP / DRY &
+La ceremonia transversal de la idempotencia (D3) y el parseo de \texttt{operationId} estaban duplicados en \texttt{PatientService} y \texttt{AttentionService}; agregar una operación nueva implicaba replicarla. &
+Se extrajo el coordinador transversal: los servicios aportan solo el cuerpo (\texttt{Supplier\textless WriteResult\textless T\textgreater\textgreater}), el contexto de auditoría y el payload; el coordinador ejecuta, audita y registra. &
 M \\
 CC-04 & \texttt{catalog/repository/InstitutionVaccineRepository.java} & SRP &
-El upsert ``copy-once'' para habilitar una vacuna se ejecutaba desde \texttt{InstitutionVaccineService} con SQL nativo vía \texttt{EntityManager}, dejando la persistencia fuera del repositorio. &
-Query movida al repositorio con \texttt{@Modifying}/\texttt{@Query} (\texttt{setEnabledById}, \texttt{insertEnabledIfAbsent} nativo con \texttt{ON CONFLICT DO NOTHING}); el servicio solo orquesta. &
+El upsert ``copy-once'' para habilitar una vacuna en la institución se ejecutaba desde \texttt{InstitutionVaccineService} con SQL nativo vía \texttt{EntityManager}, dejando la persistencia fuera del repositorio. &
+Se movió la query al repositorio con \texttt{@Modifying}/\texttt{@Query} (\texttt{setEnabledById}, \texttt{insertEnabledIfAbsent} nativo con \texttt{ON CONFLICT DO NOTHING}); el servicio solo orquesta. &
 M \\
-CC-05 & \texttt{patients/service/PatientMapper.java}, \texttt{attentions/service/AttentionMapper.java}, \texttt{catalog/service/CatalogMapper.java} & DRY &
-La construcción de \texttt{PatientResponse}/\texttt{AttentionResponse}/\texttt{AppliedDoseResponse} y de \texttt{VaccineResponse}/\texttt{OptionResponse} se replicaba de forma casi idéntica en varios métodos privados de cada servicio. &
-Una única clase de mapeo por módulo (\texttt{CatalogMapper} también centraliza la conversión de catálogo); se eliminó la duplicación de conversiones equivalentes. &
-B \\
-CC-06 & \texttt{catalog/service/CatalogRules.java} & DRY &
-Las validaciones de tipos de opción (\texttt{validateGlobalType}, \texttt{validateTemplateType}, \texttt{LOCAL\_OPTION\_TYPES}) y las constantes repetidas vivían dentro de \texttt{VaccineService} y \texttt{InstitutionVaccineService}. &
-Reglas de catálogo extraídas a \texttt{catalog/service/CatalogRules.java} y reutilizadas por ambos servicios sin cambiar el contrato expuesto. &
-B \\
-CC-07 & \texttt{catalog/service/CatalogMapper.java} & DRY/SRP &
-El mapeo entidad{}${}\to{}$DTO de \texttt{VaccineResponse}/\texttt{OptionResponse} estaba duplicado entre \texttt{VaccineService} (métodos privados \texttt{v/o/t}) e \texttt{InstitutionVaccineService} (\texttt{toResponse}, \texttt{toVaccineResponse}) más la sugerencia inline. &
-Nuevo \texttt{catalog/service/CatalogMapper.java} centraliza \texttt{toVaccine}, \texttt{toGlobalOption}, \texttt{toTemplate}, \texttt{toInstitutionOption}, \texttt{toSuggestedOption} y \texttt{toInstitutionVaccine}; ambos servicios orquestan y delegan la conversión. &
-B \\
-CC-08 & \texttt{catalog/service/ReferenceCatalogService.java}, \texttt{catalog/service/GeoCatalogService.java} & Auditoría sin hallazgos &
-Servicios de solo lectura (catálogos de referencia y geográficos) revisados en la segunda pasada SOLID: sin duplicación, sin dependencias transversales y sin lógica de negocio embebida. &
-Sin cambios; solo se registra la auditoría. &
-B \\
-CC-09 & \texttt{identity/service/IdentityMapper.java} & DRY/SRP &
-\texttt{UserResponse} se construía en cuatro lugares distintos (\texttt{UserService.toResponse}, el inline de \texttt{updateStatus} con drift de estado, \texttt{UserProvisioningService.replayResult} y \texttt{UserMirrorWriter}); el inline de \texttt{updateStatus} devolvía el estado participado en lugar del persistido. &
-Nuevo \texttt{identity/service/IdentityMapper.java} centraliza \texttt{toUserResponse} con tres variantes sin ambigüedad: entidad (estado persistido), entidad + estado explícito (actualización scopeada, sin drift) y operación de aprovisionamiento (rol único + \texttt{ACTIVE}). &
+CC-05 & \texttt{patients/service/PatientMapper.java}, \texttt{attentions/service/AttentionMapper.java} & SRP &
+El mapeo entidad{}${}\to{}$DTO (incluidos los snapshots de catálogo y el perfil fase 2) vivía dentro de los servicios de negocio. &
+Mappers dedicados (\texttt{@Component}) producen \texttt{PatientResponse}/\texttt{AttentionResponse}/\texttt{AppliedDoseResponse}; el dominio delega la conversión y no mezcla persistencia con representación. &
+M \\
+CC-06 & \texttt{IdempotencyCoordinator} + \texttt{synchronization/service/ProcessedOperationsService.java} & OCP ante cambio de contrato &
+El PR~\#1 de Jorman evolucionó el contrato de \texttt{ProcessedOperationsService.record} (firma de 6 argumentos con \texttt{institutionId} y \texttt{payload}) e introdujo el motor offline (\texttt{/sync/push}, \texttt{/sync/pull}, cola Flutter). El coordinador previo (4 args) quedaba incompatible. &
+El coordinador se adaptó a la firma 6-arg manteniendo estable el contrato para los servicios de negocio (el payload viaja como \texttt{Supplier\textless Object\textgreater}; en dosis incluye \texttt{attentionId} para que \texttt{/sync/pull} reconstruya la operación). El módulo \texttt{synchronization} y el motor offline se integraron sin reescribirlos. &
 A \\
-CC-10 & \texttt{shared/security/PermissionGuard.java}, \texttt{identity/service/IdentityPermissions.java} & DRY/SRP &
-\texttt{UserProvisioningService} resolvía manualmente el actor y validaba el permiso en dos métodos, replicando la ceremonia que \texttt{PermissionGuard} ya centraliza; los nombres de permiso eran literales \texttt{INSTITUTION\_WRITE}/\texttt{USER\_MANAGE}. &
-\texttt{UserProvisioningService} inyecta \texttt{PermissionGuard}; \texttt{IdentityPermissions} centraliza las constantes y \texttt{AdminController} las usa en expresiones SpEL; la máquina de estados del aprovisionamiento no se tocó. &
+CC-07 & \texttt{catalog/service/VaccineService.java}, \texttt{catalog/service/InstitutionVaccineService.java} & DRY / SRP &
+El mapeo entidad{}${}\to{}$DTO del catálogo se construía en tres lugares: \texttt{VaccineService} (\texttt{v()}, \texttt{o()}, \texttt{t()}), \texttt{InstitutionVaccineService} (\texttt{toResponse}, \texttt{toVaccineResponse}, y la sugerencia inline) y el catálogo efectivo; \texttt{VaccineResponse} y \texttt{OptionResponse} se duplicaban campo a campo, arriesgando desalineación al crecer la fase 2. &
+Nuevo \texttt{catalog/service/CatalogMapper.java} (\texttt{@Component}) centraliza todo el mapeo (\texttt{toVaccine}, \texttt{toGlobalOption}, \texttt{toTemplate}, \texttt{toInstitutionOption}, \texttt{toSuggestedOption}, \texttt{toInstitutionVaccine}); ambos servicios orquestan y delegan la conversión. &
+M \\
+CC-08 & \texttt{catalog/service/VaccineService.java}, \texttt{catalog/service/InstitutionVaccineService.java} & DRY &
+Las validaciones de tipos de opción (\texttt{validateGlobalType}, \texttt{validateTemplateType}, \texttt{LOCAL\_OPTION\_TYPES} + \texttt{validateType}) y \texttt{requireValue} estaban duplicadas como privadas en cada servicio; añadir un tipo nuevo exigía tocar dos clases. &
+Nuevo \texttt{catalog/service/CatalogRules.java} con las reglas compartidas (\texttt{requireGlobalOptionType}, \texttt{requireTemplateType}, \texttt{requireLocalOptionType}, \texttt{requireValue}); los servicios solo invocan. Complementa el \texttt{CatalogMapper} (CC-07). &
+B \\
+CC-09 & \texttt{identity/service/UserService.java}, \texttt{identity/service/UserProvisioningService.java}, \texttt{identity/service/UserMirrorWriter.java} & DRY / SRP &
+El mapeo entidad{}${}\to{}\texttt{UserResponse} (14 campos) se construía en cuatro lugares: \texttt{UserService} (\texttt{toResponse} y el inline de \texttt{updateStatus}, con un drift entre \texttt{parsed.name()} y \texttt{user.getStatus().name()}), \texttt{UserProvisioningService.replayResult} y \texttt{UserMirrorWriter}. identity no tenía componente mapper (a diferencia del catálogo). &
+Nuevo \texttt{identity/service/IdentityMapper.java} (\texttt{@Component}) centraliza el mapeo: \texttt{toUserResponse(entity)}, \texttt{toUserResponse(entity, status)} para el estado recién aplicado en actualizaciones scopeadas, y \texttt{toUserResponse(operation)} para el replay/mirror con rol único y \texttt{ACTIVE}. &
+M \\
+CC-10 & \texttt{identity/service/UserProvisioningService.java} & DRY / SRP &
+La ceremonia de permiso manual (\texttt{identityService.resolve} + \texttt{permissions.contains} + \texttt{throw PermissionDeniedException}) se repetía en dos métodos y era el mismo antipatrón que \texttt{PermissionGuard} centraliza para el catálogo; además los literales \texttt{INSTITUTION\_WRITE}/\texttt{USER\_MANAGE} se duplicaban en servicios, \texttt{DataScope} y los \texttt{@PreAuthorize} de \texttt{AdminController} (incluido el SpEL combinado pegado 3 veces). &
+Se inyectó \texttt{PermissionGuard} (resuelve actor + valida permiso con mensaje único) y se creó \texttt{identity/service/IdentityPermissions.java} con los nombres canónicos; \texttt{AdminController} usa constantes SpEL (\texttt{WRITE\_ONLY}, \texttt{MANAGE\_ONLY}, \texttt{MANAGE\_OR\_WRITE}) al estilo de \texttt{GeoCatalogController}. &
 M \\
 CC-11 & \texttt{identity/service/UserService.java}, \texttt{identity/service/InstitutionService.java}, \texttt{identity/service/UserProvisioningService.java} & DRY &
-\texttt{parseStatus} duplicado entre \texttt{UserService} e \texttt{InstitutionService}; \texttt{UserProvisioningService} re-implementaba \texttt{trimToNull} (=\texttt{Strings.trimToNull}) y \texttt{normalizeProfessionCode} (= \texttt{DocumentNormalizer.normalizeType}). &
-Nuevo \texttt{identity/service/IdentityRules.java} (util final) con \texttt{parseUserStatus}/\texttt{parseInstitutionStatus}; helpers privados reemplazados por \texttt{Strings}/\texttt{DocumentNormalizer} (shared). &
+\texttt{parseStatus} estaba duplicado entre \texttt{UserService} e \texttt{InstitutionService}; \texttt{UserProvisioningService} re-implementaba \texttt{trimToNull} ($\equiv$\texttt{Strings.trimToNull}) y \texttt{normalizeProfessionCode} ($\equiv$\texttt{DocumentNormalizer.normalizeType}) sin usar los helpers compartidos. &
+Nuevo \texttt{identity/service/IdentityRules.java} (util final) con \texttt{parseUserStatus}/\texttt{parseInstitutionStatus}; los helpers privados se reemplazaron por \texttt{Strings}/\texttt{DocumentNormalizer}. &
 B \\
 \bottomrule
 \end{longtable}
