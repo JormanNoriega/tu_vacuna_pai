@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/storage/app_database.dart';
@@ -11,24 +13,63 @@ class CatalogRepositoryImpl implements CatalogRepository {
   final ApiClient api;
   final AppDatabase database;
 
-  @override
-  Future<List<EffectiveVaccine>> listEffectiveCatalog(String token) async =>
-      (await api.getEffectiveCatalog(token))
-          .map(EffectiveVaccine.fromJson)
-          .toList();
+  static const _effectiveCatalogKey = 'effective_catalog_v1';
+  static const _departmentsKey = 'geo_departments_v1';
+  static String _municipalitiesKey(String departmentId) =>
+      'geo_municipalities_v1_$departmentId';
+
+  /// Lee del cache JSON en [SyncMetadata] como respaldo offline.
+  Future<List<Map<String, dynamic>>?> _cachedJsonList(String key) async {
+    final raw = await database.syncMetadataValue(key);
+    if (raw == null || raw.isEmpty) return null;
+    return (jsonDecode(raw) as List<dynamic>).cast<Map<String, dynamic>>();
+  }
+
+  Future<void> _cacheJsonList(String key, List<Map<String, dynamic>> value) =>
+      database.setSyncMetadata(key, jsonEncode(value));
 
   @override
-  Future<List<GeoDepartment>> listDepartments(String token) async =>
-      (await api.getDepartments(token)).map(GeoDepartment.fromJson).toList();
+  Future<List<EffectiveVaccine>> listEffectiveCatalog(String token) async {
+    try {
+      final raw = await api.getEffectiveCatalog(token);
+      await _cacheJsonList(_effectiveCatalogKey, raw);
+      return raw.map(EffectiveVaccine.fromJson).toList();
+    } on ApiException {
+      final cached = await _cachedJsonList(_effectiveCatalogKey);
+      if (cached == null || cached.isEmpty) rethrow;
+      return cached.map(EffectiveVaccine.fromJson).toList();
+    }
+  }
+
+  @override
+  Future<List<GeoDepartment>> listDepartments(String token) async {
+    try {
+      final raw = await api.getDepartments(token);
+      await _cacheJsonList(_departmentsKey, raw);
+      return raw.map(GeoDepartment.fromJson).toList();
+    } on ApiException {
+      final cached = await _cachedJsonList(_departmentsKey);
+      if (cached == null || cached.isEmpty) rethrow;
+      return cached.map(GeoDepartment.fromJson).toList();
+    }
+  }
 
   @override
   Future<List<GeoMunicipality>> listMunicipalities(
     String token,
     String departmentId,
-  ) async => (await api.getMunicipalities(
-    token,
-    departmentId,
-  )).map(GeoMunicipality.fromJson).toList();
+  ) async {
+    final key = _municipalitiesKey(departmentId);
+    try {
+      final raw = await api.getMunicipalities(token, departmentId);
+      await _cacheJsonList(key, raw);
+      return raw.map(GeoMunicipality.fromJson).toList();
+    } on ApiException {
+      final cached = await _cachedJsonList(key);
+      if (cached == null || cached.isEmpty) rethrow;
+      return cached.map(GeoMunicipality.fromJson).toList();
+    }
+  }
 
   @override
   Future<List<Vaccine>> listVaccines(String token) async {

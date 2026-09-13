@@ -705,6 +705,39 @@ class ApiClient {
     fallback: 'Error al anular la dosis.',
   );
 
+  // ---------- Sincronizacion ----------
+
+  /// Envia un batch de operaciones del outbox. El servidor responde con
+  /// `accepted` y `rejected` (ver `docs/api/openapi.yaml` y `sync-contract.md`).
+  Future<Map<String, dynamic>> pushSync(
+    String token,
+    List<Map<String, dynamic>> operations,
+  ) async => _decodeObject(
+    await _send(
+      _http.post(
+        Uri.parse('$baseUrl/sync/push'),
+        headers: _jsonHeaders(token),
+        body: jsonEncode({'operations': operations}),
+      ),
+    ),
+    fallback: 'Error al sincronizar los cambios.',
+  );
+
+  /// Trae las operaciones del scope no vistas por el cliente.
+  Future<Map<String, dynamic>> pullSync(
+    String token, {
+    required String since,
+    int limit = 500,
+  }) async {
+    final uri = Uri.parse(
+      '$baseUrl/sync/pull',
+    ).replace(queryParameters: {'since': since, 'limit': '$limit'});
+    return _decodeObject(
+      await _send(_http.get(uri, headers: _jsonHeaders(token))),
+      fallback: 'Error al consultar los cambios del servidor.',
+    );
+  }
+
   // ---------- Catalogo efectivo ----------
 
   /// Catalogo efectivo de la institucion del actor (vacunas habilitadas con

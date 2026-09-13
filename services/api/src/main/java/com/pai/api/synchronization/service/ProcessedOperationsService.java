@@ -13,8 +13,8 @@ import tools.jackson.databind.ObjectMapper;
  * {@code operation_id} devuelva la respuesta original sin reprocesar.
  *
  * <p>La tabla {@code processed_operations} es compartida por los REST directos
- * y por {@code /sync/push}. Aqui solo se usa para el camino REST directo; el
- * push reutiliza la misma infraestructura cuando se implemente el SyncEngine.
+ * y por {@code /sync/push}, y es tambien la fuente del pull: guarda la
+ * institucion y el {@code payload} original de cada operacion terminada.
  */
 @Service
 public class ProcessedOperationsService {
@@ -40,15 +40,31 @@ public class ProcessedOperationsService {
     }
 
     /**
-     * Registra la respuesta de una operacion procesada. No hace nada si el
-     * {@code operationId} es nulo, vacio o no UUID (camino sin idempotencia).
+     * Indica si el {@code operation_id} ya fue procesado con exito (idempotencia).
      */
-    public void record(String operationId, String commandType, UUID aggregateId, Object response) {
+    public boolean exists(String operationId) {
+        UUID id = parse(operationId);
+        return id != null && repository.existsById(id);
+    }
+
+    /**
+     * Registra la respuesta de una operacion procesada junto con su institucion y
+     * el payload original del request. No hace nada si el {@code operationId} es
+     * nulo, vacio o no UUID (camino sin idempotencia).
+     */
+    public void record(
+            String operationId,
+            String commandType,
+            UUID aggregateId,
+            UUID institutionId,
+            Object payload,
+            Object response) {
         UUID id = parse(operationId);
         if (id == null) {
             return;
         }
-        repository.save(new ProcessedOperationEntity(id, commandType, aggregateId, serialize(response), Instant.now()));
+        repository.save(new ProcessedOperationEntity(
+                id, commandType, aggregateId, institutionId, serialize(payload, "{}"), serialize(response, "{}"), Instant.now()));
     }
 
     private UUID parse(String operationId) {
@@ -62,11 +78,14 @@ public class ProcessedOperationsService {
         }
     }
 
-    private String serialize(Object response) {
+    private String serialize(Object value, String fallback) {
+        if (value == null) {
+            return fallback;
+        }
         try {
-            return MAPPER.writeValueAsString(response);
+            return MAPPER.writeValueAsString(value);
         } catch (Exception ex) {
-            return "{}";
+            return fallback;
         }
     }
 

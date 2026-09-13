@@ -12,19 +12,25 @@ import com.pai.api.patients.dto.UpdatePatientDemographicsRequest;
 import com.pai.api.patients.dto.UpdatePatientIdentityRequest;
 import com.pai.api.patients.dto.UpdatePatientMedicalHistoriesRequest;
 import com.pai.api.patients.entity.PatientAddressEntity;
+import com.pai.api.patients.entity.PatientAffiliationEntity;
 import com.pai.api.patients.entity.PatientContactEntity;
 import com.pai.api.patients.entity.PatientDemographicEntity;
 import com.pai.api.patients.entity.PatientEntity;
 import com.pai.api.patients.entity.PatientGuardianEntity;
 import com.pai.api.patients.entity.PatientMedicalHistoryEntity;
+import com.pai.api.patients.entity.PatientSpecialConditionEntity;
+import com.pai.api.patients.entity.PatientUserConditionEntity;
 import com.pai.api.patients.exception.PatientAlreadyExistsException;
 import com.pai.api.patients.exception.PatientNotFoundException;
 import com.pai.api.patients.repository.PatientAddressRepository;
+import com.pai.api.patients.repository.PatientAffiliationRepository;
 import com.pai.api.patients.repository.PatientContactRepository;
 import com.pai.api.patients.repository.PatientDemographicRepository;
 import com.pai.api.patients.repository.PatientGuardianRepository;
 import com.pai.api.patients.repository.PatientMedicalHistoryRepository;
 import com.pai.api.patients.repository.PatientRepository;
+import com.pai.api.patients.repository.PatientSpecialConditionRepository;
+import com.pai.api.patients.repository.PatientUserConditionRepository;
 import com.pai.api.shared.util.DocumentNormalizer;
 import com.pai.api.synchronization.service.ProcessedOperationsService;
 import java.time.Instant;
@@ -55,6 +61,9 @@ public class PatientService {
     private final PatientAddressRepository addresses;
     private final PatientGuardianRepository guardians;
     private final PatientMedicalHistoryRepository medicalHistories;
+    private final PatientAffiliationRepository affiliations;
+    private final PatientSpecialConditionRepository specialConditions;
+    private final PatientUserConditionRepository userConditions;
     private final IdentityService identity;
     private final DataScope dataScope;
     private final AuditService audit;
@@ -67,6 +76,9 @@ public class PatientService {
             PatientAddressRepository addresses,
             PatientGuardianRepository guardians,
             PatientMedicalHistoryRepository medicalHistories,
+            PatientAffiliationRepository affiliations,
+            PatientSpecialConditionRepository specialConditions,
+            PatientUserConditionRepository userConditions,
             IdentityService identity,
             DataScope dataScope,
             AuditService audit,
@@ -77,6 +89,9 @@ public class PatientService {
         this.addresses = addresses;
         this.guardians = guardians;
         this.medicalHistories = medicalHistories;
+        this.affiliations = affiliations;
+        this.specialConditions = specialConditions;
+        this.userConditions = userConditions;
         this.identity = identity;
         this.dataScope = dataScope;
         this.audit = audit;
@@ -85,6 +100,18 @@ public class PatientService {
 
     @Transactional
     public PatientResponse create(UUID actorId, String operationId, CreatePatientRequest request) {
+        return create(actorId, operationId, null, request);
+    }
+
+    /**
+     * Alta de paciente. Para el camino offline-first, {@code patientId} es el
+     * {@code aggregate_id} generado por el cliente y el servidor lo respeta como
+     * PK para que el pull reconcilie el mismo agregado; en el camino REST directo
+     * llega {@code null} y el servidor genera el UUID.
+     */
+    @Transactional
+    public PatientResponse create(
+            UUID actorId, String operationId, UUID patientId, CreatePatientRequest request) {
         var previous = processedOperations.find(operationId, PatientResponse.class);
         if (previous.isPresent()) {
             return previous.get();
@@ -100,12 +127,17 @@ public class PatientService {
 
         if (patients.existsByInstitutionIdAndDocumentTypeAndDocumentNumber(
                 institutionId, documentType, documentNumber)) {
-            throw new PatientAlreadyExistsException("Ya existe un paciente con ese documento en la institucion.");
+            UUID existingId = patients
+                    .findByInstitutionIdAndDocumentTypeAndDocumentNumber(institutionId, documentType, documentNumber)
+                    .map(PatientEntity::getId)
+                    .orElse(null);
+            throw new PatientAlreadyExistsException(
+                    "Ya existe un paciente con ese documento en la institucion.", existingId);
         }
 
         Instant now = Instant.now();
-        PatientEntity patient = patients.save(new PatientEntity(
-                UUID.randomUUID(),
+        PatientEntity patient = new PatientEntity(
+                patientId != null ? patientId : UUID.randomUUID(),
                 institutionId,
                 documentType,
                 documentNumber,
@@ -113,13 +145,28 @@ public class PatientService {
                 request.lastName().trim(),
                 request.birthDate(),
                 sex,
-                now));
+                now);
+        patient.applyExtendedProfile(
+                blankToNull(request.secondName()),
+                blankToNull(request.secondLastName()),
+                request.birthCountryId(),
+                blankToNull(request.birthPlace()),
+                normalizeUpper(request.migrationStatus()),
+                request.gestationalAgeAtBirth(),
+                normalizeUpper(request.vaccinationCardType()),
+                Boolean.TRUE.equals(request.authorizeCalls()),
+                Boolean.TRUE.equals(request.authorizeEmail()),
+                now);
+        patients.save(patient);
 
         saveDemographics(patient.getId(), request.demographics(), now);
         saveContacts(patient.getId(), request.contacts(), now);
         saveAddresses(patient.getId(), request.addresses(), now);
         saveGuardians(patient.getId(), request.guardians(), now);
         saveMedicalHistories(patient.getId(), request.medicalHistories(), now);
+        saveAffiliation(patient.getId(), request.affiliation(), now);
+        saveSpecialConditions(patient.getId(), request.specialConditions(), now);
+        saveUserCondition(patient.getId(), request.userCondition(), now);
 
         PatientResponse response = toResponse(patient);
         audit.record(
@@ -130,7 +177,7 @@ public class PatientService {
                 patient.getId(),
                 parseOperationId(operationId),
                 response);
-        processedOperations.record(operationId, "CREATE_PATIENT", patient.getId(), response);
+        processedOperations.record(operationId, "CREATE_PATIENT", patient.getId(), institutionId, request, response);
         return response;
     }
 
@@ -273,8 +320,8 @@ public class PatientService {
             return null;
         }
         String upper = value.toUpperCase();
-        if (!Set.of("FEMALE", "MALE", "OTHER").contains(upper)) {
-            throw new IllegalArgumentException("Genero invalido. Usa FEMALE, MALE u OTHER.");
+        if (!Set.of("FEMALE", "MALE", "OTHER", "TRANSGENDER", "INDETERMINATE").contains(upper)) {
+            throw new IllegalArgumentException("Genero invalido. Usa FEMALE, MALE, OTHER, TRANSGENDER o INDETERMINATE.");
         }
         return upper;
     }
@@ -303,7 +350,7 @@ public class PatientService {
         try {
             return PatientEntity.Sex.valueOf(raw.trim().toUpperCase());
         } catch (IllegalArgumentException | NullPointerException ex) {
-            throw new IllegalArgumentException("Sexo invalido. Usa MALE o FEMALE.");
+            throw new IllegalArgumentException("Sexo invalido. Usa MALE, FEMALE o INDETERMINATE.");
         }
     }
 
@@ -331,7 +378,49 @@ public class PatientService {
                 patientId,
                 blankToNull(dto.gender()),
                 blankToNull(dto.ethnicity()),
+                normalizeUpper(dto.sexualOrientation()),
                 blankToNull(dto.educationLevel()),
+                now));
+    }
+
+    private void saveAffiliation(UUID patientId, CreatePatientRequest.AffiliationDto dto, Instant now) {
+        if (dto == null) {
+            return;
+        }
+        if (blankToNull(dto.affiliationRegime()) == null && blankToNull(dto.insurer()) == null) {
+            return;
+        }
+        affiliations.save(new PatientAffiliationEntity(
+                patientId, normalizeUpper(dto.affiliationRegime()), blankToNull(dto.insurer()), now));
+    }
+
+    private void saveSpecialConditions(UUID patientId, CreatePatientRequest.SpecialConditionsDto dto, Instant now) {
+        if (dto == null) {
+            return;
+        }
+        specialConditions.save(new PatientSpecialConditionEntity(
+                patientId,
+                Boolean.TRUE.equals(dto.displaced()),
+                Boolean.TRUE.equals(dto.disabled()),
+                Boolean.TRUE.equals(dto.deceased()),
+                Boolean.TRUE.equals(dto.armedConflictVictim()),
+                dto.currentlyStudying(),
+                now));
+    }
+
+    private void saveUserCondition(UUID patientId, CreatePatientRequest.UserConditionDto dto, Instant now) {
+        if (dto == null) {
+            return;
+        }
+        userConditions.save(new PatientUserConditionEntity(
+                patientId,
+                normalizeUpper(dto.userCondition()),
+                dto.lastMenstrualDate(),
+                dto.gestationWeeks(),
+                dto.probableDeliveryDate(),
+                dto.previousPregnancies(),
+                dto.hasGivenBirth(),
+                blankToNull(dto.birthPlaceDelivery()),
                 now));
     }
 
@@ -342,7 +431,8 @@ public class PatientService {
                     patientId,
                     parseContactType(dto.type()),
                     dto.value().trim(),
-                    dto.primary(),
+                    Boolean.TRUE.equals(dto.primary()),
+                    normalizeUpper(dto.phoneKind()),
                     now));
         }
     }
@@ -356,7 +446,9 @@ public class PatientService {
                     dto.municipalityId(),
                     dto.departmentId(),
                     dto.countryId(),
-                    dto.primary(),
+                    blankToNull(dto.locality()),
+                    normalizeUpper(dto.area()),
+                    Boolean.TRUE.equals(dto.primary()),
                     now));
         }
     }
@@ -368,9 +460,18 @@ public class PatientService {
                     patientId,
                     parseRelationship(dto.relationship()),
                     dto.fullName().trim(),
+                    blankToNull(dto.secondName()),
+                    blankToNull(dto.secondLastName()),
                     blankToNull(dto.documentType()),
                     DocumentNormalizer.normalize(dto.documentNumber()),
                     blankToNull(dto.phone()),
+                    blankToNull(dto.landline()),
+                    blankToNull(dto.cellphone()),
+                    blankToNull(dto.email()),
+                    normalizeUpper(dto.affiliationRegime()),
+                    blankToNull(dto.insurer()),
+                    normalizeUpper(dto.ethnicity()),
+                    dto.displaced(),
                     now));
         }
     }
@@ -383,6 +484,12 @@ public class PatientService {
                     dto.condition().trim(),
                     dto.diagnosedAt(),
                     blankToNull(dto.notes()),
+                    Boolean.TRUE.equals(dto.hasContraindication()),
+                    blankToNull(dto.contraindicationDetails()),
+                    Boolean.TRUE.equals(dto.hasPreviousReaction()),
+                    blankToNull(dto.reactionDetails()),
+                    blankToNull(dto.historyType()),
+                    blankToNull(dto.specialObservations()),
                     now));
         }
     }
@@ -425,6 +532,12 @@ public class PatientService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
+    /** Normaliza catalogos de referencia a su codigo en mayusculas. */
+    private String normalizeUpper(String value) {
+        String trimmed = blankToNull(value);
+        return trimmed == null ? null : trimmed.toUpperCase();
+    }
+
     private UUID parseOperationId(String operationId) {
         if (operationId == null || operationId.isBlank()) {
             return null;
@@ -443,12 +556,19 @@ public class PatientService {
         PatientResponse.DemographicDto demographicDto = demographic == null
                 ? null
                 : new PatientResponse.DemographicDto(
-                        demographic.getGender(), demographic.getEthnicity(), demographic.getEducationLevel());
+                        demographic.getGender(),
+                        demographic.getEthnicity(),
+                        demographic.getSexualOrientation(),
+                        demographic.getEducationLevel());
 
         List<PatientResponse.ContactDto> contactDtos = new ArrayList<>();
         for (PatientContactEntity contact : contacts.findByPatientIdOrderByCreatedAtAsc(patient.getId())) {
             contactDtos.add(new PatientResponse.ContactDto(
-                    contact.getId(), contact.getType(), contact.getValue(), contact.isPrimary()));
+                    contact.getId(),
+                    contact.getType(),
+                    contact.getValue(),
+                    contact.getPhoneKind(),
+                    contact.isPrimary()));
         }
 
         List<PatientResponse.AddressDto> addressDtos = new ArrayList<>();
@@ -459,6 +579,8 @@ public class PatientService {
                     address.getMunicipalityId(),
                     address.getDepartmentId(),
                     address.getCountryId(),
+                    address.getLocality(),
+                    address.getArea(),
                     address.isPrimary()));
         }
 
@@ -468,17 +590,57 @@ public class PatientService {
                     guardian.getId(),
                     guardian.getRelationship(),
                     guardian.getFullName(),
+                    guardian.getSecondName(),
+                    guardian.getSecondLastName(),
                     guardian.getDocumentType(),
                     guardian.getDocumentNumber(),
-                    guardian.getPhone()));
+                    guardian.getPhone(),
+                    guardian.getLandline(),
+                    guardian.getCellphone(),
+                    guardian.getEmail(),
+                    guardian.getAffiliationRegime(),
+                    guardian.getInsurer(),
+                    guardian.getEthnicity(),
+                    guardian.getDisplaced()));
         }
 
         List<PatientResponse.MedicalHistoryDto> historyDtos = new ArrayList<>();
         for (PatientMedicalHistoryEntity history :
                 medicalHistories.findByPatientIdOrderByCreatedAtAsc(patient.getId())) {
             historyDtos.add(new PatientResponse.MedicalHistoryDto(
-                    history.getId(), history.getCondition(), history.getDiagnosedAt(), history.getNotes()));
+                    history.getId(),
+                    history.getCondition(),
+                    history.getDiagnosedAt(),
+                    history.getNotes(),
+                    history.isHasContraindication(),
+                    history.getContraindicationDetails(),
+                    history.isHasPreviousReaction(),
+                    history.getReactionDetails(),
+                    history.getHistoryType(),
+                    history.getSpecialObservations()));
         }
+
+        PatientResponse.AffiliationDto affiliationDto = affiliations.findByPatientId(patient.getId())
+                .map(a -> new PatientResponse.AffiliationDto(a.getAffiliationRegime(), a.getInsurer()))
+                .orElse(null);
+        PatientResponse.SpecialConditionsDto specialDto = specialConditions.findByPatientId(patient.getId())
+                .map(s -> new PatientResponse.SpecialConditionsDto(
+                        s.isDisplaced(),
+                        s.isDisabled(),
+                        s.isDeceased(),
+                        s.isArmedConflictVictim(),
+                        s.getCurrentlyStudying()))
+                .orElse(null);
+        PatientResponse.UserConditionDto userDto = userConditions.findByPatientId(patient.getId())
+                .map(u -> new PatientResponse.UserConditionDto(
+                        u.getUserCondition(),
+                        u.getLastMenstrualDate(),
+                        u.getGestationWeeks(),
+                        u.getProbableDeliveryDate(),
+                        u.getPreviousPregnancies(),
+                        u.getHasGivenBirth(),
+                        u.getBirthPlaceDelivery()))
+                .orElse(null);
 
         return new PatientResponse(
                 patient.getId(),
@@ -486,9 +648,18 @@ public class PatientService {
                 patient.getDocumentType(),
                 patient.getDocumentNumber(),
                 patient.getFirstName(),
+                patient.getSecondName(),
                 patient.getLastName(),
+                patient.getSecondLastName(),
                 patient.getBirthDate(),
                 patient.getSex().name(),
+                patient.getBirthCountryId(),
+                patient.getBirthPlace(),
+                patient.getMigrationStatus(),
+                patient.getGestationalAgeAtBirth(),
+                patient.getVaccinationCardType(),
+                patient.isAuthorizeCalls(),
+                patient.isAuthorizeEmail(),
                 patient.getStatus().name(),
                 patient.getVersion(),
                 patient.getCreatedAt(),
@@ -497,6 +668,9 @@ public class PatientService {
                 contactDtos,
                 addressDtos,
                 guardianDtos,
-                historyDtos);
+                historyDtos,
+                affiliationDto,
+                specialDto,
+                userDto);
     }
 }

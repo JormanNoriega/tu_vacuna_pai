@@ -33,4 +33,15 @@ public record RegisterDoseRequest(
 
         UUID selectedDropperId,
 
-        UUID selectedObservationId) {}
+        UUID selectedObservationId,
+
+        @Size(max = 60, message = "El lote de jeringa no puede superar 60 caracteres.")
+        String syringeLot,
+
+        @Size(max = 120, message = "El diluyente no puede superar 120 caracteres.")
+        String diluent,
+
+        Integer vialCount,
+
+        @Size(max = 500, message = "La observacion no puede superar 500 caracteres.")
+        String customObservation) {}

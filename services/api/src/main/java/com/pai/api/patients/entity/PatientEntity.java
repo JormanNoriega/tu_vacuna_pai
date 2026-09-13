@@ -27,7 +27,8 @@ public class PatientEntity {
 
     public enum Sex {
         MALE,
-        FEMALE
+        FEMALE,
+        INDETERMINATE
     }
 
     public enum Status {
@@ -50,11 +51,38 @@ public class PatientEntity {
     @Column(name = "first_name", nullable = false)
     private String firstName;
 
+    @Column(name = "second_name")
+    private String secondName;
+
     @Column(name = "last_name", nullable = false)
     private String lastName;
 
+    @Column(name = "second_last_name")
+    private String secondLastName;
+
     @Column(name = "birth_date", nullable = false)
     private LocalDate birthDate;
+
+    @Column(name = "birth_country_id")
+    private UUID birthCountryId;
+
+    @Column(name = "birth_place")
+    private String birthPlace;
+
+    @Column(name = "migration_status")
+    private String migrationStatus;
+
+    @Column(name = "gestational_age_at_birth")
+    private Integer gestationalAgeAtBirth;
+
+    @Column(name = "vaccination_card_type")
+    private String vaccinationCardType;
+
+    @Column(name = "authorize_calls", nullable = false)
+    private boolean authorizeCalls;
+
+    @Column(name = "authorize_email", nullable = false)
+    private boolean authorizeEmail;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -111,6 +139,31 @@ public class PatientEntity {
         this.updatedAt = now;
     }
 
+    /** Perfil ampliado de Fase 2 capturado por el wizard (Paso 1/2). */
+    public void applyExtendedProfile(
+            String secondName,
+            String secondLastName,
+            UUID birthCountryId,
+            String birthPlace,
+            String migrationStatus,
+            Integer gestationalAgeAtBirth,
+            String vaccinationCardType,
+            boolean authorizeCalls,
+            boolean authorizeEmail,
+            Instant now) {
+        this.secondName = secondName;
+        this.secondName = secondName;
+        this.secondLastName = secondLastName;
+        this.birthCountryId = birthCountryId;
+        this.birthPlace = birthPlace;
+        this.migrationStatus = migrationStatus;
+        this.gestationalAgeAtBirth = gestationalAgeAtBirth;
+        this.vaccinationCardType = vaccinationCardType;
+        this.authorizeCalls = authorizeCalls;
+        this.authorizeEmail = authorizeEmail;
+        this.updatedAt = now;
+    }
+
     public boolean isActive() {
         return status == Status.ACTIVE;
     }
@@ -135,12 +188,48 @@ public class PatientEntity {
         return firstName;
     }
 
+    public String getSecondName() {
+        return secondName;
+    }
+
     public String getLastName() {
         return lastName;
     }
 
+    public String getSecondLastName() {
+        return secondLastName;
+    }
+
     public LocalDate getBirthDate() {
         return birthDate;
+    }
+
+    public UUID getBirthCountryId() {
+        return birthCountryId;
+    }
+
+    public String getBirthPlace() {
+        return birthPlace;
+    }
+
+    public String getMigrationStatus() {
+        return migrationStatus;
+    }
+
+    public Integer getGestationalAgeAtBirth() {
+        return gestationalAgeAtBirth;
+    }
+
+    public String getVaccinationCardType() {
+        return vaccinationCardType;
+    }
+
+    public boolean isAuthorizeCalls() {
+        return authorizeCalls;
+    }
+
+    public boolean isAuthorizeEmail() {
+        return authorizeEmail;
     }
 
     public Sex getSex() {

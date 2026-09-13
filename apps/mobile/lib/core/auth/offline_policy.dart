@@ -29,19 +29,19 @@ enum OperationPermission {
     requiredPermission: 'CATALOG_CONFIG_WRITE',
     offlineAuthorized: false,
   ),
-  createPatient(requiredPermission: 'PATIENT_WRITE', offlineAuthorized: false),
+  createPatient(requiredPermission: 'PATIENT_WRITE', offlineAuthorized: true),
   updatePatient(requiredPermission: 'PATIENT_WRITE', offlineAuthorized: false),
   createAttention(
     requiredPermission: 'ATTENTION_CREATE',
-    offlineAuthorized: false,
+    offlineAuthorized: true,
   ),
   registerDose(
     requiredPermission: 'ATTENTION_CREATE',
-    offlineAuthorized: false,
+    offlineAuthorized: true,
   ),
   completeAttention(
     requiredPermission: 'ATTENTION_CREATE',
-    offlineAuthorized: false,
+    offlineAuthorized: true,
   ),
   cancelAttention(
     requiredPermission: 'ATTENTION_CREATE',

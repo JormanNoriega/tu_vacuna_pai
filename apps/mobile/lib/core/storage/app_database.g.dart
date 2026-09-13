@@ -4402,6 +4402,3865 @@ class InstitutionVaccineOptionsCacheCompanion
   }
 }
 
+class $PatientsLocalTable extends PatientsLocal
+    with TableInfo<$PatientsLocalTable, PatientsLocalData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PatientsLocalTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _institutionIdMeta = const VerificationMeta(
+    'institutionId',
+  );
+  @override
+  late final GeneratedColumn<String> institutionId = GeneratedColumn<String>(
+    'institution_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _documentTypeMeta = const VerificationMeta(
+    'documentType',
+  );
+  @override
+  late final GeneratedColumn<String> documentType = GeneratedColumn<String>(
+    'document_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _documentNumberMeta = const VerificationMeta(
+    'documentNumber',
+  );
+  @override
+  late final GeneratedColumn<String> documentNumber = GeneratedColumn<String>(
+    'document_number',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _firstNameMeta = const VerificationMeta(
+    'firstName',
+  );
+  @override
+  late final GeneratedColumn<String> firstName = GeneratedColumn<String>(
+    'first_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastNameMeta = const VerificationMeta(
+    'lastName',
+  );
+  @override
+  late final GeneratedColumn<String> lastName = GeneratedColumn<String>(
+    'last_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _birthDateMeta = const VerificationMeta(
+    'birthDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> birthDate = GeneratedColumn<DateTime>(
+    'birth_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sexMeta = const VerificationMeta('sex');
+  @override
+  late final GeneratedColumn<String> sex = GeneratedColumn<String>(
+    'sex',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _genderMeta = const VerificationMeta('gender');
+  @override
+  late final GeneratedColumn<String> gender = GeneratedColumn<String>(
+    'gender',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  @override
+  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
+    'phone',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _addressLineMeta = const VerificationMeta(
+    'addressLine',
+  );
+  @override
+  late final GeneratedColumn<String> addressLine = GeneratedColumn<String>(
+    'address_line',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _addressCityMeta = const VerificationMeta(
+    'addressCity',
+  );
+  @override
+  late final GeneratedColumn<String> addressCity = GeneratedColumn<String>(
+    'address_city',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _addressDepartmentMeta = const VerificationMeta(
+    'addressDepartment',
+  );
+  @override
+  late final GeneratedColumn<String> addressDepartment =
+      GeneratedColumn<String>(
+        'address_department',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _addressMunicipalityMeta =
+      const VerificationMeta('addressMunicipality');
+  @override
+  late final GeneratedColumn<String> addressMunicipality =
+      GeneratedColumn<String>(
+        'address_municipality',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _syncStateMeta = const VerificationMeta(
+    'syncState',
+  );
+  @override
+  late final GeneratedColumn<String> syncState = GeneratedColumn<String>(
+    'sync_state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _versionMeta = const VerificationMeta(
+    'version',
+  );
+  @override
+  late final GeneratedColumn<int> version = GeneratedColumn<int>(
+    'version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    institutionId,
+    documentType,
+    documentNumber,
+    firstName,
+    lastName,
+    birthDate,
+    sex,
+    gender,
+    phone,
+    email,
+    addressLine,
+    addressCity,
+    addressDepartment,
+    addressMunicipality,
+    syncState,
+    version,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'patients_local';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PatientsLocalData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('institution_id')) {
+      context.handle(
+        _institutionIdMeta,
+        institutionId.isAcceptableOrUnknown(
+          data['institution_id']!,
+          _institutionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_institutionIdMeta);
+    }
+    if (data.containsKey('document_type')) {
+      context.handle(
+        _documentTypeMeta,
+        documentType.isAcceptableOrUnknown(
+          data['document_type']!,
+          _documentTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_documentTypeMeta);
+    }
+    if (data.containsKey('document_number')) {
+      context.handle(
+        _documentNumberMeta,
+        documentNumber.isAcceptableOrUnknown(
+          data['document_number']!,
+          _documentNumberMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_documentNumberMeta);
+    }
+    if (data.containsKey('first_name')) {
+      context.handle(
+        _firstNameMeta,
+        firstName.isAcceptableOrUnknown(data['first_name']!, _firstNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_firstNameMeta);
+    }
+    if (data.containsKey('last_name')) {
+      context.handle(
+        _lastNameMeta,
+        lastName.isAcceptableOrUnknown(data['last_name']!, _lastNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_lastNameMeta);
+    }
+    if (data.containsKey('birth_date')) {
+      context.handle(
+        _birthDateMeta,
+        birthDate.isAcceptableOrUnknown(data['birth_date']!, _birthDateMeta),
+      );
+    }
+    if (data.containsKey('sex')) {
+      context.handle(
+        _sexMeta,
+        sex.isAcceptableOrUnknown(data['sex']!, _sexMeta),
+      );
+    }
+    if (data.containsKey('gender')) {
+      context.handle(
+        _genderMeta,
+        gender.isAcceptableOrUnknown(data['gender']!, _genderMeta),
+      );
+    }
+    if (data.containsKey('phone')) {
+      context.handle(
+        _phoneMeta,
+        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    }
+    if (data.containsKey('email')) {
+      context.handle(
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
+      );
+    }
+    if (data.containsKey('address_line')) {
+      context.handle(
+        _addressLineMeta,
+        addressLine.isAcceptableOrUnknown(
+          data['address_line']!,
+          _addressLineMeta,
+        ),
+      );
+    }
+    if (data.containsKey('address_city')) {
+      context.handle(
+        _addressCityMeta,
+        addressCity.isAcceptableOrUnknown(
+          data['address_city']!,
+          _addressCityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('address_department')) {
+      context.handle(
+        _addressDepartmentMeta,
+        addressDepartment.isAcceptableOrUnknown(
+          data['address_department']!,
+          _addressDepartmentMeta,
+        ),
+      );
+    }
+    if (data.containsKey('address_municipality')) {
+      context.handle(
+        _addressMunicipalityMeta,
+        addressMunicipality.isAcceptableOrUnknown(
+          data['address_municipality']!,
+          _addressMunicipalityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_state')) {
+      context.handle(
+        _syncStateMeta,
+        syncState.isAcceptableOrUnknown(data['sync_state']!, _syncStateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_syncStateMeta);
+    }
+    if (data.containsKey('version')) {
+      context.handle(
+        _versionMeta,
+        version.isAcceptableOrUnknown(data['version']!, _versionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_versionMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PatientsLocalData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PatientsLocalData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      institutionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}institution_id'],
+      )!,
+      documentType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}document_type'],
+      )!,
+      documentNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}document_number'],
+      )!,
+      firstName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}first_name'],
+      )!,
+      lastName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_name'],
+      )!,
+      birthDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}birth_date'],
+      ),
+      sex: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sex'],
+      ),
+      gender: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}gender'],
+      ),
+      phone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone'],
+      ),
+      email: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email'],
+      ),
+      addressLine: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}address_line'],
+      ),
+      addressCity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}address_city'],
+      ),
+      addressDepartment: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}address_department'],
+      ),
+      addressMunicipality: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}address_municipality'],
+      ),
+      syncState: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_state'],
+      )!,
+      version: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}version'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PatientsLocalTable createAlias(String alias) {
+    return $PatientsLocalTable(attachedDatabase, alias);
+  }
+}
+
+class PatientsLocalData extends DataClass
+    implements Insertable<PatientsLocalData> {
+  final String id;
+  final String institutionId;
+  final String documentType;
+  final String documentNumber;
+  final String firstName;
+  final String lastName;
+  final DateTime? birthDate;
+  final String? sex;
+  final String? gender;
+  final String? phone;
+  final String? email;
+  final String? addressLine;
+  final String? addressCity;
+  final String? addressDepartment;
+  final String? addressMunicipality;
+
+  /// Estado de sync del agregado (SyncAggregateState.name).
+  final String syncState;
+
+  /// Version recibida del servidor (optimistic locking); 0 si es local.
+  final int version;
+  final int updatedAt;
+  const PatientsLocalData({
+    required this.id,
+    required this.institutionId,
+    required this.documentType,
+    required this.documentNumber,
+    required this.firstName,
+    required this.lastName,
+    this.birthDate,
+    this.sex,
+    this.gender,
+    this.phone,
+    this.email,
+    this.addressLine,
+    this.addressCity,
+    this.addressDepartment,
+    this.addressMunicipality,
+    required this.syncState,
+    required this.version,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['institution_id'] = Variable<String>(institutionId);
+    map['document_type'] = Variable<String>(documentType);
+    map['document_number'] = Variable<String>(documentNumber);
+    map['first_name'] = Variable<String>(firstName);
+    map['last_name'] = Variable<String>(lastName);
+    if (!nullToAbsent || birthDate != null) {
+      map['birth_date'] = Variable<DateTime>(birthDate);
+    }
+    if (!nullToAbsent || sex != null) {
+      map['sex'] = Variable<String>(sex);
+    }
+    if (!nullToAbsent || gender != null) {
+      map['gender'] = Variable<String>(gender);
+    }
+    if (!nullToAbsent || phone != null) {
+      map['phone'] = Variable<String>(phone);
+    }
+    if (!nullToAbsent || email != null) {
+      map['email'] = Variable<String>(email);
+    }
+    if (!nullToAbsent || addressLine != null) {
+      map['address_line'] = Variable<String>(addressLine);
+    }
+    if (!nullToAbsent || addressCity != null) {
+      map['address_city'] = Variable<String>(addressCity);
+    }
+    if (!nullToAbsent || addressDepartment != null) {
+      map['address_department'] = Variable<String>(addressDepartment);
+    }
+    if (!nullToAbsent || addressMunicipality != null) {
+      map['address_municipality'] = Variable<String>(addressMunicipality);
+    }
+    map['sync_state'] = Variable<String>(syncState);
+    map['version'] = Variable<int>(version);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  PatientsLocalCompanion toCompanion(bool nullToAbsent) {
+    return PatientsLocalCompanion(
+      id: Value(id),
+      institutionId: Value(institutionId),
+      documentType: Value(documentType),
+      documentNumber: Value(documentNumber),
+      firstName: Value(firstName),
+      lastName: Value(lastName),
+      birthDate: birthDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(birthDate),
+      sex: sex == null && nullToAbsent ? const Value.absent() : Value(sex),
+      gender: gender == null && nullToAbsent
+          ? const Value.absent()
+          : Value(gender),
+      phone: phone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(phone),
+      email: email == null && nullToAbsent
+          ? const Value.absent()
+          : Value(email),
+      addressLine: addressLine == null && nullToAbsent
+          ? const Value.absent()
+          : Value(addressLine),
+      addressCity: addressCity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(addressCity),
+      addressDepartment: addressDepartment == null && nullToAbsent
+          ? const Value.absent()
+          : Value(addressDepartment),
+      addressMunicipality: addressMunicipality == null && nullToAbsent
+          ? const Value.absent()
+          : Value(addressMunicipality),
+      syncState: Value(syncState),
+      version: Value(version),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory PatientsLocalData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PatientsLocalData(
+      id: serializer.fromJson<String>(json['id']),
+      institutionId: serializer.fromJson<String>(json['institutionId']),
+      documentType: serializer.fromJson<String>(json['documentType']),
+      documentNumber: serializer.fromJson<String>(json['documentNumber']),
+      firstName: serializer.fromJson<String>(json['firstName']),
+      lastName: serializer.fromJson<String>(json['lastName']),
+      birthDate: serializer.fromJson<DateTime?>(json['birthDate']),
+      sex: serializer.fromJson<String?>(json['sex']),
+      gender: serializer.fromJson<String?>(json['gender']),
+      phone: serializer.fromJson<String?>(json['phone']),
+      email: serializer.fromJson<String?>(json['email']),
+      addressLine: serializer.fromJson<String?>(json['addressLine']),
+      addressCity: serializer.fromJson<String?>(json['addressCity']),
+      addressDepartment: serializer.fromJson<String?>(
+        json['addressDepartment'],
+      ),
+      addressMunicipality: serializer.fromJson<String?>(
+        json['addressMunicipality'],
+      ),
+      syncState: serializer.fromJson<String>(json['syncState']),
+      version: serializer.fromJson<int>(json['version']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'institutionId': serializer.toJson<String>(institutionId),
+      'documentType': serializer.toJson<String>(documentType),
+      'documentNumber': serializer.toJson<String>(documentNumber),
+      'firstName': serializer.toJson<String>(firstName),
+      'lastName': serializer.toJson<String>(lastName),
+      'birthDate': serializer.toJson<DateTime?>(birthDate),
+      'sex': serializer.toJson<String?>(sex),
+      'gender': serializer.toJson<String?>(gender),
+      'phone': serializer.toJson<String?>(phone),
+      'email': serializer.toJson<String?>(email),
+      'addressLine': serializer.toJson<String?>(addressLine),
+      'addressCity': serializer.toJson<String?>(addressCity),
+      'addressDepartment': serializer.toJson<String?>(addressDepartment),
+      'addressMunicipality': serializer.toJson<String?>(addressMunicipality),
+      'syncState': serializer.toJson<String>(syncState),
+      'version': serializer.toJson<int>(version),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  PatientsLocalData copyWith({
+    String? id,
+    String? institutionId,
+    String? documentType,
+    String? documentNumber,
+    String? firstName,
+    String? lastName,
+    Value<DateTime?> birthDate = const Value.absent(),
+    Value<String?> sex = const Value.absent(),
+    Value<String?> gender = const Value.absent(),
+    Value<String?> phone = const Value.absent(),
+    Value<String?> email = const Value.absent(),
+    Value<String?> addressLine = const Value.absent(),
+    Value<String?> addressCity = const Value.absent(),
+    Value<String?> addressDepartment = const Value.absent(),
+    Value<String?> addressMunicipality = const Value.absent(),
+    String? syncState,
+    int? version,
+    int? updatedAt,
+  }) => PatientsLocalData(
+    id: id ?? this.id,
+    institutionId: institutionId ?? this.institutionId,
+    documentType: documentType ?? this.documentType,
+    documentNumber: documentNumber ?? this.documentNumber,
+    firstName: firstName ?? this.firstName,
+    lastName: lastName ?? this.lastName,
+    birthDate: birthDate.present ? birthDate.value : this.birthDate,
+    sex: sex.present ? sex.value : this.sex,
+    gender: gender.present ? gender.value : this.gender,
+    phone: phone.present ? phone.value : this.phone,
+    email: email.present ? email.value : this.email,
+    addressLine: addressLine.present ? addressLine.value : this.addressLine,
+    addressCity: addressCity.present ? addressCity.value : this.addressCity,
+    addressDepartment: addressDepartment.present
+        ? addressDepartment.value
+        : this.addressDepartment,
+    addressMunicipality: addressMunicipality.present
+        ? addressMunicipality.value
+        : this.addressMunicipality,
+    syncState: syncState ?? this.syncState,
+    version: version ?? this.version,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  PatientsLocalData copyWithCompanion(PatientsLocalCompanion data) {
+    return PatientsLocalData(
+      id: data.id.present ? data.id.value : this.id,
+      institutionId: data.institutionId.present
+          ? data.institutionId.value
+          : this.institutionId,
+      documentType: data.documentType.present
+          ? data.documentType.value
+          : this.documentType,
+      documentNumber: data.documentNumber.present
+          ? data.documentNumber.value
+          : this.documentNumber,
+      firstName: data.firstName.present ? data.firstName.value : this.firstName,
+      lastName: data.lastName.present ? data.lastName.value : this.lastName,
+      birthDate: data.birthDate.present ? data.birthDate.value : this.birthDate,
+      sex: data.sex.present ? data.sex.value : this.sex,
+      gender: data.gender.present ? data.gender.value : this.gender,
+      phone: data.phone.present ? data.phone.value : this.phone,
+      email: data.email.present ? data.email.value : this.email,
+      addressLine: data.addressLine.present
+          ? data.addressLine.value
+          : this.addressLine,
+      addressCity: data.addressCity.present
+          ? data.addressCity.value
+          : this.addressCity,
+      addressDepartment: data.addressDepartment.present
+          ? data.addressDepartment.value
+          : this.addressDepartment,
+      addressMunicipality: data.addressMunicipality.present
+          ? data.addressMunicipality.value
+          : this.addressMunicipality,
+      syncState: data.syncState.present ? data.syncState.value : this.syncState,
+      version: data.version.present ? data.version.value : this.version,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PatientsLocalData(')
+          ..write('id: $id, ')
+          ..write('institutionId: $institutionId, ')
+          ..write('documentType: $documentType, ')
+          ..write('documentNumber: $documentNumber, ')
+          ..write('firstName: $firstName, ')
+          ..write('lastName: $lastName, ')
+          ..write('birthDate: $birthDate, ')
+          ..write('sex: $sex, ')
+          ..write('gender: $gender, ')
+          ..write('phone: $phone, ')
+          ..write('email: $email, ')
+          ..write('addressLine: $addressLine, ')
+          ..write('addressCity: $addressCity, ')
+          ..write('addressDepartment: $addressDepartment, ')
+          ..write('addressMunicipality: $addressMunicipality, ')
+          ..write('syncState: $syncState, ')
+          ..write('version: $version, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    institutionId,
+    documentType,
+    documentNumber,
+    firstName,
+    lastName,
+    birthDate,
+    sex,
+    gender,
+    phone,
+    email,
+    addressLine,
+    addressCity,
+    addressDepartment,
+    addressMunicipality,
+    syncState,
+    version,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PatientsLocalData &&
+          other.id == this.id &&
+          other.institutionId == this.institutionId &&
+          other.documentType == this.documentType &&
+          other.documentNumber == this.documentNumber &&
+          other.firstName == this.firstName &&
+          other.lastName == this.lastName &&
+          other.birthDate == this.birthDate &&
+          other.sex == this.sex &&
+          other.gender == this.gender &&
+          other.phone == this.phone &&
+          other.email == this.email &&
+          other.addressLine == this.addressLine &&
+          other.addressCity == this.addressCity &&
+          other.addressDepartment == this.addressDepartment &&
+          other.addressMunicipality == this.addressMunicipality &&
+          other.syncState == this.syncState &&
+          other.version == this.version &&
+          other.updatedAt == this.updatedAt);
+}
+
+class PatientsLocalCompanion extends UpdateCompanion<PatientsLocalData> {
+  final Value<String> id;
+  final Value<String> institutionId;
+  final Value<String> documentType;
+  final Value<String> documentNumber;
+  final Value<String> firstName;
+  final Value<String> lastName;
+  final Value<DateTime?> birthDate;
+  final Value<String?> sex;
+  final Value<String?> gender;
+  final Value<String?> phone;
+  final Value<String?> email;
+  final Value<String?> addressLine;
+  final Value<String?> addressCity;
+  final Value<String?> addressDepartment;
+  final Value<String?> addressMunicipality;
+  final Value<String> syncState;
+  final Value<int> version;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const PatientsLocalCompanion({
+    this.id = const Value.absent(),
+    this.institutionId = const Value.absent(),
+    this.documentType = const Value.absent(),
+    this.documentNumber = const Value.absent(),
+    this.firstName = const Value.absent(),
+    this.lastName = const Value.absent(),
+    this.birthDate = const Value.absent(),
+    this.sex = const Value.absent(),
+    this.gender = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.email = const Value.absent(),
+    this.addressLine = const Value.absent(),
+    this.addressCity = const Value.absent(),
+    this.addressDepartment = const Value.absent(),
+    this.addressMunicipality = const Value.absent(),
+    this.syncState = const Value.absent(),
+    this.version = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PatientsLocalCompanion.insert({
+    required String id,
+    required String institutionId,
+    required String documentType,
+    required String documentNumber,
+    required String firstName,
+    required String lastName,
+    this.birthDate = const Value.absent(),
+    this.sex = const Value.absent(),
+    this.gender = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.email = const Value.absent(),
+    this.addressLine = const Value.absent(),
+    this.addressCity = const Value.absent(),
+    this.addressDepartment = const Value.absent(),
+    this.addressMunicipality = const Value.absent(),
+    required String syncState,
+    required int version,
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       institutionId = Value(institutionId),
+       documentType = Value(documentType),
+       documentNumber = Value(documentNumber),
+       firstName = Value(firstName),
+       lastName = Value(lastName),
+       syncState = Value(syncState),
+       version = Value(version),
+       updatedAt = Value(updatedAt);
+  static Insertable<PatientsLocalData> custom({
+    Expression<String>? id,
+    Expression<String>? institutionId,
+    Expression<String>? documentType,
+    Expression<String>? documentNumber,
+    Expression<String>? firstName,
+    Expression<String>? lastName,
+    Expression<DateTime>? birthDate,
+    Expression<String>? sex,
+    Expression<String>? gender,
+    Expression<String>? phone,
+    Expression<String>? email,
+    Expression<String>? addressLine,
+    Expression<String>? addressCity,
+    Expression<String>? addressDepartment,
+    Expression<String>? addressMunicipality,
+    Expression<String>? syncState,
+    Expression<int>? version,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (institutionId != null) 'institution_id': institutionId,
+      if (documentType != null) 'document_type': documentType,
+      if (documentNumber != null) 'document_number': documentNumber,
+      if (firstName != null) 'first_name': firstName,
+      if (lastName != null) 'last_name': lastName,
+      if (birthDate != null) 'birth_date': birthDate,
+      if (sex != null) 'sex': sex,
+      if (gender != null) 'gender': gender,
+      if (phone != null) 'phone': phone,
+      if (email != null) 'email': email,
+      if (addressLine != null) 'address_line': addressLine,
+      if (addressCity != null) 'address_city': addressCity,
+      if (addressDepartment != null) 'address_department': addressDepartment,
+      if (addressMunicipality != null)
+        'address_municipality': addressMunicipality,
+      if (syncState != null) 'sync_state': syncState,
+      if (version != null) 'version': version,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PatientsLocalCompanion copyWith({
+    Value<String>? id,
+    Value<String>? institutionId,
+    Value<String>? documentType,
+    Value<String>? documentNumber,
+    Value<String>? firstName,
+    Value<String>? lastName,
+    Value<DateTime?>? birthDate,
+    Value<String?>? sex,
+    Value<String?>? gender,
+    Value<String?>? phone,
+    Value<String?>? email,
+    Value<String?>? addressLine,
+    Value<String?>? addressCity,
+    Value<String?>? addressDepartment,
+    Value<String?>? addressMunicipality,
+    Value<String>? syncState,
+    Value<int>? version,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return PatientsLocalCompanion(
+      id: id ?? this.id,
+      institutionId: institutionId ?? this.institutionId,
+      documentType: documentType ?? this.documentType,
+      documentNumber: documentNumber ?? this.documentNumber,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      birthDate: birthDate ?? this.birthDate,
+      sex: sex ?? this.sex,
+      gender: gender ?? this.gender,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      addressLine: addressLine ?? this.addressLine,
+      addressCity: addressCity ?? this.addressCity,
+      addressDepartment: addressDepartment ?? this.addressDepartment,
+      addressMunicipality: addressMunicipality ?? this.addressMunicipality,
+      syncState: syncState ?? this.syncState,
+      version: version ?? this.version,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (institutionId.present) {
+      map['institution_id'] = Variable<String>(institutionId.value);
+    }
+    if (documentType.present) {
+      map['document_type'] = Variable<String>(documentType.value);
+    }
+    if (documentNumber.present) {
+      map['document_number'] = Variable<String>(documentNumber.value);
+    }
+    if (firstName.present) {
+      map['first_name'] = Variable<String>(firstName.value);
+    }
+    if (lastName.present) {
+      map['last_name'] = Variable<String>(lastName.value);
+    }
+    if (birthDate.present) {
+      map['birth_date'] = Variable<DateTime>(birthDate.value);
+    }
+    if (sex.present) {
+      map['sex'] = Variable<String>(sex.value);
+    }
+    if (gender.present) {
+      map['gender'] = Variable<String>(gender.value);
+    }
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
+    }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
+    }
+    if (addressLine.present) {
+      map['address_line'] = Variable<String>(addressLine.value);
+    }
+    if (addressCity.present) {
+      map['address_city'] = Variable<String>(addressCity.value);
+    }
+    if (addressDepartment.present) {
+      map['address_department'] = Variable<String>(addressDepartment.value);
+    }
+    if (addressMunicipality.present) {
+      map['address_municipality'] = Variable<String>(addressMunicipality.value);
+    }
+    if (syncState.present) {
+      map['sync_state'] = Variable<String>(syncState.value);
+    }
+    if (version.present) {
+      map['version'] = Variable<int>(version.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PatientsLocalCompanion(')
+          ..write('id: $id, ')
+          ..write('institutionId: $institutionId, ')
+          ..write('documentType: $documentType, ')
+          ..write('documentNumber: $documentNumber, ')
+          ..write('firstName: $firstName, ')
+          ..write('lastName: $lastName, ')
+          ..write('birthDate: $birthDate, ')
+          ..write('sex: $sex, ')
+          ..write('gender: $gender, ')
+          ..write('phone: $phone, ')
+          ..write('email: $email, ')
+          ..write('addressLine: $addressLine, ')
+          ..write('addressCity: $addressCity, ')
+          ..write('addressDepartment: $addressDepartment, ')
+          ..write('addressMunicipality: $addressMunicipality, ')
+          ..write('syncState: $syncState, ')
+          ..write('version: $version, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PatientGuardiansLocalTable extends PatientGuardiansLocal
+    with TableInfo<$PatientGuardiansLocalTable, PatientGuardiansLocalData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PatientGuardiansLocalTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _patientIdMeta = const VerificationMeta(
+    'patientId',
+  );
+  @override
+  late final GeneratedColumn<String> patientId = GeneratedColumn<String>(
+    'patient_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fullNameMeta = const VerificationMeta(
+    'fullName',
+  );
+  @override
+  late final GeneratedColumn<String> fullName = GeneratedColumn<String>(
+    'full_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _relationshipMeta = const VerificationMeta(
+    'relationship',
+  );
+  @override
+  late final GeneratedColumn<String> relationship = GeneratedColumn<String>(
+    'relationship',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  @override
+  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
+    'phone',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    patientId,
+    fullName,
+    relationship,
+    phone,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'patient_guardians_local';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PatientGuardiansLocalData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('patient_id')) {
+      context.handle(
+        _patientIdMeta,
+        patientId.isAcceptableOrUnknown(data['patient_id']!, _patientIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_patientIdMeta);
+    }
+    if (data.containsKey('full_name')) {
+      context.handle(
+        _fullNameMeta,
+        fullName.isAcceptableOrUnknown(data['full_name']!, _fullNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fullNameMeta);
+    }
+    if (data.containsKey('relationship')) {
+      context.handle(
+        _relationshipMeta,
+        relationship.isAcceptableOrUnknown(
+          data['relationship']!,
+          _relationshipMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_relationshipMeta);
+    }
+    if (data.containsKey('phone')) {
+      context.handle(
+        _phoneMeta,
+        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PatientGuardiansLocalData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PatientGuardiansLocalData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      patientId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}patient_id'],
+      )!,
+      fullName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}full_name'],
+      )!,
+      relationship: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}relationship'],
+      )!,
+      phone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone'],
+      ),
+    );
+  }
+
+  @override
+  $PatientGuardiansLocalTable createAlias(String alias) {
+    return $PatientGuardiansLocalTable(attachedDatabase, alias);
+  }
+}
+
+class PatientGuardiansLocalData extends DataClass
+    implements Insertable<PatientGuardiansLocalData> {
+  final String id;
+  final String patientId;
+  final String fullName;
+  final String relationship;
+  final String? phone;
+  const PatientGuardiansLocalData({
+    required this.id,
+    required this.patientId,
+    required this.fullName,
+    required this.relationship,
+    this.phone,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['patient_id'] = Variable<String>(patientId);
+    map['full_name'] = Variable<String>(fullName);
+    map['relationship'] = Variable<String>(relationship);
+    if (!nullToAbsent || phone != null) {
+      map['phone'] = Variable<String>(phone);
+    }
+    return map;
+  }
+
+  PatientGuardiansLocalCompanion toCompanion(bool nullToAbsent) {
+    return PatientGuardiansLocalCompanion(
+      id: Value(id),
+      patientId: Value(patientId),
+      fullName: Value(fullName),
+      relationship: Value(relationship),
+      phone: phone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(phone),
+    );
+  }
+
+  factory PatientGuardiansLocalData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PatientGuardiansLocalData(
+      id: serializer.fromJson<String>(json['id']),
+      patientId: serializer.fromJson<String>(json['patientId']),
+      fullName: serializer.fromJson<String>(json['fullName']),
+      relationship: serializer.fromJson<String>(json['relationship']),
+      phone: serializer.fromJson<String?>(json['phone']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'patientId': serializer.toJson<String>(patientId),
+      'fullName': serializer.toJson<String>(fullName),
+      'relationship': serializer.toJson<String>(relationship),
+      'phone': serializer.toJson<String?>(phone),
+    };
+  }
+
+  PatientGuardiansLocalData copyWith({
+    String? id,
+    String? patientId,
+    String? fullName,
+    String? relationship,
+    Value<String?> phone = const Value.absent(),
+  }) => PatientGuardiansLocalData(
+    id: id ?? this.id,
+    patientId: patientId ?? this.patientId,
+    fullName: fullName ?? this.fullName,
+    relationship: relationship ?? this.relationship,
+    phone: phone.present ? phone.value : this.phone,
+  );
+  PatientGuardiansLocalData copyWithCompanion(
+    PatientGuardiansLocalCompanion data,
+  ) {
+    return PatientGuardiansLocalData(
+      id: data.id.present ? data.id.value : this.id,
+      patientId: data.patientId.present ? data.patientId.value : this.patientId,
+      fullName: data.fullName.present ? data.fullName.value : this.fullName,
+      relationship: data.relationship.present
+          ? data.relationship.value
+          : this.relationship,
+      phone: data.phone.present ? data.phone.value : this.phone,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PatientGuardiansLocalData(')
+          ..write('id: $id, ')
+          ..write('patientId: $patientId, ')
+          ..write('fullName: $fullName, ')
+          ..write('relationship: $relationship, ')
+          ..write('phone: $phone')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, patientId, fullName, relationship, phone);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PatientGuardiansLocalData &&
+          other.id == this.id &&
+          other.patientId == this.patientId &&
+          other.fullName == this.fullName &&
+          other.relationship == this.relationship &&
+          other.phone == this.phone);
+}
+
+class PatientGuardiansLocalCompanion
+    extends UpdateCompanion<PatientGuardiansLocalData> {
+  final Value<String> id;
+  final Value<String> patientId;
+  final Value<String> fullName;
+  final Value<String> relationship;
+  final Value<String?> phone;
+  final Value<int> rowid;
+  const PatientGuardiansLocalCompanion({
+    this.id = const Value.absent(),
+    this.patientId = const Value.absent(),
+    this.fullName = const Value.absent(),
+    this.relationship = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PatientGuardiansLocalCompanion.insert({
+    required String id,
+    required String patientId,
+    required String fullName,
+    required String relationship,
+    this.phone = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       patientId = Value(patientId),
+       fullName = Value(fullName),
+       relationship = Value(relationship);
+  static Insertable<PatientGuardiansLocalData> custom({
+    Expression<String>? id,
+    Expression<String>? patientId,
+    Expression<String>? fullName,
+    Expression<String>? relationship,
+    Expression<String>? phone,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (patientId != null) 'patient_id': patientId,
+      if (fullName != null) 'full_name': fullName,
+      if (relationship != null) 'relationship': relationship,
+      if (phone != null) 'phone': phone,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PatientGuardiansLocalCompanion copyWith({
+    Value<String>? id,
+    Value<String>? patientId,
+    Value<String>? fullName,
+    Value<String>? relationship,
+    Value<String?>? phone,
+    Value<int>? rowid,
+  }) {
+    return PatientGuardiansLocalCompanion(
+      id: id ?? this.id,
+      patientId: patientId ?? this.patientId,
+      fullName: fullName ?? this.fullName,
+      relationship: relationship ?? this.relationship,
+      phone: phone ?? this.phone,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (patientId.present) {
+      map['patient_id'] = Variable<String>(patientId.value);
+    }
+    if (fullName.present) {
+      map['full_name'] = Variable<String>(fullName.value);
+    }
+    if (relationship.present) {
+      map['relationship'] = Variable<String>(relationship.value);
+    }
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PatientGuardiansLocalCompanion(')
+          ..write('id: $id, ')
+          ..write('patientId: $patientId, ')
+          ..write('fullName: $fullName, ')
+          ..write('relationship: $relationship, ')
+          ..write('phone: $phone, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AttentionsLocalTable extends AttentionsLocal
+    with TableInfo<$AttentionsLocalTable, AttentionsLocalData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AttentionsLocalTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _institutionIdMeta = const VerificationMeta(
+    'institutionId',
+  );
+  @override
+  late final GeneratedColumn<String> institutionId = GeneratedColumn<String>(
+    'institution_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _patientIdMeta = const VerificationMeta(
+    'patientId',
+  );
+  @override
+  late final GeneratedColumn<String> patientId = GeneratedColumn<String>(
+    'patient_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _vaccinatorIdMeta = const VerificationMeta(
+    'vaccinatorId',
+  );
+  @override
+  late final GeneratedColumn<String> vaccinatorId = GeneratedColumn<String>(
+    'vaccinator_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _attentionDateMeta = const VerificationMeta(
+    'attentionDate',
+  );
+  @override
+  late final GeneratedColumn<int> attentionDate = GeneratedColumn<int>(
+    'attention_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _startedAtMeta = const VerificationMeta(
+    'startedAt',
+  );
+  @override
+  late final GeneratedColumn<int> startedAt = GeneratedColumn<int>(
+    'started_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _completedAtMeta = const VerificationMeta(
+    'completedAt',
+  );
+  @override
+  late final GeneratedColumn<int> completedAt = GeneratedColumn<int>(
+    'completed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _observationsMeta = const VerificationMeta(
+    'observations',
+  );
+  @override
+  late final GeneratedColumn<String> observations = GeneratedColumn<String>(
+    'observations',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cancelReasonMeta = const VerificationMeta(
+    'cancelReason',
+  );
+  @override
+  late final GeneratedColumn<String> cancelReason = GeneratedColumn<String>(
+    'cancel_reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _versionMeta = const VerificationMeta(
+    'version',
+  );
+  @override
+  late final GeneratedColumn<int> version = GeneratedColumn<int>(
+    'version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncStateMeta = const VerificationMeta(
+    'syncState',
+  );
+  @override
+  late final GeneratedColumn<String> syncState = GeneratedColumn<String>(
+    'sync_state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    institutionId,
+    patientId,
+    vaccinatorId,
+    status,
+    attentionDate,
+    startedAt,
+    completedAt,
+    observations,
+    cancelReason,
+    version,
+    syncState,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'attentions_local';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AttentionsLocalData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('institution_id')) {
+      context.handle(
+        _institutionIdMeta,
+        institutionId.isAcceptableOrUnknown(
+          data['institution_id']!,
+          _institutionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_institutionIdMeta);
+    }
+    if (data.containsKey('patient_id')) {
+      context.handle(
+        _patientIdMeta,
+        patientId.isAcceptableOrUnknown(data['patient_id']!, _patientIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_patientIdMeta);
+    }
+    if (data.containsKey('vaccinator_id')) {
+      context.handle(
+        _vaccinatorIdMeta,
+        vaccinatorId.isAcceptableOrUnknown(
+          data['vaccinator_id']!,
+          _vaccinatorIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('attention_date')) {
+      context.handle(
+        _attentionDateMeta,
+        attentionDate.isAcceptableOrUnknown(
+          data['attention_date']!,
+          _attentionDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('started_at')) {
+      context.handle(
+        _startedAtMeta,
+        startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta),
+      );
+    }
+    if (data.containsKey('completed_at')) {
+      context.handle(
+        _completedAtMeta,
+        completedAt.isAcceptableOrUnknown(
+          data['completed_at']!,
+          _completedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('observations')) {
+      context.handle(
+        _observationsMeta,
+        observations.isAcceptableOrUnknown(
+          data['observations']!,
+          _observationsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cancel_reason')) {
+      context.handle(
+        _cancelReasonMeta,
+        cancelReason.isAcceptableOrUnknown(
+          data['cancel_reason']!,
+          _cancelReasonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('version')) {
+      context.handle(
+        _versionMeta,
+        version.isAcceptableOrUnknown(data['version']!, _versionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_versionMeta);
+    }
+    if (data.containsKey('sync_state')) {
+      context.handle(
+        _syncStateMeta,
+        syncState.isAcceptableOrUnknown(data['sync_state']!, _syncStateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_syncStateMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AttentionsLocalData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AttentionsLocalData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      institutionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}institution_id'],
+      )!,
+      patientId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}patient_id'],
+      )!,
+      vaccinatorId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}vaccinator_id'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      attentionDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attention_date'],
+      ),
+      startedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}started_at'],
+      ),
+      completedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}completed_at'],
+      ),
+      observations: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}observations'],
+      ),
+      cancelReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cancel_reason'],
+      ),
+      version: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}version'],
+      )!,
+      syncState: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_state'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AttentionsLocalTable createAlias(String alias) {
+    return $AttentionsLocalTable(attachedDatabase, alias);
+  }
+}
+
+class AttentionsLocalData extends DataClass
+    implements Insertable<AttentionsLocalData> {
+  final String id;
+  final String institutionId;
+  final String patientId;
+  final String? vaccinatorId;
+  final String status;
+  final int? attentionDate;
+  final int? startedAt;
+  final int? completedAt;
+  final String? observations;
+  final String? cancelReason;
+  final int version;
+  final String syncState;
+  final int updatedAt;
+  const AttentionsLocalData({
+    required this.id,
+    required this.institutionId,
+    required this.patientId,
+    this.vaccinatorId,
+    required this.status,
+    this.attentionDate,
+    this.startedAt,
+    this.completedAt,
+    this.observations,
+    this.cancelReason,
+    required this.version,
+    required this.syncState,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['institution_id'] = Variable<String>(institutionId);
+    map['patient_id'] = Variable<String>(patientId);
+    if (!nullToAbsent || vaccinatorId != null) {
+      map['vaccinator_id'] = Variable<String>(vaccinatorId);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || attentionDate != null) {
+      map['attention_date'] = Variable<int>(attentionDate);
+    }
+    if (!nullToAbsent || startedAt != null) {
+      map['started_at'] = Variable<int>(startedAt);
+    }
+    if (!nullToAbsent || completedAt != null) {
+      map['completed_at'] = Variable<int>(completedAt);
+    }
+    if (!nullToAbsent || observations != null) {
+      map['observations'] = Variable<String>(observations);
+    }
+    if (!nullToAbsent || cancelReason != null) {
+      map['cancel_reason'] = Variable<String>(cancelReason);
+    }
+    map['version'] = Variable<int>(version);
+    map['sync_state'] = Variable<String>(syncState);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  AttentionsLocalCompanion toCompanion(bool nullToAbsent) {
+    return AttentionsLocalCompanion(
+      id: Value(id),
+      institutionId: Value(institutionId),
+      patientId: Value(patientId),
+      vaccinatorId: vaccinatorId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(vaccinatorId),
+      status: Value(status),
+      attentionDate: attentionDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(attentionDate),
+      startedAt: startedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startedAt),
+      completedAt: completedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completedAt),
+      observations: observations == null && nullToAbsent
+          ? const Value.absent()
+          : Value(observations),
+      cancelReason: cancelReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cancelReason),
+      version: Value(version),
+      syncState: Value(syncState),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AttentionsLocalData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AttentionsLocalData(
+      id: serializer.fromJson<String>(json['id']),
+      institutionId: serializer.fromJson<String>(json['institutionId']),
+      patientId: serializer.fromJson<String>(json['patientId']),
+      vaccinatorId: serializer.fromJson<String?>(json['vaccinatorId']),
+      status: serializer.fromJson<String>(json['status']),
+      attentionDate: serializer.fromJson<int?>(json['attentionDate']),
+      startedAt: serializer.fromJson<int?>(json['startedAt']),
+      completedAt: serializer.fromJson<int?>(json['completedAt']),
+      observations: serializer.fromJson<String?>(json['observations']),
+      cancelReason: serializer.fromJson<String?>(json['cancelReason']),
+      version: serializer.fromJson<int>(json['version']),
+      syncState: serializer.fromJson<String>(json['syncState']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'institutionId': serializer.toJson<String>(institutionId),
+      'patientId': serializer.toJson<String>(patientId),
+      'vaccinatorId': serializer.toJson<String?>(vaccinatorId),
+      'status': serializer.toJson<String>(status),
+      'attentionDate': serializer.toJson<int?>(attentionDate),
+      'startedAt': serializer.toJson<int?>(startedAt),
+      'completedAt': serializer.toJson<int?>(completedAt),
+      'observations': serializer.toJson<String?>(observations),
+      'cancelReason': serializer.toJson<String?>(cancelReason),
+      'version': serializer.toJson<int>(version),
+      'syncState': serializer.toJson<String>(syncState),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  AttentionsLocalData copyWith({
+    String? id,
+    String? institutionId,
+    String? patientId,
+    Value<String?> vaccinatorId = const Value.absent(),
+    String? status,
+    Value<int?> attentionDate = const Value.absent(),
+    Value<int?> startedAt = const Value.absent(),
+    Value<int?> completedAt = const Value.absent(),
+    Value<String?> observations = const Value.absent(),
+    Value<String?> cancelReason = const Value.absent(),
+    int? version,
+    String? syncState,
+    int? updatedAt,
+  }) => AttentionsLocalData(
+    id: id ?? this.id,
+    institutionId: institutionId ?? this.institutionId,
+    patientId: patientId ?? this.patientId,
+    vaccinatorId: vaccinatorId.present ? vaccinatorId.value : this.vaccinatorId,
+    status: status ?? this.status,
+    attentionDate: attentionDate.present
+        ? attentionDate.value
+        : this.attentionDate,
+    startedAt: startedAt.present ? startedAt.value : this.startedAt,
+    completedAt: completedAt.present ? completedAt.value : this.completedAt,
+    observations: observations.present ? observations.value : this.observations,
+    cancelReason: cancelReason.present ? cancelReason.value : this.cancelReason,
+    version: version ?? this.version,
+    syncState: syncState ?? this.syncState,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AttentionsLocalData copyWithCompanion(AttentionsLocalCompanion data) {
+    return AttentionsLocalData(
+      id: data.id.present ? data.id.value : this.id,
+      institutionId: data.institutionId.present
+          ? data.institutionId.value
+          : this.institutionId,
+      patientId: data.patientId.present ? data.patientId.value : this.patientId,
+      vaccinatorId: data.vaccinatorId.present
+          ? data.vaccinatorId.value
+          : this.vaccinatorId,
+      status: data.status.present ? data.status.value : this.status,
+      attentionDate: data.attentionDate.present
+          ? data.attentionDate.value
+          : this.attentionDate,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      completedAt: data.completedAt.present
+          ? data.completedAt.value
+          : this.completedAt,
+      observations: data.observations.present
+          ? data.observations.value
+          : this.observations,
+      cancelReason: data.cancelReason.present
+          ? data.cancelReason.value
+          : this.cancelReason,
+      version: data.version.present ? data.version.value : this.version,
+      syncState: data.syncState.present ? data.syncState.value : this.syncState,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AttentionsLocalData(')
+          ..write('id: $id, ')
+          ..write('institutionId: $institutionId, ')
+          ..write('patientId: $patientId, ')
+          ..write('vaccinatorId: $vaccinatorId, ')
+          ..write('status: $status, ')
+          ..write('attentionDate: $attentionDate, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('observations: $observations, ')
+          ..write('cancelReason: $cancelReason, ')
+          ..write('version: $version, ')
+          ..write('syncState: $syncState, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    institutionId,
+    patientId,
+    vaccinatorId,
+    status,
+    attentionDate,
+    startedAt,
+    completedAt,
+    observations,
+    cancelReason,
+    version,
+    syncState,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AttentionsLocalData &&
+          other.id == this.id &&
+          other.institutionId == this.institutionId &&
+          other.patientId == this.patientId &&
+          other.vaccinatorId == this.vaccinatorId &&
+          other.status == this.status &&
+          other.attentionDate == this.attentionDate &&
+          other.startedAt == this.startedAt &&
+          other.completedAt == this.completedAt &&
+          other.observations == this.observations &&
+          other.cancelReason == this.cancelReason &&
+          other.version == this.version &&
+          other.syncState == this.syncState &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AttentionsLocalCompanion extends UpdateCompanion<AttentionsLocalData> {
+  final Value<String> id;
+  final Value<String> institutionId;
+  final Value<String> patientId;
+  final Value<String?> vaccinatorId;
+  final Value<String> status;
+  final Value<int?> attentionDate;
+  final Value<int?> startedAt;
+  final Value<int?> completedAt;
+  final Value<String?> observations;
+  final Value<String?> cancelReason;
+  final Value<int> version;
+  final Value<String> syncState;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const AttentionsLocalCompanion({
+    this.id = const Value.absent(),
+    this.institutionId = const Value.absent(),
+    this.patientId = const Value.absent(),
+    this.vaccinatorId = const Value.absent(),
+    this.status = const Value.absent(),
+    this.attentionDate = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.completedAt = const Value.absent(),
+    this.observations = const Value.absent(),
+    this.cancelReason = const Value.absent(),
+    this.version = const Value.absent(),
+    this.syncState = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AttentionsLocalCompanion.insert({
+    required String id,
+    required String institutionId,
+    required String patientId,
+    this.vaccinatorId = const Value.absent(),
+    required String status,
+    this.attentionDate = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.completedAt = const Value.absent(),
+    this.observations = const Value.absent(),
+    this.cancelReason = const Value.absent(),
+    required int version,
+    required String syncState,
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       institutionId = Value(institutionId),
+       patientId = Value(patientId),
+       status = Value(status),
+       version = Value(version),
+       syncState = Value(syncState),
+       updatedAt = Value(updatedAt);
+  static Insertable<AttentionsLocalData> custom({
+    Expression<String>? id,
+    Expression<String>? institutionId,
+    Expression<String>? patientId,
+    Expression<String>? vaccinatorId,
+    Expression<String>? status,
+    Expression<int>? attentionDate,
+    Expression<int>? startedAt,
+    Expression<int>? completedAt,
+    Expression<String>? observations,
+    Expression<String>? cancelReason,
+    Expression<int>? version,
+    Expression<String>? syncState,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (institutionId != null) 'institution_id': institutionId,
+      if (patientId != null) 'patient_id': patientId,
+      if (vaccinatorId != null) 'vaccinator_id': vaccinatorId,
+      if (status != null) 'status': status,
+      if (attentionDate != null) 'attention_date': attentionDate,
+      if (startedAt != null) 'started_at': startedAt,
+      if (completedAt != null) 'completed_at': completedAt,
+      if (observations != null) 'observations': observations,
+      if (cancelReason != null) 'cancel_reason': cancelReason,
+      if (version != null) 'version': version,
+      if (syncState != null) 'sync_state': syncState,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AttentionsLocalCompanion copyWith({
+    Value<String>? id,
+    Value<String>? institutionId,
+    Value<String>? patientId,
+    Value<String?>? vaccinatorId,
+    Value<String>? status,
+    Value<int?>? attentionDate,
+    Value<int?>? startedAt,
+    Value<int?>? completedAt,
+    Value<String?>? observations,
+    Value<String?>? cancelReason,
+    Value<int>? version,
+    Value<String>? syncState,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AttentionsLocalCompanion(
+      id: id ?? this.id,
+      institutionId: institutionId ?? this.institutionId,
+      patientId: patientId ?? this.patientId,
+      vaccinatorId: vaccinatorId ?? this.vaccinatorId,
+      status: status ?? this.status,
+      attentionDate: attentionDate ?? this.attentionDate,
+      startedAt: startedAt ?? this.startedAt,
+      completedAt: completedAt ?? this.completedAt,
+      observations: observations ?? this.observations,
+      cancelReason: cancelReason ?? this.cancelReason,
+      version: version ?? this.version,
+      syncState: syncState ?? this.syncState,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (institutionId.present) {
+      map['institution_id'] = Variable<String>(institutionId.value);
+    }
+    if (patientId.present) {
+      map['patient_id'] = Variable<String>(patientId.value);
+    }
+    if (vaccinatorId.present) {
+      map['vaccinator_id'] = Variable<String>(vaccinatorId.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (attentionDate.present) {
+      map['attention_date'] = Variable<int>(attentionDate.value);
+    }
+    if (startedAt.present) {
+      map['started_at'] = Variable<int>(startedAt.value);
+    }
+    if (completedAt.present) {
+      map['completed_at'] = Variable<int>(completedAt.value);
+    }
+    if (observations.present) {
+      map['observations'] = Variable<String>(observations.value);
+    }
+    if (cancelReason.present) {
+      map['cancel_reason'] = Variable<String>(cancelReason.value);
+    }
+    if (version.present) {
+      map['version'] = Variable<int>(version.value);
+    }
+    if (syncState.present) {
+      map['sync_state'] = Variable<String>(syncState.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AttentionsLocalCompanion(')
+          ..write('id: $id, ')
+          ..write('institutionId: $institutionId, ')
+          ..write('patientId: $patientId, ')
+          ..write('vaccinatorId: $vaccinatorId, ')
+          ..write('status: $status, ')
+          ..write('attentionDate: $attentionDate, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('observations: $observations, ')
+          ..write('cancelReason: $cancelReason, ')
+          ..write('version: $version, ')
+          ..write('syncState: $syncState, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AppliedDosesLocalTable extends AppliedDosesLocal
+    with TableInfo<$AppliedDosesLocalTable, AppliedDosesLocalData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AppliedDosesLocalTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _attentionIdMeta = const VerificationMeta(
+    'attentionId',
+  );
+  @override
+  late final GeneratedColumn<String> attentionId = GeneratedColumn<String>(
+    'attention_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _vaccineIdMeta = const VerificationMeta(
+    'vaccineId',
+  );
+  @override
+  late final GeneratedColumn<String> vaccineId = GeneratedColumn<String>(
+    'vaccine_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _appliedAtMeta = const VerificationMeta(
+    'appliedAt',
+  );
+  @override
+  late final GeneratedColumn<int> appliedAt = GeneratedColumn<int>(
+    'applied_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _administeredByMeta = const VerificationMeta(
+    'administeredBy',
+  );
+  @override
+  late final GeneratedColumn<String> administeredBy = GeneratedColumn<String>(
+    'administered_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lotMeta = const VerificationMeta('lot');
+  @override
+  late final GeneratedColumn<String> lot = GeneratedColumn<String>(
+    'lot',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _vaccineNameSnapshotMeta =
+      const VerificationMeta('vaccineNameSnapshot');
+  @override
+  late final GeneratedColumn<String> vaccineNameSnapshot =
+      GeneratedColumn<String>(
+        'vaccine_name_snapshot',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _doseLabelSnapshotMeta = const VerificationMeta(
+    'doseLabelSnapshot',
+  );
+  @override
+  late final GeneratedColumn<String> doseLabelSnapshot =
+      GeneratedColumn<String>(
+        'dose_label_snapshot',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _catalogVersionMeta = const VerificationMeta(
+    'catalogVersion',
+  );
+  @override
+  late final GeneratedColumn<int> catalogVersion = GeneratedColumn<int>(
+    'catalog_version',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncStateMeta = const VerificationMeta(
+    'syncState',
+  );
+  @override
+  late final GeneratedColumn<String> syncState = GeneratedColumn<String>(
+    'sync_state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    attentionId,
+    vaccineId,
+    status,
+    appliedAt,
+    administeredBy,
+    lot,
+    vaccineNameSnapshot,
+    doseLabelSnapshot,
+    catalogVersion,
+    syncState,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'applied_doses_local';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AppliedDosesLocalData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('attention_id')) {
+      context.handle(
+        _attentionIdMeta,
+        attentionId.isAcceptableOrUnknown(
+          data['attention_id']!,
+          _attentionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_attentionIdMeta);
+    }
+    if (data.containsKey('vaccine_id')) {
+      context.handle(
+        _vaccineIdMeta,
+        vaccineId.isAcceptableOrUnknown(data['vaccine_id']!, _vaccineIdMeta),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('applied_at')) {
+      context.handle(
+        _appliedAtMeta,
+        appliedAt.isAcceptableOrUnknown(data['applied_at']!, _appliedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_appliedAtMeta);
+    }
+    if (data.containsKey('administered_by')) {
+      context.handle(
+        _administeredByMeta,
+        administeredBy.isAcceptableOrUnknown(
+          data['administered_by']!,
+          _administeredByMeta,
+        ),
+      );
+    }
+    if (data.containsKey('lot')) {
+      context.handle(
+        _lotMeta,
+        lot.isAcceptableOrUnknown(data['lot']!, _lotMeta),
+      );
+    }
+    if (data.containsKey('vaccine_name_snapshot')) {
+      context.handle(
+        _vaccineNameSnapshotMeta,
+        vaccineNameSnapshot.isAcceptableOrUnknown(
+          data['vaccine_name_snapshot']!,
+          _vaccineNameSnapshotMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_vaccineNameSnapshotMeta);
+    }
+    if (data.containsKey('dose_label_snapshot')) {
+      context.handle(
+        _doseLabelSnapshotMeta,
+        doseLabelSnapshot.isAcceptableOrUnknown(
+          data['dose_label_snapshot']!,
+          _doseLabelSnapshotMeta,
+        ),
+      );
+    }
+    if (data.containsKey('catalog_version')) {
+      context.handle(
+        _catalogVersionMeta,
+        catalogVersion.isAcceptableOrUnknown(
+          data['catalog_version']!,
+          _catalogVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_state')) {
+      context.handle(
+        _syncStateMeta,
+        syncState.isAcceptableOrUnknown(data['sync_state']!, _syncStateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_syncStateMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AppliedDosesLocalData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AppliedDosesLocalData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      attentionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}attention_id'],
+      )!,
+      vaccineId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}vaccine_id'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      appliedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}applied_at'],
+      )!,
+      administeredBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}administered_by'],
+      ),
+      lot: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}lot'],
+      ),
+      vaccineNameSnapshot: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}vaccine_name_snapshot'],
+      )!,
+      doseLabelSnapshot: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}dose_label_snapshot'],
+      ),
+      catalogVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}catalog_version'],
+      ),
+      syncState: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_state'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AppliedDosesLocalTable createAlias(String alias) {
+    return $AppliedDosesLocalTable(attachedDatabase, alias);
+  }
+}
+
+class AppliedDosesLocalData extends DataClass
+    implements Insertable<AppliedDosesLocalData> {
+  final String id;
+  final String attentionId;
+  final String? vaccineId;
+  final String status;
+  final int appliedAt;
+  final String? administeredBy;
+  final String? lot;
+
+  /// Snapshot del catalogo para trazabilidad historica offline.
+  final String vaccineNameSnapshot;
+  final String? doseLabelSnapshot;
+  final int? catalogVersion;
+  final String syncState;
+  final int updatedAt;
+  const AppliedDosesLocalData({
+    required this.id,
+    required this.attentionId,
+    this.vaccineId,
+    required this.status,
+    required this.appliedAt,
+    this.administeredBy,
+    this.lot,
+    required this.vaccineNameSnapshot,
+    this.doseLabelSnapshot,
+    this.catalogVersion,
+    required this.syncState,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['attention_id'] = Variable<String>(attentionId);
+    if (!nullToAbsent || vaccineId != null) {
+      map['vaccine_id'] = Variable<String>(vaccineId);
+    }
+    map['status'] = Variable<String>(status);
+    map['applied_at'] = Variable<int>(appliedAt);
+    if (!nullToAbsent || administeredBy != null) {
+      map['administered_by'] = Variable<String>(administeredBy);
+    }
+    if (!nullToAbsent || lot != null) {
+      map['lot'] = Variable<String>(lot);
+    }
+    map['vaccine_name_snapshot'] = Variable<String>(vaccineNameSnapshot);
+    if (!nullToAbsent || doseLabelSnapshot != null) {
+      map['dose_label_snapshot'] = Variable<String>(doseLabelSnapshot);
+    }
+    if (!nullToAbsent || catalogVersion != null) {
+      map['catalog_version'] = Variable<int>(catalogVersion);
+    }
+    map['sync_state'] = Variable<String>(syncState);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  AppliedDosesLocalCompanion toCompanion(bool nullToAbsent) {
+    return AppliedDosesLocalCompanion(
+      id: Value(id),
+      attentionId: Value(attentionId),
+      vaccineId: vaccineId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(vaccineId),
+      status: Value(status),
+      appliedAt: Value(appliedAt),
+      administeredBy: administeredBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(administeredBy),
+      lot: lot == null && nullToAbsent ? const Value.absent() : Value(lot),
+      vaccineNameSnapshot: Value(vaccineNameSnapshot),
+      doseLabelSnapshot: doseLabelSnapshot == null && nullToAbsent
+          ? const Value.absent()
+          : Value(doseLabelSnapshot),
+      catalogVersion: catalogVersion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(catalogVersion),
+      syncState: Value(syncState),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AppliedDosesLocalData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AppliedDosesLocalData(
+      id: serializer.fromJson<String>(json['id']),
+      attentionId: serializer.fromJson<String>(json['attentionId']),
+      vaccineId: serializer.fromJson<String?>(json['vaccineId']),
+      status: serializer.fromJson<String>(json['status']),
+      appliedAt: serializer.fromJson<int>(json['appliedAt']),
+      administeredBy: serializer.fromJson<String?>(json['administeredBy']),
+      lot: serializer.fromJson<String?>(json['lot']),
+      vaccineNameSnapshot: serializer.fromJson<String>(
+        json['vaccineNameSnapshot'],
+      ),
+      doseLabelSnapshot: serializer.fromJson<String?>(
+        json['doseLabelSnapshot'],
+      ),
+      catalogVersion: serializer.fromJson<int?>(json['catalogVersion']),
+      syncState: serializer.fromJson<String>(json['syncState']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'attentionId': serializer.toJson<String>(attentionId),
+      'vaccineId': serializer.toJson<String?>(vaccineId),
+      'status': serializer.toJson<String>(status),
+      'appliedAt': serializer.toJson<int>(appliedAt),
+      'administeredBy': serializer.toJson<String?>(administeredBy),
+      'lot': serializer.toJson<String?>(lot),
+      'vaccineNameSnapshot': serializer.toJson<String>(vaccineNameSnapshot),
+      'doseLabelSnapshot': serializer.toJson<String?>(doseLabelSnapshot),
+      'catalogVersion': serializer.toJson<int?>(catalogVersion),
+      'syncState': serializer.toJson<String>(syncState),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  AppliedDosesLocalData copyWith({
+    String? id,
+    String? attentionId,
+    Value<String?> vaccineId = const Value.absent(),
+    String? status,
+    int? appliedAt,
+    Value<String?> administeredBy = const Value.absent(),
+    Value<String?> lot = const Value.absent(),
+    String? vaccineNameSnapshot,
+    Value<String?> doseLabelSnapshot = const Value.absent(),
+    Value<int?> catalogVersion = const Value.absent(),
+    String? syncState,
+    int? updatedAt,
+  }) => AppliedDosesLocalData(
+    id: id ?? this.id,
+    attentionId: attentionId ?? this.attentionId,
+    vaccineId: vaccineId.present ? vaccineId.value : this.vaccineId,
+    status: status ?? this.status,
+    appliedAt: appliedAt ?? this.appliedAt,
+    administeredBy: administeredBy.present
+        ? administeredBy.value
+        : this.administeredBy,
+    lot: lot.present ? lot.value : this.lot,
+    vaccineNameSnapshot: vaccineNameSnapshot ?? this.vaccineNameSnapshot,
+    doseLabelSnapshot: doseLabelSnapshot.present
+        ? doseLabelSnapshot.value
+        : this.doseLabelSnapshot,
+    catalogVersion: catalogVersion.present
+        ? catalogVersion.value
+        : this.catalogVersion,
+    syncState: syncState ?? this.syncState,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AppliedDosesLocalData copyWithCompanion(AppliedDosesLocalCompanion data) {
+    return AppliedDosesLocalData(
+      id: data.id.present ? data.id.value : this.id,
+      attentionId: data.attentionId.present
+          ? data.attentionId.value
+          : this.attentionId,
+      vaccineId: data.vaccineId.present ? data.vaccineId.value : this.vaccineId,
+      status: data.status.present ? data.status.value : this.status,
+      appliedAt: data.appliedAt.present ? data.appliedAt.value : this.appliedAt,
+      administeredBy: data.administeredBy.present
+          ? data.administeredBy.value
+          : this.administeredBy,
+      lot: data.lot.present ? data.lot.value : this.lot,
+      vaccineNameSnapshot: data.vaccineNameSnapshot.present
+          ? data.vaccineNameSnapshot.value
+          : this.vaccineNameSnapshot,
+      doseLabelSnapshot: data.doseLabelSnapshot.present
+          ? data.doseLabelSnapshot.value
+          : this.doseLabelSnapshot,
+      catalogVersion: data.catalogVersion.present
+          ? data.catalogVersion.value
+          : this.catalogVersion,
+      syncState: data.syncState.present ? data.syncState.value : this.syncState,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppliedDosesLocalData(')
+          ..write('id: $id, ')
+          ..write('attentionId: $attentionId, ')
+          ..write('vaccineId: $vaccineId, ')
+          ..write('status: $status, ')
+          ..write('appliedAt: $appliedAt, ')
+          ..write('administeredBy: $administeredBy, ')
+          ..write('lot: $lot, ')
+          ..write('vaccineNameSnapshot: $vaccineNameSnapshot, ')
+          ..write('doseLabelSnapshot: $doseLabelSnapshot, ')
+          ..write('catalogVersion: $catalogVersion, ')
+          ..write('syncState: $syncState, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    attentionId,
+    vaccineId,
+    status,
+    appliedAt,
+    administeredBy,
+    lot,
+    vaccineNameSnapshot,
+    doseLabelSnapshot,
+    catalogVersion,
+    syncState,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AppliedDosesLocalData &&
+          other.id == this.id &&
+          other.attentionId == this.attentionId &&
+          other.vaccineId == this.vaccineId &&
+          other.status == this.status &&
+          other.appliedAt == this.appliedAt &&
+          other.administeredBy == this.administeredBy &&
+          other.lot == this.lot &&
+          other.vaccineNameSnapshot == this.vaccineNameSnapshot &&
+          other.doseLabelSnapshot == this.doseLabelSnapshot &&
+          other.catalogVersion == this.catalogVersion &&
+          other.syncState == this.syncState &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AppliedDosesLocalCompanion
+    extends UpdateCompanion<AppliedDosesLocalData> {
+  final Value<String> id;
+  final Value<String> attentionId;
+  final Value<String?> vaccineId;
+  final Value<String> status;
+  final Value<int> appliedAt;
+  final Value<String?> administeredBy;
+  final Value<String?> lot;
+  final Value<String> vaccineNameSnapshot;
+  final Value<String?> doseLabelSnapshot;
+  final Value<int?> catalogVersion;
+  final Value<String> syncState;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const AppliedDosesLocalCompanion({
+    this.id = const Value.absent(),
+    this.attentionId = const Value.absent(),
+    this.vaccineId = const Value.absent(),
+    this.status = const Value.absent(),
+    this.appliedAt = const Value.absent(),
+    this.administeredBy = const Value.absent(),
+    this.lot = const Value.absent(),
+    this.vaccineNameSnapshot = const Value.absent(),
+    this.doseLabelSnapshot = const Value.absent(),
+    this.catalogVersion = const Value.absent(),
+    this.syncState = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AppliedDosesLocalCompanion.insert({
+    required String id,
+    required String attentionId,
+    this.vaccineId = const Value.absent(),
+    required String status,
+    required int appliedAt,
+    this.administeredBy = const Value.absent(),
+    this.lot = const Value.absent(),
+    required String vaccineNameSnapshot,
+    this.doseLabelSnapshot = const Value.absent(),
+    this.catalogVersion = const Value.absent(),
+    required String syncState,
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       attentionId = Value(attentionId),
+       status = Value(status),
+       appliedAt = Value(appliedAt),
+       vaccineNameSnapshot = Value(vaccineNameSnapshot),
+       syncState = Value(syncState),
+       updatedAt = Value(updatedAt);
+  static Insertable<AppliedDosesLocalData> custom({
+    Expression<String>? id,
+    Expression<String>? attentionId,
+    Expression<String>? vaccineId,
+    Expression<String>? status,
+    Expression<int>? appliedAt,
+    Expression<String>? administeredBy,
+    Expression<String>? lot,
+    Expression<String>? vaccineNameSnapshot,
+    Expression<String>? doseLabelSnapshot,
+    Expression<int>? catalogVersion,
+    Expression<String>? syncState,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (attentionId != null) 'attention_id': attentionId,
+      if (vaccineId != null) 'vaccine_id': vaccineId,
+      if (status != null) 'status': status,
+      if (appliedAt != null) 'applied_at': appliedAt,
+      if (administeredBy != null) 'administered_by': administeredBy,
+      if (lot != null) 'lot': lot,
+      if (vaccineNameSnapshot != null)
+        'vaccine_name_snapshot': vaccineNameSnapshot,
+      if (doseLabelSnapshot != null) 'dose_label_snapshot': doseLabelSnapshot,
+      if (catalogVersion != null) 'catalog_version': catalogVersion,
+      if (syncState != null) 'sync_state': syncState,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AppliedDosesLocalCompanion copyWith({
+    Value<String>? id,
+    Value<String>? attentionId,
+    Value<String?>? vaccineId,
+    Value<String>? status,
+    Value<int>? appliedAt,
+    Value<String?>? administeredBy,
+    Value<String?>? lot,
+    Value<String>? vaccineNameSnapshot,
+    Value<String?>? doseLabelSnapshot,
+    Value<int?>? catalogVersion,
+    Value<String>? syncState,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AppliedDosesLocalCompanion(
+      id: id ?? this.id,
+      attentionId: attentionId ?? this.attentionId,
+      vaccineId: vaccineId ?? this.vaccineId,
+      status: status ?? this.status,
+      appliedAt: appliedAt ?? this.appliedAt,
+      administeredBy: administeredBy ?? this.administeredBy,
+      lot: lot ?? this.lot,
+      vaccineNameSnapshot: vaccineNameSnapshot ?? this.vaccineNameSnapshot,
+      doseLabelSnapshot: doseLabelSnapshot ?? this.doseLabelSnapshot,
+      catalogVersion: catalogVersion ?? this.catalogVersion,
+      syncState: syncState ?? this.syncState,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (attentionId.present) {
+      map['attention_id'] = Variable<String>(attentionId.value);
+    }
+    if (vaccineId.present) {
+      map['vaccine_id'] = Variable<String>(vaccineId.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (appliedAt.present) {
+      map['applied_at'] = Variable<int>(appliedAt.value);
+    }
+    if (administeredBy.present) {
+      map['administered_by'] = Variable<String>(administeredBy.value);
+    }
+    if (lot.present) {
+      map['lot'] = Variable<String>(lot.value);
+    }
+    if (vaccineNameSnapshot.present) {
+      map['vaccine_name_snapshot'] = Variable<String>(
+        vaccineNameSnapshot.value,
+      );
+    }
+    if (doseLabelSnapshot.present) {
+      map['dose_label_snapshot'] = Variable<String>(doseLabelSnapshot.value);
+    }
+    if (catalogVersion.present) {
+      map['catalog_version'] = Variable<int>(catalogVersion.value);
+    }
+    if (syncState.present) {
+      map['sync_state'] = Variable<String>(syncState.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppliedDosesLocalCompanion(')
+          ..write('id: $id, ')
+          ..write('attentionId: $attentionId, ')
+          ..write('vaccineId: $vaccineId, ')
+          ..write('status: $status, ')
+          ..write('appliedAt: $appliedAt, ')
+          ..write('administeredBy: $administeredBy, ')
+          ..write('lot: $lot, ')
+          ..write('vaccineNameSnapshot: $vaccineNameSnapshot, ')
+          ..write('doseLabelSnapshot: $doseLabelSnapshot, ')
+          ..write('catalogVersion: $catalogVersion, ')
+          ..write('syncState: $syncState, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SyncOutboxTable extends SyncOutbox
+    with TableInfo<$SyncOutboxTable, SyncOutboxData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncOutboxTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _operationIdMeta = const VerificationMeta(
+    'operationId',
+  );
+  @override
+  late final GeneratedColumn<String> operationId = GeneratedColumn<String>(
+    'operation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _commandTypeMeta = const VerificationMeta(
+    'commandType',
+  );
+  @override
+  late final GeneratedColumn<String> commandType = GeneratedColumn<String>(
+    'command_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _aggregateIdMeta = const VerificationMeta(
+    'aggregateId',
+  );
+  @override
+  late final GeneratedColumn<String> aggregateId = GeneratedColumn<String>(
+    'aggregate_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _retryCountMeta = const VerificationMeta(
+    'retryCount',
+  );
+  @override
+  late final GeneratedColumn<int> retryCount = GeneratedColumn<int>(
+    'retry_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _nextRetryAtMeta = const VerificationMeta(
+    'nextRetryAt',
+  );
+  @override
+  late final GeneratedColumn<int> nextRetryAt = GeneratedColumn<int>(
+    'next_retry_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    operationId,
+    commandType,
+    aggregateId,
+    payload,
+    status,
+    retryCount,
+    nextRetryAt,
+    lastError,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_outbox';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncOutboxData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('operation_id')) {
+      context.handle(
+        _operationIdMeta,
+        operationId.isAcceptableOrUnknown(
+          data['operation_id']!,
+          _operationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_operationIdMeta);
+    }
+    if (data.containsKey('command_type')) {
+      context.handle(
+        _commandTypeMeta,
+        commandType.isAcceptableOrUnknown(
+          data['command_type']!,
+          _commandTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_commandTypeMeta);
+    }
+    if (data.containsKey('aggregate_id')) {
+      context.handle(
+        _aggregateIdMeta,
+        aggregateId.isAcceptableOrUnknown(
+          data['aggregate_id']!,
+          _aggregateIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_aggregateIdMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('retry_count')) {
+      context.handle(
+        _retryCountMeta,
+        retryCount.isAcceptableOrUnknown(data['retry_count']!, _retryCountMeta),
+      );
+    }
+    if (data.containsKey('next_retry_at')) {
+      context.handle(
+        _nextRetryAtMeta,
+        nextRetryAt.isAcceptableOrUnknown(
+          data['next_retry_at']!,
+          _nextRetryAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {operationId},
+  ];
+  @override
+  SyncOutboxData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncOutboxData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      operationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}operation_id'],
+      )!,
+      commandType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}command_type'],
+      )!,
+      aggregateId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}aggregate_id'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      retryCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}retry_count'],
+      )!,
+      nextRetryAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}next_retry_at'],
+      ),
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncOutboxTable createAlias(String alias) {
+    return $SyncOutboxTable(attachedDatabase, alias);
+  }
+}
+
+class SyncOutboxData extends DataClass implements Insertable<SyncOutboxData> {
+  final int id;
+  final String operationId;
+  final String commandType;
+  final String aggregateId;
+  final String payload;
+  final String status;
+  final int retryCount;
+  final int? nextRetryAt;
+  final String? lastError;
+  final int createdAt;
+  final int updatedAt;
+  const SyncOutboxData({
+    required this.id,
+    required this.operationId,
+    required this.commandType,
+    required this.aggregateId,
+    required this.payload,
+    required this.status,
+    required this.retryCount,
+    this.nextRetryAt,
+    this.lastError,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['operation_id'] = Variable<String>(operationId);
+    map['command_type'] = Variable<String>(commandType);
+    map['aggregate_id'] = Variable<String>(aggregateId);
+    map['payload'] = Variable<String>(payload);
+    map['status'] = Variable<String>(status);
+    map['retry_count'] = Variable<int>(retryCount);
+    if (!nullToAbsent || nextRetryAt != null) {
+      map['next_retry_at'] = Variable<int>(nextRetryAt);
+    }
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  SyncOutboxCompanion toCompanion(bool nullToAbsent) {
+    return SyncOutboxCompanion(
+      id: Value(id),
+      operationId: Value(operationId),
+      commandType: Value(commandType),
+      aggregateId: Value(aggregateId),
+      payload: Value(payload),
+      status: Value(status),
+      retryCount: Value(retryCount),
+      nextRetryAt: nextRetryAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextRetryAt),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory SyncOutboxData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncOutboxData(
+      id: serializer.fromJson<int>(json['id']),
+      operationId: serializer.fromJson<String>(json['operationId']),
+      commandType: serializer.fromJson<String>(json['commandType']),
+      aggregateId: serializer.fromJson<String>(json['aggregateId']),
+      payload: serializer.fromJson<String>(json['payload']),
+      status: serializer.fromJson<String>(json['status']),
+      retryCount: serializer.fromJson<int>(json['retryCount']),
+      nextRetryAt: serializer.fromJson<int?>(json['nextRetryAt']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'operationId': serializer.toJson<String>(operationId),
+      'commandType': serializer.toJson<String>(commandType),
+      'aggregateId': serializer.toJson<String>(aggregateId),
+      'payload': serializer.toJson<String>(payload),
+      'status': serializer.toJson<String>(status),
+      'retryCount': serializer.toJson<int>(retryCount),
+      'nextRetryAt': serializer.toJson<int?>(nextRetryAt),
+      'lastError': serializer.toJson<String?>(lastError),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  SyncOutboxData copyWith({
+    int? id,
+    String? operationId,
+    String? commandType,
+    String? aggregateId,
+    String? payload,
+    String? status,
+    int? retryCount,
+    Value<int?> nextRetryAt = const Value.absent(),
+    Value<String?> lastError = const Value.absent(),
+    int? createdAt,
+    int? updatedAt,
+  }) => SyncOutboxData(
+    id: id ?? this.id,
+    operationId: operationId ?? this.operationId,
+    commandType: commandType ?? this.commandType,
+    aggregateId: aggregateId ?? this.aggregateId,
+    payload: payload ?? this.payload,
+    status: status ?? this.status,
+    retryCount: retryCount ?? this.retryCount,
+    nextRetryAt: nextRetryAt.present ? nextRetryAt.value : this.nextRetryAt,
+    lastError: lastError.present ? lastError.value : this.lastError,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  SyncOutboxData copyWithCompanion(SyncOutboxCompanion data) {
+    return SyncOutboxData(
+      id: data.id.present ? data.id.value : this.id,
+      operationId: data.operationId.present
+          ? data.operationId.value
+          : this.operationId,
+      commandType: data.commandType.present
+          ? data.commandType.value
+          : this.commandType,
+      aggregateId: data.aggregateId.present
+          ? data.aggregateId.value
+          : this.aggregateId,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      status: data.status.present ? data.status.value : this.status,
+      retryCount: data.retryCount.present
+          ? data.retryCount.value
+          : this.retryCount,
+      nextRetryAt: data.nextRetryAt.present
+          ? data.nextRetryAt.value
+          : this.nextRetryAt,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncOutboxData(')
+          ..write('id: $id, ')
+          ..write('operationId: $operationId, ')
+          ..write('commandType: $commandType, ')
+          ..write('aggregateId: $aggregateId, ')
+          ..write('payload: $payload, ')
+          ..write('status: $status, ')
+          ..write('retryCount: $retryCount, ')
+          ..write('nextRetryAt: $nextRetryAt, ')
+          ..write('lastError: $lastError, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    operationId,
+    commandType,
+    aggregateId,
+    payload,
+    status,
+    retryCount,
+    nextRetryAt,
+    lastError,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncOutboxData &&
+          other.id == this.id &&
+          other.operationId == this.operationId &&
+          other.commandType == this.commandType &&
+          other.aggregateId == this.aggregateId &&
+          other.payload == this.payload &&
+          other.status == this.status &&
+          other.retryCount == this.retryCount &&
+          other.nextRetryAt == this.nextRetryAt &&
+          other.lastError == this.lastError &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class SyncOutboxCompanion extends UpdateCompanion<SyncOutboxData> {
+  final Value<int> id;
+  final Value<String> operationId;
+  final Value<String> commandType;
+  final Value<String> aggregateId;
+  final Value<String> payload;
+  final Value<String> status;
+  final Value<int> retryCount;
+  final Value<int?> nextRetryAt;
+  final Value<String?> lastError;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  const SyncOutboxCompanion({
+    this.id = const Value.absent(),
+    this.operationId = const Value.absent(),
+    this.commandType = const Value.absent(),
+    this.aggregateId = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.status = const Value.absent(),
+    this.retryCount = const Value.absent(),
+    this.nextRetryAt = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  SyncOutboxCompanion.insert({
+    this.id = const Value.absent(),
+    required String operationId,
+    required String commandType,
+    required String aggregateId,
+    required String payload,
+    required String status,
+    this.retryCount = const Value.absent(),
+    this.nextRetryAt = const Value.absent(),
+    this.lastError = const Value.absent(),
+    required int createdAt,
+    required int updatedAt,
+  }) : operationId = Value(operationId),
+       commandType = Value(commandType),
+       aggregateId = Value(aggregateId),
+       payload = Value(payload),
+       status = Value(status),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<SyncOutboxData> custom({
+    Expression<int>? id,
+    Expression<String>? operationId,
+    Expression<String>? commandType,
+    Expression<String>? aggregateId,
+    Expression<String>? payload,
+    Expression<String>? status,
+    Expression<int>? retryCount,
+    Expression<int>? nextRetryAt,
+    Expression<String>? lastError,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (operationId != null) 'operation_id': operationId,
+      if (commandType != null) 'command_type': commandType,
+      if (aggregateId != null) 'aggregate_id': aggregateId,
+      if (payload != null) 'payload': payload,
+      if (status != null) 'status': status,
+      if (retryCount != null) 'retry_count': retryCount,
+      if (nextRetryAt != null) 'next_retry_at': nextRetryAt,
+      if (lastError != null) 'last_error': lastError,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  SyncOutboxCompanion copyWith({
+    Value<int>? id,
+    Value<String>? operationId,
+    Value<String>? commandType,
+    Value<String>? aggregateId,
+    Value<String>? payload,
+    Value<String>? status,
+    Value<int>? retryCount,
+    Value<int?>? nextRetryAt,
+    Value<String?>? lastError,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+  }) {
+    return SyncOutboxCompanion(
+      id: id ?? this.id,
+      operationId: operationId ?? this.operationId,
+      commandType: commandType ?? this.commandType,
+      aggregateId: aggregateId ?? this.aggregateId,
+      payload: payload ?? this.payload,
+      status: status ?? this.status,
+      retryCount: retryCount ?? this.retryCount,
+      nextRetryAt: nextRetryAt ?? this.nextRetryAt,
+      lastError: lastError ?? this.lastError,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (operationId.present) {
+      map['operation_id'] = Variable<String>(operationId.value);
+    }
+    if (commandType.present) {
+      map['command_type'] = Variable<String>(commandType.value);
+    }
+    if (aggregateId.present) {
+      map['aggregate_id'] = Variable<String>(aggregateId.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (retryCount.present) {
+      map['retry_count'] = Variable<int>(retryCount.value);
+    }
+    if (nextRetryAt.present) {
+      map['next_retry_at'] = Variable<int>(nextRetryAt.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncOutboxCompanion(')
+          ..write('id: $id, ')
+          ..write('operationId: $operationId, ')
+          ..write('commandType: $commandType, ')
+          ..write('aggregateId: $aggregateId, ')
+          ..write('payload: $payload, ')
+          ..write('status: $status, ')
+          ..write('retryCount: $retryCount, ')
+          ..write('nextRetryAt: $nextRetryAt, ')
+          ..write('lastError: $lastError, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SyncOutboxDependenciesTable extends SyncOutboxDependencies
+    with TableInfo<$SyncOutboxDependenciesTable, SyncOutboxDependency> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncOutboxDependenciesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _operationIdMeta = const VerificationMeta(
+    'operationId',
+  );
+  @override
+  late final GeneratedColumn<String> operationId = GeneratedColumn<String>(
+    'operation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dependsOnOperationIdMeta =
+      const VerificationMeta('dependsOnOperationId');
+  @override
+  late final GeneratedColumn<String> dependsOnOperationId =
+      GeneratedColumn<String>(
+        'depends_on_operation_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [operationId, dependsOnOperationId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_outbox_dependencies';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncOutboxDependency> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('operation_id')) {
+      context.handle(
+        _operationIdMeta,
+        operationId.isAcceptableOrUnknown(
+          data['operation_id']!,
+          _operationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_operationIdMeta);
+    }
+    if (data.containsKey('depends_on_operation_id')) {
+      context.handle(
+        _dependsOnOperationIdMeta,
+        dependsOnOperationId.isAcceptableOrUnknown(
+          data['depends_on_operation_id']!,
+          _dependsOnOperationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_dependsOnOperationIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {operationId, dependsOnOperationId};
+  @override
+  SyncOutboxDependency map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncOutboxDependency(
+      operationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}operation_id'],
+      )!,
+      dependsOnOperationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}depends_on_operation_id'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncOutboxDependenciesTable createAlias(String alias) {
+    return $SyncOutboxDependenciesTable(attachedDatabase, alias);
+  }
+}
+
+class SyncOutboxDependency extends DataClass
+    implements Insertable<SyncOutboxDependency> {
+  final String operationId;
+  final String dependsOnOperationId;
+  const SyncOutboxDependency({
+    required this.operationId,
+    required this.dependsOnOperationId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['operation_id'] = Variable<String>(operationId);
+    map['depends_on_operation_id'] = Variable<String>(dependsOnOperationId);
+    return map;
+  }
+
+  SyncOutboxDependenciesCompanion toCompanion(bool nullToAbsent) {
+    return SyncOutboxDependenciesCompanion(
+      operationId: Value(operationId),
+      dependsOnOperationId: Value(dependsOnOperationId),
+    );
+  }
+
+  factory SyncOutboxDependency.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncOutboxDependency(
+      operationId: serializer.fromJson<String>(json['operationId']),
+      dependsOnOperationId: serializer.fromJson<String>(
+        json['dependsOnOperationId'],
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'operationId': serializer.toJson<String>(operationId),
+      'dependsOnOperationId': serializer.toJson<String>(dependsOnOperationId),
+    };
+  }
+
+  SyncOutboxDependency copyWith({
+    String? operationId,
+    String? dependsOnOperationId,
+  }) => SyncOutboxDependency(
+    operationId: operationId ?? this.operationId,
+    dependsOnOperationId: dependsOnOperationId ?? this.dependsOnOperationId,
+  );
+  SyncOutboxDependency copyWithCompanion(SyncOutboxDependenciesCompanion data) {
+    return SyncOutboxDependency(
+      operationId: data.operationId.present
+          ? data.operationId.value
+          : this.operationId,
+      dependsOnOperationId: data.dependsOnOperationId.present
+          ? data.dependsOnOperationId.value
+          : this.dependsOnOperationId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncOutboxDependency(')
+          ..write('operationId: $operationId, ')
+          ..write('dependsOnOperationId: $dependsOnOperationId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(operationId, dependsOnOperationId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncOutboxDependency &&
+          other.operationId == this.operationId &&
+          other.dependsOnOperationId == this.dependsOnOperationId);
+}
+
+class SyncOutboxDependenciesCompanion
+    extends UpdateCompanion<SyncOutboxDependency> {
+  final Value<String> operationId;
+  final Value<String> dependsOnOperationId;
+  final Value<int> rowid;
+  const SyncOutboxDependenciesCompanion({
+    this.operationId = const Value.absent(),
+    this.dependsOnOperationId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncOutboxDependenciesCompanion.insert({
+    required String operationId,
+    required String dependsOnOperationId,
+    this.rowid = const Value.absent(),
+  }) : operationId = Value(operationId),
+       dependsOnOperationId = Value(dependsOnOperationId);
+  static Insertable<SyncOutboxDependency> custom({
+    Expression<String>? operationId,
+    Expression<String>? dependsOnOperationId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (operationId != null) 'operation_id': operationId,
+      if (dependsOnOperationId != null)
+        'depends_on_operation_id': dependsOnOperationId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncOutboxDependenciesCompanion copyWith({
+    Value<String>? operationId,
+    Value<String>? dependsOnOperationId,
+    Value<int>? rowid,
+  }) {
+    return SyncOutboxDependenciesCompanion(
+      operationId: operationId ?? this.operationId,
+      dependsOnOperationId: dependsOnOperationId ?? this.dependsOnOperationId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (operationId.present) {
+      map['operation_id'] = Variable<String>(operationId.value);
+    }
+    if (dependsOnOperationId.present) {
+      map['depends_on_operation_id'] = Variable<String>(
+        dependsOnOperationId.value,
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncOutboxDependenciesCompanion(')
+          ..write('operationId: $operationId, ')
+          ..write('dependsOnOperationId: $dependsOnOperationId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4417,6 +8276,17 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $InstitutionVaccinesCacheTable(this);
   late final $InstitutionVaccineOptionsCacheTable
   institutionVaccineOptionsCache = $InstitutionVaccineOptionsCacheTable(this);
+  late final $PatientsLocalTable patientsLocal = $PatientsLocalTable(this);
+  late final $PatientGuardiansLocalTable patientGuardiansLocal =
+      $PatientGuardiansLocalTable(this);
+  late final $AttentionsLocalTable attentionsLocal = $AttentionsLocalTable(
+    this,
+  );
+  late final $AppliedDosesLocalTable appliedDosesLocal =
+      $AppliedDosesLocalTable(this);
+  late final $SyncOutboxTable syncOutbox = $SyncOutboxTable(this);
+  late final $SyncOutboxDependenciesTable syncOutboxDependencies =
+      $SyncOutboxDependenciesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4430,6 +8300,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     vaccineOptionsCache,
     institutionVaccinesCache,
     institutionVaccineOptionsCache,
+    patientsLocal,
+    patientGuardiansLocal,
+    attentionsLocal,
+    appliedDosesLocal,
+    syncOutbox,
+    syncOutboxDependencies,
   ];
 }
 
@@ -6657,6 +10533,1904 @@ typedef $$InstitutionVaccineOptionsCacheTableProcessedTableManager =
       InstitutionVaccineOptionsCacheData,
       PrefetchHooks Function()
     >;
+typedef $$PatientsLocalTableCreateCompanionBuilder =
+    PatientsLocalCompanion Function({
+      required String id,
+      required String institutionId,
+      required String documentType,
+      required String documentNumber,
+      required String firstName,
+      required String lastName,
+      Value<DateTime?> birthDate,
+      Value<String?> sex,
+      Value<String?> gender,
+      Value<String?> phone,
+      Value<String?> email,
+      Value<String?> addressLine,
+      Value<String?> addressCity,
+      Value<String?> addressDepartment,
+      Value<String?> addressMunicipality,
+      required String syncState,
+      required int version,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$PatientsLocalTableUpdateCompanionBuilder =
+    PatientsLocalCompanion Function({
+      Value<String> id,
+      Value<String> institutionId,
+      Value<String> documentType,
+      Value<String> documentNumber,
+      Value<String> firstName,
+      Value<String> lastName,
+      Value<DateTime?> birthDate,
+      Value<String?> sex,
+      Value<String?> gender,
+      Value<String?> phone,
+      Value<String?> email,
+      Value<String?> addressLine,
+      Value<String?> addressCity,
+      Value<String?> addressDepartment,
+      Value<String?> addressMunicipality,
+      Value<String> syncState,
+      Value<int> version,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$PatientsLocalTableFilterComposer
+    extends Composer<_$AppDatabase, $PatientsLocalTable> {
+  $$PatientsLocalTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get institutionId => $composableBuilder(
+    column: $table.institutionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get documentType => $composableBuilder(
+    column: $table.documentType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get documentNumber => $composableBuilder(
+    column: $table.documentNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get firstName => $composableBuilder(
+    column: $table.firstName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastName => $composableBuilder(
+    column: $table.lastName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get birthDate => $composableBuilder(
+    column: $table.birthDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sex => $composableBuilder(
+    column: $table.sex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get gender => $composableBuilder(
+    column: $table.gender,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get addressLine => $composableBuilder(
+    column: $table.addressLine,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get addressCity => $composableBuilder(
+    column: $table.addressCity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get addressDepartment => $composableBuilder(
+    column: $table.addressDepartment,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get addressMunicipality => $composableBuilder(
+    column: $table.addressMunicipality,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncState => $composableBuilder(
+    column: $table.syncState,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PatientsLocalTableOrderingComposer
+    extends Composer<_$AppDatabase, $PatientsLocalTable> {
+  $$PatientsLocalTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get institutionId => $composableBuilder(
+    column: $table.institutionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get documentType => $composableBuilder(
+    column: $table.documentType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get documentNumber => $composableBuilder(
+    column: $table.documentNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get firstName => $composableBuilder(
+    column: $table.firstName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastName => $composableBuilder(
+    column: $table.lastName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get birthDate => $composableBuilder(
+    column: $table.birthDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sex => $composableBuilder(
+    column: $table.sex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get gender => $composableBuilder(
+    column: $table.gender,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get addressLine => $composableBuilder(
+    column: $table.addressLine,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get addressCity => $composableBuilder(
+    column: $table.addressCity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get addressDepartment => $composableBuilder(
+    column: $table.addressDepartment,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get addressMunicipality => $composableBuilder(
+    column: $table.addressMunicipality,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncState => $composableBuilder(
+    column: $table.syncState,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PatientsLocalTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PatientsLocalTable> {
+  $$PatientsLocalTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get institutionId => $composableBuilder(
+    column: $table.institutionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get documentType => $composableBuilder(
+    column: $table.documentType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get documentNumber => $composableBuilder(
+    column: $table.documentNumber,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get firstName =>
+      $composableBuilder(column: $table.firstName, builder: (column) => column);
+
+  GeneratedColumn<String> get lastName =>
+      $composableBuilder(column: $table.lastName, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get birthDate =>
+      $composableBuilder(column: $table.birthDate, builder: (column) => column);
+
+  GeneratedColumn<String> get sex =>
+      $composableBuilder(column: $table.sex, builder: (column) => column);
+
+  GeneratedColumn<String> get gender =>
+      $composableBuilder(column: $table.gender, builder: (column) => column);
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
+  GeneratedColumn<String> get addressLine => $composableBuilder(
+    column: $table.addressLine,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get addressCity => $composableBuilder(
+    column: $table.addressCity,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get addressDepartment => $composableBuilder(
+    column: $table.addressDepartment,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get addressMunicipality => $composableBuilder(
+    column: $table.addressMunicipality,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncState =>
+      $composableBuilder(column: $table.syncState, builder: (column) => column);
+
+  GeneratedColumn<int> get version =>
+      $composableBuilder(column: $table.version, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$PatientsLocalTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PatientsLocalTable,
+          PatientsLocalData,
+          $$PatientsLocalTableFilterComposer,
+          $$PatientsLocalTableOrderingComposer,
+          $$PatientsLocalTableAnnotationComposer,
+          $$PatientsLocalTableCreateCompanionBuilder,
+          $$PatientsLocalTableUpdateCompanionBuilder,
+          (
+            PatientsLocalData,
+            BaseReferences<
+              _$AppDatabase,
+              $PatientsLocalTable,
+              PatientsLocalData
+            >,
+          ),
+          PatientsLocalData,
+          PrefetchHooks Function()
+        > {
+  $$PatientsLocalTableTableManager(_$AppDatabase db, $PatientsLocalTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PatientsLocalTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PatientsLocalTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PatientsLocalTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> institutionId = const Value.absent(),
+                Value<String> documentType = const Value.absent(),
+                Value<String> documentNumber = const Value.absent(),
+                Value<String> firstName = const Value.absent(),
+                Value<String> lastName = const Value.absent(),
+                Value<DateTime?> birthDate = const Value.absent(),
+                Value<String?> sex = const Value.absent(),
+                Value<String?> gender = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
+                Value<String?> email = const Value.absent(),
+                Value<String?> addressLine = const Value.absent(),
+                Value<String?> addressCity = const Value.absent(),
+                Value<String?> addressDepartment = const Value.absent(),
+                Value<String?> addressMunicipality = const Value.absent(),
+                Value<String> syncState = const Value.absent(),
+                Value<int> version = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PatientsLocalCompanion(
+                id: id,
+                institutionId: institutionId,
+                documentType: documentType,
+                documentNumber: documentNumber,
+                firstName: firstName,
+                lastName: lastName,
+                birthDate: birthDate,
+                sex: sex,
+                gender: gender,
+                phone: phone,
+                email: email,
+                addressLine: addressLine,
+                addressCity: addressCity,
+                addressDepartment: addressDepartment,
+                addressMunicipality: addressMunicipality,
+                syncState: syncState,
+                version: version,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String institutionId,
+                required String documentType,
+                required String documentNumber,
+                required String firstName,
+                required String lastName,
+                Value<DateTime?> birthDate = const Value.absent(),
+                Value<String?> sex = const Value.absent(),
+                Value<String?> gender = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
+                Value<String?> email = const Value.absent(),
+                Value<String?> addressLine = const Value.absent(),
+                Value<String?> addressCity = const Value.absent(),
+                Value<String?> addressDepartment = const Value.absent(),
+                Value<String?> addressMunicipality = const Value.absent(),
+                required String syncState,
+                required int version,
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => PatientsLocalCompanion.insert(
+                id: id,
+                institutionId: institutionId,
+                documentType: documentType,
+                documentNumber: documentNumber,
+                firstName: firstName,
+                lastName: lastName,
+                birthDate: birthDate,
+                sex: sex,
+                gender: gender,
+                phone: phone,
+                email: email,
+                addressLine: addressLine,
+                addressCity: addressCity,
+                addressDepartment: addressDepartment,
+                addressMunicipality: addressMunicipality,
+                syncState: syncState,
+                version: version,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PatientsLocalTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PatientsLocalTable,
+      PatientsLocalData,
+      $$PatientsLocalTableFilterComposer,
+      $$PatientsLocalTableOrderingComposer,
+      $$PatientsLocalTableAnnotationComposer,
+      $$PatientsLocalTableCreateCompanionBuilder,
+      $$PatientsLocalTableUpdateCompanionBuilder,
+      (
+        PatientsLocalData,
+        BaseReferences<_$AppDatabase, $PatientsLocalTable, PatientsLocalData>,
+      ),
+      PatientsLocalData,
+      PrefetchHooks Function()
+    >;
+typedef $$PatientGuardiansLocalTableCreateCompanionBuilder =
+    PatientGuardiansLocalCompanion Function({
+      required String id,
+      required String patientId,
+      required String fullName,
+      required String relationship,
+      Value<String?> phone,
+      Value<int> rowid,
+    });
+typedef $$PatientGuardiansLocalTableUpdateCompanionBuilder =
+    PatientGuardiansLocalCompanion Function({
+      Value<String> id,
+      Value<String> patientId,
+      Value<String> fullName,
+      Value<String> relationship,
+      Value<String?> phone,
+      Value<int> rowid,
+    });
+
+class $$PatientGuardiansLocalTableFilterComposer
+    extends Composer<_$AppDatabase, $PatientGuardiansLocalTable> {
+  $$PatientGuardiansLocalTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get patientId => $composableBuilder(
+    column: $table.patientId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fullName => $composableBuilder(
+    column: $table.fullName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get relationship => $composableBuilder(
+    column: $table.relationship,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PatientGuardiansLocalTableOrderingComposer
+    extends Composer<_$AppDatabase, $PatientGuardiansLocalTable> {
+  $$PatientGuardiansLocalTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get patientId => $composableBuilder(
+    column: $table.patientId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fullName => $composableBuilder(
+    column: $table.fullName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get relationship => $composableBuilder(
+    column: $table.relationship,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PatientGuardiansLocalTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PatientGuardiansLocalTable> {
+  $$PatientGuardiansLocalTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get patientId =>
+      $composableBuilder(column: $table.patientId, builder: (column) => column);
+
+  GeneratedColumn<String> get fullName =>
+      $composableBuilder(column: $table.fullName, builder: (column) => column);
+
+  GeneratedColumn<String> get relationship => $composableBuilder(
+    column: $table.relationship,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
+}
+
+class $$PatientGuardiansLocalTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PatientGuardiansLocalTable,
+          PatientGuardiansLocalData,
+          $$PatientGuardiansLocalTableFilterComposer,
+          $$PatientGuardiansLocalTableOrderingComposer,
+          $$PatientGuardiansLocalTableAnnotationComposer,
+          $$PatientGuardiansLocalTableCreateCompanionBuilder,
+          $$PatientGuardiansLocalTableUpdateCompanionBuilder,
+          (
+            PatientGuardiansLocalData,
+            BaseReferences<
+              _$AppDatabase,
+              $PatientGuardiansLocalTable,
+              PatientGuardiansLocalData
+            >,
+          ),
+          PatientGuardiansLocalData,
+          PrefetchHooks Function()
+        > {
+  $$PatientGuardiansLocalTableTableManager(
+    _$AppDatabase db,
+    $PatientGuardiansLocalTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PatientGuardiansLocalTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PatientGuardiansLocalTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PatientGuardiansLocalTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> patientId = const Value.absent(),
+                Value<String> fullName = const Value.absent(),
+                Value<String> relationship = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PatientGuardiansLocalCompanion(
+                id: id,
+                patientId: patientId,
+                fullName: fullName,
+                relationship: relationship,
+                phone: phone,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String patientId,
+                required String fullName,
+                required String relationship,
+                Value<String?> phone = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PatientGuardiansLocalCompanion.insert(
+                id: id,
+                patientId: patientId,
+                fullName: fullName,
+                relationship: relationship,
+                phone: phone,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PatientGuardiansLocalTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PatientGuardiansLocalTable,
+      PatientGuardiansLocalData,
+      $$PatientGuardiansLocalTableFilterComposer,
+      $$PatientGuardiansLocalTableOrderingComposer,
+      $$PatientGuardiansLocalTableAnnotationComposer,
+      $$PatientGuardiansLocalTableCreateCompanionBuilder,
+      $$PatientGuardiansLocalTableUpdateCompanionBuilder,
+      (
+        PatientGuardiansLocalData,
+        BaseReferences<
+          _$AppDatabase,
+          $PatientGuardiansLocalTable,
+          PatientGuardiansLocalData
+        >,
+      ),
+      PatientGuardiansLocalData,
+      PrefetchHooks Function()
+    >;
+typedef $$AttentionsLocalTableCreateCompanionBuilder =
+    AttentionsLocalCompanion Function({
+      required String id,
+      required String institutionId,
+      required String patientId,
+      Value<String?> vaccinatorId,
+      required String status,
+      Value<int?> attentionDate,
+      Value<int?> startedAt,
+      Value<int?> completedAt,
+      Value<String?> observations,
+      Value<String?> cancelReason,
+      required int version,
+      required String syncState,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AttentionsLocalTableUpdateCompanionBuilder =
+    AttentionsLocalCompanion Function({
+      Value<String> id,
+      Value<String> institutionId,
+      Value<String> patientId,
+      Value<String?> vaccinatorId,
+      Value<String> status,
+      Value<int?> attentionDate,
+      Value<int?> startedAt,
+      Value<int?> completedAt,
+      Value<String?> observations,
+      Value<String?> cancelReason,
+      Value<int> version,
+      Value<String> syncState,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$AttentionsLocalTableFilterComposer
+    extends Composer<_$AppDatabase, $AttentionsLocalTable> {
+  $$AttentionsLocalTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get institutionId => $composableBuilder(
+    column: $table.institutionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get patientId => $composableBuilder(
+    column: $table.patientId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get vaccinatorId => $composableBuilder(
+    column: $table.vaccinatorId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get attentionDate => $composableBuilder(
+    column: $table.attentionDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get observations => $composableBuilder(
+    column: $table.observations,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cancelReason => $composableBuilder(
+    column: $table.cancelReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncState => $composableBuilder(
+    column: $table.syncState,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AttentionsLocalTableOrderingComposer
+    extends Composer<_$AppDatabase, $AttentionsLocalTable> {
+  $$AttentionsLocalTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get institutionId => $composableBuilder(
+    column: $table.institutionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get patientId => $composableBuilder(
+    column: $table.patientId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get vaccinatorId => $composableBuilder(
+    column: $table.vaccinatorId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attentionDate => $composableBuilder(
+    column: $table.attentionDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get observations => $composableBuilder(
+    column: $table.observations,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cancelReason => $composableBuilder(
+    column: $table.cancelReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncState => $composableBuilder(
+    column: $table.syncState,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AttentionsLocalTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AttentionsLocalTable> {
+  $$AttentionsLocalTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get institutionId => $composableBuilder(
+    column: $table.institutionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get patientId =>
+      $composableBuilder(column: $table.patientId, builder: (column) => column);
+
+  GeneratedColumn<String> get vaccinatorId => $composableBuilder(
+    column: $table.vaccinatorId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get attentionDate => $composableBuilder(
+    column: $table.attentionDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get observations => $composableBuilder(
+    column: $table.observations,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get cancelReason => $composableBuilder(
+    column: $table.cancelReason,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get version =>
+      $composableBuilder(column: $table.version, builder: (column) => column);
+
+  GeneratedColumn<String> get syncState =>
+      $composableBuilder(column: $table.syncState, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AttentionsLocalTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AttentionsLocalTable,
+          AttentionsLocalData,
+          $$AttentionsLocalTableFilterComposer,
+          $$AttentionsLocalTableOrderingComposer,
+          $$AttentionsLocalTableAnnotationComposer,
+          $$AttentionsLocalTableCreateCompanionBuilder,
+          $$AttentionsLocalTableUpdateCompanionBuilder,
+          (
+            AttentionsLocalData,
+            BaseReferences<
+              _$AppDatabase,
+              $AttentionsLocalTable,
+              AttentionsLocalData
+            >,
+          ),
+          AttentionsLocalData,
+          PrefetchHooks Function()
+        > {
+  $$AttentionsLocalTableTableManager(
+    _$AppDatabase db,
+    $AttentionsLocalTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AttentionsLocalTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AttentionsLocalTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AttentionsLocalTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> institutionId = const Value.absent(),
+                Value<String> patientId = const Value.absent(),
+                Value<String?> vaccinatorId = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int?> attentionDate = const Value.absent(),
+                Value<int?> startedAt = const Value.absent(),
+                Value<int?> completedAt = const Value.absent(),
+                Value<String?> observations = const Value.absent(),
+                Value<String?> cancelReason = const Value.absent(),
+                Value<int> version = const Value.absent(),
+                Value<String> syncState = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AttentionsLocalCompanion(
+                id: id,
+                institutionId: institutionId,
+                patientId: patientId,
+                vaccinatorId: vaccinatorId,
+                status: status,
+                attentionDate: attentionDate,
+                startedAt: startedAt,
+                completedAt: completedAt,
+                observations: observations,
+                cancelReason: cancelReason,
+                version: version,
+                syncState: syncState,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String institutionId,
+                required String patientId,
+                Value<String?> vaccinatorId = const Value.absent(),
+                required String status,
+                Value<int?> attentionDate = const Value.absent(),
+                Value<int?> startedAt = const Value.absent(),
+                Value<int?> completedAt = const Value.absent(),
+                Value<String?> observations = const Value.absent(),
+                Value<String?> cancelReason = const Value.absent(),
+                required int version,
+                required String syncState,
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => AttentionsLocalCompanion.insert(
+                id: id,
+                institutionId: institutionId,
+                patientId: patientId,
+                vaccinatorId: vaccinatorId,
+                status: status,
+                attentionDate: attentionDate,
+                startedAt: startedAt,
+                completedAt: completedAt,
+                observations: observations,
+                cancelReason: cancelReason,
+                version: version,
+                syncState: syncState,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AttentionsLocalTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AttentionsLocalTable,
+      AttentionsLocalData,
+      $$AttentionsLocalTableFilterComposer,
+      $$AttentionsLocalTableOrderingComposer,
+      $$AttentionsLocalTableAnnotationComposer,
+      $$AttentionsLocalTableCreateCompanionBuilder,
+      $$AttentionsLocalTableUpdateCompanionBuilder,
+      (
+        AttentionsLocalData,
+        BaseReferences<
+          _$AppDatabase,
+          $AttentionsLocalTable,
+          AttentionsLocalData
+        >,
+      ),
+      AttentionsLocalData,
+      PrefetchHooks Function()
+    >;
+typedef $$AppliedDosesLocalTableCreateCompanionBuilder =
+    AppliedDosesLocalCompanion Function({
+      required String id,
+      required String attentionId,
+      Value<String?> vaccineId,
+      required String status,
+      required int appliedAt,
+      Value<String?> administeredBy,
+      Value<String?> lot,
+      required String vaccineNameSnapshot,
+      Value<String?> doseLabelSnapshot,
+      Value<int?> catalogVersion,
+      required String syncState,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AppliedDosesLocalTableUpdateCompanionBuilder =
+    AppliedDosesLocalCompanion Function({
+      Value<String> id,
+      Value<String> attentionId,
+      Value<String?> vaccineId,
+      Value<String> status,
+      Value<int> appliedAt,
+      Value<String?> administeredBy,
+      Value<String?> lot,
+      Value<String> vaccineNameSnapshot,
+      Value<String?> doseLabelSnapshot,
+      Value<int?> catalogVersion,
+      Value<String> syncState,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$AppliedDosesLocalTableFilterComposer
+    extends Composer<_$AppDatabase, $AppliedDosesLocalTable> {
+  $$AppliedDosesLocalTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get attentionId => $composableBuilder(
+    column: $table.attentionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get vaccineId => $composableBuilder(
+    column: $table.vaccineId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get appliedAt => $composableBuilder(
+    column: $table.appliedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get administeredBy => $composableBuilder(
+    column: $table.administeredBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lot => $composableBuilder(
+    column: $table.lot,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get vaccineNameSnapshot => $composableBuilder(
+    column: $table.vaccineNameSnapshot,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get doseLabelSnapshot => $composableBuilder(
+    column: $table.doseLabelSnapshot,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get catalogVersion => $composableBuilder(
+    column: $table.catalogVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncState => $composableBuilder(
+    column: $table.syncState,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AppliedDosesLocalTableOrderingComposer
+    extends Composer<_$AppDatabase, $AppliedDosesLocalTable> {
+  $$AppliedDosesLocalTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get attentionId => $composableBuilder(
+    column: $table.attentionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get vaccineId => $composableBuilder(
+    column: $table.vaccineId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get appliedAt => $composableBuilder(
+    column: $table.appliedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get administeredBy => $composableBuilder(
+    column: $table.administeredBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lot => $composableBuilder(
+    column: $table.lot,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get vaccineNameSnapshot => $composableBuilder(
+    column: $table.vaccineNameSnapshot,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get doseLabelSnapshot => $composableBuilder(
+    column: $table.doseLabelSnapshot,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get catalogVersion => $composableBuilder(
+    column: $table.catalogVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncState => $composableBuilder(
+    column: $table.syncState,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AppliedDosesLocalTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AppliedDosesLocalTable> {
+  $$AppliedDosesLocalTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get attentionId => $composableBuilder(
+    column: $table.attentionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get vaccineId =>
+      $composableBuilder(column: $table.vaccineId, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get appliedAt =>
+      $composableBuilder(column: $table.appliedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get administeredBy => $composableBuilder(
+    column: $table.administeredBy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lot =>
+      $composableBuilder(column: $table.lot, builder: (column) => column);
+
+  GeneratedColumn<String> get vaccineNameSnapshot => $composableBuilder(
+    column: $table.vaccineNameSnapshot,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get doseLabelSnapshot => $composableBuilder(
+    column: $table.doseLabelSnapshot,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get catalogVersion => $composableBuilder(
+    column: $table.catalogVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncState =>
+      $composableBuilder(column: $table.syncState, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AppliedDosesLocalTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AppliedDosesLocalTable,
+          AppliedDosesLocalData,
+          $$AppliedDosesLocalTableFilterComposer,
+          $$AppliedDosesLocalTableOrderingComposer,
+          $$AppliedDosesLocalTableAnnotationComposer,
+          $$AppliedDosesLocalTableCreateCompanionBuilder,
+          $$AppliedDosesLocalTableUpdateCompanionBuilder,
+          (
+            AppliedDosesLocalData,
+            BaseReferences<
+              _$AppDatabase,
+              $AppliedDosesLocalTable,
+              AppliedDosesLocalData
+            >,
+          ),
+          AppliedDosesLocalData,
+          PrefetchHooks Function()
+        > {
+  $$AppliedDosesLocalTableTableManager(
+    _$AppDatabase db,
+    $AppliedDosesLocalTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AppliedDosesLocalTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AppliedDosesLocalTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AppliedDosesLocalTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> attentionId = const Value.absent(),
+                Value<String?> vaccineId = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> appliedAt = const Value.absent(),
+                Value<String?> administeredBy = const Value.absent(),
+                Value<String?> lot = const Value.absent(),
+                Value<String> vaccineNameSnapshot = const Value.absent(),
+                Value<String?> doseLabelSnapshot = const Value.absent(),
+                Value<int?> catalogVersion = const Value.absent(),
+                Value<String> syncState = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AppliedDosesLocalCompanion(
+                id: id,
+                attentionId: attentionId,
+                vaccineId: vaccineId,
+                status: status,
+                appliedAt: appliedAt,
+                administeredBy: administeredBy,
+                lot: lot,
+                vaccineNameSnapshot: vaccineNameSnapshot,
+                doseLabelSnapshot: doseLabelSnapshot,
+                catalogVersion: catalogVersion,
+                syncState: syncState,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String attentionId,
+                Value<String?> vaccineId = const Value.absent(),
+                required String status,
+                required int appliedAt,
+                Value<String?> administeredBy = const Value.absent(),
+                Value<String?> lot = const Value.absent(),
+                required String vaccineNameSnapshot,
+                Value<String?> doseLabelSnapshot = const Value.absent(),
+                Value<int?> catalogVersion = const Value.absent(),
+                required String syncState,
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => AppliedDosesLocalCompanion.insert(
+                id: id,
+                attentionId: attentionId,
+                vaccineId: vaccineId,
+                status: status,
+                appliedAt: appliedAt,
+                administeredBy: administeredBy,
+                lot: lot,
+                vaccineNameSnapshot: vaccineNameSnapshot,
+                doseLabelSnapshot: doseLabelSnapshot,
+                catalogVersion: catalogVersion,
+                syncState: syncState,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AppliedDosesLocalTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AppliedDosesLocalTable,
+      AppliedDosesLocalData,
+      $$AppliedDosesLocalTableFilterComposer,
+      $$AppliedDosesLocalTableOrderingComposer,
+      $$AppliedDosesLocalTableAnnotationComposer,
+      $$AppliedDosesLocalTableCreateCompanionBuilder,
+      $$AppliedDosesLocalTableUpdateCompanionBuilder,
+      (
+        AppliedDosesLocalData,
+        BaseReferences<
+          _$AppDatabase,
+          $AppliedDosesLocalTable,
+          AppliedDosesLocalData
+        >,
+      ),
+      AppliedDosesLocalData,
+      PrefetchHooks Function()
+    >;
+typedef $$SyncOutboxTableCreateCompanionBuilder = SyncOutboxCompanion Function({
+  Value<int> id,
+  required String operationId,
+  required String commandType,
+  required String aggregateId,
+  required String payload,
+  required String status,
+  Value<int> retryCount,
+  Value<int?> nextRetryAt,
+  Value<String?> lastError,
+  required int createdAt,
+  required int updatedAt,
+});
+typedef $$SyncOutboxTableUpdateCompanionBuilder = SyncOutboxCompanion Function({
+  Value<int> id,
+  Value<String> operationId,
+  Value<String> commandType,
+  Value<String> aggregateId,
+  Value<String> payload,
+  Value<String> status,
+  Value<int> retryCount,
+  Value<int?> nextRetryAt,
+  Value<String?> lastError,
+  Value<int> createdAt,
+  Value<int> updatedAt,
+});
+
+class $$SyncOutboxTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncOutboxTable> {
+  $$SyncOutboxTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get operationId => $composableBuilder(
+    column: $table.operationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get commandType => $composableBuilder(
+    column: $table.commandType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get aggregateId => $composableBuilder(
+    column: $table.aggregateId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get retryCount => $composableBuilder(
+    column: $table.retryCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get nextRetryAt => $composableBuilder(
+    column: $table.nextRetryAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncOutboxTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncOutboxTable> {
+  $$SyncOutboxTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get operationId => $composableBuilder(
+    column: $table.operationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get commandType => $composableBuilder(
+    column: $table.commandType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get aggregateId => $composableBuilder(
+    column: $table.aggregateId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get retryCount => $composableBuilder(
+    column: $table.retryCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get nextRetryAt => $composableBuilder(
+    column: $table.nextRetryAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncOutboxTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncOutboxTable> {
+  $$SyncOutboxTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get operationId => $composableBuilder(
+    column: $table.operationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get commandType => $composableBuilder(
+    column: $table.commandType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get aggregateId => $composableBuilder(
+    column: $table.aggregateId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get retryCount => $composableBuilder(
+    column: $table.retryCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get nextRetryAt => $composableBuilder(
+    column: $table.nextRetryAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$SyncOutboxTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SyncOutboxTable,
+          SyncOutboxData,
+          $$SyncOutboxTableFilterComposer,
+          $$SyncOutboxTableOrderingComposer,
+          $$SyncOutboxTableAnnotationComposer,
+          $$SyncOutboxTableCreateCompanionBuilder,
+          $$SyncOutboxTableUpdateCompanionBuilder,
+          (
+            SyncOutboxData,
+            BaseReferences<_$AppDatabase, $SyncOutboxTable, SyncOutboxData>,
+          ),
+          SyncOutboxData,
+          PrefetchHooks Function()
+        > {
+  $$SyncOutboxTableTableManager(_$AppDatabase db, $SyncOutboxTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncOutboxTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncOutboxTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncOutboxTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> operationId = const Value.absent(),
+                Value<String> commandType = const Value.absent(),
+                Value<String> aggregateId = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> retryCount = const Value.absent(),
+                Value<int?> nextRetryAt = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+              }) => SyncOutboxCompanion(
+                id: id,
+                operationId: operationId,
+                commandType: commandType,
+                aggregateId: aggregateId,
+                payload: payload,
+                status: status,
+                retryCount: retryCount,
+                nextRetryAt: nextRetryAt,
+                lastError: lastError,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String operationId,
+                required String commandType,
+                required String aggregateId,
+                required String payload,
+                required String status,
+                Value<int> retryCount = const Value.absent(),
+                Value<int?> nextRetryAt = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                required int createdAt,
+                required int updatedAt,
+              }) => SyncOutboxCompanion.insert(
+                id: id,
+                operationId: operationId,
+                commandType: commandType,
+                aggregateId: aggregateId,
+                payload: payload,
+                status: status,
+                retryCount: retryCount,
+                nextRetryAt: nextRetryAt,
+                lastError: lastError,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncOutboxTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SyncOutboxTable,
+      SyncOutboxData,
+      $$SyncOutboxTableFilterComposer,
+      $$SyncOutboxTableOrderingComposer,
+      $$SyncOutboxTableAnnotationComposer,
+      $$SyncOutboxTableCreateCompanionBuilder,
+      $$SyncOutboxTableUpdateCompanionBuilder,
+      (
+        SyncOutboxData,
+        BaseReferences<_$AppDatabase, $SyncOutboxTable, SyncOutboxData>,
+      ),
+      SyncOutboxData,
+      PrefetchHooks Function()
+    >;
+typedef $$SyncOutboxDependenciesTableCreateCompanionBuilder =
+    SyncOutboxDependenciesCompanion Function({
+      required String operationId,
+      required String dependsOnOperationId,
+      Value<int> rowid,
+    });
+typedef $$SyncOutboxDependenciesTableUpdateCompanionBuilder =
+    SyncOutboxDependenciesCompanion Function({
+      Value<String> operationId,
+      Value<String> dependsOnOperationId,
+      Value<int> rowid,
+    });
+
+class $$SyncOutboxDependenciesTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncOutboxDependenciesTable> {
+  $$SyncOutboxDependenciesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get operationId => $composableBuilder(
+    column: $table.operationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dependsOnOperationId => $composableBuilder(
+    column: $table.dependsOnOperationId,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncOutboxDependenciesTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncOutboxDependenciesTable> {
+  $$SyncOutboxDependenciesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get operationId => $composableBuilder(
+    column: $table.operationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dependsOnOperationId => $composableBuilder(
+    column: $table.dependsOnOperationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncOutboxDependenciesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncOutboxDependenciesTable> {
+  $$SyncOutboxDependenciesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get operationId => $composableBuilder(
+    column: $table.operationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get dependsOnOperationId => $composableBuilder(
+    column: $table.dependsOnOperationId,
+    builder: (column) => column,
+  );
+}
+
+class $$SyncOutboxDependenciesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SyncOutboxDependenciesTable,
+          SyncOutboxDependency,
+          $$SyncOutboxDependenciesTableFilterComposer,
+          $$SyncOutboxDependenciesTableOrderingComposer,
+          $$SyncOutboxDependenciesTableAnnotationComposer,
+          $$SyncOutboxDependenciesTableCreateCompanionBuilder,
+          $$SyncOutboxDependenciesTableUpdateCompanionBuilder,
+          (
+            SyncOutboxDependency,
+            BaseReferences<
+              _$AppDatabase,
+              $SyncOutboxDependenciesTable,
+              SyncOutboxDependency
+            >,
+          ),
+          SyncOutboxDependency,
+          PrefetchHooks Function()
+        > {
+  $$SyncOutboxDependenciesTableTableManager(
+    _$AppDatabase db,
+    $SyncOutboxDependenciesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncOutboxDependenciesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SyncOutboxDependenciesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SyncOutboxDependenciesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> operationId = const Value.absent(),
+                Value<String> dependsOnOperationId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncOutboxDependenciesCompanion(
+                operationId: operationId,
+                dependsOnOperationId: dependsOnOperationId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String operationId,
+                required String dependsOnOperationId,
+                Value<int> rowid = const Value.absent(),
+              }) => SyncOutboxDependenciesCompanion.insert(
+                operationId: operationId,
+                dependsOnOperationId: dependsOnOperationId,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncOutboxDependenciesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SyncOutboxDependenciesTable,
+      SyncOutboxDependency,
+      $$SyncOutboxDependenciesTableFilterComposer,
+      $$SyncOutboxDependenciesTableOrderingComposer,
+      $$SyncOutboxDependenciesTableAnnotationComposer,
+      $$SyncOutboxDependenciesTableCreateCompanionBuilder,
+      $$SyncOutboxDependenciesTableUpdateCompanionBuilder,
+      (
+        SyncOutboxDependency,
+        BaseReferences<
+          _$AppDatabase,
+          $SyncOutboxDependenciesTable,
+          SyncOutboxDependency
+        >,
+      ),
+      SyncOutboxDependency,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6683,5 +12457,20 @@ class $AppDatabaseManager {
       $$InstitutionVaccineOptionsCacheTableTableManager(
         _db,
         _db.institutionVaccineOptionsCache,
+      );
+  $$PatientsLocalTableTableManager get patientsLocal =>
+      $$PatientsLocalTableTableManager(_db, _db.patientsLocal);
+  $$PatientGuardiansLocalTableTableManager get patientGuardiansLocal =>
+      $$PatientGuardiansLocalTableTableManager(_db, _db.patientGuardiansLocal);
+  $$AttentionsLocalTableTableManager get attentionsLocal =>
+      $$AttentionsLocalTableTableManager(_db, _db.attentionsLocal);
+  $$AppliedDosesLocalTableTableManager get appliedDosesLocal =>
+      $$AppliedDosesLocalTableTableManager(_db, _db.appliedDosesLocal);
+  $$SyncOutboxTableTableManager get syncOutbox =>
+      $$SyncOutboxTableTableManager(_db, _db.syncOutbox);
+  $$SyncOutboxDependenciesTableTableManager get syncOutboxDependencies =>
+      $$SyncOutboxDependenciesTableTableManager(
+        _db,
+        _db.syncOutboxDependencies,
       );
 }
