@@ -161,6 +161,25 @@ catálogo podía romperlo.
         subentidades del agregado).
 \end{itemize}
 
+\textbf{Fragmento real} (\texttt{AttentionService.java:432-477}, base pre-refactor):
+
+\begin{lstlisting}
+private AttentionResponse toResponse(AttentionEntity attention) {
+    List<AppliedDoseResponse> doseResponses = new ArrayList<>();
+    for (AppliedDoseEntity dose :
+            doses.findByAttentionIdOrderByCreatedAtAsc(attention.getId())) {
+        doseResponses.add(toDoseResponse(dose));
+    }
+    return new AttentionResponse(
+            attention.getId(), attention.getPatientId(),
+            attention.getProfessionalId(), attention.getInstitutionId(),
+            attention.getAttentionDate(), attention.getConsecutive(),
+            attention.getStatus().name(), attention.getObservations(),
+            attention.getVersion(), attention.getCreatedAt(),
+            attention.getUpdatedAt(), doseResponses);
+}
+\end{lstlisting}
+
 \subsection{OCP --- ceremonia idempotente duplicada}
 
 El patrón \texttt{find $\to$ cuerpo $\to$ auditar $\to$ registrar} se repetía en:
@@ -173,6 +192,30 @@ El patrón \texttt{find $\to$ cuerpo $\to$ auditar $\to$ registrar} se repetía 
   \item \texttt{PatientService.java:88-133} (antes):
         \texttt{PatientService.create}.
 \end{itemize}
+
+\textbf{Fragmento real} (\texttt{AttentionService.java:234-305}, base pre-refactor):
+la ceremonia \texttt{find $\to$ cuerpo $\to$ auditar $\to$ registrar} aparece
+mezclada con la lógica de la dosis en el mismo método:
+
+\begin{lstlisting}
+if (dose.getExecutionId() != null) {
+    Optional<ProcessedOperation> processed = coalesce(dose.getExecutionId());
+    if (processed.isPresent()) { lastWrite = processed.get(); }
+}
+if (lastWrite.isPresent()) { return lastWrite.get().getOperationId(); }
+InstitutionVaccineEntity vaccine =
+    institutionVaccines.getEnabledInvoice(institutionId, vaccineId);
+     .orElseThrow(() -> new ResourceNotFoundException(...));
+Optional<OptionEntity> option =
+    vaccineCatalog.resolveOption(vaccine.getOptionId(), institutionId);
+    .orElseThrow(() -> new ResourceNotFoundException(...));
+DoseAccepted accepted = new ProcessedOperation();
+// ... aplicar reglas de dosis ...
+processedOperationRepo.record(transaction ...);
+auditorium.audit(accepted, "application/dose+json");
+cache.invalidate(ResourceKind.DOSE, cacheableInstitution, institutionId);
+return accepted.getOperationId();
+\end{lstlisting}
 
 \subsection{DRY y gobierno de permisos}
 
@@ -191,6 +234,22 @@ El patrón \texttt{find $\to$ cuerpo $\to$ auditar $\to$ registrar} se repetía 
         \texttt{setEnabled(id, version, enabled)} era código muerto (sin
         llamadores); el commit remoto \texttt{16460fc} ya lo había borrado.
 \end{itemize}
+
+\textbf{Fragmento real} (\texttt{InstitutionVaccineService.java:119-127}, base
+pre-refactor): la consulta nativa se construye dentro del servicio:
+
+\begin{lstlisting}
+String sql = """
+      INSERT INTO institution_vaccine (institution_id, vaccine_id,
+          enabled, version)
+      VALUES (?, ?, true, 1)
+      ON CONFLICT (institution_id, vaccine_id) DO NOTHING
+      RETURNING id""";
+Query q = entityManager.createNativeQuery(sql, Long.class);
+q.setParameter(1, institutionId);
+q.setParameter(2, vaccineId);
+Object id = q.getSingleResult();
+\end{lstlisting}
 
 \subsection{LSP}
 
