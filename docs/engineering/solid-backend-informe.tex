@@ -53,10 +53,13 @@ Este informe documenta el refactor del backend Spring Boot aplicando los
 principios SOLID a los módulos clínico (\texttt{patients},
 \texttt{attentions}), al catálogo (\texttt{catalog}) y a utilidades
 compartidas (\texttt{shared}). Se trata de un ejercicio académico: el
-\textit{frontend} Flutter no se tocó, la arquitectura por capas declarada en
-ADR-006 se respeta, y toda verificación se hace sin base de datos
-(112 tests unitarios de negocio + 4 reglas ArchUnit = \textbf{116 tests, 0
-fallos}).
+\textit{frontend} Flutter no se modificó en el alcance de este refactor (el
+PR~#1 posterior integró el cliente Flutter offline como parte del motor de
+sincronización), la arquitectura por capas declarada en
+ADR-006 se respeta, y toda verificación unitaria se hace sin base de datos:
+112 tests unitarios de negocio + 4 reglas ArchUnit sobre la base pre-merge
+= \textbf{116 tests, 0 fallos}; tras integrar el PR~#1 del motor offline,
+\textbf{127 tests, 0 fallos} (sección~\ref{sec:integracion}).
 
 Los cuatro problemas atacados son:
 
@@ -319,6 +322,13 @@ mvnw.cmd compile && mvnw.cmd test
   \item Línea base: 114 tests, 0 fallos.
   \item Tras el refactor: \textbf{116 tests, 0 fallos} (se añaden 2 reglas
         ArchUnit). \texttt{BUILD SUCCESS}.
+  \item Tras integrar el PR~#1 (motor offline): \textbf{127 tests, 0 fallos}.
+        Se mantienen las 9 reglas ArchUnit en verde y se suman los tests del
+        módulo \texttt{synchronization} (push/pull) y los de pacientes fase 2.
+  \item Smoke boot con Supabase tras la integración: el backend arranca
+        (\texttt{Started ApiApplication}), Flyway aplica V11--V15 (schema en
+        v15) y el health responde \texttt{UP}; el backend se cierra al
+        terminar la verificación.
   \item Tests actualizados: \texttt{AttentionServiceTest},
         \texttt{PatientServiceTest}, \texttt{InstitutionVaccineServiceCloneTest}
         (ya no mockean \texttt{EntityManager} ni repositorios de catálogo;
@@ -327,6 +337,34 @@ mvnw.cmd compile && mvnw.cmd test
         (health \texttt{UP}) usando el JDK real
         \texttt{C:\textbackslash Program Files\textbackslash Java\textbackslash jdk-26.0.2.1}.
 \end{itemize}
+
+\section{Integración del PR~\#1 (motor offline)} \label{sec:integracion}
+
+El integrante Jorman montó el motor offline (módulo \texttt{synchronization},
+pacientes fase 2, catálogos de referencia, migraciones V11--V15 y cliente
+Flutter offline) sobre \texttt{master} y lo fusionó vía PR~\#1. La integración
+en \texttt{features-brayan} conservó el refactor SOLID y adaptó lo necesario:
+
+\begin{itemize}
+  \item \texttt{IdempotencyCoordinator} se adaptó a la firma v2 de
+        \texttt{ProcessedOperationsService.record} (6 argumentos con
+        \texttt{institutionId} y \texttt{payload}) sin cambiar el contrato
+        para los servicios; el payload del comando de dosis conserva
+        \texttt{attentionId} para que \texttt{/sync/pull} reconstruya la
+        operación.
+  \item \texttt{AttentionService}/\texttt{PatientService} mantienen el patrón
+        SOLID (coordinator + mapper + \texttt{VaccineCatalogPolicy}) y suman
+        overloads offline-first que respetan el \texttt{aggregate\_id} del
+        cliente.
+  \item \texttt{PatientMapper}/\texttt{AttentionMapper} se ampliaron al perfil
+        fase 2 (afiliación, condiciones especiales, condición de usuario).
+  \item El módulo \texttt{synchronization} se integró sin reescribirse.
+  \item Las reglas ArchUnit no cambiaron y quedaron en verde tras el merge.
+\end{itemize}
+
+El entregable de control de cambios (tabla CC-01..CC-06) y el checklist de
+funcionalidades MVP preservadas viven en
+\texttt{docs/engineering/control-de-cambios-solid.md}.
 
 \section{Recomendaciones futuras}
 
@@ -349,9 +387,11 @@ mvnw.cmd compile && mvnw.cmd test
         \texttt{PermissionGuard}.
   \item \textbf{Mappers}: si el volumen de mapeo crece, evaluar MapStruct en
         lugar de mappers manuales (sin cambiar la estructura expuesta).
-  \item \textbf{Sync}: cuando se implemente el \texttt{SyncEngine}, reutilizar
-        \texttt{IdempotencyCoordinator} para que el camino \texttt{/sync/push}
-        comparta la misma garantía D3.
+  \item \textbf{Sync}: el \texttt{SyncEngine} (PR~#1) ya se integró; el
+        \texttt{/sync/push} comparte la garantía D3 vía
+        \texttt{IdempotencyCoordinator} (adaptado a la firma v2). Pendiente:
+        auditar \texttt{identity}, \texttt{reports} y los catálogos
+        geográficos con las reglas ArchUnit.
 \end{enumerate}
 
 \end{document}

@@ -122,7 +122,8 @@ Se añaden dos reglas a `ArchitectureTest.java`:
 - Los mappers y helpers se prueban y evolucionan por separado (SRP).
 - Se elimina código muerto y SQL nativo duplicado; la query upsert queda
   declarada en el repositorio (DIP).
-- 116 tests (114 de base + 2 reglas ArchUnit) en verde, sin BD.
+- 116 tests en verde sobre la base pre-merge; **127 tests tras integrar el
+  PR #1** (ver la actualización al final del ADR).
 
 ### Negativas
 
@@ -140,4 +141,27 @@ Se añaden dos reglas a `ArchitectureTest.java`:
 ```text
 mvnw.cmd compile && mvnw.cmd test
 → 116 tests, 0 fallos (BUILD SUCCESS), sin base de datos
+→ 127 tests, 0 fallos (BUILD SUCCESS) tras integrar el PR #1 (ver actualización)
 ```
+
+## Actualización — integración del PR #1 (motor offline, 2026-09-13)
+
+Estado documentado sobre la rama `features-brayan` (`fba543c`, merge de
+`bb3a987` PR #1 de `features-Jorman`). El motor offline de Jorman evolucionó el
+contrato de `ProcessedOperationsService` (`record` de 6 argumentos con
+`institutionId` y `payload`) e introdujo pacientes fase 2 (afiliación,
+condiciones, perfil extendido), catálogos de referencia, migraciones V11–V15 y
+el cliente Flutter offline. Consecuencias sobre el refactor:
+
+- `IdempotencyCoordinator` se adaptó a la firma v2 manteniendo estable el
+  contrato para los servicios de negocio (el payload viaja como
+  `Supplier<Object>`); el payload de dosis conserva `attentionId` para que
+  `/sync/pull` reconstruya la operación.
+- `PatientService`/`AttentionService` conservan el patrón SOLID
+  (coordinator + mapper + `VaccineCatalogPolicy`) y suman overloads
+  offline-first que respetan el `aggregate_id` del cliente.
+- `PatientMapper`/`AttentionMapper` se ampliaron al perfil fase 2.
+- El módulo `synchronization` (nuevo) se integró sin reescribirse.
+- Reglas ArchUnit sin cambios y en verde tras el merge.
+- Verificado: `mvnw test` → **127 tests, 0 fallos**, y smoke boot con Supabase
+  → Flyway aplicó V11–V15 (schema v15). Backend cerrado tras verificar.
