@@ -17,19 +17,25 @@ public class VaccineService {
     private final VaccineOptionRepository options;
     private final VaccineOptionTemplateRepository templates;
     private final PermissionGuard guard;
+    private final CatalogMapper mapper;
 
     public VaccineService(
-            VaccineRepository v, VaccineOptionRepository o, VaccineOptionTemplateRepository t, PermissionGuard g) {
+            VaccineRepository v,
+            VaccineOptionRepository o,
+            VaccineOptionTemplateRepository t,
+            PermissionGuard g,
+            CatalogMapper m) {
         vaccines = v;
         options = o;
         templates = t;
         guard = g;
+        mapper = m;
     }
 
     @Transactional(readOnly = true)
     public List<VaccineResponse> list(UUID actor) {
         guard.require(actor, "CATALOG_GLOBAL_READ");
-        return vaccines.findByActiveTrueOrderByNameAsc().stream().map(this::v).toList();
+        return vaccines.findByActiveTrueOrderByNameAsc().stream().map(mapper::toVaccine).toList();
     }
 
     @Transactional
@@ -55,7 +61,7 @@ public class VaccineService {
                 r.hasPneumococcalType(),
                 r.hasVialCount(),
                 r.hasObservation());
-        return v(vaccines.save(x));
+        return mapper.toVaccine(vaccines.save(x));
     }
 
     @Transactional
@@ -75,7 +81,7 @@ public class VaccineService {
                 r.hasPneumococcalType(),
                 r.hasVialCount(),
                 r.hasObservation());
-        return v(vaccines.save(x));
+        return mapper.toVaccine(vaccines.save(x));
     }
 
     @Transactional
@@ -98,7 +104,7 @@ public class VaccineService {
     public List<OptionResponse> globalOptions(UUID actor, UUID vaccine) {
         guard.require(actor, "CATALOG_GLOBAL_READ");
         return options.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccine).stream()
-                .map(x -> o(x, null))
+                .map(mapper::toGlobalOption)
                 .toList();
     }
 
@@ -106,28 +112,26 @@ public class VaccineService {
     public OptionResponse createOption(UUID actor, UUID vaccine, OptionRequest r) {
         AuthorizedUser a = guard.require(actor, "CATALOG_GLOBAL_WRITE");
         requireVaccine(vaccine);
-        validateGlobalType(r.fieldType());
-        requireValue(r.value());
-        return o(
-                options.save(new VaccineOptionEntity(
-                        UUID.randomUUID(),
-                        vaccine,
-                        r.fieldType(),
-                        r.value(),
-                        r.displayName(),
-                        r.sortOrder(),
-                        r.isDefault(),
-                        a.getId(),
-                        Instant.now())),
-                null);
+        CatalogRules.requireGlobalOptionType(r.fieldType());
+        CatalogRules.requireValue(r.value());
+        return mapper.toGlobalOption(options.save(new VaccineOptionEntity(
+                UUID.randomUUID(),
+                vaccine,
+                r.fieldType(),
+                r.value(),
+                r.displayName(),
+                r.sortOrder(),
+                r.isDefault(),
+                a.getId(),
+                Instant.now())));
     }
 
     @Transactional
     public OptionResponse updateOption(UUID actor, UUID vaccine, UUID id, OptionRequest r) {
         AuthorizedUser a = guard.require(actor, "CATALOG_GLOBAL_WRITE");
         requireVaccine(vaccine);
-        validateGlobalType(r.fieldType());
-        requireValue(r.value());
+        CatalogRules.requireGlobalOptionType(r.fieldType());
+        CatalogRules.requireValue(r.value());
         VaccineOptionEntity x = options.findByIdAndVaccineId(id, vaccine)
                 .orElseThrow(() -> new IllegalArgumentException("Opcion no existe."));
         if (!x.getFieldType().equals(r.fieldType()))
@@ -141,7 +145,7 @@ public class VaccineService {
                     .forEach(y -> y.update(
                             y.getValue(), y.getDisplayName(), y.getSortOrder(), false, y.isActive(), a.getId()));
         x.update(r.value(), r.displayName(), r.sortOrder(), r.isDefault(), r.isActive(), a.getId());
-        return o(options.save(x), null);
+        return mapper.toGlobalOption(options.save(x));
     }
 
     @Transactional
@@ -159,7 +163,7 @@ public class VaccineService {
         guard.require(actor, "CATALOG_GLOBAL_READ");
         requireVaccine(vaccine);
         return templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccine).stream()
-                .map(this::t)
+                .map(mapper::toTemplate)
                 .toList();
     }
 
@@ -167,9 +171,9 @@ public class VaccineService {
     public OptionResponse createTemplate(UUID actor, UUID vaccine, OptionRequest r) {
         AuthorizedUser a = guard.require(actor, "CATALOG_GLOBAL_WRITE");
         requireVaccine(vaccine);
-        validateTemplateType(r.fieldType());
-        requireValue(r.value());
-        return t(templates.save(new VaccineOptionTemplateEntity(
+        CatalogRules.requireTemplateType(r.fieldType());
+        CatalogRules.requireValue(r.value());
+        return mapper.toTemplate(templates.save(new VaccineOptionTemplateEntity(
                 UUID.randomUUID(),
                 vaccine,
                 r.fieldType(),
@@ -185,8 +189,8 @@ public class VaccineService {
     public OptionResponse updateTemplate(UUID actor, UUID vaccine, UUID id, OptionRequest r) {
         AuthorizedUser a = guard.require(actor, "CATALOG_GLOBAL_WRITE");
         requireVaccine(vaccine);
-        validateTemplateType(r.fieldType());
-        requireValue(r.value());
+        CatalogRules.requireTemplateType(r.fieldType());
+        CatalogRules.requireValue(r.value());
         VaccineOptionTemplateEntity x = templates
                 .findByIdAndVaccineId(id, vaccine)
                 .orElseThrow(() -> new IllegalArgumentException("Template no existe."));
@@ -201,7 +205,7 @@ public class VaccineService {
                     .forEach(y -> y.update(
                             y.getValue(), y.getDisplayName(), y.getSortOrder(), false, y.isActive(), a.getId()));
         x.update(r.value(), r.displayName(), r.sortOrder(), r.isDefault(), r.isActive(), a.getId());
-        return t(templates.save(x));
+        return mapper.toTemplate(templates.save(x));
     }
 
     @Transactional
@@ -216,74 +220,7 @@ public class VaccineService {
         x.update(x.getValue(), x.getDisplayName(), x.getSortOrder(), false, false, a.getId());
     }
 
-    private VaccineResponse v(VaccineEntity x) {
-        return new VaccineResponse(
-                x.getId(),
-                x.getName(),
-                x.getCode(),
-                x.getCategory(),
-                x.getMaxDoses(),
-                x.getMinAgeMonths(),
-                x.getMaxAgeMonths(),
-                x.hasLaboratory(),
-                x.hasLot(),
-                x.hasSyringe(),
-                x.hasSyringeLot(),
-                x.hasDiluent(),
-                x.hasDropper(),
-                x.hasPneumococcalType(),
-                x.hasVialCount(),
-                x.hasObservation(),
-                x.isActive(),
-                x.getVersion());
-    }
-
-    private OptionResponse o(VaccineOptionEntity x, UUID i) {
-        return new OptionResponse(
-                x.getId(),
-                x.getVaccineId(),
-                i,
-                x.getFieldType(),
-                x.getValue(),
-                x.getDisplayName(),
-                x.getSortOrder(),
-                x.isDefault(),
-                x.isActive(),
-                null,
-                x.getVersion());
-    }
-
-    private OptionResponse t(VaccineOptionTemplateEntity x) {
-        return new OptionResponse(
-                x.getId(),
-                x.getVaccineId(),
-                null,
-                x.getFieldType(),
-                x.getValue(),
-                x.getDisplayName(),
-                x.getSortOrder(),
-                x.isDefault(),
-                x.isActive(),
-                null,
-                x.getVersion());
-    }
-
     private void requireVaccine(UUID id) {
         if (!vaccines.existsById(id)) throw new IllegalArgumentException("Vacuna no existe.");
-    }
-
-    private void validateGlobalType(String type) {
-        if (!Set.of("dose", "pneumococcalType").contains(type))
-            throw new IllegalArgumentException("Tipo de opcion global invalido.");
-    }
-
-    private void validateTemplateType(String type) {
-        if (!Set.of("laboratory", "syringe", "dropper", "observation").contains(type))
-            throw new IllegalArgumentException("Tipo de template invalido.");
-    }
-
-    private void requireValue(String value) {
-        if (value == null || value.trim().isEmpty())
-            throw new IllegalArgumentException("El valor no puede estar vacio.");
     }
 }

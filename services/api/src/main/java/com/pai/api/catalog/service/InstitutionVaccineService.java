@@ -31,14 +31,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class InstitutionVaccineService {
-    private static final Set<String> LOCAL_OPTION_TYPES = Set.of("laboratory", "syringe", "dropper", "observation");
-
     private final InstitutionVaccineRepository relations;
     private final InstitutionVaccineOptionRepository local;
     private final VaccineRepository vaccines;
     private final VaccineOptionTemplateRepository templates;
     private final DataScope scope;
     private final PermissionGuard guard;
+    private final CatalogMapper mapper;
 
     public InstitutionVaccineService(
             InstitutionVaccineRepository relations,
@@ -46,13 +45,15 @@ public class InstitutionVaccineService {
             VaccineRepository vaccines,
             VaccineOptionTemplateRepository templates,
             DataScope scope,
-            PermissionGuard guard) {
+            PermissionGuard guard,
+            CatalogMapper mapper) {
         this.relations = relations;
         this.local = local;
         this.vaccines = vaccines;
         this.templates = templates;
         this.scope = scope;
         this.guard = guard;
+        this.mapper = mapper;
     }
 
     private UUID institution(AuthorizedUser actor, UUID requestedInstitution) {
@@ -80,15 +81,7 @@ public class InstitutionVaccineService {
                     if (vaccine == null) {
                         throw new IllegalArgumentException("Vacuna no existe.");
                     }
-                    return new InstitutionVaccineResponse(
-                            relation.getId(),
-                            institutionId,
-                            vaccine.getId(),
-                            vaccine.getName(),
-                            vaccine.getCode(),
-                            vaccine.getCategory(),
-                            relation.isEnabled(),
-                            relation.getVersion());
+                    return mapper.toInstitutionVaccine(relation, vaccine, institutionId);
                 })
                 .toList();
     }
@@ -220,7 +213,7 @@ public class InstitutionVaccineService {
 
         return vaccines.findByActiveTrueOrderByNameAsc().stream()
                 .filter(vaccine -> !existing.contains(vaccine.getId()))
-                .map(this::toVaccineResponse)
+                .map(mapper::toVaccine)
                 .toList();
     }
 
@@ -233,7 +226,7 @@ public class InstitutionVaccineService {
         return local
                 .findByInstitutionIdAndVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(institutionId, vaccineId)
                 .stream()
-                .map(option -> toResponse(option, vaccineId, institutionId))
+                .map(option -> mapper.toInstitutionOption(option, vaccineId, institutionId))
                 .toList();
     }
 
@@ -242,7 +235,7 @@ public class InstitutionVaccineService {
         AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
         UUID institutionId = institution(actor, requestedInstitution);
         requireEnabled(institutionId, vaccineId);
-        validateType(request.fieldType());
+        CatalogRules.requireLocalOptionType(request.fieldType());
 
         if (request.isDefault()) {
             clearDefaults(institutionId, vaccineId, request.fieldType(), actor.getId());
@@ -260,7 +253,7 @@ public class InstitutionVaccineService {
                 null,
                 actor.getId(),
                 Instant.now()));
-        return toResponse(option, vaccineId, institutionId);
+        return mapper.toInstitutionOption(option, vaccineId, institutionId);
     }
 
     @Transactional
@@ -269,7 +262,7 @@ public class InstitutionVaccineService {
         AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
         UUID institutionId = institution(actor, requestedInstitution);
         requireEnabled(institutionId, vaccineId);
-        validateType(request.fieldType());
+        CatalogRules.requireLocalOptionType(request.fieldType());
 
         InstitutionVaccineOptionEntity option = local.findByIdAndInstitutionIdAndVaccineId(
                         optionId, institutionId, vaccineId)
@@ -288,7 +281,7 @@ public class InstitutionVaccineService {
                 request.isDefault(),
                 request.isActive(),
                 actor.getId());
-        return toResponse(option, vaccineId, institutionId);
+        return mapper.toInstitutionOption(option, vaccineId, institutionId);
     }
 
     @Transactional
@@ -318,18 +311,7 @@ public class InstitutionVaccineService {
 
         return templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccineId).stream()
                 .filter(template -> !existing.contains(template.getValueNormalized()))
-                .map(template -> new OptionResponse(
-                        template.getId(),
-                        vaccineId,
-                        institutionId,
-                        template.getFieldType(),
-                        template.getValue(),
-                        template.getDisplayName(),
-                        template.getSortOrder(),
-                        false,
-                        true,
-                        template.getId(),
-                        0))
+                .map(template -> mapper.toSuggestedOption(template, vaccineId, institutionId))
                 .toList();
     }
 
@@ -363,7 +345,7 @@ public class InstitutionVaccineService {
                         template.getId(),
                         actor.getId(),
                         Instant.now()));
-                imported.add(toResponse(option, vaccineId, institutionId));
+                imported.add(mapper.toInstitutionOption(option, vaccineId, institutionId));
             } catch (DataIntegrityViolationException ignored) {
                 // Another request imported the same suggestion first.
             }
@@ -386,49 +368,6 @@ public class InstitutionVaccineService {
                         false,
                         option.isActive(),
                         actorId));
-    }
-
-    private OptionResponse toResponse(InstitutionVaccineOptionEntity option, UUID vaccineId, UUID institutionId) {
-        return new OptionResponse(
-                option.getId(),
-                vaccineId,
-                institutionId,
-                option.getFieldType(),
-                option.getValue(),
-                option.getDisplayName(),
-                option.getSortOrder(),
-                option.isDefault(),
-                option.isActive(),
-                option.getSourceTemplateId(),
-                option.getVersion());
-    }
-
-    private VaccineResponse toVaccineResponse(VaccineEntity vaccine) {
-        return new VaccineResponse(
-                vaccine.getId(),
-                vaccine.getName(),
-                vaccine.getCode(),
-                vaccine.getCategory(),
-                vaccine.getMaxDoses(),
-                vaccine.getMinAgeMonths(),
-                vaccine.getMaxAgeMonths(),
-                vaccine.hasLaboratory(),
-                vaccine.hasLot(),
-                vaccine.hasSyringe(),
-                vaccine.hasSyringeLot(),
-                vaccine.hasDiluent(),
-                vaccine.hasDropper(),
-                vaccine.hasPneumococcalType(),
-                vaccine.hasVialCount(),
-                vaccine.hasObservation(),
-                vaccine.isActive(),
-                vaccine.getVersion());
-    }
-
-    private void validateType(String fieldType) {
-        if (!LOCAL_OPTION_TYPES.contains(fieldType)) {
-            throw new IllegalArgumentException("Tipo de opcion local invalido.");
-        }
     }
 
     private void requireEnabled(UUID institutionId, UUID vaccineId) {

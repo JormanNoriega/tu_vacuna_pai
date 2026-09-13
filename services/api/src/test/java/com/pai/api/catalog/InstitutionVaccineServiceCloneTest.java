@@ -19,6 +19,7 @@ import com.pai.api.catalog.repository.InstitutionVaccineRepository;
 import com.pai.api.catalog.repository.VaccineOptionTemplateRepository;
 import com.pai.api.catalog.repository.VaccineRepository;
 import com.pai.api.catalog.service.InstitutionVaccineService;
+import com.pai.api.catalog.service.CatalogMapper;
 import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.DataScope;
@@ -53,7 +54,7 @@ class InstitutionVaccineServiceCloneTest {
         IdentityService identity = mock(IdentityService.class);
         scope = mock(DataScope.class);
         guard = new PermissionGuard(identity);
-        service = new InstitutionVaccineService(relations, local, vaccines, templates, scope, guard);
+        service = new InstitutionVaccineService(relations, local, vaccines, templates, scope, guard, new CatalogMapper());
         when(identity.resolve(ACTOR))
                 .thenReturn(new AuthorizedUser(
                         ACTOR,
