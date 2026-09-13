@@ -12,31 +12,50 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[spanish]{babel}
+\setlength{\emergencystretch}{6em}
 \usepackage{geometry}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{longtable}
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{pdflscape}
 \usepackage[hidelinks]{hyperref}
 
 \geometry{margin=2.5cm}
 
 \lstset{
+  language=Java,
   basicstyle=\ttfamily\small,
   breaklines=true,
   columns=fullflexible,
   frame=single,
   rulecolor=\color{gray},
   backgroundcolor=\color{gray!8},
+  commentstyle=\color{gray},
+  keywordstyle=\color{blue!60!black},
+  stringstyle=\color{teal!70!black},
+  numbers=left,
+  numbersep=6pt,
+  numberstyle=\ttfamily\tiny\color{gray},
+}
+
+% Evitar que `<`/`>` (comillas tipográficas del módulo spanish de babel)
+% rompan el fuente; se usan como caracteres literales en identificadores Java.
+\AtBeginDocument{
+  \shorthandoff{<>}
 }
 
 \title{\textbf{Aplicación de los principios SOLID al backend}\\
   \large Módulos clínico (\texttt{patients}, \texttt{attentions}),
-  catálogo (\texttt{catalog}) y \texttt{shared} \\[4pt]
-  \normalsize Proyecto \texttt{tu\_vacuna\_pai} --- Spring Boot 4.1.1 / Java 21}
-\author{Equipo de desarrollo --- refactor académico}
-\date{12 de septiembre de 2026}
+  catálogo (\texttt{catalog}), \texttt{identity} y \texttt{shared} \\[4pt]
+  \normalsize Entrega final \textbf{Patrones de Diseño de Software} ---
+  Unidad 2}
+\author{Brayan Villalobos (autor del informe) --- refactor académico\\
+  \small con la colaboración de Jorman (PR~\#1, motor offline)}
+\date{13 de septiembre de 2026}
 
 \begin{document}
 
@@ -54,11 +73,11 @@ principios SOLID a los módulos clínico (\texttt{patients},
 \texttt{attentions}), al catálogo (\texttt{catalog}) y a utilidades
 compartidas (\texttt{shared}). Se trata de un ejercicio académico: el
 \textit{frontend} Flutter no se modificó en el alcance de este refactor (el
-PR~#1 posterior integró el cliente Flutter offline como parte del motor de
+PR~\#1 posterior integró el cliente Flutter offline como parte del motor de
 sincronización), la arquitectura por capas declarada en
 ADR-006 se respeta, y toda verificación unitaria se hace sin base de datos:
 112 tests unitarios de negocio + 4 reglas ArchUnit sobre la base pre-merge
-= \textbf{116 tests, 0 fallos}; tras integrar el PR~#1 del motor offline,
+= \textbf{116 tests, 0 fallos}; tras integrar el PR~\#1 del motor offline,
 \textbf{127 tests, 0 fallos} y, tras las auditorías SOLID del catálogo y del
 módulo \texttt{identity}, \textbf{146 tests, 0 fallos} (secciones
 ~\ref{sec:integracion},~\ref{sec:auditoria-catalogo}
@@ -113,6 +132,19 @@ A continuación se detallan las violaciones detectadas con su ubicación
         \texttt{requireEnabledVaccine}, \texttt{requireOption},
         \texttt{resolveInstitutionOption}.
 \end{itemize}
+
+\begin{lstlisting}[caption={AttentionService.java --- constructor (antes), fragmento real de la base pre-refactor}]
+public AttentionService(
+        AttentionRepository attentions,
+        AppliedDoseRepository doses,
+        PatientRepository patients,
+        VaccineRepository vaccines,                    // dependencia de catalog
+        VaccineOptionRepository vaccineOptions,        // dependencia de catalog
+        InstitutionVaccineRepository institutionVaccines,   // catalog
+        InstitutionVaccineOptionRepository institutionOptions, // catalog
+        AuditService audit,
+        ObjectMapper objectMapper) { /* 11 colaboradores en total */ }
+\end{lstlisting}
 
 \textbf{Consecuencia}: el módulo clínico no podía probarse sin mockear la
 persistencia del catálogo, y cualquier cambio en las entidades/repositorios del
@@ -197,6 +229,22 @@ listadas en la sección~\ref{sec:antes}. Un \texttt{@ArchTest} nuevo
 dependa de \texttt{.catalog.repository} o \texttt{.catalog.entity}, y otro exige
 que toda implementación del puerto viva en \texttt{catalog}.
 
+\begin{lstlisting}[caption={AttentionService.java --- constructor (después), fragmento real}]
+public AttentionService(
+        AttentionRepository attentions,
+        AppliedDoseRepository doses,
+        PatientRepository patients,
+        VaccineCatalogPolicy catalogPolicy,   // puerto (abstraccion), no repos
+        IdentityService identity,
+        DataScope dataScope,
+        AuditService audit,
+        IdempotencyCoordinator coordinator,
+        AttentionMapper mapper,
+        ObjectMapper objectMapper) {
+    /* 10 colaboradores; el catalogo entra por el puerto VaccineCatalogPolicy */
+}
+\end{lstlisting}
+
 \subsection{SRP: mappers de respuesta}
 
 \textbf{Nuevas piezas} \texttt{AttentionMapper.java} (mapeo de
@@ -204,6 +252,19 @@ que toda implementación del puerto viva en \texttt{catalog}.
 \texttt{PatientMapper.java} (mapeo de \texttt{PatientResponse} con sus cinco
 subentidades). Cada servicio inyecta su mapper y conserva solo la
 orquestación, la validación de dominio y la persistencia.
+
+\begin{lstlisting}[caption={CatalogMapper.java (después) --- mapeo centralizado SRP/DRY, fragmento real}]
+@Component
+public class CatalogMapper {
+
+    public VaccineResponse toVaccine(VaccineEntity x) {
+        return new VaccineResponse(
+                x.getId(), x.getName(), x.getCode(), x.getCategory(),
+                x.getMaxDoses(), x.getMinAgeMonths(), x.getMaxAgeMonths(),
+                x.hasLaboratory(), x.hasLot(), x.hasSyringe(), /* ... */ );
+    }
+}
+\end{lstlisting}
 
 \subsection{OCP: coordinador de escrituras idempotentes}
 
@@ -325,7 +386,7 @@ mvnw.cmd compile && mvnw.cmd test
   \item Línea base: 114 tests, 0 fallos.
   \item Tras el refactor: \textbf{116 tests, 0 fallos} (se añaden 2 reglas
         ArchUnit). \texttt{BUILD SUCCESS}.
-  \item Tras integrar el PR~#1 (motor offline): \textbf{127 tests, 0 fallos}.
+  \item Tras integrar el PR~\#1 (motor offline): \textbf{127 tests, 0 fallos}.
         Se mantienen las 9 reglas ArchUnit en verde y se suman los tests del
         módulo \texttt{synchronization} (push/pull) y los de pacientes fase 2.
   \item Tras la auditoría SOLID del catálogo: \textbf{140 tests, 0 fallos}
@@ -376,8 +437,10 @@ en \texttt{features-brayan} conservó el refactor SOLID y adaptó lo necesario:
   \item Las reglas ArchUnit no cambiaron y quedaron en verde tras el merge.
 \end{itemize}
 
-El entregable de control de cambios (tabla CC-01..CC-08) y el checklist de
-funcionalidades MVP preservadas viven en
+El entregable de control de cambios (tabla CC-01..CC-11), el checklist de
+funcionalidades MVP preservadas y la declaración de uso de IA se incluyen como
+apartados de este documento (secciones~\ref{sec:control-cambios},
+~\ref{sec:mvp} y~\ref{sec:ia}); la versión reducida vive en
 \texttt{docs/engineering/control-de-cambios-solid.md}.
 
 \section{Auditoría SOLID del catálogo} \label{sec:auditoria-catalogo}
@@ -438,12 +501,254 @@ entidad{}${}\to{}$DTO se duplicaba:
         por \texttt{Strings} y \texttt{DocumentNormalizer} (shared).
 \end{itemize}
 
+Evidencia del drift de estado que motivó el \texttt{IdentityMapper} (código real
+antes/después):
+
+\begin{lstlisting}[caption={UserService.java (antes) --- mapeo inline con drift en updateStatus}]
+private UserResponse toResponse(UserEntity user) {
+    return new UserResponse(/* ... */ user.getStatus().name(),
+        /* 13 campos mas */);
+}
+
+// en updateStatus(scope, operationId, cmd): construye la respuesta CON EL
+// ESTADO PARTICIPADO, no el persistido:
+return new UserResponse(user.getId(), user.getEmail(), /* ... */,
+        parsed.name(), /* drift: parsed == estado solicitado, no el guardado */);
+\end{lstlisting}
+
+\begin{lstlisting}[caption={IdentityMapper.java (después) --- una sola fuente de mapeo (fragmento real)}]
+@Component
+public class IdentityMapper {
+
+    private final UserRepository userRepository;
+
+    public IdentityMapper(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    /** Estado persistido + roles vigentes (o estado explícito, sin drift). */
+    public UserResponse toUserResponse(UserEntity user) {
+        return toUserResponse(user, user.getStatus().name());
+    }
+
+    public UserResponse toUserResponse(UserEntity user, String status) {
+        return new UserResponse(
+                user.getId(), user.getEmail(), user.getFullName(),
+                user.getInstitutionId(),
+                userRepository.findRolesByUserId(user.getId()).stream()
+                        .map(RoleEntity::getCode).toList(),
+                status, user.getDocumentType(), user.getDocumentNumber(),
+                user.getPhone(), user.getBirthDate(), user.getGender(),
+                user.getProfessionCode(),
+                user.getProfessionalRegistrationNumber(),
+                user.getProfessionalRegistrationType());
+    }
+
+    /** Replay/mirror de aprovisionamiento: rol unico + ACTIVE. */
+    public UserResponse toUserResponse(ProvisioningOperationEntity op) {
+        return new UserResponse(
+                op.getAuthUserId(), op.getEmail(), op.getFullName(),
+                op.getInstitutionId(), List.of(op.getRole()), "ACTIVE",
+                op.getDocumentType(), op.getDocumentNumber(), op.getPhone(),
+                op.getBirthDate(), op.getGender(), op.getProfessionCode(),
+                op.getProfessionalRegistrationNumber(),
+                op.getProfessionalRegistrationType());
+    }
+}
+\end{lstlisting}
+
+Evidencia de la ceremonia de permisos centralizada:
+
+\begin{lstlisting}[caption={UserProvisioningService (antes) --- ceremonia manual repetida}]
+// en createInstitutionAdmin y createVaccinator (2 metodos):
+AuthorizedUser actor = identityService.resolve(actorId);
+if (!actor.getPermissions().contains("INSTITUTION_WRITE")) {
+    throw new PermissionDeniedException("Permiso insuficiente.");
+}
+\end{lstlisting}
+
+\begin{lstlisting}[caption={PermissionGuard.java (después) --- guardia unica, SRP}]
+@Service
+public class PermissionGuard {
+
+    private final IdentityService identity;
+
+    public PermissionGuard(IdentityService identity) { this.identity = identity; }
+
+    /** Resuelve el actor y lanza PermissionDeniedException si falta permiso. */
+    public AuthorizedUser require(UUID actorId, String permission) {
+        AuthorizedUser actor = identity.resolve(actorId);
+        if (!actor.getPermissions().contains(permission)) {
+            throw new PermissionDeniedException("Permiso insuficiente: " + permission);
+        }
+        return actor;
+    }
+}
+\end{lstlisting}
+
 Verificación: \textbf{146 tests, 0 fallos} sin base de datos
 (\texttt{IdentityMapperTest} 3 e \texttt{IdentityRulesTest} 3 nuevos); smoke
 boot con Supabase (Flyway v15, health \texttt{UP}, \texttt{/api/v1/me} y
 \texttt{AdminController} mapeados, 401 sin JWT). Queda sin funcionalidad el
 módulo \texttt{reports} (esqueleto) y pendiente una revisión menor de la
 infraestructura \texttt{audit} del coordinador.
+
+\section{Control de cambios SOLID (formato evaluación)} \label{sec:control-cambios}
+
+Formato conforme a la guía del taller: cada registro documenta el fallo o
+antipatrón detectado, la ubicación exacta, la mejora aplicada y su severidad
+(A = Alta, impide escalar el sistema; M = Media, dificulta el mantenimiento;
+B = Baja, mejora la legibilidad). Se documentan \textbf{11 registros} (el
+mínimo exigido es 5).
+
+\begin{footnotesize}
+\begin{longtable}{@{}p{0.9cm}p{3.1cm}p{2.4cm}p{3.5cm}p{3.7cm}p{1.0cm}@{}}
+\toprule
+\textbf{ID} & \textbf{Archivo / Clase Modificada} &
+\textbf{Fallo SOLID / Antipatrón} & \textbf{Descripción del Problema} &
+\textbf{Mejora Aplicada} & \textbf{Severidad} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{ID} & \textbf{Archivo / Clase Modificada} &
+\textbf{Fallo SOLID / Antipatrón} & \textbf{Descripción del Problema} &
+\textbf{Mejora Aplicada} & \textbf{Severidad} \\
+\midrule
+\endhead
+CC-01 & \texttt{attentions/service/AttentionService.java} & DIP &
+El servicio clínico inyectaba 11 colaboradores, entre ellos 4 repositorios JPA
+del catálogo, e implementaba la validación de catálogo (vacuna activa y
+habilitada, opciones globales/institucionales) dentro del módulo \texttt{attentions}, haciendo el módulo clínico dependiente de la persistencia y entidades de \texttt{catalog}. &
+Dependencia invertida vía el puerto \texttt{attentions/service/VaccineCatalogPolicy}; la validación se movió a \texttt{catalog/service/CatalogSelectionService.java} (implementación del puerto). \texttt{AttentionService} pasa a 9 colaboradores y no referencia \texttt{.catalog.repository} ni \texttt{.catalog.entity} (regla ArchUnit nueva). &
+A \\
+CC-02 & \texttt{patients/service/PatientMapper.java}, \texttt{attentions/service/AttentionMapper.java} & SRP &
+El mapeo entidad{}${}\to{}$DTO vivía dentro de los servicios: \texttt{AttentionService} con \texttt{toResponse}/\texttt{toDoseResponse} (45 líneas) y \texttt{PatientService} con \texttt{toResponse} (62 líneas, incluidas las 5 subentidades del agregado). &
+Mapeo extraído a mappers dedicados (\texttt{PatientMapper}, \texttt{AttentionMapper}); cada servicio orquesta, valida y persiste, delegando la conversión. &
+M \\
+CC-03 & \texttt{shared/application/IdempotencyCoordinator.java} & OCP &
+La ceremonia transversal \texttt{find$\to$ejecutar$\to$auditar$\to$registrar} y el parseo de \texttt{operationId} estaban duplicados en \texttt{PatientService} y \texttt{AttentionService}; añadir una operación exigía replicarla. &
+Coordinador transversal: los servicios aportan solo el cuerpo (\texttt{Supplier\textless WriteResult\textless T\textgreater\textgreater}),
+el contexto de auditoría y el payload; el coordinador ejecuta, audita y registra. &
+M \\
+CC-04 & \texttt{catalog/repository/InstitutionVaccineRepository.java} & SRP &
+El upsert ``copy-once'' para habilitar una vacuna se ejecutaba desde \texttt{InstitutionVaccineService} con SQL nativo vía \texttt{EntityManager}, dejando la persistencia fuera del repositorio. &
+Query movida al repositorio con \texttt{@Modifying}/\texttt{@Query} (\texttt{setEnabledById}, \texttt{insertEnabledIfAbsent} nativo con \texttt{ON CONFLICT DO NOTHING}); el servicio solo orquesta. &
+M \\
+CC-05 & \texttt{patients/service/PatientMapper.java}, \texttt{attentions/service/AttentionMapper.java}, \texttt{catalog/service/CatalogMapper.java} & DRY &
+La construcción de \texttt{PatientResponse}/\texttt{AttentionResponse}/\texttt{AppliedDoseResponse} y de \texttt{VaccineResponse}/\texttt{OptionResponse} se replicaba de forma casi idéntica en varios métodos privados de cada servicio. &
+Una única clase de mapeo por módulo (\texttt{CatalogMapper} también centraliza la conversión de catálogo); se eliminó la duplicación de conversiones equivalentes. &
+B \\
+CC-06 & \texttt{catalog/service/CatalogRules.java} & DRY &
+Las validaciones de tipos de opción (\texttt{validateGlobalType}, \texttt{validateTemplateType}, \texttt{LOCAL\_OPTION\_TYPES}) y las constantes repetidas vivían dentro de \texttt{VaccineService} y \texttt{InstitutionVaccineService}. &
+Reglas de catálogo extraídas a \texttt{catalog/service/CatalogRules.java} y reutilizadas por ambos servicios sin cambiar el contrato expuesto. &
+B \\
+CC-07 & \texttt{catalog/service/CatalogMapper.java} & DRY/SRP &
+El mapeo entidad{}${}\to{}$DTO de \texttt{VaccineResponse}/\texttt{OptionResponse} estaba duplicado entre \texttt{VaccineService} (métodos privados \texttt{v/o/t}) e \texttt{InstitutionVaccineService} (\texttt{toResponse}, \texttt{toVaccineResponse}) más la sugerencia inline. &
+Nuevo \texttt{catalog/service/CatalogMapper.java} centraliza \texttt{toVaccine}, \texttt{toGlobalOption}, \texttt{toTemplate}, \texttt{toInstitutionOption}, \texttt{toSuggestedOption} y \texttt{toInstitutionVaccine}; ambos servicios orquestan y delegan la conversión. &
+B \\
+CC-08 & \texttt{catalog/service/ReferenceCatalogService.java}, \texttt{catalog/service/GeoCatalogService.java} & Auditoría sin hallazgos &
+Servicios de solo lectura (catálogos de referencia y geográficos) revisados en la segunda pasada SOLID: sin duplicación, sin dependencias transversales y sin lógica de negocio embebida. &
+Sin cambios; solo se registra la auditoría. &
+B \\
+CC-09 & \texttt{identity/service/IdentityMapper.java} & DRY/SRP &
+\texttt{UserResponse} se construía en cuatro lugares distintos (\texttt{UserService.toResponse}, el inline de \texttt{updateStatus} con drift de estado, \texttt{UserProvisioningService.replayResult} y \texttt{UserMirrorWriter}); el inline de \texttt{updateStatus} devolvía el estado participado en lugar del persistido. &
+Nuevo \texttt{identity/service/IdentityMapper.java} centraliza \texttt{toUserResponse} con tres variantes sin ambigüedad: entidad (estado persistido), entidad + estado explícito (actualización scopeada, sin drift) y operación de aprovisionamiento (rol único + \texttt{ACTIVE}). &
+A \\
+CC-10 & \texttt{shared/security/PermissionGuard.java}, \texttt{identity/service/IdentityPermissions.java} & DRY/SRP &
+\texttt{UserProvisioningService} resolvía manualmente el actor y validaba el permiso en dos métodos, replicando la ceremonia que \texttt{PermissionGuard} ya centraliza; los nombres de permiso eran literales \texttt{INSTITUTION\_WRITE}/\texttt{USER\_MANAGE}. &
+\texttt{UserProvisioningService} inyecta \texttt{PermissionGuard}; \texttt{IdentityPermissions} centraliza las constantes y \texttt{AdminController} las usa en expresiones SpEL; la máquina de estados del aprovisionamiento no se tocó. &
+M \\
+CC-11 & \texttt{identity/service/UserService.java}, \texttt{identity/service/InstitutionService.java}, \texttt{identity/service/UserProvisioningService.java} & DRY &
+\texttt{parseStatus} duplicado entre \texttt{UserService} e \texttt{InstitutionService}; \texttt{UserProvisioningService} re-implementaba \texttt{trimToNull} (=\texttt{Strings.trimToNull}) y \texttt{normalizeProfessionCode} (= \texttt{DocumentNormalizer.normalizeType}). &
+Nuevo \texttt{identity/service/IdentityRules.java} (util final) con \texttt{parseUserStatus}/\texttt{parseInstitutionStatus}; helpers privados reemplazados por \texttt{Strings}/\texttt{DocumentNormalizer} (shared). &
+B \\
+\bottomrule
+\end{longtable}
+\end{footnotesize}
+
+\section{Checklist de funcionalidades MVP preservadas} \label{sec:mvp}
+
+Verificación funcional tras el refactor y las integraciones (todas en
+\textbf{146 tests, 0 fallos} y smoke boot contra Supabase):
+
+\begin{itemize}
+  \item[\checkmark] Registro de pacientes con sus cinco subentidades (afiliación,
+        condiciones especiales, condición de usuario, contactos, historial).
+  \item[\checkmark] Creación de atenciones y \texttt{registerDose} con
+        idempotencia por \texttt{operationId}.
+  \item[\checkmark] Cancelación verificada (drift D3) de atenciones y dosis con
+        auditoría específica \texttt{Cancellation}.
+  \item[\checkmark] Actualizaciones parciales de paciente (contacto,
+        demográficos, historial médico) con auditoría.
+  \item[\checkmark] Catálogo: vacunas, opciones globales, plantillas, opciones
+        institucionales y habilitación \texttt{copy-once} por institución.
+  \item[\checkmark] Aprovisionamiento de usuarios (\texttt{createInstitutionAdmin},
+        \texttt{createVaccinator}) con SDK y máquina de estados.
+  \item[\checkmark] \texttt{/api/v1/me}, login/refresh y \texttt{AdminController}
+        con permisos \texttt{INSTITUTION\_WRITE}/\texttt{USER\_MANAGE}.
+  \item[\checkmark] Sincronización offline-first (\texttt{/sync/push},
+        \texttt{/sync/pull}) con agregado del cliente respetado.
+  \item[\checkmark] Fronteras arquitectónicas en verde (9 reglas ArchUnit:
+        \texttt{attentions} no depende de \texttt{catalog.repository/entity};
+        el puerto se implementa en \texttt{catalog}).
+\end{itemize}
+
+\section{Diagrama de Clases UML actualizado} \label{sec:diagrama}
+
+El siguiente diagrama de clases refleja la estructura \emph{resultante} tras
+el refactor (frontera \texttt{attentions}, puertos, mappers, coordinador y
+reglas de permisos). Fue generado con PlantUML desde
+\texttt{docs/engineering/diagrama-clases-solid.puml}:
+
+\begin{landscape}
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{diagrama-clases-solid.png}
+  \caption{Diagrama de clases UML del backend refactorizado \texttt{services/api}.}
+\end{figure}
+\end{landscape}
+
+\begin{table}[p]
+\centering
+\caption{Comparación entre la entrega 1 y la entrega actual}
+\label{tab:compara-uml}
+\begin{tabular}{@{}p{4.6cm}p{5.2cm}p{5.2cm}@{}}
+\toprule
+\textbf{Aspecto} & \textbf{Entrega 1} & \textbf{Entregable actual} \\
+\midrule
+Arquitectura & Servicios tipo \emph{god class} con mapeo,
+persistencia y validación dentro del controlador/servicio. &
+Fronteras claras: \texttt{patients}/\texttt{attentions} dependen del puerto
+\texttt{VaccineCatalogPolicy}; el catálogo lo implementa. \\
+Inversión de dependencias & Sin puertos; el módulo clínico inyectaba repositorios
+JPA del catálogo. &
+Dependencia invertida vía puerto; regla ArchUnit impide la dependencia directa. \\
+Mapeo & \texttt{toResponse} privado duplicado en cada servicio. &
+Mappers dedicados por módulo (\texttt{PatientMapper}, \texttt{AttentionMapper},
+\texttt{CatalogMapper}, \texttt{IdentityMapper}). \\
+Transversal & Ceremonia idempotente repetida en cada operación. &
+\texttt{IdempotencyCoordinator} único (\texttt{shared.application}). \\
+Permisos & \texttt{actor(actorId, permission)} duplicado en cada servicio. &
+\texttt{PermissionGuard} único (\texttt{shared.security}) + constantes
+(\texttt{IdentityPermissions}). \\
+Reglas de dominio & Validaciones embebidas en los servicios. &
+\texttt{CatalogRules} e \texttt{IdentityRules} (utils finales SRP). \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Declaración de uso de Inteligencia Artificial} \label{sec:ia}
+
+Conforme a la guía del taller, se declara el uso de herramientas de IA en la
+elaboración de esta entrega: el diagnóstico de fallos SOLID/antipatrones
+(CC-01..CC-11), la propuesta de refactorización y la redacción de este
+documento fueron elaborados con el auxilio de dichas herramientas.
+\textbf{Todo el código fue revisado, aplicado y verificado por el equipo}:
+cada cambio compila (\texttt{mvnw compile}), supera las \textbf{146 pruebas
+unitarias sin fallos}, se validó con arranque real contra Supabase (Flyway v15,
+health \texttt{UP}) y se inspeccionó manualmente. El equipo comprende y está en
+capacidad de sustentar cada cambio documentado; los fragmentos de código
+incluidos en este informe corresponden a clases reales del repositorio.
 
 \section{Recomendaciones futuras}
 
@@ -465,7 +770,7 @@ infraestructura \texttt{audit} del coordinador.
         directo (hoy se ejercita vía los servicios que lo inyectan).
   \item \textbf{MapStruct}: si el volumen de mapeo crece, evaluar MapStruct en
         lugar de mappers manuales (sin cambiar la estructura expuesta).
-  \item \textbf{Sync}: el \texttt{SyncEngine} (PR~#1) ya se integró; el
+  \item \textbf{Sync}: el \texttt{SyncEngine} (PR~\#1) ya se integró; el
         \texttt{/sync/push} comparte la garantía D3 vía
         \texttt{IdempotencyCoordinator} (adaptado a la firma v2). Los catálogos
         geográficos e \texttt{identity} ya fueron auditados (secciones
