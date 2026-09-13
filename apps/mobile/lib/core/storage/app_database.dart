@@ -674,10 +674,9 @@ class AppDatabase extends _$AppDatabase {
 
   Future<List<PatientGuardiansLocalData>> patientGuardiansFor(
     String patientId,
-  ) =>
-      (select(
-        patientGuardiansLocal,
-      )..where((t) => t.patientId.equals(patientId))).get();
+  ) => (select(
+    patientGuardiansLocal,
+  )..where((t) => t.patientId.equals(patientId))).get();
 
   Future<void> updatePatientSyncState(String id, String syncState) =>
       (update(patientsLocal)..where((t) => t.id.equals(id))).write(
@@ -692,11 +691,13 @@ class AppDatabase extends _$AppDatabase {
   Future<void> upsertAttentionLocal(AttentionsLocalCompanion attention) =>
       into(attentionsLocal).insertOnConflictUpdate(attention);
 
-  Future<AttentionsLocalData?> attentionLocalById(String id) =>
-      (select(attentionsLocal)..where((t) => t.id.equals(id)))
-          .getSingleOrNull();
+  Future<AttentionsLocalData?> attentionLocalById(String id) => (select(
+    attentionsLocal,
+  )..where((t) => t.id.equals(id))).getSingleOrNull();
 
-  Future<List<AttentionsLocalData>> attentionsLocalByPatient(String patientId) =>
+  Future<List<AttentionsLocalData>> attentionsLocalByPatient(
+    String patientId,
+  ) =>
       (select(attentionsLocal)
             ..where((t) => t.patientId.equals(patientId))
             ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
@@ -719,16 +720,15 @@ class AppDatabase extends _$AppDatabase {
   Future<void> upsertAppliedDoseLocal(AppliedDosesLocalCompanion dose) =>
       into(appliedDosesLocal).insertOnConflictUpdate(dose);
 
-  Future<AppliedDosesLocalData?> appliedDoseLocalById(String id) =>
-      (select(appliedDosesLocal)..where((t) => t.id.equals(id)))
-          .getSingleOrNull();
+  Future<AppliedDosesLocalData?> appliedDoseLocalById(String id) => (select(
+    appliedDosesLocal,
+  )..where((t) => t.id.equals(id))).getSingleOrNull();
 
   Future<List<AppliedDosesLocalData>> appliedDosesLocalByAttention(
     String attentionId,
-  ) =>
-      (select(
-        appliedDosesLocal,
-      )..where((t) => t.attentionId.equals(attentionId))).get();
+  ) => (select(
+    appliedDosesLocal,
+  )..where((t) => t.attentionId.equals(attentionId))).get();
 
   Future<void> updateDoseSyncState(String id, String syncState) =>
       (update(appliedDosesLocal)..where((t) => t.id.equals(id))).write(
@@ -745,8 +745,7 @@ class AppDatabase extends _$AppDatabase {
   /// Operaciones listas para enviar: estado [PENDING] y cuyo backoff ya venció.
   Future<List<SyncOutboxData>> pendingOutboxOperations({int? nowEpoch}) {
     final now =
-        nowEpoch ??
-        DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
+        nowEpoch ?? DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
     return (select(syncOutbox)
           ..where(
             (t) =>
@@ -764,20 +763,17 @@ class AppDatabase extends _$AppDatabase {
             ..orderBy([(t) => OrderingTerm.asc(t.id)]))
           .get();
 
-  Future<SyncOutboxData?> outboxByOperationId(String operationId) =>
-      (select(syncOutbox)..where((t) => t.operationId.equals(operationId)))
-          .getSingleOrNull();
-
-  Future<List<SyncOutboxDependency>> outboxDependenciesOf(
-    String operationId,
-  ) =>
-      (select(syncOutboxDependencies)
-            ..where((t) => t.operationId.equals(operationId)))
-          .get();
-
-  Future<void> insertOutboxEntry(SyncOutboxCompanion entry) => into(
+  Future<SyncOutboxData?> outboxByOperationId(String operationId) => (select(
     syncOutbox,
-  ).insert(entry, mode: InsertMode.insertOrIgnore);
+  )..where((t) => t.operationId.equals(operationId))).getSingleOrNull();
+
+  Future<List<SyncOutboxDependency>> outboxDependenciesOf(String operationId) =>
+      (select(
+        syncOutboxDependencies,
+      )..where((t) => t.operationId.equals(operationId))).get();
+
+  Future<void> insertOutboxEntry(SyncOutboxCompanion entry) =>
+      into(syncOutbox).insert(entry, mode: InsertMode.insertOrIgnore);
 
   Future<void> insertOutboxDependency(
     String operationId,
@@ -797,8 +793,7 @@ class AppDatabase extends _$AppDatabase {
     int? nextRetryAt,
     String? lastError,
   }) {
-    final now =
-        DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
     return (update(
       syncOutbox,
     )..where((t) => t.operationId.equals(operationId))).write(
@@ -819,8 +814,7 @@ class AppDatabase extends _$AppDatabase {
   /// Reinicia a [PENDING] cualquier operacion que haya quedado en
   /// [PROCESSING] (crash/cierre durante el push). Seguro por idempotencia.
   Future<void> resetProcessingToPending() {
-    final now =
-        DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
     return (update(
       syncOutbox,
     )..where((t) => t.status.equals('PROCESSING'))).write(

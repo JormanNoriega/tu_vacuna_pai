@@ -23,6 +23,20 @@ class ListDepartments {
       repository.listDepartments(token);
 }
 
+class ListCountries {
+  const ListCountries(this.repository);
+  final CatalogRepository repository;
+  Future<List<GeoCountry>> call(String token) =>
+      repository.listCountries(token);
+}
+
+class ListReferenceCatalogs {
+  const ListReferenceCatalogs(this.repository);
+  final CatalogRepository repository;
+  Future<List<ReferenceCatalog>> call(String token) =>
+      repository.listReferenceCatalogs(token);
+}
+
 class ListMunicipalities {
   const ListMunicipalities(this.repository);
   final CatalogRepository repository;

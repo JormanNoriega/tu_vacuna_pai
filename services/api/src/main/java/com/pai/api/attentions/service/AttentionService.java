@@ -141,6 +141,11 @@ public class AttentionService {
                 parseOperationId(operationId),
                 now));
         attention.updateDetails(attentionDate, blankToNull(request.observations()), now);
+        attention.applyRegistrationDetails(
+                request.completeScheme(),
+                request.paiwebRegistered(),
+                blankToNull(request.paiwebNotRegisteredReason()),
+                now);
         attentions.save(attention);
 
         AttentionResponse response = toResponse(attention);
@@ -185,6 +190,11 @@ public class AttentionService {
         Instant attentionDate =
                 request.attentionDate() != null ? request.attentionDate() : attention.getAttentionDate();
         attention.updateDetails(attentionDate, blankToNull(request.observations()), now);
+        attention.applyRegistrationDetails(
+                request.completeScheme(),
+                request.paiwebRegistered(),
+                blankToNull(request.paiwebNotRegisteredReason()),
+                now);
         attentions.save(attention);
 
         AttentionResponse response = toResponse(attention);
@@ -506,6 +516,9 @@ public class AttentionService {
                 attention.getConsecutive(),
                 attention.getStatus().name(),
                 attention.getObservations(),
+                attention.isCompleteScheme(),
+                attention.isPaiwebRegistered(),
+                attention.getPaiwebNotRegisteredReason(),
                 attention.getVersion(),
                 attention.getCreatedAt(),
                 attention.getUpdatedAt(),

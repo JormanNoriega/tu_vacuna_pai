@@ -53,6 +53,15 @@ public class AttentionEntity {
 
     private String observations;
 
+    @Column(name = "complete_scheme", nullable = false)
+    private boolean completeScheme;
+
+    @Column(name = "paiweb_registered", nullable = false)
+    private boolean paiwebRegistered;
+
+    @Column(name = "paiweb_not_registered_reason")
+    private String paiwebNotRegisteredReason;
+
     @Version
     private long version;
 
@@ -96,6 +105,19 @@ public class AttentionEntity {
     public void updateDetails(Instant attentionDate, String observations, Instant now) {
         this.attentionDate = attentionDate;
         this.observations = observations;
+        this.updatedAt = now;
+    }
+
+    /** Aplica los datos de registro/cierre: esquema completo y PAIWEB. */
+    public void applyRegistrationDetails(
+            Boolean completeScheme, Boolean paiwebRegistered, String paiwebNotRegisteredReason, Instant now) {
+        if (completeScheme != null) {
+            this.completeScheme = completeScheme;
+        }
+        if (paiwebRegistered != null) {
+            this.paiwebRegistered = paiwebRegistered;
+        }
+        this.paiwebNotRegisteredReason = this.paiwebRegistered ? null : paiwebNotRegisteredReason;
         this.updatedAt = now;
     }
 
@@ -148,6 +170,18 @@ public class AttentionEntity {
 
     public String getObservations() {
         return observations;
+    }
+
+    public boolean isCompleteScheme() {
+        return completeScheme;
+    }
+
+    public boolean isPaiwebRegistered() {
+        return paiwebRegistered;
+    }
+
+    public String getPaiwebNotRegisteredReason() {
+        return paiwebNotRegisteredReason;
     }
 
     public long getVersion() {

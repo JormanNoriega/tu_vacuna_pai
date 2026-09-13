@@ -29,6 +29,12 @@ public class GeoCatalogController {
         this.service = service;
     }
 
+    @GetMapping("/countries")
+    @PreAuthorize(READ)
+    public List<GeoDepartmentResponse> countries() {
+        return service.countries();
+    }
+
     @GetMapping("/departments")
     @PreAuthorize(READ)
     public List<GeoDepartmentResponse> departments() {

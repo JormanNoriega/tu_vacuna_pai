@@ -36,7 +36,6 @@ import com.pai.api.synchronization.service.ProcessedOperationsService;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -295,6 +294,12 @@ public class PatientService {
                     dto.condition().trim(),
                     dto.diagnosedAt(),
                     blankToNull(dto.notes()),
+                    Boolean.TRUE.equals(dto.hasContraindication()),
+                    blankToNull(dto.contraindicationDetails()),
+                    Boolean.TRUE.equals(dto.hasPreviousReaction()),
+                    blankToNull(dto.reactionDetails()),
+                    blankToNull(dto.historyType()),
+                    blankToNull(dto.specialObservations()),
                     now));
         }
 
@@ -314,16 +319,26 @@ public class PatientService {
 
     private record IdentityChange(PatientResponse patient, String justification) {}
 
+    /**
+     * Normaliza el genero a los codigos del catalogo de referencia
+     * ({@code MASCULINO}/{@code FEMENINO}/{@code TRANSGENERO}/
+     * {@code INDETERMINADO}). Acepta tambien los codigos en ingles del contrato
+     * anterior y los mapea.
+     */
     private String normalizeGender(String raw) {
         String value = blankToNull(raw);
         if (value == null) {
             return null;
         }
         String upper = value.toUpperCase();
-        if (!Set.of("FEMALE", "MALE", "OTHER", "TRANSGENDER", "INDETERMINATE").contains(upper)) {
-            throw new IllegalArgumentException("Genero invalido. Usa FEMALE, MALE, OTHER, TRANSGENDER o INDETERMINATE.");
-        }
-        return upper;
+        return switch (upper) {
+            case "MASCULINO", "MALE" -> "MASCULINO";
+            case "FEMENINO", "FEMALE" -> "FEMENINO";
+            case "TRANSGENERO", "TRANSGENDER" -> "TRANSGENERO";
+            case "INDETERMINADO", "INDETERMINATE", "OTHER" -> "INDETERMINADO";
+            default -> throw new IllegalArgumentException(
+                    "Genero invalido. Usa MASCULINO, FEMENINO, TRANSGENERO o INDETERMINADO.");
+        };
     }
 
     private UUID institution(AuthorizedUser actor) {
@@ -376,7 +391,7 @@ public class PatientService {
         }
         demographics.save(new PatientDemographicEntity(
                 patientId,
-                blankToNull(dto.gender()),
+                normalizeGender(dto.gender()),
                 blankToNull(dto.ethnicity()),
                 normalizeUpper(dto.sexualOrientation()),
                 blankToNull(dto.educationLevel()),

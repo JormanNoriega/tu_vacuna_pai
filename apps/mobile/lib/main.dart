@@ -120,9 +120,12 @@ Future<void> main() async {
     searchPatient: SearchPatient(patientsRepository),
     createPatient: CreatePatient(patientsRepository),
     listEffectiveCatalog: ListEffectiveCatalog(catalogRepository),
+    listCountries: ListCountries(catalogRepository),
     listDepartments: ListDepartments(catalogRepository),
     listMunicipalities: ListMunicipalities(catalogRepository),
+    listReferenceCatalogs: ListReferenceCatalogs(catalogRepository),
     createAttention: CreateAttention(attentionsRepository),
+    updateAttention: UpdateAttention(attentionsRepository),
     registerDose: RegisterDose(attentionsRepository),
     completeAttention: CompleteAttention(attentionsRepository),
     cancelAttention: CancelAttention(attentionsRepository),
@@ -133,6 +136,7 @@ Future<void> main() async {
     sessionManager: sessionManager,
     searchPatient: SearchPatient(patientsRepository),
     listPatientAttentions: ListPatientAttentions(attentionsRepository),
+    listReferenceCatalogs: ListReferenceCatalogs(catalogRepository),
   );
   final patientDetailController = PatientDetailController(
     sessionManager: sessionManager,
@@ -140,8 +144,10 @@ Future<void> main() async {
     updateDemographics: UpdatePatientDemographics(patientsRepository),
     updateContact: UpdatePatientContact(patientsRepository),
     updateMedicalHistories: UpdatePatientMedicalHistories(patientsRepository),
+    listCountries: ListCountries(catalogRepository),
     listDepartments: ListDepartments(catalogRepository),
     listMunicipalities: ListMunicipalities(catalogRepository),
+    listPatientAttentions: ListPatientAttentions(attentionsRepository),
   );
 
   runApp(

@@ -13,5 +13,11 @@ public record UpdatePatientMedicalHistoriesRequest(@Valid List<MedicalHistoryDto
             String condition,
 
             LocalDate diagnosedAt,
-            String notes) {}
+            String notes,
+            Boolean hasContraindication,
+            String contraindicationDetails,
+            Boolean hasPreviousReaction,
+            String reactionDetails,
+            String historyType,
+            String specialObservations) {}
 }

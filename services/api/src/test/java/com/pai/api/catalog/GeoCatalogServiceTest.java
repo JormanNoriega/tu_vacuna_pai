@@ -7,8 +7,10 @@ import static org.mockito.Mockito.when;
 
 import com.pai.api.catalog.dto.GeoDepartmentResponse;
 import com.pai.api.catalog.dto.GeoMunicipalityResponse;
+import com.pai.api.catalog.entity.GeoCountryEntity;
 import com.pai.api.catalog.entity.GeoDepartmentEntity;
 import com.pai.api.catalog.entity.GeoMunicipalityEntity;
+import com.pai.api.catalog.repository.GeoCountryRepository;
 import com.pai.api.catalog.repository.GeoDepartmentRepository;
 import com.pai.api.catalog.repository.GeoMunicipalityRepository;
 import com.pai.api.catalog.service.GeoCatalogService;
@@ -19,15 +21,31 @@ import org.junit.jupiter.api.Test;
 
 class GeoCatalogServiceTest {
 
+    private GeoCountryRepository countries;
     private GeoDepartmentRepository departments;
     private GeoMunicipalityRepository municipalities;
     private GeoCatalogService service;
 
     @BeforeEach
     void setUp() {
+        countries = mock(GeoCountryRepository.class);
         departments = mock(GeoDepartmentRepository.class);
         municipalities = mock(GeoMunicipalityRepository.class);
-        service = new GeoCatalogService(departments, municipalities);
+        service = new GeoCatalogService(countries, departments, municipalities);
+    }
+
+    @Test
+    void countries_mapsEntitiesOrderedByName() {
+        UUID id = UUID.randomUUID();
+        when(countries.findAllByOrderByNameAsc())
+                .thenReturn(List.of(new GeoCountryEntity(id, "170", "Colombia")));
+
+        List<GeoDepartmentResponse> result = service.countries();
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).code()).isEqualTo("170");
+        assertThat(result.get(0).name()).isEqualTo("Colombia");
+        assertThat(result.get(0).id()).isEqualTo(id);
     }
 
     @Test

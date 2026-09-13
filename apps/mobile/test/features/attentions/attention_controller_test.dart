@@ -51,9 +51,12 @@ void main() {
       searchPatient: SearchPatient(patients),
       createPatient: CreatePatient(patients),
       listEffectiveCatalog: ListEffectiveCatalog(_NoopCatalogRepository()),
+      listCountries: ListCountries(_NoopCatalogRepository()),
       listDepartments: ListDepartments(_NoopCatalogRepository()),
       listMunicipalities: ListMunicipalities(_NoopCatalogRepository()),
+      listReferenceCatalogs: ListReferenceCatalogs(_NoopCatalogRepository()),
       createAttention: CreateAttention(attentions),
+      updateAttention: UpdateAttention(attentions),
       registerDose: RegisterDose(attentions),
       completeAttention: CompleteAttention(attentions),
       cancelAttention: CancelAttention(attentions),
@@ -167,6 +170,20 @@ void main() {
       expect(attentions.lastApplicationDate, '2024-01-01T12:00:00Z');
     });
 
+    test('propaga la fecha de atencion al crear la atencion', () async {
+      controller.selectPatient(existing);
+
+      await controller.addDose(
+        offline: online,
+        vaccineId: 'vac-1',
+        doseOptionId: 'dose-1',
+        attentionDate: '2024-03-15T12:00:00Z',
+        applicationDate: '2024-03-15T12:00:00Z',
+      );
+
+      expect(attentions.lastAttentionDate, '2024-03-15T12:00:00Z');
+    });
+
     test('anula una dosis registrada', () async {
       controller.selectPatient(existing);
       await controller.addDose(
@@ -250,6 +267,7 @@ void main() {
         sessionManager: FakeSessionManager('token-123'),
         searchPatient: SearchPatient(patients),
         listPatientAttentions: ListPatientAttentions(attentions),
+        listReferenceCatalogs: ListReferenceCatalogs(_NoopCatalogRepository()),
       );
 
       await history.loadHistory(documentType: 'CC', documentNumber: '12345678');
@@ -265,6 +283,7 @@ void main() {
         sessionManager: FakeSessionManager('token-123'),
         searchPatient: SearchPatient(empty),
         listPatientAttentions: ListPatientAttentions(attentions),
+        listReferenceCatalogs: ListReferenceCatalogs(_NoopCatalogRepository()),
       );
 
       await history.loadHistory(documentType: 'CC', documentNumber: '0');
@@ -343,16 +362,22 @@ class FakeAttentionsRepository implements AttentionsRepository {
   int createAttentionCalls = 0;
   String? lastObservations;
   String? lastApplicationDate;
+  String? lastAttentionDate;
 
   @override
   Future<Attention> createAttention(
     String accessToken, {
     required String patientId,
     String? observations,
+    String? attentionDate,
+    bool? completeScheme,
+    bool? paiwebRegistered,
+    String? paiwebNotRegisteredReason,
     String? operationId,
   }) async {
     createAttentionCalls++;
     lastObservations = observations;
+    lastAttentionDate = attentionDate;
     return Attention(
       id: 'att-1',
       patientId: patientId,
@@ -362,6 +387,29 @@ class FakeAttentionsRepository implements AttentionsRepository {
       doses: const [],
     );
   }
+
+  @override
+  Future<Attention> updateAttention(
+    String accessToken,
+    String attentionId, {
+    required int version,
+    String? observations,
+    bool? completeScheme,
+    bool? paiwebRegistered,
+    String? paiwebNotRegisteredReason,
+    String? attentionDate,
+  }) async => Attention(
+    id: attentionId,
+    patientId: 'pat-1',
+    professionalId: 'pro-1',
+    status: 'IN_PROGRESS',
+    version: version + 1,
+    doses: List.of(registered),
+    observations: observations,
+    completeScheme: completeScheme ?? false,
+    paiwebRegistered: paiwebRegistered ?? false,
+    paiwebNotRegisteredReason: paiwebNotRegisteredReason,
+  );
 
   @override
   Future<AppliedDose> registerDose(
@@ -376,6 +424,10 @@ class FakeAttentionsRepository implements AttentionsRepository {
     String? selectedSyringeId,
     String? selectedDropperId,
     String? selectedObservationId,
+    String? syringeLot,
+    String? diluent,
+    int? vialCount,
+    String? customObservation,
     String? operationId,
   }) async {
     lastApplicationDate = applicationDate;

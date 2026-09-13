@@ -633,6 +633,21 @@ class ApiClient {
     fallback: 'Error al crear la atencion.',
   );
 
+  Future<Map<String, dynamic>> updateAttention(
+    String token,
+    String attentionId,
+    Map<String, dynamic> body,
+  ) async => _decodeObject(
+    await _send(
+      _http.put(
+        Uri.parse('$baseUrl/attentions/$attentionId'),
+        headers: _jsonHeaders(token),
+        body: jsonEncode(body),
+      ),
+    ),
+    fallback: 'Error al actualizar la atencion.',
+  );
+
   Future<Map<String, dynamic>> completeAttention(
     String token,
     String attentionId,
@@ -729,9 +744,8 @@ class ApiClient {
     required String since,
     int limit = 500,
   }) async {
-    final uri = Uri.parse(
-      '$baseUrl/sync/pull',
-    ).replace(queryParameters: {'since': since, 'limit': '$limit'});
+    final uri = Uri.parse('$baseUrl/sync/pull')
+        .replace(queryParameters: {'since': since, 'limit': '$limit'});
     return _decodeObject(
       await _send(_http.get(uri, headers: _jsonHeaders(token))),
       fallback: 'Error al consultar los cambios del servidor.',
@@ -764,6 +778,17 @@ class ApiClient {
 
   // ---------- Catalogo geografico ----------
 
+  Future<List<Map<String, dynamic>>> getCountries(String token) async =>
+      _decodeList(
+        await _send(
+          _http.get(
+            Uri.parse('$baseUrl/catalogs/geo/countries'),
+            headers: _jsonHeaders(token),
+          ),
+        ),
+        fallback: 'Error al consultar los paises.',
+      );
+
   Future<List<Map<String, dynamic>>> getDepartments(String token) async =>
       _decodeList(
         await _send(
@@ -786,6 +811,19 @@ class ApiClient {
       fallback: 'Error al consultar los municipios.',
     );
   }
+
+  // ---------- Catalogos de referencia ----------
+
+  Future<List<Map<String, dynamic>>> getReferenceCatalogs(String token) async =>
+      _decodeList(
+        await _send(
+          _http.get(
+            Uri.parse('$baseUrl/catalogs/reference'),
+            headers: _jsonHeaders(token),
+          ),
+        ),
+        fallback: 'Error al consultar los catalogos de referencia.',
+      );
 
   Map<String, String> _jsonHeaders(
     String accessToken, {

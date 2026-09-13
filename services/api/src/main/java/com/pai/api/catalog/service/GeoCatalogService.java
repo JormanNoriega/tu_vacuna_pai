@@ -2,6 +2,7 @@ package com.pai.api.catalog.service;
 
 import com.pai.api.catalog.dto.GeoDepartmentResponse;
 import com.pai.api.catalog.dto.GeoMunicipalityResponse;
+import com.pai.api.catalog.repository.GeoCountryRepository;
 import com.pai.api.catalog.repository.GeoDepartmentRepository;
 import com.pai.api.catalog.repository.GeoMunicipalityRepository;
 import java.util.List;
@@ -13,12 +14,25 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class GeoCatalogService {
 
+    private final GeoCountryRepository countries;
     private final GeoDepartmentRepository departments;
     private final GeoMunicipalityRepository municipalities;
 
-    public GeoCatalogService(GeoDepartmentRepository departments, GeoMunicipalityRepository municipalities) {
+    public GeoCatalogService(
+            GeoCountryRepository countries,
+            GeoDepartmentRepository departments,
+            GeoMunicipalityRepository municipalities) {
+        this.countries = countries;
         this.departments = departments;
         this.municipalities = municipalities;
+    }
+
+    @Transactional(readOnly = true)
+    public List<GeoDepartmentResponse> countries() {
+        return countries.findAllByOrderByNameAsc().stream()
+                .map(country ->
+                        new GeoDepartmentResponse(country.getId(), country.getCode(), country.getName()))
+                .toList();
     }
 
     @Transactional(readOnly = true)

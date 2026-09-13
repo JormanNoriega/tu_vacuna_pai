@@ -63,6 +63,9 @@ class Attention {
     this.attentionDate,
     this.consecutive,
     this.observations,
+    this.completeScheme = false,
+    this.paiwebRegistered = false,
+    this.paiwebNotRegisteredReason,
   });
 
   final String id;
@@ -74,6 +77,9 @@ class Attention {
   final DateTime? attentionDate;
   final int? consecutive;
   final String? observations;
+  final bool completeScheme;
+  final bool paiwebRegistered;
+  final String? paiwebNotRegisteredReason;
 
   bool get isEditable => status == 'DRAFT' || status == 'IN_PROGRESS';
 
@@ -99,5 +105,8 @@ class Attention {
         : DateTime.tryParse(json['attentionDate'] as String),
     consecutive: (json['consecutive'] as num?)?.toInt(),
     observations: json['observations'] as String?,
+    completeScheme: json['completeScheme'] as bool? ?? false,
+    paiwebRegistered: json['paiwebRegistered'] as bool? ?? false,
+    paiwebNotRegisteredReason: json['paiwebNotRegisteredReason'] as String?,
   );
 }

@@ -16,4 +16,11 @@ public record CreateAttentionRequest(
         Instant attentionDate,
 
         @Size(max = 2000, message = "Las observaciones no pueden superar 2000 caracteres.")
-        String observations) {}
+        String observations,
+
+        Boolean completeScheme,
+
+        Boolean paiwebRegistered,
+
+        @Size(max = 500, message = "El motivo de no ingreso no puede superar 500 caracteres.")
+        String paiwebNotRegisteredReason) {}

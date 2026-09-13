@@ -12,13 +12,49 @@ class AttentionsRepositoryImpl implements AttentionsRepository {
     String accessToken, {
     required String patientId,
     String? observations,
+    String? attentionDate,
+    bool? completeScheme,
+    bool? paiwebRegistered,
+    String? paiwebNotRegisteredReason,
     String? operationId,
   }) async {
     final json = await _apiClient.createAttention(accessToken, {
       'patientId': patientId,
       if (observations != null && observations.isNotEmpty)
         'observations': observations,
+      if (attentionDate != null && attentionDate.isNotEmpty)
+        'attentionDate': attentionDate,
+      'completeScheme': ?completeScheme,
+      'paiwebRegistered': ?paiwebRegistered,
+      if (paiwebNotRegisteredReason != null &&
+          paiwebNotRegisteredReason.isNotEmpty)
+        'paiwebNotRegisteredReason': paiwebNotRegisteredReason,
     }, operationId: operationId);
+    return Attention.fromJson(json);
+  }
+
+  @override
+  Future<Attention> updateAttention(
+    String accessToken,
+    String attentionId, {
+    required int version,
+    String? observations,
+    bool? completeScheme,
+    bool? paiwebRegistered,
+    String? paiwebNotRegisteredReason,
+    String? attentionDate,
+  }) async {
+    final json = await _apiClient.updateAttention(accessToken, attentionId, {
+      'version': version,
+      'observations': ?observations,
+      'completeScheme': ?completeScheme,
+      'paiwebRegistered': ?paiwebRegistered,
+      if (paiwebNotRegisteredReason != null &&
+          paiwebNotRegisteredReason.isNotEmpty)
+        'paiwebNotRegisteredReason': paiwebNotRegisteredReason,
+      if (attentionDate != null && attentionDate.isNotEmpty)
+        'attentionDate': attentionDate,
+    });
     return Attention.fromJson(json);
   }
 
@@ -35,6 +71,10 @@ class AttentionsRepositoryImpl implements AttentionsRepository {
     String? selectedSyringeId,
     String? selectedDropperId,
     String? selectedObservationId,
+    String? syringeLot,
+    String? diluent,
+    int? vialCount,
+    String? customObservation,
     String? operationId,
   }) async {
     final json = await _apiClient.registerDose(accessToken, attentionId, {
@@ -54,6 +94,11 @@ class AttentionsRepositoryImpl implements AttentionsRepository {
         'selectedDropperId': selectedDropperId,
       if (selectedObservationId != null && selectedObservationId.isNotEmpty)
         'selectedObservationId': selectedObservationId,
+      if (syringeLot != null && syringeLot.isNotEmpty) 'syringeLot': syringeLot,
+      if (diluent != null && diluent.isNotEmpty) 'diluent': diluent,
+      'vialCount': ?vialCount,
+      if (customObservation != null && customObservation.isNotEmpty)
+        'customObservation': customObservation,
     }, operationId: operationId);
     return AppliedDose.fromJson(json);
   }

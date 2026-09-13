@@ -310,7 +310,7 @@ class PatientServiceTest {
 
         ArgumentCaptor<PatientDemographicEntity> captor = ArgumentCaptor.forClass(PatientDemographicEntity.class);
         verify(demographics).save(captor.capture());
-        assertThat(captor.getValue().getGender()).isEqualTo("FEMALE");
+        assertThat(captor.getValue().getGender()).isEqualTo("FEMENINO");
         assertThat(captor.getValue().getEthnicity()).isEqualTo("Mestiza");
         verify(audit)
                 .record(
@@ -347,7 +347,15 @@ class PatientServiceTest {
                 patientId,
                 new UpdatePatientMedicalHistoriesRequest(
                         List.of(new UpdatePatientMedicalHistoriesRequest.MedicalHistoryDto(
-                                "Asma", LocalDate.of(2020, 1, 1), null))));
+                                "Asma",
+                                LocalDate.of(2020, 1, 1),
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null))));
 
         verify(medicalHistories).deleteByPatientId(patientId);
         verify(medicalHistories).save(any(PatientMedicalHistoryEntity.class));

@@ -406,7 +406,9 @@ class _SyncStatusBadge extends StatelessWidget {
 
   String _tooltip(int pending, bool syncing) {
     if (syncing) return 'Sincronizando...';
-    if (pending > 0) return '$pending operacion(es) pendiente(s). Toca para sincronizar.';
+    if (pending > 0) {
+      return '$pending operacion(es) pendiente(s). Toca para sincronizar.';
+    }
     return 'Todo sincronizado.';
   }
 
