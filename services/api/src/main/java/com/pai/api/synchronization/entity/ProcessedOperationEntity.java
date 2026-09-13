@@ -14,9 +14,11 @@ import org.hibernate.type.SqlTypes;
  * original para que un reenvio con el mismo {@code operation_id} devuelva el
  * resultado original sin reprocesar.
  *
- * <p>La columna {@code sync_sequence} (BIGSERIAL) la asigna la base y no se
- * mapea aqui: es el cursor monotono del pull y se expone por consulta nativa
- * cuando el modulo de sincronizacion lo necesite.
+ * <p>Ademas es la fuente del pull: {@code sync_sequence} (BIGSERIAL) es el cursor
+ * monotono, {@code institution_id} el scope y {@code payload} el cuerpo original
+ * del request (necesario para reconstruir el {@code SyncOperation} que aplica el
+ * cliente). La columna {@code sync_sequence} la asigna la base, por lo que no es
+ * insertable ni actualizable desde JPA.
  */
 @Entity
 @Table(name = "processed_operations", schema = "app")
@@ -32,9 +34,19 @@ public class ProcessedOperationEntity {
     @Column(name = "aggregate_id")
     private UUID aggregateId;
 
+    @Column(name = "institution_id")
+    private UUID institutionId;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "payload", nullable = false)
+    private String payload;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "response_payload", nullable = false)
     private String responsePayload;
+
+    @Column(name = "sync_sequence", insertable = false, updatable = false)
+    private Long syncSequence;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -42,10 +54,18 @@ public class ProcessedOperationEntity {
     protected ProcessedOperationEntity() {}
 
     public ProcessedOperationEntity(
-            UUID operationId, String commandType, UUID aggregateId, String responsePayload, Instant now) {
+            UUID operationId,
+            String commandType,
+            UUID aggregateId,
+            UUID institutionId,
+            String payload,
+            String responsePayload,
+            Instant now) {
         this.operationId = operationId;
         this.commandType = commandType;
         this.aggregateId = aggregateId;
+        this.institutionId = institutionId;
+        this.payload = payload;
         this.responsePayload = responsePayload;
         this.createdAt = now;
     }
@@ -62,8 +82,20 @@ public class ProcessedOperationEntity {
         return aggregateId;
     }
 
+    public UUID getInstitutionId() {
+        return institutionId;
+    }
+
+    public String getPayload() {
+        return payload;
+    }
+
     public String getResponsePayload() {
         return responsePayload;
+    }
+
+    public Long getSyncSequence() {
+        return syncSequence;
     }
 
     public Instant getCreatedAt() {

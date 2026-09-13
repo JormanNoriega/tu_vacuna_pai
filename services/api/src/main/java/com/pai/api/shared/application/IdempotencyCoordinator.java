@@ -49,6 +49,7 @@ public class IdempotencyCoordinator {
             String commandType,
             Class<T> responseType,
             Supplier<AuditContext> context,
+            Supplier<Object> payload,
             Supplier<WriteResult<T>> body) {
         var previous = processedOperations.find(operationId, responseType);
         if (previous.isPresent()) {
@@ -64,7 +65,13 @@ public class IdempotencyCoordinator {
                 result.aggregateId(),
                 parseOperationId(operationId),
                 result.response());
-        processedOperations.record(operationId, commandType, result.aggregateId(), result.response());
+        processedOperations.record(
+                operationId,
+                commandType,
+                result.aggregateId(),
+                auditContext.institutionId(),
+                payload.get(),
+                result.response());
         return result.response();
     }
 

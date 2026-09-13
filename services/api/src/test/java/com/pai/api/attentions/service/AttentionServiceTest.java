@@ -39,6 +39,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import tools.jackson.databind.ObjectMapper;
 
 class AttentionServiceTest {
 
@@ -78,7 +79,8 @@ class AttentionServiceTest {
                 dataScope,
                 audit,
                 coordinator,
-                mapper);
+                mapper,
+                new ObjectMapper());
     }
 
     private InstitutionEntity institution() {
@@ -188,7 +190,7 @@ class AttentionServiceTest {
                         any(),
                         any(),
                         any());
-        verify(processedOperations).record(eq(OPERATION_ID), eq("CREATE_ATTENTION"), any(), any());
+        verify(processedOperations).record(eq(OPERATION_ID), eq("CREATE_ATTENTION"), any(), any(), any(), any());
     }
 
     @Test
@@ -225,7 +227,7 @@ class AttentionServiceTest {
                         OPERATION_ID,
                         cancelled.getId(),
                         new RegisterDoseRequest(
-                                UUID.randomUUID(), UUID.randomUUID(), null, null, null, null, null, null, null, null)))
+                                UUID.randomUUID(), UUID.randomUUID(), null, null, null, null, null, null, null, null, null, null, null, null)))
                 .isInstanceOf(InvalidClinicalStateException.class);
         verify(doses, never()).save(any());
     }
@@ -245,7 +247,7 @@ class AttentionServiceTest {
                 ACTOR_ID,
                 OPERATION_ID,
                 draft.getId(),
-                new RegisterDoseRequest(vaccineId, doseOptionId, null, null, null, null, null, null, null, null));
+                new RegisterDoseRequest(vaccineId, doseOptionId, null, null, null, null, null, null, null, null, null, null, null, null));
 
         assertThat(response.vaccineNameSnapshot()).isEqualTo("Influenza");
         assertThat(response.vaccineCodeSnapshot()).isEqualTo("INF");

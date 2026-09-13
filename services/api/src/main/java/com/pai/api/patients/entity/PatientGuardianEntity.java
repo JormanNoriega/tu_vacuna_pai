@@ -31,6 +31,12 @@ public class PatientGuardianEntity {
     @Column(name = "full_name", nullable = false)
     private String fullName;
 
+    @Column(name = "second_name")
+    private String secondName;
+
+    @Column(name = "second_last_name")
+    private String secondLastName;
+
     @Column(name = "document_type")
     private String documentType;
 
@@ -38,6 +44,21 @@ public class PatientGuardianEntity {
     private String documentNumber;
 
     private String phone;
+
+    private String landline;
+
+    private String cellphone;
+
+    private String email;
+
+    @Column(name = "affiliation_regime")
+    private String affiliationRegime;
+
+    private String insurer;
+
+    private String ethnicity;
+
+    private Boolean displaced;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -53,14 +74,81 @@ public class PatientGuardianEntity {
             String documentNumber,
             String phone,
             Instant now) {
+        this(id, patientId, relationship, fullName, null, null, documentType, documentNumber, phone, null, null, null,
+                null, null, null, null, now);
+    }
+
+    public PatientGuardianEntity(
+            UUID id,
+            UUID patientId,
+            Relationship relationship,
+            String fullName,
+            String secondName,
+            String secondLastName,
+            String documentType,
+            String documentNumber,
+            String phone,
+            String landline,
+            String cellphone,
+            String email,
+            String affiliationRegime,
+            String insurer,
+            String ethnicity,
+            Boolean displaced,
+            Instant now) {
         this.id = id;
         this.patientId = patientId;
         this.relationship = relationship.name();
         this.fullName = fullName;
+        this.secondName = secondName;
+        this.secondLastName = secondLastName;
         this.documentType = documentType;
         this.documentNumber = documentNumber;
         this.phone = phone;
+        this.landline = landline;
+        this.cellphone = cellphone;
+        this.email = email;
+        this.affiliationRegime = affiliationRegime;
+        this.insurer = insurer;
+        this.ethnicity = ethnicity;
+        this.displaced = displaced;
         this.createdAt = now;
+    }
+
+    public String getSecondName() {
+        return secondName;
+    }
+
+    public String getSecondLastName() {
+        return secondLastName;
+    }
+
+    public String getLandline() {
+        return landline;
+    }
+
+    public String getCellphone() {
+        return cellphone;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getAffiliationRegime() {
+        return affiliationRegime;
+    }
+
+    public String getInsurer() {
+        return insurer;
+    }
+
+    public String getEthnicity() {
+        return ethnicity;
+    }
+
+    public Boolean getDisplaced() {
+        return displaced;
     }
 
     public UUID getId() {

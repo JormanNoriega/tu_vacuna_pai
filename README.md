@@ -14,6 +14,8 @@ docs/                 # documentación (architecture, domain, api, database, syn
 ## Documentación de referencia
 
 - `docs/architecture/architecture.md` — plan de arquitectura y decisiones de diseño (D1–D14).
+- `docs/architecture/spring-data-repositories.md` — cómo funcionan los repositorios (interfaces + implementación generada por Spring Data JPA).
+- `docs/architecture/flutter-frontend.md` — estado actual del frontend Flutter (capas, offline-first, features, deudas técnicas).
 - `docs/decisions/ADR-005-autenticacion-y-autorizacion-offline.md` — flujo de autenticación y autorización offline.
 - `docs/decisions/ADR-006-arquitectura-backend-por-capas.md` — arquitectura backend Controller → Service → Repository.
 

@@ -27,6 +27,24 @@ public class PatientMedicalHistoryEntity {
 
     private String notes;
 
+    @Column(name = "has_contraindication", nullable = false)
+    private boolean hasContraindication;
+
+    @Column(name = "contraindication_details")
+    private String contraindicationDetails;
+
+    @Column(name = "has_previous_reaction", nullable = false)
+    private boolean hasPreviousReaction;
+
+    @Column(name = "reaction_details")
+    private String reactionDetails;
+
+    @Column(name = "history_type")
+    private String historyType;
+
+    @Column(name = "special_observations")
+    private String specialObservations;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -34,12 +52,58 @@ public class PatientMedicalHistoryEntity {
 
     public PatientMedicalHistoryEntity(
             UUID id, UUID patientId, String condition, LocalDate diagnosedAt, String notes, Instant now) {
+        this(id, patientId, condition, diagnosedAt, notes, false, null, false, null, null, null, now);
+    }
+
+    public PatientMedicalHistoryEntity(
+            UUID id,
+            UUID patientId,
+            String condition,
+            LocalDate diagnosedAt,
+            String notes,
+            boolean hasContraindication,
+            String contraindicationDetails,
+            boolean hasPreviousReaction,
+            String reactionDetails,
+            String historyType,
+            String specialObservations,
+            Instant now) {
         this.id = id;
         this.patientId = patientId;
         this.condition = condition;
         this.diagnosedAt = diagnosedAt;
         this.notes = notes;
+        this.hasContraindication = hasContraindication;
+        this.contraindicationDetails = contraindicationDetails;
+        this.hasPreviousReaction = hasPreviousReaction;
+        this.reactionDetails = reactionDetails;
+        this.historyType = historyType;
+        this.specialObservations = specialObservations;
         this.createdAt = now;
+    }
+
+    public boolean isHasContraindication() {
+        return hasContraindication;
+    }
+
+    public String getContraindicationDetails() {
+        return contraindicationDetails;
+    }
+
+    public boolean isHasPreviousReaction() {
+        return hasPreviousReaction;
+    }
+
+    public String getReactionDetails() {
+        return reactionDetails;
+    }
+
+    public String getHistoryType() {
+        return historyType;
+    }
+
+    public String getSpecialObservations() {
+        return specialObservations;
     }
 
     public UUID getId() {

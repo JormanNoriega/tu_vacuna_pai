@@ -25,10 +25,13 @@ import com.pai.api.patients.repository.PatientRepository;
 import com.pai.api.shared.application.IdempotencyCoordinator;
 import com.pai.api.shared.util.Strings;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Gestion clinica de atenciones y dosis aplicadas.
@@ -44,7 +47,8 @@ import org.springframework.transaction.annotation.Transactional;
  *   </li>
  * </ul>
  * El alcance institucional se deriva del actor (ADR-007); la institucion nunca
- * se confia al cliente.
+ * se confia al cliente. En el camino offline-first cada escritura admite un
+ * {@code operationId} y respeta el {@code aggregate_id} del cliente.
  *
  * <p>Sosten del refactor SOLID:
  * <ul>
@@ -71,6 +75,7 @@ public class AttentionService {
     private final AuditService audit;
     private final IdempotencyCoordinator coordinator;
     private final AttentionMapper mapper;
+    private final ObjectMapper objectMapper;
 
     public AttentionService(
             AttentionRepository attentions,
@@ -81,7 +86,8 @@ public class AttentionService {
             DataScope dataScope,
             AuditService audit,
             IdempotencyCoordinator coordinator,
-            AttentionMapper mapper) {
+            AttentionMapper mapper,
+            ObjectMapper objectMapper) {
         this.attentions = attentions;
         this.doses = doses;
         this.patients = patients;
@@ -91,15 +97,28 @@ public class AttentionService {
         this.audit = audit;
         this.coordinator = coordinator;
         this.mapper = mapper;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
     public AttentionResponse create(UUID actorId, String operationId, CreateAttentionRequest request) {
+        return create(actorId, operationId, null, request);
+    }
+
+    /**
+     * Crea una atencion. Para el camino offline-first, {@code attentionId} es el
+     * {@code aggregate_id} del cliente y el servidor lo respeta como PK; en el
+     * camino REST directo llega {@code null} y el servidor genera el UUID.
+     */
+    @Transactional
+    public AttentionResponse create(
+            UUID actorId, String operationId, UUID attentionId, CreateAttentionRequest request) {
         return coordinator.execute(
                 operationId,
                 "CREATE_ATTENTION",
                 AttentionResponse.class,
                 () -> auditContext(actorId, AuditAction.ATTENTION_CREATED, RESOURCE_TYPE_ATTENTION),
+                () -> request,
                 () -> {
                     AuthorizedUser actor = identity.resolve(actorId);
                     UUID institutionId = institution(actor);
@@ -109,7 +128,7 @@ public class AttentionService {
                     long consecutive = attentions.maxConsecutive(institutionId) + 1;
 
                     AttentionEntity attention = attentions.save(new AttentionEntity(
-                            UUID.randomUUID(),
+                            attentionId != null ? attentionId : UUID.randomUUID(),
                             request.patientId(),
                             actor.getId(),
                             institutionId,
@@ -166,20 +185,29 @@ public class AttentionService {
 
     @Transactional
     public AttentionResponse complete(UUID actorId, UUID attentionId) {
-        AuthorizedUser actor = identity.resolve(actorId);
-        AttentionEntity attention = requireScoped(actor, attentionId);
-        requireEditable(attention);
+        return complete(actorId, null, attentionId);
+    }
 
-        return coordinator.executeAudited(
-                actor.getId(),
-                attention.getInstitutionId(),
-                AuditAction.ATTENTION_COMPLETED,
-                RESOURCE_TYPE_ATTENTION,
-                attentionId,
+    /**
+     * Completa una atencion. Idempotente por {@code operationId} para el pull
+     * offline: el {@link IdempotencyCoordinator} repite la respuesta guardada
+     * sin ejecutar la transicion de estado.
+     */
+    @Transactional
+    public AttentionResponse complete(UUID actorId, String operationId, UUID attentionId) {
+        return coordinator.execute(
+                operationId,
+                "COMPLETE_ATTENTION",
+                AttentionResponse.class,
+                () -> auditContext(actorId, AuditAction.ATTENTION_COMPLETED, RESOURCE_TYPE_ATTENTION),
+                Map::of,
                 () -> {
+                    AuthorizedUser actor = identity.resolve(actorId);
+                    AttentionEntity attention = requireScoped(actor, attentionId);
+                    requireEditable(attention);
                     attention.complete(Instant.now());
                     attentions.save(attention);
-                    return response(attention);
+                    return new IdempotencyCoordinator.WriteResult<>(attention.getId(), response(attention));
                 });
     }
 
@@ -209,20 +237,32 @@ public class AttentionService {
     @Transactional
     public AppliedDoseResponse registerDose(
             UUID actorId, String operationId, UUID attentionId, RegisterDoseRequest request) {
-        AuthorizedUser actor = identity.resolve(actorId);
-        AttentionEntity attention = requireScoped(actor, attentionId);
-        if (!attention.acceptsDoses()) {
-            throw new InvalidClinicalStateException(
-                    "No se pueden registrar dosis en una atencion completada o anulada.");
-        }
-        UUID institutionId = attention.getInstitutionId();
+        return registerDose(actorId, operationId, attentionId, null, request);
+    }
 
+    /**
+     * Registra una dosis aplicada. Para el camino offline-first, {@code doseId}
+     * es el {@code aggregate_id} del cliente y el servidor lo respeta como PK; en
+     * el camino REST directo llega {@code null} y el servidor genera el UUID.
+     */
+    @Transactional
+    public AppliedDoseResponse registerDose(
+            UUID actorId, String operationId, UUID attentionId, UUID doseId, RegisterDoseRequest request) {
         return coordinator.execute(
                 operationId,
                 "REGISTER_APPLIED_DOSE",
                 AppliedDoseResponse.class,
-                () -> auditContext(actor.getId(), AuditAction.DOSE_REGISTERED, RESOURCE_TYPE_DOSE),
+                () -> auditContext(actorId, AuditAction.DOSE_REGISTERED, RESOURCE_TYPE_DOSE),
+                () -> doseCommandPayload(attentionId, request),
                 () -> {
+                    AuthorizedUser actor = identity.resolve(actorId);
+                    AttentionEntity attention = requireScoped(actor, attentionId);
+                    if (!attention.acceptsDoses()) {
+                        throw new InvalidClinicalStateException(
+                                "No se pueden registrar dosis en una atencion completada o anulada.");
+                    }
+                    UUID institutionId = attention.getInstitutionId();
+
                     VaccineCatalogPolicy.DoseSelection selection = catalogPolicy.resolve(
                             new VaccineCatalogPolicy.ResolutionRequest(
                                     institutionId,
@@ -237,8 +277,8 @@ public class AttentionService {
                     Instant now = Instant.now();
                     Instant applicationDate = request.applicationDate() != null ? request.applicationDate() : now;
 
-                    AppliedDoseEntity dose = doses.save(new AppliedDoseEntity(
-                            UUID.randomUUID(),
+                    AppliedDoseEntity dose = new AppliedDoseEntity(
+                            doseId != null ? doseId : UUID.randomUUID(),
                             attentionId,
                             selection.vaccineId(),
                             request.lotId(),
@@ -260,7 +300,13 @@ public class AttentionService {
                             selection.dropperSnapshot(),
                             selection.observationId(),
                             selection.observationSnapshot(),
-                            now));
+                            now);
+                    dose.applyOperationalFields(
+                            Strings.blankToNull(request.syringeLot()),
+                            Strings.blankToNull(request.diluent()),
+                            request.vialCount(),
+                            Strings.blankToNull(request.customObservation()));
+                    doses.save(dose);
                     return new IdempotencyCoordinator.WriteResult<>(dose.getId(), mapper.toDoseResponse(dose));
                 });
     }
@@ -300,6 +346,14 @@ public class AttentionService {
         AuthorizedUser actor = identity.resolve(actorId);
         return new IdempotencyCoordinator.AuditContext(
                 actor.getId(), institution(actor), action, resourceType);
+    }
+
+    /** El payload del comando conserva attentionId (no forma parte del DTO REST). */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> doseCommandPayload(UUID attentionId, RegisterDoseRequest request) {
+        Map<String, Object> payload = new LinkedHashMap<>(objectMapper.convertValue(request, Map.class));
+        payload.put("attentionId", attentionId);
+        return payload;
     }
 
     private UUID institution(AuthorizedUser actor) {

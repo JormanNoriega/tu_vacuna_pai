@@ -24,6 +24,9 @@ public class PatientDemographicEntity {
 
     private String ethnicity;
 
+    @Column(name = "sexual_orientation")
+    private String sexualOrientation;
+
     @Column(name = "education_level")
     private String educationLevel;
 
@@ -34,9 +37,20 @@ public class PatientDemographicEntity {
 
     public PatientDemographicEntity(
             UUID patientId, String gender, String ethnicity, String educationLevel, Instant now) {
+        this(patientId, gender, ethnicity, null, educationLevel, now);
+    }
+
+    public PatientDemographicEntity(
+            UUID patientId,
+            String gender,
+            String ethnicity,
+            String sexualOrientation,
+            String educationLevel,
+            Instant now) {
         this.patientId = patientId;
         this.gender = gender;
         this.ethnicity = ethnicity;
+        this.sexualOrientation = sexualOrientation;
         this.educationLevel = educationLevel;
         this.updatedAt = now;
     }
@@ -51,6 +65,10 @@ public class PatientDemographicEntity {
 
     public String getEthnicity() {
         return ethnicity;
+    }
+
+    public String getSexualOrientation() {
+        return sexualOrientation;
     }
 
     public String getEducationLevel() {

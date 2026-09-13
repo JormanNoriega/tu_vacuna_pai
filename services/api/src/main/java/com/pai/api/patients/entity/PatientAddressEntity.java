@@ -29,6 +29,10 @@ public class PatientAddressEntity {
     @Column(name = "country_id")
     private UUID countryId;
 
+    private String locality;
+
+    private String area;
+
     @Column(name = "is_primary", nullable = false)
     private boolean primary;
 
@@ -46,14 +50,38 @@ public class PatientAddressEntity {
             UUID countryId,
             boolean primary,
             Instant now) {
+        this(id, patientId, street, municipalityId, departmentId, countryId, null, null, primary, now);
+    }
+
+    public PatientAddressEntity(
+            UUID id,
+            UUID patientId,
+            String street,
+            UUID municipalityId,
+            UUID departmentId,
+            UUID countryId,
+            String locality,
+            String area,
+            boolean primary,
+            Instant now) {
         this.id = id;
         this.patientId = patientId;
         this.street = street;
         this.municipalityId = municipalityId;
         this.departmentId = departmentId;
         this.countryId = countryId;
+        this.locality = locality;
+        this.area = area;
         this.primary = primary;
         this.createdAt = now;
+    }
+
+    public String getLocality() {
+        return locality;
+    }
+
+    public String getArea() {
+        return area;
     }
 
     public UUID getId() {

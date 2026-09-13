@@ -162,6 +162,122 @@ class InstitutionVaccineOptionsCache extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Working set local de pacientes (lectura offline + altas pendientes de
+/// sincronizar). El payload completo del comando vive en [SyncOutbox]; esta
+/// tabla es el modelo de lectura para buscar/mostrar sin red.
+class PatientsLocal extends Table {
+  TextColumn get id => text()();
+  TextColumn get institutionId => text()();
+  TextColumn get documentType => text()();
+  TextColumn get documentNumber => text()();
+  TextColumn get firstName => text()();
+  TextColumn get lastName => text()();
+  DateTimeColumn get birthDate => dateTime().nullable()();
+  TextColumn get sex => text().nullable()();
+  TextColumn get gender => text().nullable()();
+  TextColumn get phone => text().nullable()();
+  TextColumn get email => text().nullable()();
+  TextColumn get addressLine => text().nullable()();
+  TextColumn get addressCity => text().nullable()();
+  TextColumn get addressDepartment => text().nullable()();
+  TextColumn get addressMunicipality => text().nullable()();
+
+  /// Estado de sync del agregado (SyncAggregateState.name).
+  TextColumn get syncState => text()();
+
+  /// Version recibida del servidor (optimistic locking); 0 si es local.
+  IntColumn get version => integer()();
+
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Tutores / responsables asociados a un paciente local.
+class PatientGuardiansLocal extends Table {
+  TextColumn get id => text()();
+  TextColumn get patientId => text()();
+  TextColumn get fullName => text()();
+  TextColumn get relationship => text()();
+  TextColumn get phone => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Working set local de atenciones.
+class AttentionsLocal extends Table {
+  TextColumn get id => text()();
+  TextColumn get institutionId => text()();
+  TextColumn get patientId => text()();
+  TextColumn get vaccinatorId => text().nullable()();
+  TextColumn get status => text()();
+  IntColumn get attentionDate => integer().nullable()();
+  IntColumn get startedAt => integer().nullable()();
+  IntColumn get completedAt => integer().nullable()();
+  TextColumn get observations => text().nullable()();
+  TextColumn get cancelReason => text().nullable()();
+  IntColumn get version => integer()();
+
+  TextColumn get syncState => text()();
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Working set local de dosis aplicadas (append-only).
+class AppliedDosesLocal extends Table {
+  TextColumn get id => text()();
+  TextColumn get attentionId => text()();
+  TextColumn get vaccineId => text().nullable()();
+  TextColumn get status => text()();
+  IntColumn get appliedAt => integer()();
+  TextColumn get administeredBy => text().nullable()();
+  TextColumn get lot => text().nullable()();
+
+  /// Snapshot del catalogo para trazabilidad historica offline.
+  TextColumn get vaccineNameSnapshot => text()();
+  TextColumn get doseLabelSnapshot => text().nullable()();
+  IntColumn get catalogVersion => integer().nullable()();
+
+  TextColumn get syncState => text()();
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Outbox de sincronizacion: una fila por operacion pendiente/terminada.
+class SyncOutbox extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get operationId => text()();
+  TextColumn get commandType => text()();
+  TextColumn get aggregateId => text()();
+  TextColumn get payload => text()();
+  TextColumn get status => text()();
+  IntColumn get retryCount => integer().withDefault(const Constant(0))();
+  IntColumn get nextRetryAt => integer().nullable()();
+  TextColumn get lastError => text().nullable()();
+  IntColumn get createdAt => integer()();
+  IntColumn get updatedAt => integer()();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+    {operationId},
+  ];
+}
+
+/// Dependencias del outbox (grafo simple): dependsOn debe ir antes.
+class SyncOutboxDependencies extends Table {
+  TextColumn get operationId => text()();
+  TextColumn get dependsOnOperationId => text()();
+
+  @override
+  Set<Column> get primaryKey => {operationId, dependsOnOperationId};
+}
+
 @DriftDatabase(
   tables: [
     CurrentUser,
@@ -172,6 +288,12 @@ class InstitutionVaccineOptionsCache extends Table {
     VaccineOptionsCache,
     InstitutionVaccinesCache,
     InstitutionVaccineOptionsCache,
+    PatientsLocal,
+    PatientGuardiansLocal,
+    AttentionsLocal,
+    AppliedDosesLocal,
+    SyncOutbox,
+    SyncOutboxDependencies,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -220,7 +342,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -244,6 +366,16 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(vaccineOptionsCache);
         await m.createTable(institutionVaccinesCache);
         await m.createTable(institutionVaccineOptionsCache);
+      }
+      if (from < 5) {
+        // V5: motor offline (working set clinico + outbox). Las tablas son
+        // nuevas y aditivas; se crean vacias y no afectan las caches.
+        await m.createTable(patientsLocal);
+        await m.createTable(patientGuardiansLocal);
+        await m.createTable(attentionsLocal);
+        await m.createTable(appliedDosesLocal);
+        await m.createTable(syncOutbox);
+        await m.createTable(syncOutboxDependencies);
       }
     },
   );
@@ -496,4 +628,220 @@ class AppDatabase extends _$AppDatabase {
                 t.vaccineId.equals(vaccineId),
           ))
           .get();
+
+  // ---------- PatientsLocal ----------
+
+  Future<void> upsertPatientLocal(PatientsLocalCompanion patient) =>
+      into(patientsLocal).insertOnConflictUpdate(patient);
+
+  Future<PatientsLocalData?> patientLocalById(String id) =>
+      (select(patientsLocal)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  Future<List<PatientsLocalData>> searchPatientsLocal({
+    required String institutionId,
+    required String documentType,
+    required String documentNumber,
+  }) =>
+      (select(patientsLocal)..where(
+            (t) =>
+                t.institutionId.equals(institutionId) &
+                t.documentType.equals(documentType) &
+                t.documentNumber.equals(documentNumber),
+          ))
+          .get();
+
+  Future<List<PatientsLocalData>> patientsLocalByInstitution(
+    String institutionId,
+  ) =>
+      (select(patientsLocal)
+            ..where((t) => t.institutionId.equals(institutionId))
+            ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
+          .get();
+
+  Future<void> replacePatientGuardiansLocal(
+    String patientId,
+    List<PatientGuardiansLocalCompanion> guardians,
+  ) async {
+    await transaction(() async {
+      await (delete(
+        patientGuardiansLocal,
+      )..where((t) => t.patientId.equals(patientId))).go();
+      for (final guardian in guardians) {
+        await into(patientGuardiansLocal).insert(guardian);
+      }
+    });
+  }
+
+  Future<List<PatientGuardiansLocalData>> patientGuardiansFor(
+    String patientId,
+  ) =>
+      (select(
+        patientGuardiansLocal,
+      )..where((t) => t.patientId.equals(patientId))).get();
+
+  Future<void> updatePatientSyncState(String id, String syncState) =>
+      (update(patientsLocal)..where((t) => t.id.equals(id))).write(
+        PatientsLocalCompanion(
+          syncState: Value(syncState),
+          updatedAt: Value(_epochNow()),
+        ),
+      );
+
+  // ---------- AttentionsLocal ----------
+
+  Future<void> upsertAttentionLocal(AttentionsLocalCompanion attention) =>
+      into(attentionsLocal).insertOnConflictUpdate(attention);
+
+  Future<AttentionsLocalData?> attentionLocalById(String id) =>
+      (select(attentionsLocal)..where((t) => t.id.equals(id)))
+          .getSingleOrNull();
+
+  Future<List<AttentionsLocalData>> attentionsLocalByPatient(String patientId) =>
+      (select(attentionsLocal)
+            ..where((t) => t.patientId.equals(patientId))
+            ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
+          .get();
+
+  Future<void> updateAttentionSyncState(
+    String id,
+    String syncState, {
+    String? status,
+  }) => (update(attentionsLocal)..where((t) => t.id.equals(id))).write(
+    AttentionsLocalCompanion(
+      syncState: Value(syncState),
+      status: status == null ? const Value.absent() : Value(status),
+      updatedAt: Value(_epochNow()),
+    ),
+  );
+
+  // ---------- AppliedDosesLocal ----------
+
+  Future<void> upsertAppliedDoseLocal(AppliedDosesLocalCompanion dose) =>
+      into(appliedDosesLocal).insertOnConflictUpdate(dose);
+
+  Future<AppliedDosesLocalData?> appliedDoseLocalById(String id) =>
+      (select(appliedDosesLocal)..where((t) => t.id.equals(id)))
+          .getSingleOrNull();
+
+  Future<List<AppliedDosesLocalData>> appliedDosesLocalByAttention(
+    String attentionId,
+  ) =>
+      (select(
+        appliedDosesLocal,
+      )..where((t) => t.attentionId.equals(attentionId))).get();
+
+  Future<void> updateDoseSyncState(String id, String syncState) =>
+      (update(appliedDosesLocal)..where((t) => t.id.equals(id))).write(
+        AppliedDosesLocalCompanion(
+          syncState: Value(syncState),
+          updatedAt: Value(_epochNow()),
+        ),
+      );
+
+  int _epochNow() => DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
+
+  // ---------- SyncOutbox ----------
+
+  /// Operaciones listas para enviar: estado [PENDING] y cuyo backoff ya venció.
+  Future<List<SyncOutboxData>> pendingOutboxOperations({int? nowEpoch}) {
+    final now =
+        nowEpoch ??
+        DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
+    return (select(syncOutbox)
+          ..where(
+            (t) =>
+                t.status.equals('PENDING') &
+                (t.nextRetryAt.isNull() |
+                    t.nextRetryAt.isSmallerOrEqualValue(now)),
+          )
+          ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+        .get();
+  }
+
+  Future<List<SyncOutboxData>> outboxByStatus(String status) =>
+      (select(syncOutbox)
+            ..where((t) => t.status.equals(status))
+            ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+          .get();
+
+  Future<SyncOutboxData?> outboxByOperationId(String operationId) =>
+      (select(syncOutbox)..where((t) => t.operationId.equals(operationId)))
+          .getSingleOrNull();
+
+  Future<List<SyncOutboxDependency>> outboxDependenciesOf(
+    String operationId,
+  ) =>
+      (select(syncOutboxDependencies)
+            ..where((t) => t.operationId.equals(operationId)))
+          .get();
+
+  Future<void> insertOutboxEntry(SyncOutboxCompanion entry) => into(
+    syncOutbox,
+  ).insert(entry, mode: InsertMode.insertOrIgnore);
+
+  Future<void> insertOutboxDependency(
+    String operationId,
+    String dependsOnOperationId,
+  ) => into(syncOutboxDependencies).insert(
+    SyncOutboxDependenciesCompanion.insert(
+      operationId: operationId,
+      dependsOnOperationId: dependsOnOperationId,
+    ),
+    mode: InsertMode.insertOrIgnore,
+  );
+
+  Future<void> updateOutboxStatus(
+    String operationId,
+    String status, {
+    int? retryCount,
+    int? nextRetryAt,
+    String? lastError,
+  }) {
+    final now =
+        DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
+    return (update(
+      syncOutbox,
+    )..where((t) => t.operationId.equals(operationId))).write(
+      SyncOutboxCompanion(
+        status: Value(status),
+        retryCount: retryCount == null
+            ? const Value.absent()
+            : Value(retryCount),
+        nextRetryAt: nextRetryAt == null
+            ? const Value.absent()
+            : Value(nextRetryAt),
+        lastError: Value(lastError),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  /// Reinicia a [PENDING] cualquier operacion que haya quedado en
+  /// [PROCESSING] (crash/cierre durante el push). Seguro por idempotencia.
+  Future<void> resetProcessingToPending() {
+    final now =
+        DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
+    return (update(
+      syncOutbox,
+    )..where((t) => t.status.equals('PROCESSING'))).write(
+      SyncOutboxCompanion(
+        status: const Value('PENDING'),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  Future<int> pendingOutboxCount() async {
+    final count = syncOutbox.operationId.count();
+    final query = selectOnly(syncOutbox)
+      ..addColumns([count])
+      ..where(syncOutbox.status.isIn(['PENDING', 'PROCESSING']));
+    final row = await query.getSingle();
+    return row.read(count) ?? 0;
+  }
+
+  Future<void> clearOutbox() async {
+    await delete(syncOutboxDependencies).go();
+    await delete(syncOutbox).go();
+  }
 }
