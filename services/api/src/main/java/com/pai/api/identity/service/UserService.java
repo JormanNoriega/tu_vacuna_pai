@@ -48,18 +48,21 @@ public class UserService {
     private final UserRoleRepository userRoleRepository;
     private final IdentityService identityService;
     private final DataScope dataScope;
+    private final IdentityMapper mapper;
 
     public UserService(
             UserRepository userRepository,
             RoleRepository roleRepository,
             UserRoleRepository userRoleRepository,
             IdentityService identityService,
-            DataScope dataScope) {
+            DataScope dataScope,
+            IdentityMapper mapper) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userRoleRepository = userRoleRepository;
         this.identityService = identityService;
         this.dataScope = dataScope;
+        this.mapper = mapper;
     }
 
     /**
@@ -94,7 +97,7 @@ public class UserService {
         List<UserEntity> users = (effectiveRoles == null || effectiveRoles.isEmpty())
                 ? userRepository.findByInstitutionId(institutionId)
                 : userRepository.findByInstitutionIdAndRoleCodes(institutionId, effectiveRoles);
-        return users.stream().map(this::toResponse).toList();
+        return users.stream().map(mapper::toUserResponse).toList();
     }
 
     /**
@@ -113,7 +116,7 @@ public class UserService {
         AuthorizedUser actor = identityService.resolve(actorId);
         InstitutionScope scope = dataScope.currentScope(actor);
 
-        UserEntity.Status parsed = parseStatus(status);
+        UserEntity.Status parsed = IdentityRules.parseUserStatus(status);
 
         if (actorId.equals(userId) && parsed == UserEntity.Status.INACTIVE) {
             throw new IllegalArgumentException("No puedes desactivar tu propia cuenta.");
@@ -125,7 +128,7 @@ public class UserService {
             UserEntity user = findById(userId);
             user.setStatus(parsed);
             user.setUpdatedAt(now);
-            return toResponse(userRepository.save(user));
+            return mapper.toUserResponse(userRepository.save(user));
         }
 
         UserEntity user = requireScopedManagedUser(userId, scope);
@@ -133,23 +136,7 @@ public class UserService {
         if (updated == 0) {
             throw new ScopeViolationException("El usuario no existe o no pertenece a tu institucion.");
         }
-        return new UserResponse(
-                user.getId(),
-                user.getEmail(),
-                user.getFullName(),
-                user.getInstitutionId(),
-                userRepository.findRolesByUserId(user.getId()).stream()
-                        .map(RoleEntity::getCode)
-                        .toList(),
-                parsed.name(),
-                user.getDocumentType(),
-                user.getDocumentNumber(),
-                user.getPhone(),
-                user.getBirthDate(),
-                user.getGender(),
-                user.getProfessionCode(),
-                user.getProfessionalRegistrationNumber(),
-                user.getProfessionalRegistrationType());
+        return mapper.toUserResponse(user, parsed.name());
     }
 
     /**
@@ -172,7 +159,7 @@ public class UserService {
             replaceRoles(userId, roles);
             user.setUpdatedAt(now);
             userRepository.save(user);
-            return toResponse(user);
+            return mapper.toUserResponse(user);
         }
 
         UserEntity user = requireScopedManagedUser(userId, scope);
@@ -181,7 +168,7 @@ public class UserService {
             userRoleRepository.save(new UserRoleEntity(userId, role.getId()));
         }
         userRepository.touchUpdatedAtScoped(userId, scope.institutionId(), now);
-        return toResponse(user);
+        return mapper.toUserResponse(user);
     }
 
     /**
@@ -221,14 +208,6 @@ public class UserService {
         }
     }
 
-    private UserEntity.Status parseStatus(String status) {
-        try {
-            return UserEntity.Status.valueOf(status.trim().toUpperCase());
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("Estado invalido. Usa ACTIVE o INACTIVE.");
-        }
-    }
-
     private List<RoleEntity> resolveAssignableRoles(List<String> roleCodes) {
         List<RoleEntity> roles = new ArrayList<>(roleCodes.size());
         for (String code : roleCodes) {
@@ -242,26 +221,5 @@ public class UserService {
             roles.add(role);
         }
         return roles;
-    }
-
-    @SuppressWarnings("null")
-    private UserResponse toResponse(UserEntity user) {
-        return new UserResponse(
-                user.getId(),
-                user.getEmail(),
-                user.getFullName(),
-                user.getInstitutionId(),
-                userRepository.findRolesByUserId(user.getId()).stream()
-                        .map(RoleEntity::getCode)
-                        .toList(),
-                user.getStatus().name(),
-                user.getDocumentType(),
-                user.getDocumentNumber(),
-                user.getPhone(),
-                user.getBirthDate(),
-                user.getGender(),
-                user.getProfessionCode(),
-                user.getProfessionalRegistrationNumber(),
-                user.getProfessionalRegistrationType());
     }
 }

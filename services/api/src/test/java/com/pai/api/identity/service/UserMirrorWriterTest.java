@@ -46,7 +46,8 @@ class UserMirrorWriterTest {
         roleRepository = mock(RoleRepository.class);
         userRoleRepository = mock(UserRoleRepository.class);
         operationRepository = mock(ProvisioningOperationRepository.class);
-        writer = new UserMirrorWriter(userRepository, roleRepository, userRoleRepository, operationRepository);
+        writer = new UserMirrorWriter(
+                userRepository, roleRepository, userRoleRepository, operationRepository, new IdentityMapper(userRepository));
         when(userRepository.save(any(UserEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 

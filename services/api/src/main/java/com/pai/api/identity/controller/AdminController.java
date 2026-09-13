@@ -13,6 +13,7 @@ import com.pai.api.identity.dto.UpdateUserStatusRequest;
 import com.pai.api.identity.dto.UserResponse;
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.InstitutionService;
+import com.pai.api.identity.service.IdentityPermissions;
 import com.pai.api.identity.service.ProvisioningReconciliationService;
 import com.pai.api.identity.service.UserProvisioningService;
 import com.pai.api.identity.service.UserService;
@@ -43,6 +44,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1")
 public class AdminController {
 
+    private static final String WRITE_ONLY = "@authorization.hasPermission(authentication, '"
+            + IdentityPermissions.INSTITUTION_WRITE + "')";
+    private static final String MANAGE_ONLY = "@authorization.hasPermission(authentication, '"
+            + IdentityPermissions.USER_MANAGE + "')";
+    private static final String MANAGE_OR_WRITE = "@authorization.hasPermission(authentication, '"
+            + IdentityPermissions.USER_MANAGE + "') or @authorization.hasPermission(authentication, '"
+            + IdentityPermissions.INSTITUTION_WRITE + "')";
+
     private final InstitutionService institutionService;
     private final UserService userService;
     private final UserProvisioningService userProvisioningService;
@@ -60,7 +69,7 @@ public class AdminController {
     }
 
     @PostMapping("/institutions")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'INSTITUTION_WRITE')")
+    @PreAuthorize(WRITE_ONLY)
     public ResponseEntity<InstitutionResponse> createInstitution(
             Authentication authentication, @Valid @RequestBody CreateInstitutionRequest request) {
         AuthorizedUser actor = (AuthorizedUser) authentication.getPrincipal();
@@ -68,27 +77,27 @@ public class AdminController {
     }
 
     @GetMapping("/institutions")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'INSTITUTION_WRITE')")
+    @PreAuthorize(WRITE_ONLY)
     public ResponseEntity<List<InstitutionResponse>> listInstitutions() {
         return ResponseEntity.ok(institutionService.list());
     }
 
     @PutMapping("/institutions/{id}/status")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'INSTITUTION_WRITE')")
+    @PreAuthorize(WRITE_ONLY)
     public ResponseEntity<InstitutionResponse> updateInstitutionStatus(
             @PathVariable UUID id, @Valid @RequestBody UpdateInstitutionStatusRequest request) {
         return ResponseEntity.ok(institutionService.updateStatus(id, request.status()));
     }
 
     @PutMapping("/institutions/{id}/config")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'INSTITUTION_WRITE')")
+    @PreAuthorize(WRITE_ONLY)
     public ResponseEntity<InstitutionResponse> updateInstitutionConfig(
             @PathVariable UUID id, @Valid @RequestBody UpdateInstitutionConfigRequest request) {
         return ResponseEntity.ok(institutionService.updateConfig(id, request.offlineWindowHours()));
     }
 
     @PostMapping("/users/institution-admins")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'INSTITUTION_WRITE')")
+    @PreAuthorize(WRITE_ONLY)
     public ResponseEntity<UserResponse> createInstitutionAdmin(
             Authentication authentication, @Valid @RequestBody CreateInstitutionAdminRequest request) {
         AuthorizedUser actor = (AuthorizedUser) authentication.getPrincipal();
@@ -101,7 +110,7 @@ public class AdminController {
     }
 
     @PostMapping("/users/vaccinators")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'USER_MANAGE')")
+    @PreAuthorize(MANAGE_ONLY)
     public ResponseEntity<UserResponse> createVaccinator(
             Authentication authentication, @Valid @RequestBody CreateVaccinatorRequest request) {
         AuthorizedUser actor = (AuthorizedUser) authentication.getPrincipal();
@@ -114,8 +123,7 @@ public class AdminController {
     }
 
     @GetMapping("/users")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'USER_MANAGE') "
-            + "or @authorization.hasPermission(authentication, 'INSTITUTION_WRITE')")
+    @PreAuthorize(MANAGE_OR_WRITE)
     public ResponseEntity<List<UserResponse>> listUsers(
             Authentication authentication,
             @RequestParam UUID institutionId,
@@ -126,8 +134,7 @@ public class AdminController {
     }
 
     @PutMapping("/users/{id}/status")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'USER_MANAGE') "
-            + "or @authorization.hasPermission(authentication, 'INSTITUTION_WRITE')")
+    @PreAuthorize(MANAGE_OR_WRITE)
     public ResponseEntity<UserResponse> updateUserStatus(
             Authentication authentication, @PathVariable UUID id, @Valid @RequestBody UpdateUserStatusRequest request) {
         AuthorizedUser actor = (AuthorizedUser) authentication.getPrincipal();
@@ -135,8 +142,7 @@ public class AdminController {
     }
 
     @PutMapping("/users/{id}/roles")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'USER_MANAGE') "
-            + "or @authorization.hasPermission(authentication, 'INSTITUTION_WRITE')")
+    @PreAuthorize(MANAGE_OR_WRITE)
     public ResponseEntity<UserResponse> updateUserRoles(
             Authentication authentication, @PathVariable UUID id, @Valid @RequestBody UpdateUserRolesRequest request) {
         AuthorizedUser actor = (AuthorizedUser) authentication.getPrincipal();
@@ -144,13 +150,13 @@ public class AdminController {
     }
 
     @PostMapping("/admin/users/reconcile")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'INSTITUTION_WRITE')")
+    @PreAuthorize(WRITE_ONLY)
     public ResponseEntity<List<ReconciliationResultResponse>> reconcileUsers() {
         return ResponseEntity.ok(reconciliationService.reconcile());
     }
 
     @GetMapping("/admin/users/operations")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'INSTITUTION_WRITE')")
+    @PreAuthorize(WRITE_ONLY)
     public ResponseEntity<List<ProvisioningOperationResponse>> listProvisioningOperations() {
         return ResponseEntity.ok(reconciliationService.listOperations());
     }

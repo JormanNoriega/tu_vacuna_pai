@@ -24,13 +24,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class DataScope {
 
-    private static final String INSTITUTION_WRITE_PERMISSION = "INSTITUTION_WRITE";
-
     /**
      * Devuelve el alcance efectivo del actor.
      */
     public InstitutionScope currentScope(AuthorizedUser actor) {
-        if (actor.getPermissions().contains(INSTITUTION_WRITE_PERMISSION)) {
+        if (actor.getPermissions().contains(IdentityPermissions.INSTITUTION_WRITE)) {
             return InstitutionScope.global();
         }
         return InstitutionScope.restricted(actor.getInstitution().getId());

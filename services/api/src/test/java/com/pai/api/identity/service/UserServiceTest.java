@@ -38,6 +38,7 @@ class UserServiceTest {
     private UserRoleRepository userRoleRepository;
     private IdentityService identityService;
     private DataScope dataScope;
+    private IdentityMapper mapper;
     private UserService service;
 
     @BeforeEach
@@ -47,7 +48,8 @@ class UserServiceTest {
         userRoleRepository = mock(UserRoleRepository.class);
         identityService = mock(IdentityService.class);
         dataScope = new DataScope();
-        service = new UserService(userRepository, roleRepository, userRoleRepository, identityService, dataScope);
+        mapper = new IdentityMapper(userRepository);
+        service = new UserService(userRepository, roleRepository, userRoleRepository, identityService, dataScope, mapper);
     }
 
     private static <T> T mock(Class<T> type) {

@@ -65,12 +65,7 @@ public class InstitutionService {
                 .findById(id)
                 .orElseThrow(() -> new InstitutionNotFoundException("La institucion no existe."));
 
-        InstitutionEntity.Status parsed;
-        try {
-            parsed = InstitutionEntity.Status.valueOf(status.trim().toUpperCase());
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("Estado invalido. Usa ACTIVE o INACTIVE.");
-        }
+        InstitutionEntity.Status parsed = IdentityRules.parseInstitutionStatus(status);
 
         entity.setStatus(parsed);
         entity.setUpdatedAt(Instant.now());

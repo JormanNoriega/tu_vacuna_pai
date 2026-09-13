@@ -12,7 +12,6 @@ import com.pai.api.identity.repository.UserRepository;
 import com.pai.api.identity.repository.UserRoleRepository;
 import com.pai.api.shared.exceptions.RoleNotFoundException;
 import java.time.Instant;
-import java.util.List;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,16 +43,19 @@ public class UserMirrorWriter {
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
     private final ProvisioningOperationRepository operationRepository;
+    private final IdentityMapper mapper;
 
     public UserMirrorWriter(
             UserRepository userRepository,
             RoleRepository roleRepository,
             UserRoleRepository userRoleRepository,
-            ProvisioningOperationRepository operationRepository) {
+            ProvisioningOperationRepository operationRepository,
+            IdentityMapper mapper) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userRoleRepository = userRoleRepository;
         this.operationRepository = operationRepository;
+        this.mapper = mapper;
     }
 
     @Transactional
@@ -91,20 +93,6 @@ public class UserMirrorWriter {
             }
         }
 
-        return new UserResponse(
-                operation.getAuthUserId(),
-                operation.getEmail(),
-                operation.getFullName(),
-                operation.getInstitutionId(),
-                List.of(roleCode),
-                UserEntity.Status.ACTIVE.name(),
-                operation.getDocumentType(),
-                operation.getDocumentNumber(),
-                operation.getPhone(),
-                operation.getBirthDate(),
-                operation.getGender(),
-                operation.getProfessionCode(),
-                operation.getProfessionalRegistrationNumber(),
-                operation.getProfessionalRegistrationType());
+        return mapper.toUserResponse(operation);
     }
 }

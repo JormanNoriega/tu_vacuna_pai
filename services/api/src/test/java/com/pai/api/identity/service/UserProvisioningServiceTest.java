@@ -20,11 +20,13 @@ import com.pai.api.identity.entity.ProvisioningOperationStatus;
 import com.pai.api.identity.repository.InstitutionRepository;
 import com.pai.api.identity.repository.ProfessionRepository;
 import com.pai.api.identity.repository.ProvisioningOperationRepository;
+import com.pai.api.identity.repository.UserRepository;
 import com.pai.api.identity.service.AuthUserLookupService.AuthUserRecord;
 import com.pai.api.shared.exceptions.EmailAlreadyExistsException;
 import com.pai.api.shared.exceptions.InstitutionNotFoundException;
 import com.pai.api.shared.exceptions.PermissionDeniedException;
 import com.pai.api.shared.exceptions.UncertainProvisioningException;
+import com.pai.api.shared.security.PermissionGuard;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -42,6 +44,7 @@ class UserProvisioningServiceTest {
     private static final String ACCESS_TOKEN = "access-token";
 
     private IdentityService identityService;
+    private PermissionGuard guard;
     private InstitutionRepository institutionRepository;
     private ProfessionRepository professionRepository;
     private AuthUserProvisioningClient authUserClient;
@@ -53,6 +56,7 @@ class UserProvisioningServiceTest {
     @BeforeEach
     void setUp() {
         identityService = mock(IdentityService.class);
+        guard = new PermissionGuard(identityService);
         institutionRepository = mock(InstitutionRepository.class);
         professionRepository = mock(ProfessionRepository.class);
         authUserClient = mock(AuthUserProvisioningClient.class);
@@ -60,13 +64,14 @@ class UserProvisioningServiceTest {
         authUserLookup = mock(AuthUserLookupService.class);
         mirrorWriter = mock(UserMirrorWriter.class);
         service = new UserProvisioningService(
-                identityService,
+                guard,
                 institutionRepository,
                 professionRepository,
                 authUserClient,
                 operationRepository,
                 authUserLookup,
-                mirrorWriter);
+                mirrorWriter,
+                new IdentityMapper(mock(UserRepository.class)));
         when(professionRepository.existsByCode(anyString())).thenReturn(true);
         when(operationRepository.save(any(ProvisioningOperationEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));

@@ -11,12 +11,12 @@ import com.pai.api.identity.repository.ProvisioningOperationRepository;
 import com.pai.api.shared.exceptions.AuthUserProvisioningException;
 import com.pai.api.shared.exceptions.EmailAlreadyExistsException;
 import com.pai.api.shared.exceptions.InstitutionNotFoundException;
-import com.pai.api.shared.exceptions.PermissionDeniedException;
 import com.pai.api.shared.exceptions.ProvisioningPendingException;
 import com.pai.api.shared.exceptions.UncertainProvisioningException;
+import com.pai.api.shared.security.PermissionGuard;
 import com.pai.api.shared.util.DocumentNormalizer;
+import com.pai.api.shared.util.Strings;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -54,35 +54,36 @@ public class UserProvisioningService {
 
     private static final String ADMIN_INSTITUTION_ROLE = "ADMIN_INSTITUTION";
     private static final String VACCINATOR_ROLE = "VACCINATOR";
-    private static final String USER_MANAGE_PERMISSION = "USER_MANAGE";
-    private static final String INSTITUTION_WRITE_PERMISSION = "INSTITUTION_WRITE";
 
     private static final Set<ProvisioningOperationStatus> ADOPTABLE_FROM =
             Set.of(ProvisioningOperationStatus.PENDING, ProvisioningOperationStatus.UNCERTAIN);
 
-    private final IdentityService identityService;
+    private final PermissionGuard guard;
     private final InstitutionRepository institutionRepository;
     private final ProfessionRepository professionRepository;
     private final AuthUserProvisioningClient authUserClient;
     private final ProvisioningOperationRepository operationRepository;
     private final AuthUserLookupService authUserLookup;
     private final UserMirrorWriter mirrorWriter;
+    private final IdentityMapper mapper;
 
     public UserProvisioningService(
-            IdentityService identityService,
+            PermissionGuard guard,
             InstitutionRepository institutionRepository,
             ProfessionRepository professionRepository,
             AuthUserProvisioningClient authUserClient,
             ProvisioningOperationRepository operationRepository,
             AuthUserLookupService authUserLookup,
-            UserMirrorWriter mirrorWriter) {
-        this.identityService = identityService;
+            UserMirrorWriter mirrorWriter,
+            IdentityMapper mapper) {
+        this.guard = guard;
         this.institutionRepository = institutionRepository;
         this.professionRepository = professionRepository;
         this.authUserClient = authUserClient;
         this.operationRepository = operationRepository;
         this.authUserLookup = authUserLookup;
         this.mirrorWriter = mirrorWriter;
+        this.mapper = mapper;
     }
 
     /**
@@ -92,10 +93,7 @@ public class UserProvisioningService {
      */
     public UserResponse createInstitutionAdmin(
             UUID actorId, String accessToken, CreateInstitutionAdminRequest request) {
-        AuthorizedUser actor = identityService.resolve(actorId);
-        if (!actor.getPermissions().contains(INSTITUTION_WRITE_PERMISSION)) {
-            throw new PermissionDeniedException("No tienes permiso para crear administradores de institucion.");
-        }
+        AuthorizedUser actor = guard.require(actorId, IdentityPermissions.INSTITUTION_WRITE);
 
         institutionRepository
                 .findById(request.institutionId())
@@ -124,10 +122,7 @@ public class UserProvisioningService {
      * {@code app.professions}.
      */
     public UserResponse createVaccinator(UUID actorId, String accessToken, CreateVaccinatorRequest request) {
-        AuthorizedUser actor = identityService.resolve(actorId);
-        if (!actor.getPermissions().contains(USER_MANAGE_PERMISSION)) {
-            throw new PermissionDeniedException("No tienes permiso para crear vacunadores.");
-        }
+        AuthorizedUser actor = guard.require(actorId, IdentityPermissions.USER_MANAGE);
 
         String documentType = DocumentNormalizer.normalizeType(request.documentType());
         String documentNumber = DocumentNormalizer.normalize(request.documentNumber());
@@ -135,7 +130,7 @@ public class UserProvisioningService {
             throw new IllegalArgumentException("El numero de documento no es valido para el tipo seleccionado.");
         }
 
-        String professionCode = normalizeProfessionCode(request.professionCode());
+        String professionCode = DocumentNormalizer.normalizeType(request.professionCode());
         if (!professionRepository.existsByCode(professionCode)) {
             throw new IllegalArgumentException("La profesion seleccionada no esta configurada.");
         }
@@ -143,12 +138,12 @@ public class UserProvisioningService {
         AuthUserProfile profile = new AuthUserProfile(
                 documentType,
                 documentNumber,
-                trimToNull(request.phone()),
+                Strings.trimToNull(request.phone()),
                 request.birthDate(),
                 DocumentNormalizer.normalizeType(request.gender()),
                 professionCode,
                 DocumentNormalizer.normalize(request.professionalRegistrationNumber()),
-                trimToNull(request.professionalRegistrationType()));
+                Strings.trimToNull(request.professionalRegistrationType()));
 
         return provision(
                 actor,
@@ -425,37 +420,7 @@ public class UserProvisioningService {
      * idempotente). Los roles de estas operaciones son unicos por diseno.
      */
     private UserResponse replayResult(ProvisioningOperationEntity op) {
-        return new UserResponse(
-                op.getAuthUserId(),
-                op.getEmail(),
-                op.getFullName(),
-                op.getInstitutionId(),
-                List.of(op.getRole()),
-                "ACTIVE",
-                op.getDocumentType(),
-                op.getDocumentNumber(),
-                op.getPhone(),
-                op.getBirthDate(),
-                op.getGender(),
-                op.getProfessionCode(),
-                op.getProfessionalRegistrationNumber(),
-                op.getProfessionalRegistrationType());
-    }
-
-    private static String normalizeProfessionCode(String raw) {
-        if (raw == null) {
-            return null;
-        }
-        String s = raw.trim().toUpperCase();
-        return s.isEmpty() ? null : s;
-    }
-
-    private static String trimToNull(String raw) {
-        if (raw == null) {
-            return null;
-        }
-        String s = raw.trim();
-        return s.isEmpty() ? null : s;
+        return mapper.toUserResponse(op);
     }
 
     /**

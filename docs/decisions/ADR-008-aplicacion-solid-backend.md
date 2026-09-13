@@ -123,7 +123,8 @@ Se añaden dos reglas a `ArchitectureTest.java`:
 - Se elimina código muerto y SQL nativo duplicado; la query upsert queda
   declarada en el repositorio (DIP).
 - 116 tests en verde sobre la base pre-merge; **127 tests tras integrar el
-  PR #1** (ver la actualización al final del ADR).
+  PR #1**; **140 tests tras auditar el catálogo** (ver actualizaciones al final
+  del ADR).
 
 ### Negativas
 
@@ -142,6 +143,8 @@ Se añaden dos reglas a `ArchitectureTest.java`:
 mvnw.cmd compile && mvnw.cmd test
 → 116 tests, 0 fallos (BUILD SUCCESS), sin base de datos
 → 127 tests, 0 fallos (BUILD SUCCESS) tras integrar el PR #1 (ver actualización)
+→ 140 tests, 0 fallos (BUILD SUCCESS) tras la auditoría SOLID del catálogo
+→ 146 tests, 0 fallos (BUILD SUCCESS) tras la auditoría SOLID del módulo identity
 ```
 
 ## Actualización — integración del PR #1 (motor offline, 2026-09-13)
@@ -165,3 +168,66 @@ el cliente Flutter offline. Consecuencias sobre el refactor:
 - Reglas ArchUnit sin cambios y en verde tras el merge.
 - Verificado: `mvnw test` → **127 tests, 0 fallos**, y smoke boot con Supabase
   → Flyway aplicó V11–V15 (schema v15). Backend cerrado tras verificar.
+
+## Actualización — auditoría SOLID del catálogo (2026-09-13)
+
+Segunda pasada sobre el módulo `catalog` (el único estable de la lista
+"pendiente" del matriz original). Hallazgos y mejoras:
+
+- **DRY/SRP (CC-07)**: el mapeo entidad→DTO de `VaccineResponse`/`OptionResponse`
+  estaba duplicado entre `VaccineService` y `InstitutionVaccineService` (métodos
+  privados `v/o/t`, `toResponse`, `toVaccineResponse`, más la sugerencia inline).
+  Se creó `catalog/service/CatalogMapper.java` que centraliza
+  `toVaccine`, `toGlobalOption`, `toTemplate`, `toInstitutionOption`,
+  `toSuggestedOption` y `toInstitutionVaccine`.
+- **DRY (CC-08)**: las validaciones de tipos de opción y `requireValue` estaban
+  duplicadas como privadas; se movieron a `catalog/service/CatalogRules.java`.
+- `GeoCatalogService` y `ReferenceCatalogService` (solo lectura) se auditaron y
+  quedaron **sin hallazgos**.
+- Tests nuevos sin BD: `CatalogSelectionServiceTest` (6 — vacuna inactiva/no
+  habilitada, opciones inválidas, snapshot), `CatalogMapperTest` (5) y
+  `ReferenceCatalogServiceTest` (2). El conflicto de dependencias con el
+  coordinador/atención ya estaba cubierto por `AttentionServiceTest`.
+- Verificado: `mvnw test` → **140 tests, 0 fallos**; smoke boot con Supabase →
+  Flyway **validó 16 migraciones (schema v15)**, health `UP`, endpoints del
+  catálogo mapeados (responden autenticados) y `GeoCatalogImporter` sembrado
+  (33 departamentos, 1122 municipios). Backend cerrado tras verificar.
+- `identity` (incluye `UserProvisioningService`) quedó pendiente de auditar:
+  no fue modificado por ninguna rama y su integración se consideró de riesgo
+  alto (ver actualización siguiente).
+
+## Actualización — auditoría SOLID del módulo identity (2026-09-13)
+
+Tercera pasada sobre `identity`, el último módulo estable y habilitado de la
+lista pendiente. Hallazgos y mejoras:
+
+- **DRY/SRP (CC-09)**: `UserResponse` se construía en cuatro lugares
+  (`UserService.toResponse`, el inline de `updateStatus` con drift de estado,
+  `UserProvisioningService.replayResult` y `UserMirrorWriter`). Nuevo
+  `identity/service/IdentityMapper.java` con `toUserResponse` (entity, entity
+  + estado explícito para actualizaciones scopeadas, y operation de
+  aprovisionamiento). El drift `parsed.name()`/`user.getStatus().name()` quedó
+  explícito por parámetro.
+- **DRY/SRP (CC-10)**: `UserProvisioningService` re-implementaba la ceremonia
+  de permiso (`resolve` + `contains` + throw) que `PermissionGuard` ya
+  centraliza; se inyectó el guard y se creó `IdentityPermissions` con los
+  nombres canónicos (`INSTITUTION_WRITE`, `USER_MANAGE`). `AdminController`
+  reemplazó los SpEL repetidos por constantes (`WRITE_ONLY`, `MANAGE_ONLY`,
+  `MANAGE_OR_WRITE`).
+- **DRY (CC-11)**: `parseStatus` duplicado pasó a `IdentityRules`
+  (`parseUserStatus`/`parseInstitutionStatus`); los helpers privados
+  `trimToNull` y `normalizeProfessionCode` se reemplazaron por
+  `Strings.trimToNull` y `DocumentNormalizer.normalizeType`.
+- Límite del refactor: la **máquina de estados del aprovisionamiento**
+  (transiciones/compensación) no se modificó; solo la ceremonia de acceso y el
+  mapeo. Los tests de permiso verifican el tipo de excepción, no el mensaje,
+  por lo que el cambio a `PermissionGuard` no alteró las aserciones.
+- Tests: nuevos `IdentityMapperTest` (3) e `IdentityRulesTest` (3);
+  constructores actualizados en `UserServiceTest`, `UserProvisioningServiceTest`
+  (`guard = new PermissionGuard(identityService)`) y `UserMirrorWriterTest`.
+- Verificado: `mvnw test` → **146 tests, 0 fallos**; smoke boot con Supabase →
+  Flyway **validó 16 migraciones (schema v15)**, health `UP`, `/api/v1/me` y
+  los endpoints de `AdminController` mapeados (401 sin JWT, no 404). Backend
+  cerrado tras verificar.
+- Pendiente restante: `reports` (esqueleto sin funcionalidad) y la revisión
+  menor de la infraestructura `audit` del coordinador.

@@ -59,7 +59,10 @@ sincronización), la arquitectura por capas declarada en
 ADR-006 se respeta, y toda verificación unitaria se hace sin base de datos:
 112 tests unitarios de negocio + 4 reglas ArchUnit sobre la base pre-merge
 = \textbf{116 tests, 0 fallos}; tras integrar el PR~#1 del motor offline,
-\textbf{127 tests, 0 fallos} (sección~\ref{sec:integracion}).
+\textbf{127 tests, 0 fallos} y, tras las auditorías SOLID del catálogo y del
+módulo \texttt{identity}, \textbf{146 tests, 0 fallos} (secciones
+~\ref{sec:integracion},~\ref{sec:auditoria-catalogo}
+y~\ref{sec:auditoria-identity}).
 
 Los cuatro problemas atacados son:
 
@@ -325,14 +328,25 @@ mvnw.cmd compile && mvnw.cmd test
   \item Tras integrar el PR~#1 (motor offline): \textbf{127 tests, 0 fallos}.
         Se mantienen las 9 reglas ArchUnit en verde y se suman los tests del
         módulo \texttt{synchronization} (push/pull) y los de pacientes fase 2.
+  \item Tras la auditoría SOLID del catálogo: \textbf{140 tests, 0 fallos}
+        (\texttt{CatalogSelectionServiceTest} 6, \texttt{CatalogMapperTest} 5,
+        \texttt{ReferenceCatalogServiceTest} 2 nuevos). Ver
+        sección~\ref{sec:auditoria-catalogo}.
+  \item Tras la auditoría SOLID del módulo \texttt{identity}:
+        \textbf{146 tests, 0 fallos} (\texttt{IdentityMapperTest} 3 y
+        \texttt{IdentityRulesTest} 3 nuevos). Ver
+        sección~\ref{sec:auditoria-identity}.
   \item Smoke boot con Supabase tras la integración: el backend arranca
-        (\texttt{Started ApiApplication}), Flyway aplica V11--V15 (schema en
-        v15) y el health responde \texttt{UP}; el backend se cierra al
-        terminar la verificación.
+        (\texttt{Started ApiApplication}), Flyway validó 16 migraciones
+        (schema V11--V15 en v15) y el health responde \texttt{UP}; los
+        endpoints del catálogo y de identity quedan mapeados (401 sin JWT, no
+        404); el backend se cierra al terminar la verificación.
   \item Tests actualizados: \texttt{AttentionServiceTest},
         \texttt{PatientServiceTest}, \texttt{InstitutionVaccineServiceCloneTest}
         (ya no mockean \texttt{EntityManager} ni repositorios de catálogo;
-        mockean los nuevos colaboradores).
+        mockean los nuevos colaboradores) y \texttt{UserServiceTest},
+        \texttt{UserProvisioningServiceTest}, \texttt{UserMirrorWriterTest}
+        (constructores con \texttt{IdentityMapper}/\texttt{PermissionGuard}).
   \item El backend también compila y arranca con \texttt{spring-boot:run}
         (health \texttt{UP}) usando el JDK real
         \texttt{C:\textbackslash Program Files\textbackslash Java\textbackslash jdk-26.0.2.1}.
@@ -362,16 +376,81 @@ en \texttt{features-brayan} conservó el refactor SOLID y adaptó lo necesario:
   \item Las reglas ArchUnit no cambiaron y quedaron en verde tras el merge.
 \end{itemize}
 
-El entregable de control de cambios (tabla CC-01..CC-06) y el checklist de
+El entregable de control de cambios (tabla CC-01..CC-08) y el checklist de
 funcionalidades MVP preservadas viven en
 \texttt{docs/engineering/control-de-cambios-solid.md}.
+
+\section{Auditoría SOLID del catálogo} \label{sec:auditoria-catalogo}
+
+Segunda pasada sobre el módulo \texttt{catalog} (estable y completo): se
+encontraron dos focos de duplicación y se corrigieron sin cambiar el contrato:
+
+\begin{itemize}
+  \item \textbf{DRY/SRP -- \texttt{CatalogMapper} (CC-07)}: el mapeo
+        entidad\texttt{-}$>$DTO de \texttt{VaccineResponse}/\texttt{OptionResponse}
+        estaba duplicado entre \texttt{VaccineService} (métodos privados
+        \texttt{v/o/t}) e \texttt{InstitutionVaccineService}
+        (\texttt{toResponse}, \texttt{toVaccineResponse}) más la sugerencia
+        inline. El nuevo \texttt{catalog/service/CatalogMapper.java} centraliza
+        \texttt{toVaccine}, \texttt{toGlobalOption}, \texttt{toTemplate},
+        \texttt{toInstitutionOption}, \texttt{toSuggestedOption} y
+        \texttt{toInstitutionVaccine}; ambos servicios orquestan y delegan la
+        conversión.
+  \item \textbf{DRY -- \texttt{CatalogRules} (CC-08)}: las validaciones de tipos
+        de opción (\texttt{validateGlobalType}, \texttt{validateTemplateType},
+        \texttt{LOCAL\_OPTION\_TYPES}) y \texttt{requireValue} se movieron a
+        \texttt{catalog/service/CatalogRules.java}.
+  \item \texttt{GeoCatalogService} y \texttt{ReferenceCatalogService} (solo
+        lectura) se auditaron y quedaron sin hallazgos.
+\end{itemize}
+
+Verificación: \textbf{140 tests, 0 fallos} sin base de datos; smoke boot con
+Supabase (Flyway v15, health \texttt{UP}, endpoints del catálogo mapeados,
+\texttt{GeoCatalogImporter} sembrado: 33 departamentos, 1122 municipios).
+
+\section{Auditoría SOLID del módulo identity} \label{sec:auditoria-identity}
+
+Tercera pasada sobre \texttt{identity} (el último módulo estable y habilitado
+pendiente). La segunda barrera de permisos re-implementaba manualmente la
+ceremonia que \texttt{PermissionGuard} ya centraliza, y el mapeo
+entidad{}${}\to{}$DTO se duplicaba:
+
+\begin{itemize}
+  \item \textbf{DRY/SRP -- \texttt{IdentityMapper} (CC-09)}:
+        \texttt{UserResponse} se construía en cuatro lugares
+        (\texttt{UserService.toResponse}, el inline de \texttt{updateStatus} con
+        drift de estado, \texttt{UserProvisioningService.replayResult} y
+        \texttt{UserMirrorWriter}). El nuevo
+        \texttt{identity/service/IdentityMapper.java} centraliza
+        \texttt{toUserResponse} (entity; entity + estado explícito para
+        actualizaciones scopeadas; operation de aprovisionamiento).
+  \item \textbf{DRY/SRP -- \texttt{PermissionGuard} (CC-10)}:
+        \texttt{UserProvisioningService} resolvía actor y validaba permiso a
+        mano en dos métodos; ahora inyecta \texttt{PermissionGuard}.
+        \texttt{IdentityPermissions} centraliza los nombres
+        (\texttt{INSTITUTION\_WRITE}, \texttt{USER\_MANAGE}) y
+        \texttt{AdminController} usa constantes SpEL. La máquina de estados del
+        aprovisionamiento no se tocó.
+  \item \textbf{DRY -- \texttt{IdentityRules} y helpers compartidos (CC-11)}:
+        \texttt{parseStatus} duplicado quedó en
+        \texttt{identity/service/IdentityRules.java}; los privados
+        \texttt{trimToNull} y \texttt{normalizeProfessionCode} se reemplazaron
+        por \texttt{Strings} y \texttt{DocumentNormalizer} (shared).
+\end{itemize}
+
+Verificación: \textbf{146 tests, 0 fallos} sin base de datos
+(\texttt{IdentityMapperTest} 3 e \texttt{IdentityRulesTest} 3 nuevos); smoke
+boot con Supabase (Flyway v15, health \texttt{UP}, \texttt{/api/v1/me} y
+\texttt{AdminController} mapeados, 401 sin JWT). Queda sin funcionalidad el
+módulo \texttt{reports} (esqueleto) y pendiente una revisión menor de la
+infraestructura \texttt{audit} del coordinador.
 
 \section{Recomendaciones futuras}
 
 \begin{enumerate}
-  \item \textbf{Integrar \texttt{UserProvisioningService}} con
-        \texttt{PermissionGuard} y \texttt{Strings} (quedó fuera del alcance por
-        riesgo; ya tiene los recursos listos).
+  \item \textbf{Auditar la infraestructura \texttt{audit}} del coordinador con
+        las reglas ArchUnit (revisión menor; no se audita hasta ahora) y
+        acompañar el futuro \texttt{reports} con el mismo estándar.
   \item \textbf{Cancelaciones en el coordinador}: añadir un overload de
         \texttt{executeAudited} con \texttt{payloadFn} para llevar
         \texttt{cancel}/\texttt{cancelDose} a la misma ceremonia sin perder su
@@ -382,16 +461,16 @@ funcionalidades MVP preservadas viven en
   \item \textbf{Dependencia residual}: \texttt{AttentionService} aún importa
         \texttt{catalog.exception.OptimisticCatalogException}; migrar esa
         excepción genérica de versión optimista a \texttt{shared.exceptions}.
-  \item \textbf{Tests}: cubrir \texttt{CatalogSelectionService} con casos de
-        vacuna inactiva, no habilitada y opciones inválidas; cubrir
-        \texttt{PermissionGuard}.
-  \item \textbf{Mappers}: si el volumen de mapeo crece, evaluar MapStruct en
+  \item \textbf{Tests}: falta cubrir \texttt{PermissionGuard} con un test
+        directo (hoy se ejercita vía los servicios que lo inyectan).
+  \item \textbf{MapStruct}: si el volumen de mapeo crece, evaluar MapStruct en
         lugar de mappers manuales (sin cambiar la estructura expuesta).
   \item \textbf{Sync}: el \texttt{SyncEngine} (PR~#1) ya se integró; el
         \texttt{/sync/push} comparte la garantía D3 vía
-        \texttt{IdempotencyCoordinator} (adaptado a la firma v2). Pendiente:
-        auditar \texttt{identity}, \texttt{reports} y los catálogos
-        geográficos con las reglas ArchUnit.
+        \texttt{IdempotencyCoordinator} (adaptado a la firma v2). Los catálogos
+        geográficos e \texttt{identity} ya fueron auditados (secciones
+        ~\ref{sec:auditoria-catalogo} y~\ref{sec:auditoria-identity});
+        \texttt{reports} se auditará cuando exista funcionalidad.
 \end{enumerate}
 
 \end{document}
