@@ -28,85 +28,86 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class SyncPullService {
 
-    private static final int DEFAULT_LIMIT = 500;
-    private static final int MAX_LIMIT = 1000;
-    private static final String INITIAL_CURSOR = "0|";
+  private static final int DEFAULT_LIMIT = 500;
+  private static final int MAX_LIMIT = 1000;
+  private static final String INITIAL_CURSOR = "0|";
 
-    private final ProcessedOperationRepository repository;
-    private final IdentityService identity;
-    private final DataScope dataScope;
-    private final ObjectMapper mapper;
+  private final ProcessedOperationRepository repository;
+  private final IdentityService identity;
+  private final DataScope dataScope;
+  private final ObjectMapper mapper;
 
-    public SyncPullService(
-            ProcessedOperationRepository repository,
-            IdentityService identity,
-            DataScope dataScope,
-            ObjectMapper mapper) {
-        this.repository = repository;
-        this.identity = identity;
-        this.dataScope = dataScope;
-        this.mapper = mapper;
+  public SyncPullService(
+      ProcessedOperationRepository repository,
+      IdentityService identity,
+      DataScope dataScope,
+      ObjectMapper mapper) {
+    this.repository = repository;
+    this.identity = identity;
+    this.dataScope = dataScope;
+    this.mapper = mapper;
+  }
+
+  public SyncPullResponse pull(UUID actorId, String since, Integer limit) {
+    AuthorizedUser actor = identity.resolve(actorId);
+    UUID institutionId =
+        dataScope.resolveInstitutionId(actor, actor.getInstitution().getId());
+    long sequence = parseSequence(since);
+
+    List<ProcessedOperationEntity> rows =
+        repository.findByInstitutionIdAndSyncSequenceGreaterThanOrderBySyncSequenceAsc(
+            institutionId, sequence, PageRequest.of(0, normalizeLimit(limit)));
+
+    List<SyncOperation> operations = new ArrayList<>();
+    for (ProcessedOperationEntity row : rows) {
+      operations.add(new SyncOperation(
+          row.getOperationId(),
+          row.getCommandType(),
+          row.getAggregateId(),
+          readPayload(row.getPayload()),
+          List.of()));
     }
 
-    public SyncPullResponse pull(UUID actorId, String since, Integer limit) {
-        AuthorizedUser actor = identity.resolve(actorId);
-        UUID institutionId = dataScope.resolveInstitutionId(actor, actor.getInstitution().getId());
-        long sequence = parseSequence(since);
+    String nextCursor = rows.isEmpty() ? normalizeCursor(since) : cursor(rows.get(rows.size() - 1));
+    return new SyncPullResponse(operations, nextCursor);
+  }
 
-        List<ProcessedOperationEntity> rows =
-                repository.findByInstitutionIdAndSyncSequenceGreaterThanOrderBySyncSequenceAsc(
-                        institutionId, sequence, PageRequest.of(0, normalizeLimit(limit)));
-
-        List<SyncOperation> operations = new ArrayList<>();
-        for (ProcessedOperationEntity row : rows) {
-            operations.add(new SyncOperation(
-                    row.getOperationId(),
-                    row.getCommandType(),
-                    row.getAggregateId(),
-                    readPayload(row.getPayload()),
-                    List.of()));
-        }
-
-        String nextCursor = rows.isEmpty() ? normalizeCursor(since) : cursor(rows.get(rows.size() - 1));
-        return new SyncPullResponse(operations, nextCursor);
+  private long parseSequence(String since) {
+    if (since == null || since.isBlank()) {
+      return 0L;
     }
-
-    private long parseSequence(String since) {
-        if (since == null || since.isBlank()) {
-            return 0L;
-        }
-        String head = since.split("\\|", 2)[0].trim();
-        try {
-            return Long.parseLong(head);
-        } catch (NumberFormatException ex) {
-            return 0L;
-        }
+    String head = since.split("\\|", 2)[0].trim();
+    try {
+      return Long.parseLong(head);
+    } catch (NumberFormatException ex) {
+      return 0L;
     }
+  }
 
-    private int normalizeLimit(Integer limit) {
-        if (limit == null || limit <= 0) {
-            return DEFAULT_LIMIT;
-        }
-        return Math.min(limit, MAX_LIMIT);
+  private int normalizeLimit(Integer limit) {
+    if (limit == null || limit <= 0) {
+      return DEFAULT_LIMIT;
     }
+    return Math.min(limit, MAX_LIMIT);
+  }
 
-    private String cursor(ProcessedOperationEntity row) {
-        return row.getSyncSequence() + "|" + DateTimeFormatter.ISO_INSTANT.format(row.getCreatedAt());
-    }
+  private String cursor(ProcessedOperationEntity row) {
+    return row.getSyncSequence() + "|" + DateTimeFormatter.ISO_INSTANT.format(row.getCreatedAt());
+  }
 
-    private String normalizeCursor(String since) {
-        return (since == null || since.isBlank()) ? INITIAL_CURSOR : since;
-    }
+  private String normalizeCursor(String since) {
+    return (since == null || since.isBlank()) ? INITIAL_CURSOR : since;
+  }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> readPayload(String json) {
-        if (json == null || json.isBlank()) {
-            return Map.of();
-        }
-        try {
-            return mapper.readValue(json, Map.class);
-        } catch (Exception ex) {
-            return Map.of();
-        }
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> readPayload(String json) {
+    if (json == null || json.isBlank()) {
+      return Map.of();
     }
+    try {
+      return mapper.readValue(json, Map.class);
+    } catch (Exception ex) {
+      return Map.of();
+    }
+  }
 }

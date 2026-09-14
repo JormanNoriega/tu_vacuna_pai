@@ -79,6 +79,7 @@ public class PatientMapper {
                         guardian.getEmail(),
                         guardian.getAffiliationRegime(),
                         guardian.getInsurer(),
+                        guardian.getInsurerCode(),
                         guardian.getEthnicity(),
                         guardian.getDisplaced()))
                 .toList();
@@ -99,7 +100,10 @@ public class PatientMapper {
 
         PatientResponse.AffiliationDto affiliationDto = affiliation == null
                 ? null
-                : new PatientResponse.AffiliationDto(affiliation.getAffiliationRegime(), affiliation.getInsurer());
+                : new PatientResponse.AffiliationDto(
+                        affiliation.getAffiliationRegime(),
+                        affiliation.getInsurer(),
+                        affiliation.getInsurerCode());
 
         PatientResponse.SpecialConditionsDto specialDto = specialConditions == null
                 ? null

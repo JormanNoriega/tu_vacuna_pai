@@ -14,34 +14,34 @@ import java.util.UUID;
  * se guarda {@code lotNumber} (texto).
  */
 public record RegisterDoseRequest(
-        @NotNull(message = "La vacuna es obligatoria.") UUID vaccineId,
+    @NotNull(message = "La vacuna es obligatoria.") UUID vaccineId,
 
-        @NotNull(message = "La dosis es obligatoria.") UUID doseOptionId,
+    @NotNull(message = "La dosis es obligatoria.") UUID doseOptionId,
 
-        UUID pneumococcalTypeOptionId,
+    UUID pneumococcalTypeOptionId,
 
-        Instant applicationDate,
+    Instant applicationDate,
 
-        UUID lotId,
+    UUID lotId,
 
-        @Size(max = 60, message = "El lote no puede superar 60 caracteres.")
-        String lotNumber,
+    @Size(max = 60, message = "El lote no puede superar 60 caracteres.")
+    String lotNumber,
 
-        UUID selectedLaboratoryId,
+    UUID selectedLaboratoryId,
 
-        UUID selectedSyringeId,
+    UUID selectedSyringeId,
 
-        UUID selectedDropperId,
+    UUID selectedDropperId,
 
-        UUID selectedObservationId,
+    UUID selectedObservationId,
 
-        @Size(max = 60, message = "El lote de jeringa no puede superar 60 caracteres.")
-        String syringeLot,
+    @Size(max = 60, message = "El lote de jeringa no puede superar 60 caracteres.")
+    String syringeLot,
 
-        @Size(max = 120, message = "El diluyente no puede superar 120 caracteres.")
-        String diluent,
+    @Size(max = 120, message = "El diluyente no puede superar 120 caracteres.")
+    String diluent,
 
-        Integer vialCount,
+    Integer vialCount,
 
-        @Size(max = 500, message = "La observacion no puede superar 500 caracteres.")
-        String customObservation) {}
+    @Size(max = 500, message = "La observacion no puede superar 500 caracteres.")
+    String customObservation) {}

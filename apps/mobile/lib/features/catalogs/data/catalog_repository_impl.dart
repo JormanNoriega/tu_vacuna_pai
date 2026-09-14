@@ -15,6 +15,9 @@ class CatalogRepositoryImpl implements CatalogRepository {
 
   static const _effectiveCatalogKey = 'effective_catalog_v1';
   static const _departmentsKey = 'geo_departments_v1';
+  static const _countriesKey = 'geo_countries_v1';
+  static const _referenceCatalogsKey = 'reference_catalogs_v1';
+  static const _insurersKey = 'insurers_v1';
   static String _municipalitiesKey(String departmentId) =>
       'geo_municipalities_v1_$departmentId';
 
@@ -38,6 +41,45 @@ class CatalogRepositoryImpl implements CatalogRepository {
       final cached = await _cachedJsonList(_effectiveCatalogKey);
       if (cached == null || cached.isEmpty) rethrow;
       return cached.map(EffectiveVaccine.fromJson).toList();
+    }
+  }
+
+  @override
+  Future<List<GeoCountry>> listCountries(String token) async {
+    try {
+      final raw = await api.getCountries(token);
+      await _cacheJsonList(_countriesKey, raw);
+      return raw.map(GeoCountry.fromJson).toList();
+    } on ApiException {
+      final cached = await _cachedJsonList(_countriesKey);
+      if (cached == null || cached.isEmpty) rethrow;
+      return cached.map(GeoCountry.fromJson).toList();
+    }
+  }
+
+  @override
+  Future<List<ReferenceCatalog>> listReferenceCatalogs(String token) async {
+    try {
+      final raw = await api.getReferenceCatalogs(token);
+      await _cacheJsonList(_referenceCatalogsKey, raw);
+      return raw.map(ReferenceCatalog.fromJson).toList();
+    } on ApiException {
+      final cached = await _cachedJsonList(_referenceCatalogsKey);
+      if (cached == null || cached.isEmpty) rethrow;
+      return cached.map(ReferenceCatalog.fromJson).toList();
+    }
+  }
+
+  @override
+  Future<List<HealthInsurer>> listInsurers(String token) async {
+    try {
+      final raw = await api.getInsurers(token);
+      await _cacheJsonList(_insurersKey, raw);
+      return raw.map(HealthInsurer.fromJson).toList();
+    } on ApiException {
+      final cached = await _cachedJsonList(_insurersKey);
+      if (cached == null || cached.isEmpty) rethrow;
+      return cached.map(HealthInsurer.fromJson).toList();
     }
   }
 

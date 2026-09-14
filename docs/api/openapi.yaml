@@ -453,6 +453,34 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  # ------------------------------------------------------------------ Catalogos
+  /catalogs/insurers:
+    get:
+      tags: [Catalogs]
+      summary: Listar aseguradoras en salud (EPS) activas
+      description: >
+        Catalogo global de EPS. Con `regime` filtra por regimen incluyendo
+        siempre las de regimen `AMBOS`. Solo devuelve `is_active = true`.
+      parameters:
+        - name: regime
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [CONTRIBUTIVO, SUBSIDIADO, AMBOS]
+      responses:
+        '200':
+          description: Lista de aseguradoras activas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HealthInsurer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   # ------------------------------------------------------------------- Sync
   # Semántica completa de comandos/estados/cursor en docs/synchronization/sync-contract.md
   /sync/push:
@@ -629,6 +657,15 @@ components:
           type: string
         message:
           type: string
+    # ---- Catalogos
+    HealthInsurer:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        nit: { type: string }
+        name: { type: string }
+        code: { type: string, nullable: true }
+        regime: { type: string, enum: [CONTRIBUTIVO, SUBSIDIADO, AMBOS] }
     # ---- Pacientes
     CreatePatientRequest:
       type: object
@@ -706,15 +743,23 @@ components:
     # ---- Atenciones
     CreateAttentionRequest:
       type: object
-      required: [operationId, patientId]
+      required: [patientId]
       properties:
-        operationId: { type: string, format: uuid }
         patientId: { type: string, format: uuid }
+        attentionDate: { type: string, format: date-time, nullable: true }
+        observations: { type: string, nullable: true, maxLength: 2000 }
+        completeScheme: { type: boolean, nullable: true }
+        paiwebRegistered: { type: boolean, nullable: true }
+        paiwebNotRegisteredReason: { type: string, nullable: true, maxLength: 500 }
     UpdateAttentionRequest:
       type: object
-      required: [operationId, version]
+      required: [version]
       properties:
-        operationId: { type: string, format: uuid }
+        attentionDate: { type: string, format: date-time, nullable: true }
+        observations: { type: string, nullable: true, maxLength: 2000 }
+        completeScheme: { type: boolean, nullable: true }
+        paiwebRegistered: { type: boolean, nullable: true }
+        paiwebNotRegisteredReason: { type: string, nullable: true, maxLength: 500 }
         version: { type: integer }
     CancelAttentionRequest:
       type: object
@@ -745,13 +790,22 @@ components:
     # ---- Dosis
     RegisterDoseRequest:
       type: object
-      required: [operationId, vaccineId, appliedAt]
+      required: [vaccineId, doseOptionId]
       properties:
-        operationId: { type: string, format: uuid }
         vaccineId: { type: string, format: uuid }
-        appliedAt: { type: string, format: date-time }
-        lot: { type: string, nullable: true }
-        doseLabel: { type: string, nullable: true }
+        doseOptionId: { type: string, format: uuid }
+        pneumococcalTypeOptionId: { type: string, format: uuid, nullable: true }
+        applicationDate: { type: string, format: date-time, nullable: true }
+        lotId: { type: string, format: uuid, nullable: true }
+        lotNumber: { type: string, nullable: true, maxLength: 60 }
+        selectedLaboratoryId: { type: string, format: uuid, nullable: true }
+        selectedSyringeId: { type: string, format: uuid, nullable: true }
+        selectedDropperId: { type: string, format: uuid, nullable: true }
+        selectedObservationId: { type: string, format: uuid, nullable: true }
+        syringeLot: { type: string, nullable: true, maxLength: 60 }
+        diluent: { type: string, nullable: true, maxLength: 120 }
+        vialCount: { type: integer, nullable: true }
+        customObservation: { type: string, nullable: true, maxLength: 500 }
     CancelDoseRequest:
       type: object
       required: [operationId, reason]

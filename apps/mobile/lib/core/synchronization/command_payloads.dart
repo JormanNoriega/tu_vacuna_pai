@@ -16,6 +16,8 @@ class CommandPayloads {
     'sex': input.sex,
     if (input.demographics != null && !input.demographics!.isEmpty)
       'demographics': _demographics(input.demographics!),
+    if (input.affiliation != null && !input.affiliation!.isEmpty)
+      'affiliation': _affiliation(input.affiliation!),
     if (input.contacts.isNotEmpty) 'contacts': _contacts(input.contacts),
     if (input.addresses.any((address) => !address.isEmpty))
       'addresses': _addresses(input.addresses),
@@ -69,6 +71,13 @@ class CommandPayloads {
     if (_filled(value.educationLevel)) 'educationLevel': value.educationLevel,
   };
 
+  static Map<String, dynamic> _affiliation(NewPatientAffiliation value) => {
+    if (_filled(value.affiliationRegime))
+      'affiliationRegime': value.affiliationRegime,
+    if (_filled(value.insurer)) 'insurer': value.insurer,
+    if (_filled(value.insurerCode)) 'insurerCode': value.insurerCode,
+  };
+
   static List<Map<String, dynamic>> _contacts(
     List<NewPatientContact> contacts,
   ) => [
@@ -107,6 +116,10 @@ class CommandPayloads {
         if (_filled(guardian.documentNumber))
           'documentNumber': guardian.documentNumber,
         if (_filled(guardian.phone)) 'phone': guardian.phone,
+        if (_filled(guardian.affiliationRegime))
+          'affiliationRegime': guardian.affiliationRegime,
+        if (_filled(guardian.insurer)) 'insurer': guardian.insurer,
+        if (_filled(guardian.insurerCode)) 'insurerCode': guardian.insurerCode,
       },
   ];
 

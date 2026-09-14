@@ -35,80 +35,86 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/attentions")
 public class AttentionController {
 
-    private final AttentionService service;
+  private final AttentionService service;
 
-    public AttentionController(AttentionService service) {
-        this.service = service;
-    }
+  public AttentionController(AttentionService service) {
+    this.service = service;
+  }
 
-    @PostMapping
-    @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
-    public ResponseEntity<AttentionResponse> create(
-            Authentication authentication,
-            @RequestHeader(value = "Idempotency-Key", required = false) String operationId,
-            @Valid @RequestBody CreateAttentionRequest request) {
-        UUID actorId = actorId(authentication);
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(actorId, operationId, request));
-    }
+  @PostMapping
+  @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
+  public ResponseEntity<AttentionResponse> create(
+      Authentication authentication,
+      @RequestHeader(value = "Idempotency-Key", required = false) String operationId,
+      @Valid @RequestBody CreateAttentionRequest request) {
+    UUID actorId = actorId(authentication);
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(service.create(actorId, operationId, request));
+  }
 
-    @GetMapping("/{id}")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_READ')")
-    public ResponseEntity<AttentionResponse> get(Authentication authentication, @PathVariable UUID id) {
-        return ResponseEntity.ok(service.get(actorId(authentication), id));
-    }
+  @GetMapping("/{id}")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_READ')")
+  public ResponseEntity<AttentionResponse> get(
+      Authentication authentication, @PathVariable UUID id) {
+    return ResponseEntity.ok(service.get(actorId(authentication), id));
+  }
 
-    @GetMapping
-    @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_READ')")
-    public ResponseEntity<List<AttentionResponse>> listByPatient(
-            Authentication authentication, @RequestParam UUID patientId) {
-        return ResponseEntity.ok(service.listByPatient(actorId(authentication), patientId));
-    }
+  @GetMapping
+  @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_READ')")
+  public ResponseEntity<List<AttentionResponse>> listByPatient(
+      Authentication authentication, @RequestParam UUID patientId) {
+    return ResponseEntity.ok(service.listByPatient(actorId(authentication), patientId));
+  }
 
-    @PutMapping("/{id}")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
-    public ResponseEntity<AttentionResponse> update(
-            Authentication authentication, @PathVariable UUID id, @Valid @RequestBody UpdateAttentionRequest request) {
-        return ResponseEntity.ok(service.update(actorId(authentication), id, request));
-    }
+  @PutMapping("/{id}")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
+  public ResponseEntity<AttentionResponse> update(
+      Authentication authentication,
+      @PathVariable UUID id,
+      @Valid @RequestBody UpdateAttentionRequest request) {
+    return ResponseEntity.ok(service.update(actorId(authentication), id, request));
+  }
 
-    @PostMapping("/{id}/complete")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
-    public ResponseEntity<AttentionResponse> complete(
-            Authentication authentication,
-            @PathVariable UUID id,
-            @RequestHeader(value = "Idempotency-Key", required = false) String operationId) {
-        return ResponseEntity.ok(service.complete(actorId(authentication), operationId, id));
-    }
+  @PostMapping("/{id}/complete")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
+  public ResponseEntity<AttentionResponse> complete(
+      Authentication authentication,
+      @PathVariable UUID id,
+      @RequestHeader(value = "Idempotency-Key", required = false) String operationId) {
+    return ResponseEntity.ok(service.complete(actorId(authentication), operationId, id));
+  }
 
-    @PostMapping("/{id}/cancel")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
-    public ResponseEntity<AttentionResponse> cancel(
-            Authentication authentication, @PathVariable UUID id, @Valid @RequestBody CancelAttentionRequest request) {
-        return ResponseEntity.ok(service.cancel(actorId(authentication), id, request));
-    }
+  @PostMapping("/{id}/cancel")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
+  public ResponseEntity<AttentionResponse> cancel(
+      Authentication authentication,
+      @PathVariable UUID id,
+      @Valid @RequestBody CancelAttentionRequest request) {
+    return ResponseEntity.ok(service.cancel(actorId(authentication), id, request));
+  }
 
-    @PostMapping("/{id}/doses")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
-    public ResponseEntity<AppliedDoseResponse> registerDose(
-            Authentication authentication,
-            @PathVariable UUID id,
-            @RequestHeader(value = "Idempotency-Key", required = false) String operationId,
-            @Valid @RequestBody RegisterDoseRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(service.registerDose(actorId(authentication), operationId, id, request));
-    }
+  @PostMapping("/{id}/doses")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
+  public ResponseEntity<AppliedDoseResponse> registerDose(
+      Authentication authentication,
+      @PathVariable UUID id,
+      @RequestHeader(value = "Idempotency-Key", required = false) String operationId,
+      @Valid @RequestBody RegisterDoseRequest request) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(service.registerDose(actorId(authentication), operationId, id, request));
+  }
 
-    @PostMapping("/{id}/doses/{doseId}/cancel")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
-    public ResponseEntity<AppliedDoseResponse> cancelDose(
-            Authentication authentication,
-            @PathVariable UUID id,
-            @PathVariable UUID doseId,
-            @Valid @RequestBody CancelDoseRequest request) {
-        return ResponseEntity.ok(service.cancelDose(actorId(authentication), id, doseId, request));
-    }
+  @PostMapping("/{id}/doses/{doseId}/cancel")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
+  public ResponseEntity<AppliedDoseResponse> cancelDose(
+      Authentication authentication,
+      @PathVariable UUID id,
+      @PathVariable UUID doseId,
+      @Valid @RequestBody CancelDoseRequest request) {
+    return ResponseEntity.ok(service.cancelDose(actorId(authentication), id, doseId, request));
+  }
 
-    private UUID actorId(Authentication authentication) {
-        return ((AuthorizedUser) authentication.getPrincipal()).getId();
-    }
+  private UUID actorId(Authentication authentication) {
+    return ((AuthorizedUser) authentication.getPrincipal()).getId();
+  }
 }

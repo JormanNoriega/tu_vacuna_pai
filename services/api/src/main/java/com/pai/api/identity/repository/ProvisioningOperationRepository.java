@@ -17,61 +17,62 @@ import org.springframework.transaction.annotation.Transactional;
  * de modo que un reintento o un request concurrente nunca pisan un estado que
  * ya avanzo.
  */
-public interface ProvisioningOperationRepository extends JpaRepository<ProvisioningOperationEntity, UUID> {
+public interface ProvisioningOperationRepository
+    extends JpaRepository<ProvisioningOperationEntity, UUID> {
 
-    /**
-     * Transicion de estado con guarda. Devuelve 1 si el estado previo coincidia
-     * con {@code expectedStatus}; 0 si ya avanzo (concurrencia).
-     */
-    @Modifying
-    @Transactional
-    @Query("""
-        UPDATE ProvisioningOperationEntity o
-        SET o.status = :status, o.updatedAt = :updatedAt,
-            o.authUserId = :authUserId, o.error = :error
-        WHERE o.operationId = :operationId AND o.status = :expectedStatus
-        """)
-    int transition(
-            @Param("operationId") UUID operationId,
-            @Param("expectedStatus") ProvisioningOperationStatus expectedStatus,
-            @Param("status") ProvisioningOperationStatus status,
-            @Param("authUserId") UUID authUserId,
-            @Param("error") String error,
-            @Param("updatedAt") Instant updatedAt);
+  /**
+   * Transicion de estado con guarda. Devuelve 1 si el estado previo coincidia
+   * con {@code expectedStatus}; 0 si ya avanzo (concurrencia).
+   */
+  @Modifying
+  @Transactional
+  @Query("""
+      UPDATE ProvisioningOperationEntity o
+      SET o.status = :status, o.updatedAt = :updatedAt,
+          o.authUserId = :authUserId, o.error = :error
+      WHERE o.operationId = :operationId AND o.status = :expectedStatus
+      """)
+  int transition(
+      @Param("operationId") UUID operationId,
+      @Param("expectedStatus") ProvisioningOperationStatus expectedStatus,
+      @Param("status") ProvisioningOperationStatus status,
+      @Param("authUserId") UUID authUserId,
+      @Param("error") String error,
+      @Param("updatedAt") Instant updatedAt);
 
-    /**
-     * Registra el auth.user creado y avanza a {@code AUTH_CREATED} desde
-     * cualquier estado previo que aun no tenga auth.user ({@code PENDING} o
-     * {@code UNCERTAIN}). Devuelve 0 si la operacion ya avanzo.
-     */
-    @Modifying
-    @Transactional
-    @Query("""
-        UPDATE ProvisioningOperationEntity o
-        SET o.status = 'AUTH_CREATED', o.authUserId = :authUserId,
-            o.updatedAt = :updatedAt, o.error = NULL
-        WHERE o.operationId = :operationId AND o.status IN :allowedFrom
-        """)
-    int adoptAuthUser(
-            @Param("operationId") UUID operationId,
-            @Param("allowedFrom") Collection<ProvisioningOperationStatus> allowedFrom,
-            @Param("authUserId") UUID authUserId,
-            @Param("updatedAt") Instant updatedAt);
+  /**
+   * Registra el auth.user creado y avanza a {@code AUTH_CREATED} desde
+   * cualquier estado previo que aun no tenga auth.user ({@code PENDING} o
+   * {@code UNCERTAIN}). Devuelve 0 si la operacion ya avanzo.
+   */
+  @Modifying
+  @Transactional
+  @Query("""
+      UPDATE ProvisioningOperationEntity o
+      SET o.status = 'AUTH_CREATED', o.authUserId = :authUserId,
+          o.updatedAt = :updatedAt, o.error = NULL
+      WHERE o.operationId = :operationId AND o.status IN :allowedFrom
+      """)
+  int adoptAuthUser(
+      @Param("operationId") UUID operationId,
+      @Param("allowedFrom") Collection<ProvisioningOperationStatus> allowedFrom,
+      @Param("authUserId") UUID authUserId,
+      @Param("updatedAt") Instant updatedAt);
 
-    /**
-     * Marca la operacion como completada. Acepta cualquier estado previo que
-     * implique un auth.user existente sin espejo; devuelve 0 si ya esta en un
-     * estado terminal (p. ej. COMPLETED).
-     */
-    @Modifying
-    @Transactional
-    @Query("""
-        UPDATE ProvisioningOperationEntity o
-        SET o.status = 'COMPLETED', o.updatedAt = :updatedAt
-        WHERE o.operationId = :operationId AND o.status IN :allowedFrom
-        """)
-    int markCompleted(
-            @Param("operationId") UUID operationId,
-            @Param("allowedFrom") Collection<ProvisioningOperationStatus> allowedFrom,
-            @Param("updatedAt") Instant updatedAt);
+  /**
+   * Marca la operacion como completada. Acepta cualquier estado previo que
+   * implique un auth.user existente sin espejo; devuelve 0 si ya esta en un
+   * estado terminal (p. ej. COMPLETED).
+   */
+  @Modifying
+  @Transactional
+  @Query("""
+      UPDATE ProvisioningOperationEntity o
+      SET o.status = 'COMPLETED', o.updatedAt = :updatedAt
+      WHERE o.operationId = :operationId AND o.status IN :allowedFrom
+      """)
+  int markCompleted(
+      @Param("operationId") UUID operationId,
+      @Param("allowedFrom") Collection<ProvisioningOperationStatus> allowedFrom,
+      @Param("updatedAt") Instant updatedAt);
 }

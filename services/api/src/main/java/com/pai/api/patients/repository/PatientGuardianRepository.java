@@ -7,5 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PatientGuardianRepository extends JpaRepository<PatientGuardianEntity, UUID> {
 
-    List<PatientGuardianEntity> findByPatientIdOrderByCreatedAtAsc(UUID patientId);
+  List<PatientGuardianEntity> findByPatientIdOrderByCreatedAtAsc(UUID patientId);
 }

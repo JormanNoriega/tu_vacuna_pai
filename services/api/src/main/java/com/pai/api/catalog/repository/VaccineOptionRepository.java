@@ -6,17 +6,18 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 public interface VaccineOptionRepository extends JpaRepository<VaccineOptionEntity, UUID> {
-    List<VaccineOptionEntity> findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(UUID id);
+  List<VaccineOptionEntity> findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(UUID id);
 
-    List<VaccineOptionEntity> findByVaccineIdInAndActiveTrueOrderByVaccineIdAscSortOrderAscDisplayNameAsc(
-            Collection<UUID> vaccineIds);
+  List<VaccineOptionEntity>
+      findByVaccineIdInAndActiveTrueOrderByVaccineIdAscSortOrderAscDisplayNameAsc(
+          Collection<UUID> vaccineIds);
 
-    Optional<VaccineOptionEntity> findByIdAndVaccineId(UUID id, UUID vaccineId);
+  Optional<VaccineOptionEntity> findByIdAndVaccineId(UUID id, UUID vaccineId);
 
-    boolean existsByVaccineIdAndFieldTypeAndValueNormalizedAndActiveTrue(
-            UUID vaccineId, String fieldType, String valueNormalized);
+  boolean existsByVaccineIdAndFieldTypeAndValueNormalizedAndActiveTrue(
+      UUID vaccineId, String fieldType, String valueNormalized);
 
-    @Query("select o from VaccineOptionEntity o where o.vaccineId=:v and o.active=true order by"
-            + " o.sortOrder,o.displayName")
-    List<VaccineOptionEntity> lockActive(@Param("v") UUID vaccineId);
+  @Query("select o from VaccineOptionEntity o where o.vaccineId=:v and o.active=true order by"
+      + " o.sortOrder,o.displayName")
+  List<VaccineOptionEntity> lockActive(@Param("v") UUID vaccineId);
 }

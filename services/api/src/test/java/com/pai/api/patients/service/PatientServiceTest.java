@@ -350,7 +350,7 @@ class PatientServiceTest {
                 patientId,
                 new UpdatePatientMedicalHistoriesRequest(
                         List.of(new UpdatePatientMedicalHistoriesRequest.MedicalHistoryDto(
-                                "Asma", LocalDate.of(2020, 1, 1), null))));
+                                "Asma", LocalDate.of(2020, 1, 1), null, null, null, null, null, null, null))));
 
         verify(medicalHistories).deleteByPatientId(patientId);
         verify(medicalHistories).save(any(PatientMedicalHistoryEntity.class));

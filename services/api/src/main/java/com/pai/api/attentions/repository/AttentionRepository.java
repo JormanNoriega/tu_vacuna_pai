@@ -15,18 +15,19 @@ import org.springframework.data.repository.query.Param;
  */
 public interface AttentionRepository extends JpaRepository<AttentionEntity, UUID> {
 
-    Optional<AttentionEntity> findByIdAndInstitutionId(UUID id, UUID institutionId);
+  Optional<AttentionEntity> findByIdAndInstitutionId(UUID id, UUID institutionId);
 
-    List<AttentionEntity> findByInstitutionIdAndPatientIdOrderByAttentionDateDesc(UUID institutionId, UUID patientId);
+  List<AttentionEntity> findByInstitutionIdAndPatientIdOrderByAttentionDateDesc(
+      UUID institutionId, UUID patientId);
 
-    /**
-     * Ultimo consecutivo de la institucion. El servicio le suma uno para el
-     * siguiente. Es una aproximacion sin bloqueo; la unicidad real se refuerza
-     * con la clave de negocio de la atencion.
-     */
-    @Query("""
-        SELECT COALESCE(MAX(a.consecutive), 0) FROM AttentionEntity a
-        WHERE a.institutionId = :institutionId
-        """)
-    long maxConsecutive(@Param("institutionId") UUID institutionId);
+  /**
+   * Ultimo consecutivo de la institucion. El servicio le suma uno para el
+   * siguiente. Es una aproximacion sin bloqueo; la unicidad real se refuerza
+   * con la clave de negocio de la atencion.
+   */
+  @Query("""
+      SELECT COALESCE(MAX(a.consecutive), 0) FROM AttentionEntity a
+      WHERE a.institutionId = :institutionId
+      """)
+  long maxConsecutive(@Param("institutionId") UUID institutionId);
 }

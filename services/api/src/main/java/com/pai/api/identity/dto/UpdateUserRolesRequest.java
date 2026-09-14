@@ -9,5 +9,9 @@ import java.util.List;
  * {@code SUPER_ADMIN} no se puede asignar por esta via: se valida en el servicio.
  */
 public record UpdateUserRolesRequest(
-        @NotEmpty(message = "Debe indicar al menos un rol.")
-        List<@Valid @jakarta.validation.constraints.NotBlank(message = "Un rol no puede estar vacio.") String> roles) {}
+    @NotEmpty(message = "Debe indicar al menos un rol.")
+    List<
+            @Valid
+            @jakarta.validation.constraints.NotBlank(message = "Un rol no puede estar vacio.")
+            String>
+        roles) {}

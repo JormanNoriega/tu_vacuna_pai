@@ -15,20 +15,21 @@ import org.springframework.data.repository.query.Param;
  */
 public interface UserRoleRepository extends JpaRepository<UserRoleEntity, UserRoleId> {
 
-    boolean existsByUserId(UUID userId);
+  boolean existsByUserId(UUID userId);
 
-    void deleteByUserId(UUID userId);
+  void deleteByUserId(UUID userId);
 
-    /**
-     * Elimina los roles de un usuario solo si este pertenece a la institucion.
-     * Devuelve 0 si el usuario esta fuera del alcance.
-     */
-    @Modifying
-    @Query("""
-        DELETE FROM UserRoleEntity ur
-        WHERE ur.userId = :userId
-          AND EXISTS (SELECT 1 FROM UserEntity u
-                      WHERE u.id = :userId AND u.institutionId = :institutionId)
-        """)
-    int deleteByUserIdScoped(@Param("userId") UUID userId, @Param("institutionId") UUID institutionId);
+  /**
+   * Elimina los roles de un usuario solo si este pertenece a la institucion.
+   * Devuelve 0 si el usuario esta fuera del alcance.
+   */
+  @Modifying
+  @Query("""
+      DELETE FROM UserRoleEntity ur
+      WHERE ur.userId = :userId
+        AND EXISTS (SELECT 1 FROM UserEntity u
+                    WHERE u.id = :userId AND u.institutionId = :institutionId)
+      """)
+  int deleteByUserIdScoped(
+      @Param("userId") UUID userId, @Param("institutionId") UUID institutionId);
 }

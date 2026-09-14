@@ -10,32 +10,32 @@ import java.util.UUID;
 @Table(name = "roles", schema = "app")
 public class RoleEntity {
 
-    @Id
-    private UUID id;
+  @Id
+  private UUID id;
 
-    @Column(nullable = false)
-    private String code;
+  @Column(nullable = false)
+  private String code;
 
-    @Column(nullable = false)
-    private String name;
+  @Column(nullable = false)
+  private String name;
 
-    protected RoleEntity() {}
+  protected RoleEntity() {}
 
-    public RoleEntity(UUID id, String code, String name) {
-        this.id = id;
-        this.code = code;
-        this.name = name;
-    }
+  public RoleEntity(UUID id, String code, String name) {
+    this.id = id;
+    this.code = code;
+    this.name = name;
+  }
 
-    public UUID getId() {
-        return id;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public String getCode() {
-        return code;
-    }
+  public String getCode() {
+    return code;
+  }
 
-    public String getName() {
-        return name;
-    }
+  public String getName() {
+    return name;
+  }
 }

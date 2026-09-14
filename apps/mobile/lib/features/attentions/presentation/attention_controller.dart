@@ -4,6 +4,7 @@ import '../../../core/presentation/async_controller.dart';
 import '../../../core/synchronization/clinical_offline_repository.dart';
 import '../../../core/utils/uuid.dart';
 import '../../auth/domain/entities/session_restore_result.dart';
+import '../../catalogs/domain/entities/catalog_entities.dart';
 import '../../catalogs/domain/entities/effective_catalog.dart';
 import '../../catalogs/domain/entities/geo.dart';
 import '../../catalogs/domain/use_cases/catalog_use_cases.dart';
@@ -29,9 +30,13 @@ class AttentionController extends AsyncController {
     required this.searchPatient,
     required this.createPatient,
     required this.listEffectiveCatalog,
+    required this.listCountries,
     required this.listDepartments,
     required this.listMunicipalities,
+    required this.listReferenceCatalogs,
+    required this.listInsurers,
     required this.createAttention,
+    required this.updateAttention,
     required this.registerDose,
     required this.completeAttention,
     required this.cancelAttention,
@@ -42,9 +47,13 @@ class AttentionController extends AsyncController {
   final SearchPatient searchPatient;
   final CreatePatient createPatient;
   final ListEffectiveCatalog listEffectiveCatalog;
+  final ListCountries listCountries;
   final ListDepartments listDepartments;
   final ListMunicipalities listMunicipalities;
+  final ListReferenceCatalogs listReferenceCatalogs;
+  final ListInsurers listInsurers;
   final CreateAttention createAttention;
+  final UpdateAttention updateAttention;
   final RegisterDose registerDose;
   final CompleteAttention completeAttention;
   final CancelAttention cancelAttention;
@@ -60,8 +69,11 @@ class AttentionController extends AsyncController {
 
   List<EffectiveVaccine> _effectiveVaccines = const [];
   List<Patient> _searchResults = const [];
+  List<GeoCountry> _countries = const [];
   List<GeoDepartment> _departments = const [];
   List<GeoMunicipality> _municipalities = const [];
+  Map<String, List<ReferenceOption>> _referenceCatalogs = const {};
+  List<HealthInsurer> _insurers = const [];
   Patient? _patient;
   Attention? _attention;
   bool _effectiveCatalogLoaded = false;
@@ -69,9 +81,27 @@ class AttentionController extends AsyncController {
   List<EffectiveVaccine> get effectiveVaccines =>
       List.unmodifiable(_effectiveVaccines);
   List<Patient> get searchResults => List.unmodifiable(_searchResults);
+  List<GeoCountry> get countries => List.unmodifiable(_countries);
   List<GeoDepartment> get departments => List.unmodifiable(_departments);
   List<GeoMunicipality> get municipalities =>
       List.unmodifiable(_municipalities);
+
+  /// Opciones de un catalogo de referencia por codigo (`document_type`,
+  /// `sex`, `gender`, `affiliation_regime`, `insurer`, ...).
+  List<ReferenceOption> referenceOptions(String code) =>
+      _referenceCatalogs[code] ?? const [];
+
+  /// Aseguradoras (EPS) activas del catalogo global.
+  List<HealthInsurer> get insurers => List.unmodifiable(_insurers);
+
+  /// Aseguradoras que aplican al regimen dado. Regimenes distintos de
+  /// contributivo/subsidiado no tienen EPS en el catalogo.
+  List<HealthInsurer> insurersForRegime(String? regime) => switch (regime) {
+    'CONTRIBUTIVO' => insurers.where((i) => i.servesContributive).toList(),
+    'SUBSIDIADO' => insurers.where((i) => i.servesSubsidized).toList(),
+    _ => const [],
+  };
+
   Patient? get patient => _patient;
   Attention? get attention => _attention;
   List<AppliedDose> get doses => _attention?.doses ?? const [];
@@ -95,6 +125,33 @@ class AttentionController extends AsyncController {
     if (_departments.isNotEmpty) return;
     await execute((token) async {
       _departments = await listDepartments(token);
+    });
+  }
+
+  /// Carga los paises del catalogo geografico (una sola vez).
+  Future<void> loadCountries() async {
+    if (_countries.isNotEmpty) return;
+    await execute((token) async {
+      _countries = await listCountries(token);
+    });
+  }
+
+  /// Carga los catalogos de referencia del wizard (una sola vez).
+  Future<void> loadReferenceCatalogs() async {
+    if (_referenceCatalogs.isNotEmpty) return;
+    await execute((token) async {
+      final catalogs = await listReferenceCatalogs(token);
+      _referenceCatalogs = {
+        for (final catalog in catalogs) catalog.code: catalog.options,
+      };
+    });
+  }
+
+  /// Carga las aseguradoras (EPS) activas (una sola vez).
+  Future<void> loadInsurers() async {
+    if (_insurers.isNotEmpty) return;
+    await execute((token) async {
+      _insurers = await listInsurers(token);
     });
   }
 
@@ -158,6 +215,7 @@ class AttentionController extends AsyncController {
     required String vaccineId,
     required String doseOptionId,
     String? observations,
+    String? attentionDate,
     String? pneumococcalTypeOptionId,
     String? lotNumber,
     String? applicationDate,
@@ -165,6 +223,10 @@ class AttentionController extends AsyncController {
     String? selectedSyringeId,
     String? selectedDropperId,
     String? selectedObservationId,
+    String? syringeLot,
+    String? diluent,
+    int? vialCount,
+    String? customObservation,
   }) async {
     final patient = _patient;
     if (patient == null) {
@@ -181,6 +243,7 @@ class AttentionController extends AsyncController {
           attention = await repository.createAttentionLocal(
             patientId: patient.id,
             observations: observations,
+            attentionDate: attentionDate,
           );
           _attention = attention;
         }
@@ -215,6 +278,7 @@ class AttentionController extends AsyncController {
         offline: offline,
         patientId: patient.id,
         observations: observations,
+        attentionDate: attentionDate,
         operationId: uuidV4(),
       );
       final attention = _attention!;
@@ -231,12 +295,46 @@ class AttentionController extends AsyncController {
         selectedSyringeId: selectedSyringeId,
         selectedDropperId: selectedDropperId,
         selectedObservationId: selectedObservationId,
+        syringeLot: syringeLot,
+        diluent: diluent,
+        vialCount: vialCount,
+        customObservation: customObservation,
         operationId: uuidV4(),
       );
       _attention = _withDose(attention, dose);
       success = true;
     });
     return success;
+  }
+
+  /// Actualiza los detalles del encuentro en curso (fecha de atencion, esquema
+  /// completo y datos de ingreso al aplicativo PAIWEB). Online-only.
+  Future<Attention?> updateAttentionDetails({
+    required OfflineAccess offline,
+    String? attentionDate,
+    bool? completeScheme,
+    bool? paiwebRegistered,
+    String? paiwebNotRegisteredReason,
+    String? observations,
+  }) async {
+    final attention = _attention;
+    if (attention == null) return null;
+    Attention? updated;
+    await execute((token) async {
+      updated = await updateAttention(
+        token,
+        attention.id,
+        offline: offline,
+        version: attention.version,
+        attentionDate: attentionDate,
+        completeScheme: completeScheme,
+        paiwebRegistered: paiwebRegistered,
+        paiwebNotRegisteredReason: paiwebNotRegisteredReason,
+        observations: observations,
+      );
+      _attention = updated;
+    });
+    return updated;
   }
 
   EffectiveVaccine? _vaccineById(String vaccineId) {
@@ -337,6 +435,15 @@ class AttentionController extends AsyncController {
     return success;
   }
 
+  /// Limpia solo el resultado de la busqueda de paciente (deja intactos el
+  /// paciente seleccionado y la atencion en curso). Se usa al entrar a la vista
+  /// o al volver del alta rapida para no arrastrar busquedas anteriores.
+  void clearSearch() {
+    if (_searchResults.isEmpty) return;
+    _searchResults = const [];
+    notifyListeners();
+  }
+
   /// Reinicia el flujo de nueva atencion (no borra el catalogo efectivo).
   void resetFlow() {
     _patient = null;
@@ -354,8 +461,11 @@ class AttentionController extends AsyncController {
     _searchResults = const [];
     _effectiveVaccines = const [];
     _effectiveCatalogLoaded = false;
+    _countries = const [];
     _departments = const [];
     _municipalities = const [];
+    _referenceCatalogs = const {};
+    _insurers = const [];
     clearError();
     notifyListeners();
   }

@@ -179,3 +179,110 @@ Map<String, dynamic> optionPayload({
   'isActive': true,
   'version': version,
 };
+
+/// Opcion de un catalogo de referencia (lista cerrada del backend).
+class ReferenceOption {
+  const ReferenceOption({
+    required this.code,
+    required this.label,
+    required this.sortOrder,
+  });
+
+  final String code;
+  final String label;
+  final int sortOrder;
+
+  factory ReferenceOption.fromJson(Map<String, dynamic> json) =>
+      ReferenceOption(
+        code: json['code'] as String,
+        label: json['label'] as String,
+        sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
+      );
+}
+
+/// Catalogo de referencia (`document_type`, `sex`, `gender`, ...). Agrupa una
+/// lista cerrada de opciones usada por los dropdowns del wizard.
+class ReferenceCatalog {
+  const ReferenceCatalog({
+    required this.code,
+    required this.name,
+    required this.options,
+  });
+
+  final String code;
+  final String name;
+  final List<ReferenceOption> options;
+
+  factory ReferenceCatalog.fromJson(Map<String, dynamic> json) =>
+      ReferenceCatalog(
+        code: json['code'] as String,
+        name: json['name'] as String? ?? json['code'] as String,
+        options: (json['options'] as List<dynamic>? ?? [])
+            .map(
+              (item) => ReferenceOption.fromJson(item as Map<String, dynamic>),
+            )
+            .toList(),
+      );
+}
+
+/// Tipos de identificacion del formato PAI. Fallback local (mismos codigos del
+/// catalogo `document_type` del backend) para cuando el catalogo no ha cargado.
+const List<ReferenceOption> documentTypeFallback = [
+  ReferenceOption(
+    code: 'CN',
+    label: 'Certificado de Nacido Vivo',
+    sortOrder: 1,
+  ),
+  ReferenceOption(code: 'RC', label: 'Registro Civil', sortOrder: 2),
+  ReferenceOption(code: 'TI', label: 'Tarjeta de Identidad', sortOrder: 3),
+  ReferenceOption(code: 'CC', label: 'Cedula de Ciudadania', sortOrder: 4),
+  ReferenceOption(code: 'AS', label: 'Adulto sin Identificacion', sortOrder: 5),
+  ReferenceOption(code: 'MS', label: 'Menor sin Identificacion', sortOrder: 6),
+  ReferenceOption(code: 'CE', label: 'Cedula de Extranjeria', sortOrder: 7),
+  ReferenceOption(code: 'PA', label: 'Pasaporte', sortOrder: 8),
+  ReferenceOption(code: 'CD', label: 'Carne Diplomatico', sortOrder: 9),
+  ReferenceOption(code: 'SC', label: 'Salvoconducto', sortOrder: 10),
+  ReferenceOption(
+    code: 'PE',
+    label: 'Permiso Especial de Permanencia',
+    sortOrder: 11,
+  ),
+  ReferenceOption(
+    code: 'PPT',
+    label: 'Permiso por Proteccion Temporal',
+    sortOrder: 12,
+  ),
+  ReferenceOption(code: 'DE', label: 'Documento Extranjero', sortOrder: 13),
+];
+
+/// Aseguradora en salud (EPS) del catalogo global. `regime` indica los
+/// regimenes que atiende la entidad: `CONTRIBUTIVO`, `SUBSIDIADO` o `AMBOS`.
+class HealthInsurer {
+  const HealthInsurer({
+    required this.id,
+    required this.nit,
+    required this.name,
+    required this.regime,
+    this.code,
+  });
+
+  final String id;
+  final String nit;
+  final String name;
+  final String regime;
+  final String? code;
+
+  /// Sirve para regimen contributivo (`AMBOS` incluido).
+  bool get servesContributive => regime == 'CONTRIBUTIVO' || regime == 'AMBOS';
+
+  /// Sirve para regimen subsidiado (`AMBOS` incluido).
+  bool get servesSubsidized => regime == 'SUBSIDIADO' || regime == 'AMBOS';
+
+  factory HealthInsurer.fromJson(Map<String, dynamic> json) => HealthInsurer(
+    id: json['id'].toString(),
+    nit: json['nit'] as String? ?? '',
+    name: json['name'] as String? ?? '',
+    regime: json['regime'] as String? ?? '',
+    code: json['code'] as String?,
+  );
+}

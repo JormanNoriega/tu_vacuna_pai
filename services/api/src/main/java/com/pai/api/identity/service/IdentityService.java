@@ -26,74 +26,82 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class IdentityService {
 
-    private final UserRepository userRepository;
-    private final InstitutionRepository institutionRepository;
+  private final UserRepository userRepository;
+  private final InstitutionRepository institutionRepository;
 
-    public IdentityService(UserRepository userRepository, InstitutionRepository institutionRepository) {
-        this.userRepository = userRepository;
-        this.institutionRepository = institutionRepository;
+  public IdentityService(
+      UserRepository userRepository, InstitutionRepository institutionRepository) {
+    this.userRepository = userRepository;
+    this.institutionRepository = institutionRepository;
+  }
+
+  /**
+   * Resuelve el usuario autenticado y sus permisos/roles vigentes.
+   *
+   * @throws UserNotFoundException si el usuario no existe en app.users
+   * @throws UserNotActiveException si el usuario o su institucion no estan activos
+   */
+  @Transactional(readOnly = true)
+  @SuppressWarnings("null")
+  public AuthorizedUser resolve(UUID userId) {
+    UserEntity user = userRepository
+        .findById(userId)
+        .orElseThrow(() -> new UserNotFoundException(
+            "El usuario no existe o no esta configurado en la aplicacion."));
+
+    if (!user.isActive()) {
+      throw new UserNotActiveException(
+          "El usuario esta desactivado. No puede acceder a la aplicacion.");
     }
 
-    /**
-     * Resuelve el usuario autenticado y sus permisos/roles vigentes.
-     *
-     * @throws UserNotFoundException si el usuario no existe en app.users
-     * @throws UserNotActiveException si el usuario o su institucion no estan activos
-     */
-    @Transactional(readOnly = true)
-    @SuppressWarnings("null")
-    public AuthorizedUser resolve(UUID userId) {
-        UserEntity user = userRepository
-                .findById(userId)
-                .orElseThrow(() ->
-                        new UserNotFoundException("El usuario no existe o no esta configurado en la aplicacion."));
+    InstitutionEntity institution = institutionRepository
+        .findById(user.getInstitutionId())
+        .orElseThrow(() -> new UserNotFoundException(
+            "La institucion del usuario no existe o no esta configurada."));
 
-        if (!user.isActive()) {
-            throw new UserNotActiveException("El usuario esta desactivado. No puede acceder a la aplicacion.");
-        }
-
-        InstitutionEntity institution = institutionRepository
-                .findById(user.getInstitutionId())
-                .orElseThrow(
-                        () -> new UserNotFoundException("La institucion del usuario no existe o no esta configurada."));
-
-        if (!institution.isActive()) {
-            throw new UserNotActiveException("La institucion del usuario esta inactiva.");
-        }
-
-        List<String> roles = userRepository.findRolesByUserId(userId).stream()
-                .map(RoleEntity::getCode)
-                .toList();
-
-        List<String> permissions = userRepository.findPermissionsByUserId(userId).stream()
-                .map(PermissionEntity::getCode)
-                .toList();
-
-        return new AuthorizedUser(
-                user.getId(), user.getEmail(), user.getFullName(), institution, roles, permissions, Instant.now());
+    if (!institution.isActive()) {
+      throw new UserNotActiveException("La institucion del usuario esta inactiva.");
     }
 
-    /**
-     * Perfil autorizado del usuario para {@code GET /api/v1/me}. El mapeo a DTO
-     * ocurre dentro de la transaccion, no despues de que esta se cierra.
-     */
-    @Transactional(readOnly = true)
-    public MeResponse getMe(UUID userId) {
-        AuthorizedUser user = resolve(userId);
+    List<String> roles = userRepository.findRolesByUserId(userId).stream()
+        .map(RoleEntity::getCode)
+        .toList();
 
-        MeResponse.InstitutionDto institution = new MeResponse.InstitutionDto(
-                user.getInstitution().getId(),
-                user.getInstitution().getCode(),
-                user.getInstitution().getName());
+    List<String> permissions = userRepository.findPermissionsByUserId(userId).stream()
+        .map(PermissionEntity::getCode)
+        .toList();
 
-        return new MeResponse(
-                user.getId(),
-                user.getEmail(),
-                user.getFullName(),
-                institution,
-                user.getRoles(),
-                user.getPermissions(),
-                user.getInstitution().getOfflineWindowHours(),
-                user.getLastOnlineValidation().toString());
-    }
+    return new AuthorizedUser(
+        user.getId(),
+        user.getEmail(),
+        user.getFullName(),
+        institution,
+        roles,
+        permissions,
+        Instant.now());
+  }
+
+  /**
+   * Perfil autorizado del usuario para {@code GET /api/v1/me}. El mapeo a DTO
+   * ocurre dentro de la transaccion, no despues de que esta se cierra.
+   */
+  @Transactional(readOnly = true)
+  public MeResponse getMe(UUID userId) {
+    AuthorizedUser user = resolve(userId);
+
+    MeResponse.InstitutionDto institution = new MeResponse.InstitutionDto(
+        user.getInstitution().getId(),
+        user.getInstitution().getCode(),
+        user.getInstitution().getName());
+
+    return new MeResponse(
+        user.getId(),
+        user.getEmail(),
+        user.getFullName(),
+        institution,
+        user.getRoles(),
+        user.getPermissions(),
+        user.getInstitution().getOfflineWindowHours(),
+        user.getLastOnlineValidation().toString());
+  }
 }

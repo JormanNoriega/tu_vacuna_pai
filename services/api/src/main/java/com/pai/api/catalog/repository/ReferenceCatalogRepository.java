@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ReferenceCatalogRepository extends JpaRepository<ReferenceCatalogEntity, String> {
 
-    List<ReferenceCatalogEntity> findAllByOrderByCodeAsc();
+  List<ReferenceCatalogEntity> findAllByOrderByCodeAsc();
 }

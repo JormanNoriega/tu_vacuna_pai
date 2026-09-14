@@ -7,8 +7,10 @@ import static org.mockito.Mockito.when;
 
 import com.pai.api.catalog.dto.GeoDepartmentResponse;
 import com.pai.api.catalog.dto.GeoMunicipalityResponse;
+import com.pai.api.catalog.entity.GeoCountryEntity;
 import com.pai.api.catalog.entity.GeoDepartmentEntity;
 import com.pai.api.catalog.entity.GeoMunicipalityEntity;
+import com.pai.api.catalog.repository.GeoCountryRepository;
 import com.pai.api.catalog.repository.GeoDepartmentRepository;
 import com.pai.api.catalog.repository.GeoMunicipalityRepository;
 import com.pai.api.catalog.service.GeoCatalogService;
@@ -19,47 +21,65 @@ import org.junit.jupiter.api.Test;
 
 class GeoCatalogServiceTest {
 
-    private GeoDepartmentRepository departments;
-    private GeoMunicipalityRepository municipalities;
-    private GeoCatalogService service;
+  private GeoCountryRepository countries;
+  private GeoDepartmentRepository departments;
+  private GeoMunicipalityRepository municipalities;
+  private GeoCatalogService service;
 
-    @BeforeEach
-    void setUp() {
-        departments = mock(GeoDepartmentRepository.class);
-        municipalities = mock(GeoMunicipalityRepository.class);
-        service = new GeoCatalogService(departments, municipalities);
-    }
+  @BeforeEach
+  void setUp() {
+    countries = mock(GeoCountryRepository.class);
+    departments = mock(GeoDepartmentRepository.class);
+    municipalities = mock(GeoMunicipalityRepository.class);
+    service = new GeoCatalogService(countries, departments, municipalities);
+  }
 
-    @Test
-    void departments_mapsEntitiesOrderedByName() {
-        UUID id = UUID.randomUUID();
-        when(departments.findAllByOrderByNameAsc())
-                .thenReturn(List.of(new GeoDepartmentEntity(id, UUID.randomUUID(), "05", "Antioquia")));
+  @Test
+  void countries_mapsEntitiesOrderedByName() {
+    UUID id = UUID.randomUUID();
+    when(countries.findAllByOrderByNameAsc())
+        .thenReturn(List.of(new GeoCountryEntity(id, "170", "Colombia")));
 
-        List<GeoDepartmentResponse> result = service.departments();
+    List<GeoDepartmentResponse> result = service.countries();
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).code()).isEqualTo("05");
-        assertThat(result.get(0).name()).isEqualTo("Antioquia");
-        assertThat(result.get(0).id()).isEqualTo(id);
-    }
+    assertThat(result).hasSize(1);
+    assertThat(result.get(0).code()).isEqualTo("170");
+    assertThat(result.get(0).name()).isEqualTo("Colombia");
+    assertThat(result.get(0).id()).isEqualTo(id);
+  }
 
-    @Test
-    void municipalities_mapsEntitiesForDepartment() {
-        UUID departmentId = UUID.randomUUID();
-        UUID municipalityId = UUID.randomUUID();
-        when(municipalities.findByDepartmentIdOrderByNameAsc(departmentId))
-                .thenReturn(List.of(new GeoMunicipalityEntity(municipalityId, departmentId, "05001", "Medellin")));
+  @Test
+  void departments_mapsEntitiesOrderedByName() {
+    UUID id = UUID.randomUUID();
+    when(departments.findAllByOrderByNameAsc())
+        .thenReturn(List.of(new GeoDepartmentEntity(id, UUID.randomUUID(), "05", "Antioquia")));
 
-        List<GeoMunicipalityResponse> result = service.municipalities(departmentId);
+    List<GeoDepartmentResponse> result = service.departments();
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).code()).isEqualTo("05001");
-        assertThat(result.get(0).departmentId()).isEqualTo(departmentId);
-    }
+    assertThat(result).hasSize(1);
+    assertThat(result.get(0).code()).isEqualTo("05");
+    assertThat(result.get(0).name()).isEqualTo("Antioquia");
+    assertThat(result.get(0).id()).isEqualTo(id);
+  }
 
-    @Test
-    void municipalities_rejectsMissingDepartment() {
-        assertThatThrownBy(() -> service.municipalities(null)).isInstanceOf(IllegalArgumentException.class);
-    }
+  @Test
+  void municipalities_mapsEntitiesForDepartment() {
+    UUID departmentId = UUID.randomUUID();
+    UUID municipalityId = UUID.randomUUID();
+    when(municipalities.findByDepartmentIdOrderByNameAsc(departmentId))
+        .thenReturn(
+            List.of(new GeoMunicipalityEntity(municipalityId, departmentId, "05001", "Medellin")));
+
+    List<GeoMunicipalityResponse> result = service.municipalities(departmentId);
+
+    assertThat(result).hasSize(1);
+    assertThat(result.get(0).code()).isEqualTo("05001");
+    assertThat(result.get(0).departmentId()).isEqualTo(departmentId);
+  }
+
+  @Test
+  void municipalities_rejectsMissingDepartment() {
+    assertThatThrownBy(() -> service.municipalities(null))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
 }

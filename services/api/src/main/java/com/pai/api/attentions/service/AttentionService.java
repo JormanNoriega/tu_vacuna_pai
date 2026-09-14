@@ -137,6 +137,11 @@ public class AttentionService {
                             coordinator.parseOperationId(operationId),
                             now));
                     attention.updateDetails(attentionDate, Strings.blankToNull(request.observations()), now);
+                    attention.applyRegistrationDetails(
+                            request.completeScheme(),
+                            request.paiwebRegistered(),
+                            Strings.blankToNull(request.paiwebNotRegisteredReason()),
+                            now);
                     attentions.save(attention);
                     return new IdempotencyCoordinator.WriteResult<>(attention.getId(), response(attention));
                 });
@@ -178,6 +183,11 @@ public class AttentionService {
                     Instant attentionDate =
                             request.attentionDate() != null ? request.attentionDate() : attention.getAttentionDate();
                     attention.updateDetails(attentionDate, Strings.blankToNull(request.observations()), now);
+                    attention.applyRegistrationDetails(
+                            request.completeScheme(),
+                            request.paiwebRegistered(),
+                            Strings.blankToNull(request.paiwebNotRegisteredReason()),
+                            now);
                     attentions.save(attention);
                     return response(attention);
                 });

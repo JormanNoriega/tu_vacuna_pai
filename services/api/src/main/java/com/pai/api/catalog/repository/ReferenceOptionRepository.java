@@ -7,5 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ReferenceOptionRepository extends JpaRepository<ReferenceOptionEntity, UUID> {
 
-    List<ReferenceOptionEntity> findByCatalogCodeAndActiveTrueOrderBySortOrderAsc(String catalogCode);
+  List<ReferenceOptionEntity> findByCatalogCodeAndActiveTrueOrderBySortOrderAsc(String catalogCode);
 }

@@ -9,9 +9,16 @@ import java.time.Instant;
  * usuario la modifico, el servicio responde {@code 409}.
  */
 public record UpdateAttentionRequest(
-        Instant attentionDate,
+    Instant attentionDate,
 
-        @Size(max = 2000, message = "Las observaciones no pueden superar 2000 caracteres.")
-        String observations,
+    @Size(max = 2000, message = "Las observaciones no pueden superar 2000 caracteres.")
+    String observations,
 
-        long version) {}
+    Boolean completeScheme,
+
+    Boolean paiwebRegistered,
+
+    @Size(max = 500, message = "El motivo de no ingreso no puede superar 500 caracteres.")
+    String paiwebNotRegisteredReason,
+
+    long version) {}

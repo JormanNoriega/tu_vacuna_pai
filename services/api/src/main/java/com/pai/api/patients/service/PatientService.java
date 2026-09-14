@@ -401,7 +401,11 @@ public class PatientService {
             return;
         }
         affiliations.save(new PatientAffiliationEntity(
-                patientId, normalizeUpper(dto.affiliationRegime()), Strings.blankToNull(dto.insurer()), now));
+                patientId,
+                normalizeUpper(dto.affiliationRegime()),
+                Strings.blankToNull(dto.insurer()),
+                Strings.blankToNull(dto.insurerCode()),
+                now));
     }
 
     private void saveSpecialConditions(UUID patientId, CreatePatientRequest.SpecialConditionsDto dto, Instant now) {
@@ -480,6 +484,7 @@ public class PatientService {
                     Strings.blankToNull(dto.email()),
                     normalizeUpper(dto.affiliationRegime()),
                     Strings.blankToNull(dto.insurer()),
+                    Strings.blankToNull(dto.insurerCode()),
                     normalizeUpper(dto.ethnicity()),
                     dto.displaced(),
                     now));

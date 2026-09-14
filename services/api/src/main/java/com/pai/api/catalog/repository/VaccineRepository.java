@@ -5,7 +5,7 @@ import java.util.*;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface VaccineRepository extends JpaRepository<VaccineEntity, UUID> {
-    Optional<VaccineEntity> findByCode(String code);
+  Optional<VaccineEntity> findByCode(String code);
 
-    List<VaccineEntity> findByActiveTrueOrderByNameAsc();
+  List<VaccineEntity> findByActiveTrueOrderByNameAsc();
 }

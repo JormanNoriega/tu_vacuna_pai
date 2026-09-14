@@ -8,7 +8,24 @@ abstract interface class AttentionsRepository {
     String accessToken, {
     required String patientId,
     String? observations,
+    String? attentionDate,
+    bool? completeScheme,
+    bool? paiwebRegistered,
+    String? paiwebNotRegisteredReason,
     String? operationId,
+  });
+
+  /// Actualiza los detalles del encuentro (fecha, observaciones, esquema
+  /// completo y PAIWEB). Solo en estados editables.
+  Future<Attention> updateAttention(
+    String accessToken,
+    String attentionId, {
+    required int version,
+    String? observations,
+    bool? completeScheme,
+    bool? paiwebRegistered,
+    String? paiwebNotRegisteredReason,
+    String? attentionDate,
   });
 
   Future<AppliedDose> registerDose(
@@ -23,6 +40,10 @@ abstract interface class AttentionsRepository {
     String? selectedSyringeId,
     String? selectedDropperId,
     String? selectedObservationId,
+    String? syringeLot,
+    String? diluent,
+    int? vialCount,
+    String? customObservation,
     String? operationId,
   });
 

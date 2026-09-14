@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PatientAddressRepository extends JpaRepository<PatientAddressEntity, UUID> {
 
-    List<PatientAddressEntity> findByPatientIdOrderByCreatedAtAsc(UUID patientId);
+  List<PatientAddressEntity> findByPatientIdOrderByCreatedAtAsc(UUID patientId);
 
-    void deleteByPatientId(UUID patientId);
+  void deleteByPatientId(UUID patientId);
 }

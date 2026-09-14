@@ -123,10 +123,9 @@ class SyncEngine {
 
     final Map<String, dynamic> response;
     try {
-      response = await _api.pushSync(
-        token,
-        [for (final entry in ordered) entry.operation.toJson()],
-      );
+      response = await _api.pushSync(token, [
+        for (final entry in ordered) entry.operation.toJson(),
+      ]);
     } catch (error) {
       await _scheduleTransportRetry(ordered, error);
       return 0;
@@ -228,10 +227,7 @@ class SyncEngine {
       case SyncCommandType.createPatient:
         await _db.updatePatientSyncState(operation.aggregateId, state.value);
       case SyncCommandType.createAttention:
-        await _db.updateAttentionSyncState(
-          operation.aggregateId,
-          state.value,
-        );
+        await _db.updateAttentionSyncState(operation.aggregateId, state.value);
       case SyncCommandType.completeAttention:
         await _db.updateAttentionSyncState(
           operation.aggregateId,
@@ -248,7 +244,8 @@ class SyncEngine {
   Future<int> _pull(String token) async {
     final cursor = await _db.syncMetadataValue(_pullCursorKey) ?? '0|';
     final response = await _api.pullSync(token, since: cursor);
-    final rawOperations = (response['operations'] as List<dynamic>?) ?? const [];
+    final rawOperations =
+        (response['operations'] as List<dynamic>?) ?? const [];
 
     final applied = await _loadAppliedPullIds();
     var appliedCount = 0;

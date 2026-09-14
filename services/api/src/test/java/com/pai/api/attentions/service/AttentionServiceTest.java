@@ -175,7 +175,7 @@ class AttentionServiceTest {
         when(attentions.save(any(AttentionEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         AttentionResponse response =
-                service.create(ACTOR_ID, OPERATION_ID, new CreateAttentionRequest(patientId, null, "Control"));
+                service.create(ACTOR_ID, OPERATION_ID, new CreateAttentionRequest(patientId, null, "Control", null, null, null));
 
         assertThat(response.status()).isEqualTo("DRAFT");
         assertThat(response.consecutive()).isEqualTo(5L);
@@ -201,7 +201,7 @@ class AttentionServiceTest {
                 .thenReturn(Optional.of(completed));
 
         assertThatThrownBy(() ->
-                        service.update(ACTOR_ID, completed.getId(), new UpdateAttentionRequest(null, "cambio", 0L)))
+                        service.update(ACTOR_ID, completed.getId(), new UpdateAttentionRequest(null, "cambio", null, null, null, 0L)))
                 .isInstanceOf(InvalidClinicalStateException.class);
         verify(attentions, never()).save(any());
     }

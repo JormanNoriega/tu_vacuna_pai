@@ -12,47 +12,47 @@ import java.util.Locale;
  */
 public final class DocumentNormalizer {
 
-    private DocumentNormalizer() {}
+  private DocumentNormalizer() {}
 
-    /**
-     * Forma canonica de un numero de documento: sin espacios, puntos ni
-     * guiones, en mayusculas. Devuelve null para entradas vacias.
-     */
-    public static String normalize(String raw) {
-        if (raw == null) {
-            return null;
-        }
-        String s = raw.trim().replaceAll("[.\\s-]+", "").toUpperCase(Locale.ROOT);
-        return s.isEmpty() ? null : s;
+  /**
+   * Forma canonica de un numero de documento: sin espacios, puntos ni
+   * guiones, en mayusculas. Devuelve null para entradas vacias.
+   */
+  public static String normalize(String raw) {
+    if (raw == null) {
+      return null;
     }
+    String s = raw.trim().replaceAll("[.\\s-]+", "").toUpperCase(Locale.ROOT);
+    return s.isEmpty() ? null : s;
+  }
 
-    /**
-     * Normaliza el tipo de documento (trim + mayusculas). Devuelve null para
-     * entradas vacias.
-     */
-    public static String normalizeType(String raw) {
-        if (raw == null) {
-            return null;
-        }
-        String s = raw.trim().toUpperCase(Locale.ROOT);
-        return s.isEmpty() ? null : s;
+  /**
+   * Normaliza el tipo de documento (trim + mayusculas). Devuelve null para
+   * entradas vacias.
+   */
+  public static String normalizeType(String raw) {
+    if (raw == null) {
+      return null;
     }
+    String s = raw.trim().toUpperCase(Locale.ROOT);
+    return s.isEmpty() ? null : s;
+  }
 
-    /**
-     * Valida que el numero normalizado sea coherente con el tipo:
-     * <ul>
-     *   <li>CC: solo digitos (6 a 10).</li>
-     *   <li>TI, CE, PASAPORTE: alfanumerico (4 a 20).</li>
-     * </ul>
-     */
-    public static boolean isValidForType(String normalized, String type) {
-        if (normalized == null || type == null) {
-            return false;
-        }
-        return switch (type) {
-            case "CC" -> normalized.matches("\\d{6,10}");
-            case "TI", "CE", "PASAPORTE" -> normalized.matches("[A-Z0-9]{4,20}");
-            default -> false;
-        };
+  /**
+   * Valida que el numero normalizado sea coherente con el tipo:
+   * <ul>
+   *   <li>CC: solo digitos (6 a 10).</li>
+   *   <li>TI, CE, PASAPORTE: alfanumerico (4 a 20).</li>
+   * </ul>
+   */
+  public static boolean isValidForType(String normalized, String type) {
+    if (normalized == null || type == null) {
+      return false;
     }
+    return switch (type) {
+      case "CC" -> normalized.matches("\\d{6,10}");
+      case "TI", "CE", "PASAPORTE" -> normalized.matches("[A-Z0-9]{4,20}");
+      default -> false;
+    };
+  }
 }

@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../../app/widgets/clinical_components.dart';
 import '../../../../core/auth/offline_access.dart';
 import '../../../../core/utils/document_input.dart';
 import '../../../../core/utils/field_input.dart';
 import '../../../attentions/presentation/attention_controller.dart';
+import '../../../catalogs/domain/entities/catalog_entities.dart';
 import '../../../catalogs/domain/entities/geo.dart';
 import '../../domain/entities/new_patient.dart';
 
-/// Asistente de registro de paciente en 6 pasos. Guarda todo en un solo
-/// `POST /patients` al final; los pasos 2-6 son opcionales.
+/// Asistente de registro de paciente por secciones del formato PAI. Guarda
+/// todo en un solo `POST /patients` al final; solo el paso 1 es obligatorio.
 class PatientWizardPage extends StatefulWidget {
   const PatientWizardPage({
     required this.controller,
@@ -26,78 +29,304 @@ class PatientWizardPage extends StatefulWidget {
 
 class _PatientWizardPageState extends State<PatientWizardPage> {
   static const _steps = [
-    'Identidad',
-    'Demografia',
-    'Contacto',
-    'Acompañante',
-    'Direccion',
-    'Antecedentes',
+    'Datos basicos',
+    'Datos complementarios',
+    'Afiliacion',
+    'Residencia y contacto',
+    'Condiciones especiales',
+    'Antecedentes medicos',
+    'Condicion de la usuaria',
+    'Madre / cuidador',
   ];
 
   static const _stepHints = [
-    'Datos obligatorios: tipo y numero de documento, nombres, apellidos, '
-        'fecha de nacimiento y sexo.',
-    'Datos demograficos opcionales (genero, etnia, escolaridad).'
-        'Puedes dejarlos en blanco.',
-    'Telefono y correo de contacto (opcionales) para ubicar al paciente.',
-    'Persona responsable del paciente (madre, padre, cuidador) y su contacto. '
-        'Opcional.',
-    'Departamento y municipio de residencia (pais: Colombia). Opcional.',
-    'Antecedentes medicos relevantes del paciente. Opcional; puedes agregar '
-        'varios.',
+    'Obligatorios: tipo y numero de documento, nombres, apellidos, fecha de '
+        'nacimiento y sexo.',
+    'Genero, orientacion sexual, etnia, tipo de carnet, pais de nacimiento y '
+        'estatus migratorio.',
+    'Regimen de afiliacion y aseguradora/EPS del paciente.',
+    'Residencia, direccion y datos de contacto (telefono fijo, celular, '
+        'correo y autorizaciones).',
+    'Poblaciones especiales: desplazado, discapacitado, fallecido, victima del '
+        'conflicto y estudia actualmente.',
+    'Contraindicaciones, reacciones previas y antecedentes medicos.',
+    'Solo para mujeres desde 9 anos: condicion de la usuaria y datos '
+        'obstetricos.',
+    'Datos de la madre o del cuidador responsable (para menores de edad).',
   ];
 
   final _identityFormKey = GlobalKey<FormState>();
 
-  final _firstName = TextEditingController();
-  final _lastName = TextEditingController();
+  // Identidad
   final _documentNumber = TextEditingController();
+  final _firstName = TextEditingController();
+  final _secondName = TextEditingController();
+  final _lastName = TextEditingController();
+  final _secondLastName = TextEditingController();
   final _birthDate = TextEditingController();
 
-  final _ethnicity = TextEditingController();
+  // Complementarios
   final _educationLevel = TextEditingController();
-  final _phone = TextEditingController();
+  final _birthPlace = TextEditingController();
+  final _gestationalAge = TextEditingController();
+
+  // Residencia y contacto
+  final _locality = TextEditingController();
+  final _street = TextEditingController();
+  final _landline = TextEditingController();
+  final _cellphone = TextEditingController();
   final _email = TextEditingController();
 
-  final _guardianName = TextEditingController();
-  final _guardianDocument = TextEditingController();
-  final _guardianPhone = TextEditingController();
+  // Antecedentes
+  final _contraindicationDetails = TextEditingController();
+  final _reactionDetails = TextEditingController();
 
-  final _street = TextEditingController();
+  // Condicion usuaria
+  final _lastMenstrualDate = TextEditingController();
+  final _previousPregnancies = TextEditingController();
+  final _birthPlaceDelivery = TextEditingController();
+
+  // Madre / cuidador
+  final _guardianFirstName = TextEditingController();
+  final _guardianSecondName = TextEditingController();
+  final _guardianLastName = TextEditingController();
+  final _guardianSecondLastName = TextEditingController();
+  final _guardianDocument = TextEditingController();
+  final _guardianLandline = TextEditingController();
+  final _guardianCellphone = TextEditingController();
+  final _guardianEmail = TextEditingController();
 
   final List<_HistoryDraft> _histories = [];
 
   String _documentType = 'CC';
   String _sex = 'MALE';
   String? _gender;
-  String _guardianRelationship = 'CAREGIVER';
-  String _guardianDocumentType = 'CC';
-  DateTime? _birth;
+  String? _sexualOrientation;
+  String? _ethnicity;
+  String? _carnetType;
+  String? _birthCountryId;
+  String _migrationStatus = 'REGULAR';
+
+  String? _affiliationRegime;
+  final _insurer = TextEditingController();
+  HealthInsurer? _selectedInsurer;
+
   String? _departmentId;
   String? _municipalityId;
+  String? _area;
+  bool _authorizeCalls = false;
+  bool _authorizeEmail = false;
 
+  bool? _displaced;
+  bool? _disabled;
+  bool? _deceased;
+  bool? _armedConflictVictim;
+  bool? _currentlyStudying;
+
+  bool _hasContraindication = false;
+  bool _hasPreviousReaction = false;
+
+  String? _userCondition;
+  DateTime? _lastMenstrual;
+
+  String _guardianRelationship = 'CAREGIVER';
+  String _guardianDocumentType = 'CC';
+  String? _guardianAffiliationRegime;
+  HealthInsurer? _guardianInsurer;
+  bool? _guardianDisplaced;
+
+  DateTime? _birth;
   int _step = 0;
   bool _saving = false;
+  bool _checkingDuplicate = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.loadReferenceCatalogs();
+    widget.controller.loadInsurers();
+    // Colombia viene preseleccionada como pais de nacimiento (editable). Hoy el
+    // catalogo solo tiene Colombia; al sembrar mas paises el campo se amplia.
+    widget.controller.loadCountries().then((_) {
+      if (!mounted) return;
+      if (_birthCountryId == null && widget.controller.countries.isNotEmpty) {
+        setState(() => _birthCountryId = widget.controller.countries.first.id);
+      }
+    });
+  }
 
   @override
   void dispose() {
-    _firstName.dispose();
-    _lastName.dispose();
-    _documentNumber.dispose();
-    _birthDate.dispose();
-    _ethnicity.dispose();
-    _educationLevel.dispose();
-    _phone.dispose();
-    _email.dispose();
-    _guardianName.dispose();
-    _guardianDocument.dispose();
-    _guardianPhone.dispose();
-    _street.dispose();
+    for (final controller in [
+      _documentNumber,
+      _firstName,
+      _secondName,
+      _lastName,
+      _secondLastName,
+      _birthDate,
+      _educationLevel,
+      _birthPlace,
+      _gestationalAge,
+      _locality,
+      _street,
+      _landline,
+      _cellphone,
+      _email,
+      _contraindicationDetails,
+      _reactionDetails,
+      _lastMenstrualDate,
+      _previousPregnancies,
+      _birthPlaceDelivery,
+      _guardianFirstName,
+      _guardianSecondName,
+      _guardianLastName,
+      _guardianSecondLastName,
+      _guardianDocument,
+      _guardianLandline,
+      _guardianCellphone,
+      _guardianEmail,
+      _insurer,
+    ]) {
+      controller.dispose();
+    }
     for (final history in _histories) {
       history.dispose();
     }
     super.dispose();
   }
+
+  // ---------- helpers de catalogo ----------
+
+  List<ReferenceOption> _ref(
+    String code, {
+    List<ReferenceOption> fallback = const [],
+  }) {
+    final options = widget.controller.referenceOptions(code);
+    return options.isEmpty ? fallback : options;
+  }
+
+  List<DropdownMenuItem<String>> _refItems(
+    String code, {
+    List<ReferenceOption> fallback = const [],
+  }) => [
+    for (final option in _ref(code, fallback: fallback))
+      DropdownMenuItem(value: option.code, child: Text(option.label)),
+  ];
+
+  /// Tipo de identificacion con etiqueta "CODIGO - Nombre" (ej. "CC - Cedula
+  /// de Ciudadania"), tomado del catalogo `document_type`.
+  List<DropdownMenuItem<String>> _documentTypeItems() => [
+    for (final option in _ref('document_type', fallback: documentTypeFallback))
+      DropdownMenuItem(
+        value: option.code,
+        child: Text('${option.code} - ${option.label}'),
+      ),
+  ];
+
+  List<DropdownMenuItem<String?>> _refItemsN(
+    String code, {
+    List<ReferenceOption> fallback = const [],
+  }) => [
+    for (final option in _ref(code, fallback: fallback))
+      DropdownMenuItem(value: option.code, child: Text(option.label)),
+  ];
+
+  /// Decoracion para campos opcionales: placeholder y, si hay valor, un icono
+  /// para volver a dejarlo vacio (los dropdown nativos no lo permiten solos).
+  InputDecoration _pickDecoration(
+    String label, {
+    String? helper,
+    VoidCallback? onClear,
+  }) => InputDecoration(
+    labelText: label,
+    helperText: helper,
+    suffixIcon: onClear == null
+        ? null
+        : IconButton(
+            tooltip: 'Limpiar',
+            icon: const Icon(Icons.close_rounded, size: 18),
+            onPressed: onClear,
+          ),
+  );
+
+  /// Dropdown de un catalogo de referencia opcional, con placeholder y limpiar.
+  Widget _refDropdown({
+    required String code,
+    required String label,
+    required String? value,
+    required ValueChanged<String?> onChanged,
+    List<ReferenceOption> fallback = const [],
+    String? helper,
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: DropdownButtonFormField<String?>(
+      initialValue: value,
+      isExpanded: true,
+      hint: const Text('Selecciona'),
+      decoration: _pickDecoration(
+        label,
+        helper: helper,
+        onClear: value == null ? null : () => onChanged(null),
+      ),
+      items: _refItemsN(code, fallback: fallback),
+      onChanged: onChanged,
+    ),
+  );
+
+  static const _sexFallback = [
+    ReferenceOption(code: 'MALE', label: 'Masculino', sortOrder: 1),
+    ReferenceOption(code: 'FEMALE', label: 'Femenino', sortOrder: 2),
+    ReferenceOption(
+      code: 'INDETERMINATE',
+      label: 'Indeterminado',
+      sortOrder: 3,
+    ),
+  ];
+
+  bool get _showUserCondition {
+    final age = _ageYears;
+    return _sex == 'FEMALE' && age != null && age >= 9;
+  }
+
+  int? get _ageYears {
+    final birth = _birth;
+    if (birth == null) return null;
+    final now = DateTime.now();
+    var age = now.year - birth.year;
+    if (now.month < birth.month ||
+        (now.month == birth.month && now.day < birth.day)) {
+      age--;
+    }
+    return age;
+  }
+
+  /// Pais por defecto (Colombia) tomado del catalogo. Se usa para el pais de
+  /// residencia (fijo) y como respaldo del pais de nacimiento.
+  String? get _defaultCountryId => widget.controller.countries.isEmpty
+      ? null
+      : widget.controller.countries.first.id;
+
+  /// Campo de pais de solo lectura: la vacunacion ocurre en Colombia.
+  Widget _lockedCountryField(String label) {
+    final name = widget.controller.countries.isEmpty
+        ? 'Colombia'
+        : widget.controller.countries.first.name;
+    return TextFormField(
+      initialValue: name,
+      enabled: false,
+      decoration: InputDecoration(
+        labelText: label,
+        helperText: 'Pais fijo mientras la vacunacion sea en Colombia.',
+        suffixIcon: const Icon(
+          Icons.lock_outline_rounded,
+          size: 18,
+          color: AppColors.hint,
+        ),
+      ),
+    );
+  }
+
+  // ---------- navegacion ----------
 
   Future<void> _pickBirthDate() async {
     final now = DateTime.now();
@@ -115,6 +344,25 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
     });
   }
 
+  Future<void> _pickDate(
+    TextEditingController target,
+    DateTime? current,
+    void Function(DateTime) onPicked,
+  ) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current ?? now,
+      firstDate: DateTime(1900),
+      lastDate: now,
+    );
+    if (picked == null) return;
+    setState(() {
+      onPicked(picked);
+      target.text = _format(picked);
+    });
+  }
+
   static String _format(DateTime date) {
     final y = date.year.toString().padLeft(4, '0');
     final m = date.month.toString().padLeft(2, '0');
@@ -123,17 +371,70 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
   }
 
   Future<void> _next() async {
-    if (_step == 0 && !(_identityFormKey.currentState?.validate() ?? false)) {
-      return;
+    if (_step == 0) {
+      if (!(_identityFormKey.currentState?.validate() ?? false)) {
+        return;
+      }
+      // Valida que el documento no este ya registrado antes de continuar.
+      if (await _blockIfDuplicate()) return;
     }
     if (_step < _steps.length - 1) {
       setState(() => _step++);
-      if (_step == 4) {
+      if (_step == 3) {
         widget.controller.loadDepartments();
       }
       return;
     }
     await _save();
+  }
+
+  /// Verifica si el documento del paso 1 ya esta registrado. Si existe, ofrece
+  /// usar al paciente existente (evita duplicados) y devuelve true para no
+  /// avanzar con el alta. Con busqueda fallida no bloquea.
+  Future<bool> _blockIfDuplicate() async {
+    if (_checkingDuplicate) return true;
+    _checkingDuplicate = true;
+    try {
+      final number = _documentNumber.text.trim();
+      await widget.controller.findPatients(
+        offline: widget.offline,
+        documentType: _documentType,
+        documentNumber: number,
+      );
+      if (!mounted) return true;
+      if (widget.controller.error != null) return false;
+      final results = widget.controller.searchResults;
+      if (results.isEmpty) return false;
+
+      final existing = results.first;
+      final useExisting = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Paciente ya registrado'),
+          content: Text(
+            'Ya existe un paciente con el documento $number: '
+            '${existing.fullName}. ¿Deseas usarlo en esta atencion?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Usar este paciente'),
+            ),
+          ],
+        ),
+      );
+      if (useExisting == true && mounted) {
+        widget.controller.selectPatient(existing);
+        Navigator.of(context).pop(true);
+      }
+      return true;
+    } finally {
+      _checkingDuplicate = false;
+    }
   }
 
   void _previous() {
@@ -174,29 +475,38 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
 
   bool _hasUnsavedData() {
     if (_step > 0 || _birth != null || _gender != null) return true;
-    if (_departmentId != null || _municipalityId != null) return true;
     for (final controller in [
-      _firstName,
-      _lastName,
       _documentNumber,
-      _ethnicity,
+      _firstName,
+      _secondName,
+      _lastName,
+      _secondLastName,
       _educationLevel,
-      _phone,
-      _email,
-      _guardianName,
-      _guardianDocument,
-      _guardianPhone,
+      _birthPlace,
+      _gestationalAge,
+      _locality,
       _street,
+      _landline,
+      _cellphone,
+      _email,
+      _contraindicationDetails,
+      _reactionDetails,
+      _lastMenstrualDate,
+      _previousPregnancies,
+      _birthPlaceDelivery,
+      _guardianFirstName,
+      _guardianSecondName,
+      _guardianLastName,
+      _guardianSecondLastName,
+      _guardianDocument,
+      _guardianLandline,
+      _guardianCellphone,
+      _guardianEmail,
+      _insurer,
     ]) {
       if (controller.text.trim().isNotEmpty) return true;
     }
-    for (final history in _histories) {
-      if (history.condition.text.trim().isNotEmpty ||
-          history.notes.text.trim().isNotEmpty) {
-        return true;
-      }
-    }
-    return false;
+    return _histories.isNotEmpty;
   }
 
   Future<void> _save() async {
@@ -210,10 +520,18 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
     setState(() => _saving = true);
 
     final contacts = <NewPatientContact>[
-      if (_phone.text.trim().isNotEmpty)
+      if (_landline.text.trim().isNotEmpty)
         NewPatientContact(
           type: 'PHONE',
-          value: _phone.text.trim(),
+          value: _landline.text.trim(),
+          phoneKind: 'LANDLINE',
+          primary: _cellphone.text.trim().isEmpty,
+        ),
+      if (_cellphone.text.trim().isNotEmpty)
+        NewPatientContact(
+          type: 'PHONE',
+          value: _cellphone.text.trim(),
+          phoneKind: 'CELLPHONE',
           primary: true,
         ),
       if (_email.text.trim().isNotEmpty)
@@ -221,19 +539,39 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
     ];
 
     final guardians = <NewPatientGuardian>[
-      if (_guardianName.text.trim().isNotEmpty)
+      if (_guardianFirstName.text.trim().isNotEmpty ||
+          _guardianLastName.text.trim().isNotEmpty)
         NewPatientGuardian(
           relationship: _guardianRelationship,
-          fullName: _guardianName.text.trim(),
+          fullName: [
+            _guardianFirstName.text.trim(),
+            _guardianSecondName.text.trim(),
+          ].where((part) => part.isNotEmpty).join(' '),
+          secondName: _guardianSecondName.text.trim().isEmpty
+              ? null
+              : _guardianSecondName.text.trim(),
+          secondLastName: _guardianSecondLastName.text.trim().isEmpty
+              ? null
+              : _guardianSecondLastName.text.trim(),
           documentType: _guardianDocument.text.trim().isEmpty
               ? null
               : _guardianDocumentType,
           documentNumber: _guardianDocument.text.trim().isEmpty
               ? null
               : _guardianDocument.text.trim(),
-          phone: _guardianPhone.text.trim().isEmpty
+          landline: _guardianLandline.text.trim().isEmpty
               ? null
-              : _guardianPhone.text.trim(),
+              : _guardianLandline.text.trim(),
+          cellphone: _guardianCellphone.text.trim().isEmpty
+              ? null
+              : _guardianCellphone.text.trim(),
+          email: _guardianEmail.text.trim().isEmpty
+              ? null
+              : _guardianEmail.text.trim(),
+          affiliationRegime: _guardianAffiliationRegime,
+          insurer: _guardianInsurer?.name,
+          insurerCode: _guardianInsurer?.nit,
+          displaced: _guardianDisplaced,
         ),
     ];
 
@@ -241,45 +579,147 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
       street: _street.text.trim().isEmpty ? null : _street.text.trim(),
       departmentId: _departmentId,
       municipalityId: _municipalityId,
+      countryId: _defaultCountryId,
+      locality: _locality.text.trim().isEmpty ? null : _locality.text.trim(),
+      area: _area,
     );
 
     final demographics =
         (_gender == null &&
-            _ethnicity.text.trim().isEmpty &&
+            _sexualOrientation == null &&
+            _ethnicity == null &&
             _educationLevel.text.trim().isEmpty)
         ? null
         : NewPatientDemographic(
             gender: _gender,
-            ethnicity: _ethnicity.text.trim().isEmpty
-                ? null
-                : _ethnicity.text.trim(),
+            ethnicity: _ethnicity,
+            sexualOrientation: _sexualOrientation,
             educationLevel: _educationLevel.text.trim().isEmpty
                 ? null
                 : _educationLevel.text.trim(),
           );
 
-    final histories = <NewPatientMedicalHistory>[
-      for (final history in _histories)
-        if (history.condition.text.trim().isNotEmpty)
-          NewPatientMedicalHistory(
-            condition: history.condition.text.trim(),
-            diagnosedAt: history.diagnosedAt == null
+    final affiliation =
+        (_affiliationRegime == null && _insurer.text.trim().isEmpty)
+        ? null
+        : NewPatientAffiliation(
+            affiliationRegime: _affiliationRegime,
+            insurer: _insurer.text.trim().isEmpty ? null : _insurer.text.trim(),
+            insurerCode: _selectedInsurer?.nit,
+          );
+
+    final specialConditions =
+        (_displaced == null &&
+            _disabled == null &&
+            _deceased == null &&
+            _armedConflictVictim == null &&
+            _currentlyStudying == null)
+        ? null
+        : NewPatientSpecialConditions(
+            displaced: _displaced,
+            disabled: _disabled,
+            deceased: _deceased,
+            armedConflictVictim: _armedConflictVictim,
+            currentlyStudying: _currentlyStudying,
+          );
+
+    final userCondition =
+        (_userCondition == null &&
+            _lastMenstrual == null &&
+            _previousPregnancies.text.trim().isEmpty &&
+            _birthPlaceDelivery.text.trim().isEmpty)
+        ? null
+        : NewPatientUserCondition(
+            userCondition: _userCondition,
+            lastMenstrualDate: _lastMenstrual == null
                 ? null
-                : _format(history.diagnosedAt!),
-            notes: history.notes.text.trim().isEmpty
+                : _format(_lastMenstrual!),
+            previousPregnancies: int.tryParse(_previousPregnancies.text.trim()),
+            birthPlaceDelivery: _birthPlaceDelivery.text.trim().isEmpty
                 ? null
-                : history.notes.text.trim(),
-          ),
-    ];
+                : _birthPlaceDelivery.text.trim(),
+          );
+
+    final contraindicationDetails = _contraindicationDetails.text.trim();
+    final reactionDetails = _reactionDetails.text.trim();
+    final histories = <NewPatientMedicalHistory>[];
+    var flagsAssigned = false;
+    for (final history in _histories) {
+      if (history.condition.text.trim().isEmpty) continue;
+      // Contraindicacion y reaccion son del paciente, no de una fila puntual:
+      // se adjuntan a la primera fila de antecedentes.
+      final isFirstRow = !flagsAssigned;
+      histories.add(
+        NewPatientMedicalHistory(
+          condition: history.condition.text.trim(),
+          diagnosedAt: history.diagnosedAt == null
+              ? null
+              : _format(history.diagnosedAt!),
+          notes: history.observations.text.trim().isEmpty
+              ? null
+              : history.observations.text.trim(),
+          historyType: history.type.text.trim().isEmpty
+              ? null
+              : history.type.text.trim(),
+          hasContraindication: isFirstRow ? _hasContraindication : null,
+          contraindicationDetails: isFirstRow && _hasContraindication
+              ? (contraindicationDetails.isEmpty
+                    ? null
+                    : contraindicationDetails)
+              : null,
+          hasPreviousReaction: isFirstRow ? _hasPreviousReaction : null,
+          reactionDetails: isFirstRow && _hasPreviousReaction
+              ? (reactionDetails.isEmpty ? null : reactionDetails)
+              : null,
+        ),
+      );
+      flagsAssigned = true;
+    }
+    // Si no hubo filas de antecedentes pero si contraindicacion/reaccion, se
+    // crea una fila que las transporte (el backend exige `condition`).
+    if (!flagsAssigned && (_hasContraindication || _hasPreviousReaction)) {
+      histories.add(
+        NewPatientMedicalHistory(
+          condition: 'Antecedentes de vacunacion',
+          hasContraindication: _hasContraindication,
+          contraindicationDetails:
+              _hasContraindication && contraindicationDetails.isNotEmpty
+              ? contraindicationDetails
+              : null,
+          hasPreviousReaction: _hasPreviousReaction,
+          reactionDetails: _hasPreviousReaction && reactionDetails.isNotEmpty
+              ? reactionDetails
+              : null,
+        ),
+      );
+    }
 
     final input = NewPatientInput(
       documentType: _documentType,
       documentNumber: _documentNumber.text.trim(),
       firstName: _firstName.text.trim(),
+      secondName: _secondName.text.trim().isEmpty
+          ? null
+          : _secondName.text.trim(),
       lastName: _lastName.text.trim(),
+      secondLastName: _secondLastName.text.trim().isEmpty
+          ? null
+          : _secondLastName.text.trim(),
       birthDate: _format(_birth!),
       sex: _sex,
+      birthCountryId: _birthCountryId ?? _defaultCountryId,
+      birthPlace: _birthPlace.text.trim().isEmpty
+          ? null
+          : _birthPlace.text.trim(),
+      migrationStatus: _migrationStatus,
+      gestationalAgeAtBirth: int.tryParse(_gestationalAge.text.trim()),
+      vaccinationCardType: _carnetType,
+      authorizeCalls: _authorizeCalls,
+      authorizeEmail: _authorizeEmail,
       demographics: demographics,
+      affiliation: affiliation,
+      specialConditions: specialConditions,
+      userCondition: userCondition,
       contacts: contacts,
       addresses: [address],
       guardians: guardians,
@@ -297,6 +737,8 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
       setState(() => _saving = false);
     }
   }
+
+  // ---------- build ----------
 
   @override
   Widget build(BuildContext context) {
@@ -336,106 +778,190 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
 
   Widget _header() => Container(
     width: double.infinity,
-    color: AppColors.surface,
-    padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+    decoration: const BoxDecoration(
+      color: AppColors.surface,
+      border: Border(bottom: BorderSide(color: AppColors.border)),
+    ),
+    padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Paso ${_step + 1} de ${_steps.length}',
-          style: const TextStyle(color: AppColors.slate, fontSize: 12),
+        Row(
+          children: [
+            Text(
+              'PASO ${_step + 1} DE ${_steps.length}',
+              style: AppTextStyles.overline.copyWith(color: AppColors.slate),
+            ),
+            const Spacer(),
+            Text(
+              'Registro de paciente',
+              style: AppTextStyles.overline.copyWith(color: AppColors.primary),
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
-        Text(_steps[_step], style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 10),
-        LinearProgressIndicator(value: (_step + 1) / _steps.length),
+        _FolioRail(count: _steps.length, current: _step),
         const SizedBox(height: 12),
         _StepHint(_stepHints[_step]),
       ],
     ),
   );
 
-  Widget _stepContent() => switch (_step) {
-    0 => _identityStep(),
-    1 => _demographicsStep(),
-    2 => _contactStep(),
-    3 => _guardianStep(),
-    4 => _addressStep(),
-    _ => _historyStep(),
-  };
+  Widget _stepContent() {
+    final body = switch (_step) {
+      0 => _identityStep(),
+      1 => _demographicsStep(),
+      2 => _affiliationStep(),
+      3 => _residenceStep(),
+      4 => _specialConditionsStep(),
+      5 => _historyStep(),
+      6 => _userConditionStep(),
+      _ => _guardianStep(),
+    };
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionHeading(
+            index: (_step + 1).toString().padLeft(2, '0'),
+            title: _steps[_step],
+            subtitle: _step == 0 ? 'Solo esta seccion es obligatoria' : null,
+          ),
+          const SizedBox(height: 18),
+          body,
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(text, style: Theme.of(context).textTheme.titleSmall),
+  );
+
+  Widget _textField(
+    TextEditingController controller,
+    String label, {
+    String? helper,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? formatters,
+    bool readOnly = false,
+    VoidCallback? onTap,
+    TextCapitalization textCapitalization = TextCapitalization.none,
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      inputFormatters: formatters,
+      readOnly: readOnly,
+      onTap: onTap,
+      textCapitalization: textCapitalization,
+      decoration: InputDecoration(
+        labelText: label,
+        helperText: helper,
+        suffixIcon: readOnly ? const Icon(Icons.calendar_today_outlined) : null,
+      ),
+    ),
+  );
+
+  Widget _yesNoDropdown(
+    bool? value,
+    String label,
+    ValueChanged<bool?> onChanged,
+  ) => Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: DropdownButtonFormField<bool?>(
+      initialValue: value,
+      isExpanded: true,
+      hint: const Text('Selecciona'),
+      decoration: _pickDecoration(
+        label,
+        onClear: value == null ? null : () => onChanged(null),
+      ),
+      items: const [
+        DropdownMenuItem(value: true, child: Text('Si')),
+        DropdownMenuItem(value: false, child: Text('No')),
+      ],
+      onChanged: onChanged,
+    ),
+  );
 
   Widget _identityStep() => Form(
     key: _identityFormKey,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                initialValue: _documentType,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Tipo'),
-                items: [
-                  for (final type in const ['CC', 'TI', 'CE', 'PASAPORTE'])
-                    DropdownMenuItem(value: type, child: Text(type)),
-                ],
-                onChanged: (value) =>
-                    setState(() => _documentType = value ?? 'CC'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 2,
-              child: TextFormField(
-                controller: _documentNumber,
-                keyboardType: documentKeyboardType(_documentType),
-                inputFormatters: documentInputFormatters(_documentType),
-                decoration: InputDecoration(
-                  labelText: 'Numero de documento',
-                  helperText: (_documentType == 'CC' || _documentType == 'TI')
-                      ? 'Solo numeros, maximo 10.'
-                      : 'Letras y numeros, maximo 10.',
-                ),
-                validator: (value) {
-                  final v = value?.trim() ?? '';
-                  if (v.isEmpty) return 'Ingresa el documento.';
-                  final min = _documentType == 'CC' ? 6 : 4;
-                  if (v.length < min) {
-                    return 'Ingresa al menos $min caracteres.';
-                  }
-                  return null;
-                },
-              ),
-            ),
-          ],
+        DropdownButtonFormField<String>(
+          initialValue: _documentType,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Tipo de documento'),
+          items: _documentTypeItems(),
+          onChanged: (value) => setState(() => _documentType = value ?? 'CC'),
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _documentNumber,
+          keyboardType: documentKeyboardType(_documentType),
+          inputFormatters: documentInputFormatters(_documentType),
+          onChanged: (_) => setState(() {}),
+          decoration: InputDecoration(
+            labelText: 'Numero de documento',
+            helperText: (_documentType == 'CC' || _documentType == 'TI')
+                ? 'Solo numeros, maximo 10.'
+                : 'Letras y numeros, maximo 10.',
+          ),
+          validator: (value) {
+            final v = value?.trim() ?? '';
+            if (v.isEmpty) return 'Ingresa el documento.';
+            final min = _documentType == 'CC' ? 6 : 4;
+            if (v.length < min) {
+              return 'Ingresa al menos $min caracteres.';
+            }
+            return null;
+          },
         ),
         const SizedBox(height: 16),
         TextFormField(
           controller: _firstName,
           textCapitalization: TextCapitalization.words,
           inputFormatters: maxLengthFormatters(FieldLimits.name),
-          decoration: const InputDecoration(
-            labelText: 'Nombres',
-            helperText: 'Como aparece en el documento.',
-          ),
-          validator: (value) => (value == null || value.trim().isEmpty)
-              ? 'Ingresa los nombres.'
-              : null,
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(labelText: 'Primer nombre'),
+          validator: (value) =>
+              (value == null || value.trim().isEmpty) ? 'Requerido' : null,
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _secondName,
+          textCapitalization: TextCapitalization.words,
+          inputFormatters: maxLengthFormatters(FieldLimits.name),
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(labelText: 'Segundo nombre'),
         ),
         const SizedBox(height: 16),
         TextFormField(
           controller: _lastName,
           textCapitalization: TextCapitalization.words,
           inputFormatters: maxLengthFormatters(FieldLimits.name),
-          decoration: const InputDecoration(
-            labelText: 'Apellidos',
-            helperText: 'Como aparece en el documento.',
-          ),
-          validator: (value) => (value == null || value.trim().isEmpty)
-              ? 'Ingresa los apellidos.'
-              : null,
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(labelText: 'Primer apellido'),
+          validator: (value) =>
+              (value == null || value.trim().isEmpty) ? 'Requerido' : null,
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _secondLastName,
+          textCapitalization: TextCapitalization.words,
+          inputFormatters: maxLengthFormatters(FieldLimits.name),
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(labelText: 'Segundo apellido'),
         ),
         const SizedBox(height: 16),
         TextFormField(
@@ -452,152 +978,200 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
           initialValue: _sex,
           isExpanded: true,
           decoration: const InputDecoration(labelText: 'Sexo'),
-          items: const [
-            DropdownMenuItem(value: 'MALE', child: Text('Masculino')),
-            DropdownMenuItem(value: 'FEMALE', child: Text('Femenino')),
-          ],
+          items: _refItems('sex', fallback: _sexFallback),
           onChanged: (value) => setState(() => _sex = value ?? 'MALE'),
         ),
+        const SizedBox(height: 8),
+        _identityPreview(),
       ],
     ),
   );
 
+  /// Vista previa en vivo del registro: ayuda al vacunador a verificar que el
+  /// documento y el nombre son los correctos antes de continuar.
+  Widget _identityPreview() {
+    final name = [
+      _firstName.text.trim(),
+      _secondName.text.trim(),
+      _lastName.text.trim(),
+      _secondLastName.text.trim(),
+    ].where((part) => part.isNotEmpty).join(' ');
+    if (_documentNumber.text.trim().isEmpty && name.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: IdentityStrip(
+        documentType: _documentType,
+        documentNumber: _documentNumber.text.trim().isEmpty
+            ? 'sin documento'
+            : _documentNumber.text.trim(),
+        name: name.isEmpty ? 'Sin nombre' : name.toUpperCase(),
+      ),
+    );
+  }
+
   Widget _demographicsStep() => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      DropdownButtonFormField<String?>(
-        initialValue: _gender,
-        isExpanded: true,
-        decoration: const InputDecoration(
-          labelText: 'Genero (dato demografico)',
-        ),
-        items: const [
-          DropdownMenuItem(value: null, child: Text('Sin dato')),
-          DropdownMenuItem(value: 'MALE', child: Text('Masculino')),
-          DropdownMenuItem(value: 'FEMALE', child: Text('Femenino')),
-          DropdownMenuItem(value: 'OTHER', child: Text('Otro')),
-        ],
+      _refDropdown(
+        code: 'gender',
+        label: 'Genero',
+        value: _gender,
         onChanged: (value) => setState(() => _gender = value),
       ),
-      const SizedBox(height: 16),
-      TextField(
-        controller: _ethnicity,
-        inputFormatters: maxLengthFormatters(FieldLimits.ethnicity),
-        decoration: const InputDecoration(labelText: 'Etnia (opcional)'),
+      _refDropdown(
+        code: 'sexual_orientation',
+        label: 'Orientacion sexual',
+        value: _sexualOrientation,
+        onChanged: (value) => setState(() => _sexualOrientation = value),
       ),
-      const SizedBox(height: 16),
-      TextField(
-        controller: _educationLevel,
-        inputFormatters: maxLengthFormatters(FieldLimits.educationLevel),
-        decoration: const InputDecoration(labelText: 'Escolaridad (opcional)'),
+      _refDropdown(
+        code: 'ethnicity',
+        label: 'Pertenencia etnica',
+        value: _ethnicity,
+        onChanged: (value) => setState(() => _ethnicity = value),
       ),
-    ],
-  );
-
-  Widget _contactStep() => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      TextField(
-        controller: _phone,
-        keyboardType: TextInputType.phone,
-        inputFormatters: phoneFormatters(),
-        decoration: const InputDecoration(
-          labelText: 'Telefono (opcional)',
-          helperText: 'Solo numeros y simbolos de marcado.',
+      _refDropdown(
+        code: 'carnet_type',
+        label: 'Tipo de carnet',
+        value: _carnetType,
+        onChanged: (value) => setState(() => _carnetType = value),
+      ),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: DropdownButtonFormField<String?>(
+          initialValue: _birthCountryId,
+          isExpanded: true,
+          hint: const Text('Selecciona'),
+          decoration: _pickDecoration(
+            'Pais de nacimiento',
+            onClear: _birthCountryId == null
+                ? null
+                : () => setState(() => _birthCountryId = null),
+          ),
+          items: [
+            for (final GeoCountry country in widget.controller.countries)
+              DropdownMenuItem(value: country.id, child: Text(country.name)),
+          ],
+          onChanged: (value) => setState(() => _birthCountryId = value),
         ),
       ),
       const SizedBox(height: 16),
-      TextField(
-        controller: _email,
-        keyboardType: TextInputType.emailAddress,
-        inputFormatters: maxLengthFormatters(FieldLimits.email),
-        decoration: const InputDecoration(
-          labelText: 'Correo (opcional)',
-          helperText: 'Correo de contacto del paciente o acompañante.',
-        ),
-      ),
-    ],
-  );
-
-  Widget _guardianStep() => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
       DropdownButtonFormField<String>(
-        initialValue: _guardianRelationship,
+        initialValue: _migrationStatus,
         isExpanded: true,
-        decoration: const InputDecoration(labelText: 'Parentesco'),
-        items: const [
-          DropdownMenuItem(value: 'MOTHER', child: Text('Madre')),
-          DropdownMenuItem(value: 'FATHER', child: Text('Padre')),
-          DropdownMenuItem(value: 'CAREGIVER', child: Text('Cuidador')),
-          DropdownMenuItem(value: 'OTHER', child: Text('Otro')),
-        ],
-        onChanged: (value) =>
-            setState(() => _guardianRelationship = value ?? 'CAREGIVER'),
-      ),
-      const SizedBox(height: 16),
-      TextField(
-        controller: _guardianName,
-        textCapitalization: TextCapitalization.words,
-        inputFormatters: maxLengthFormatters(FieldLimits.name),
-        decoration: const InputDecoration(labelText: 'Nombre del acompañante'),
-      ),
-      const SizedBox(height: 16),
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              initialValue: _guardianDocumentType,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Tipo'),
-              items: [
-                for (final type in const ['CC', 'TI', 'CE', 'PASAPORTE'])
-                  DropdownMenuItem(value: type, child: Text(type)),
-              ],
-              onChanged: (value) =>
-                  setState(() => _guardianDocumentType = value ?? 'CC'),
+        decoration: const InputDecoration(labelText: 'Estatus migratorio'),
+        items: _refItems(
+          'migration_status',
+          fallback: const [
+            ReferenceOption(code: 'REGULAR', label: 'Regular', sortOrder: 1),
+            ReferenceOption(
+              code: 'IRREGULAR',
+              label: 'Irregular',
+              sortOrder: 2,
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 2,
-            child: TextField(
-              controller: _guardianDocument,
-              keyboardType: documentKeyboardType(_guardianDocumentType),
-              inputFormatters: documentInputFormatters(_guardianDocumentType),
-              decoration: const InputDecoration(
-                labelText: 'Documento',
-                helperText: 'Documento del acompañante (opcional).',
-              ),
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 16),
-      TextField(
-        controller: _guardianPhone,
-        keyboardType: TextInputType.phone,
-        inputFormatters: phoneFormatters(),
-        decoration: const InputDecoration(
-          labelText: 'Telefono del acompañante',
+          ],
         ),
+        onChanged: (value) =>
+            setState(() => _migrationStatus = value ?? 'REGULAR'),
+      ),
+      const SizedBox(height: 16),
+      _textField(
+        _birthPlace,
+        'Lugar de nacimiento',
+        helper: 'Institucion o municipio donde nacio.',
+        formatters: maxLengthFormatters(FieldLimits.name),
+      ),
+      _textField(
+        _gestationalAge,
+        'Edad gestacional al nacer (semanas)',
+        keyboardType: TextInputType.number,
+      ),
+      _textField(
+        _educationLevel,
+        'Escolaridad',
+        formatters: maxLengthFormatters(FieldLimits.educationLevel),
       ),
     ],
   );
 
-  Widget _addressStep() {
-    final controller = widget.controller;
+  Widget _affiliationStep() {
+    final options = widget.controller.insurersForRegime(_affiliationRegime);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DropdownButtonFormField<String?>(
+        _refDropdown(
+          code: 'affiliation_regime',
+          label: 'Regimen de afiliacion',
+          value: _affiliationRegime,
+          onChanged: (value) => setState(() {
+            _affiliationRegime = value;
+            _selectedInsurer = null;
+            _insurer.clear();
+          }),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: DropdownButtonFormField<HealthInsurer>(
+            initialValue: _selectedInsurer,
+            isExpanded: true,
+            hint: const Text('Selecciona'),
+            decoration: _pickDecoration(
+              'Aseguradora / EPS',
+              helper: _affiliationRegime == null
+                  ? 'Selecciona primero el regimen de afiliacion.'
+                  : (options.isEmpty ? 'No hay EPS para este regimen.' : null),
+              onClear: _selectedInsurer == null
+                  ? null
+                  : () => setState(() {
+                      _selectedInsurer = null;
+                      _insurer.clear();
+                    }),
+            ),
+            items: [
+              for (final insurer in options)
+                DropdownMenuItem(value: insurer, child: Text(insurer.name)),
+            ],
+            onChanged: options.isEmpty
+                ? null
+                : (value) => setState(() {
+                    _selectedInsurer = value;
+                    _insurer.text = value?.name ?? '';
+                  }),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _residenceStep() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _lockedCountryField('Pais de residencia'),
+      const SizedBox(height: 16),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: DropdownButtonFormField<String?>(
           initialValue: _departmentId,
           isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Departamento'),
+          hint: const Text('Selecciona'),
+          decoration: _pickDecoration(
+            'Departamento',
+            onClear: _departmentId == null
+                ? null
+                : () => setState(() {
+                    _departmentId = null;
+                    _municipalityId = null;
+                  }),
+          ),
           items: [
-            const DropdownMenuItem(value: null, child: Text('Sin dato')),
-            for (final GeoDepartment department in controller.departments)
+            for (final GeoDepartment department
+                in widget.controller.departments)
               DropdownMenuItem(
                 value: department.id,
                 child: Text(department.name),
@@ -608,18 +1182,25 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
               _departmentId = value;
               _municipalityId = null;
             });
-            if (value != null) controller.loadMunicipalities(value);
+            if (value != null) widget.controller.loadMunicipalities(value);
           },
         ),
-        const SizedBox(height: 16),
-        DropdownButtonFormField<String?>(
+      ),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: DropdownButtonFormField<String?>(
           initialValue: _municipalityId,
           isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Municipio'),
+          hint: const Text('Selecciona'),
+          decoration: _pickDecoration(
+            'Municipio',
+            onClear: _municipalityId == null
+                ? null
+                : () => setState(() => _municipalityId = null),
+          ),
           items: [
-            const DropdownMenuItem(value: null, child: Text('Sin dato')),
             for (final GeoMunicipality municipality
-                in controller.municipalities)
+                in widget.controller.municipalities)
               DropdownMenuItem(
                 value: municipality.id,
                 child: Text(municipality.name),
@@ -627,22 +1208,121 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
           ],
           onChanged: (value) => setState(() => _municipalityId = value),
         ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _street,
-          inputFormatters: maxLengthFormatters(FieldLimits.street),
-          decoration: const InputDecoration(
-            labelText: 'Direccion (opcional)',
-            helperText: 'Direccion de residencia.',
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+      _refDropdown(
+        code: 'area',
+        label: 'Area',
+        value: _area,
+        onChanged: (value) => setState(() => _area = value),
+      ),
+      const SizedBox(height: 16),
+      _textField(
+        _locality,
+        'Comuna / Localidad',
+        formatters: maxLengthFormatters(FieldLimits.name),
+      ),
+      _textField(
+        _street,
+        'Direccion con nomenclatura',
+        formatters: maxLengthFormatters(FieldLimits.street),
+      ),
+      _textField(
+        _landline,
+        'Telefono fijo',
+        keyboardType: TextInputType.phone,
+        formatters: phoneFormatters(),
+      ),
+      _textField(
+        _cellphone,
+        'Celular',
+        keyboardType: TextInputType.phone,
+        formatters: phoneFormatters(),
+      ),
+      _textField(
+        _email,
+        'Correo electronico',
+        keyboardType: TextInputType.emailAddress,
+        formatters: maxLengthFormatters(FieldLimits.email),
+      ),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('¿Autoriza llamadas telefonicas?'),
+        value: _authorizeCalls,
+        onChanged: (value) => setState(() => _authorizeCalls = value),
+      ),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('¿Autoriza envio de correo?'),
+        value: _authorizeEmail,
+        onChanged: (value) => setState(() => _authorizeEmail = value),
+      ),
+    ],
+  );
+
+  Widget _specialConditionsStep() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _yesNoDropdown(
+        _displaced,
+        '¿Desplazado?',
+        (value) => setState(() => _displaced = value),
+      ),
+      _yesNoDropdown(
+        _disabled,
+        '¿Discapacitado?',
+        (value) => setState(() => _disabled = value),
+      ),
+      _yesNoDropdown(
+        _deceased,
+        '¿Fallecido?',
+        (value) => setState(() => _deceased = value),
+      ),
+      _yesNoDropdown(
+        _armedConflictVictim,
+        '¿Victima del conflicto armado?',
+        (value) => setState(() => _armedConflictVictim = value),
+      ),
+      _yesNoDropdown(
+        _currentlyStudying,
+        '¿Estudia actualmente?',
+        (value) => setState(() => _currentlyStudying = value),
+      ),
+    ],
+  );
 
   Widget _historyStep() => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text(
+          '¿Sufre o ha sufrido alguna enfermedad que contraindique la vacunacion?',
+        ),
+        value: _hasContraindication,
+        onChanged: (value) => setState(() => _hasContraindication = value),
+      ),
+      if (_hasContraindication)
+        _textField(
+          _contraindicationDetails,
+          '¿Cual?',
+          formatters: maxLengthFormatters(FieldLimits.name),
+        ),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text(
+          '¿Ha presentado reaccion moderada o severa a biologico anteriores?',
+        ),
+        value: _hasPreviousReaction,
+        onChanged: (value) => setState(() => _hasPreviousReaction = value),
+      ),
+      if (_hasPreviousReaction)
+        _textField(
+          _reactionDetails,
+          '¿Cual?',
+          formatters: maxLengthFormatters(FieldLimits.name),
+        ),
+      const SizedBox(height: 8),
+      _sectionTitle('Historico de antecedentes'),
       for (var i = 0; i < _histories.length; i++) ...[
         Card(
           child: Padding(
@@ -655,9 +1335,15 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
                     FieldLimits.historyCondition,
                   ),
                   decoration: const InputDecoration(
-                    labelText: 'Antecedente',
+                    labelText: 'Descripcion',
                     helperText: 'Ej: asma, alergias, cardiopatia.',
                   ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _histories[i].type,
+                  inputFormatters: maxLengthFormatters(FieldLimits.name),
+                  decoration: const InputDecoration(labelText: 'Tipo'),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -667,7 +1353,9 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
                         controller: _histories[i].dateText,
                         readOnly: true,
                         onTap: () => _pickHistoryDate(i),
-                        decoration: const InputDecoration(labelText: 'Fecha'),
+                        decoration: const InputDecoration(
+                          labelText: 'Fecha de registro',
+                        ),
                       ),
                     ),
                     IconButton(
@@ -681,13 +1369,11 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
                 ),
                 const SizedBox(height: 8),
                 TextField(
-                  controller: _histories[i].notes,
+                  controller: _histories[i].observations,
                   inputFormatters: maxLengthFormatters(
                     FieldLimits.historyNotes,
                   ),
-                  decoration: const InputDecoration(
-                    labelText: 'Notas (opcional)',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Notas'),
                 ),
               ],
             ),
@@ -699,6 +1385,180 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         onPressed: () => setState(() => _histories.add(_HistoryDraft())),
         icon: const Icon(Icons.add),
         label: const Text('Agregar antecedente'),
+      ),
+      const SizedBox(height: 10),
+    ],
+  );
+
+  Widget _userConditionStep() {
+    if (!_showUserCondition) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Text(
+          'La condicion de la usuaria aplica para mujeres desde los 9 anos. '
+          'Puedes continuar.',
+        ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _refDropdown(
+          code: 'user_condition',
+          label: 'Condicion de la usuaria',
+          value: _userCondition,
+          onChanged: (value) => setState(() => _userCondition = value),
+        ),
+        const SizedBox(height: 16),
+        _textField(
+          _lastMenstrualDate,
+          'Fecha de ultima menstruacion',
+          readOnly: true,
+          onTap: () => _pickDate(
+            _lastMenstrualDate,
+            _lastMenstrual,
+            (d) => _lastMenstrual = d,
+          ),
+        ),
+        _textField(
+          _previousPregnancies,
+          'Cantidad de embarazos previos',
+          keyboardType: TextInputType.number,
+        ),
+        _textField(
+          _birthPlaceDelivery,
+          'Lugar de atencion del parto',
+          formatters: maxLengthFormatters(FieldLimits.name),
+        ),
+      ],
+    );
+  }
+
+  Widget _guardianStep() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      DropdownButtonFormField<String>(
+        initialValue: _guardianRelationship,
+        isExpanded: true,
+        decoration: const InputDecoration(labelText: 'Parentesco'),
+        items: _refItems(
+          'guardian_relationship',
+          fallback: const [
+            ReferenceOption(code: 'MOTHER', label: 'Madre', sortOrder: 1),
+            ReferenceOption(code: 'FATHER', label: 'Padre', sortOrder: 2),
+            ReferenceOption(code: 'CAREGIVER', label: 'Cuidador', sortOrder: 3),
+            ReferenceOption(code: 'OTHER', label: 'Otro', sortOrder: 4),
+          ],
+        ),
+        onChanged: (value) =>
+            setState(() => _guardianRelationship = value ?? 'CAREGIVER'),
+      ),
+      const SizedBox(height: 16),
+      _textField(
+        _guardianFirstName,
+        'Primer nombre',
+        textCapitalization: TextCapitalization.words,
+        formatters: maxLengthFormatters(FieldLimits.name),
+      ),
+      _textField(
+        _guardianSecondName,
+        'Segundo nombre',
+        textCapitalization: TextCapitalization.words,
+        formatters: maxLengthFormatters(FieldLimits.name),
+      ),
+      _textField(
+        _guardianLastName,
+        'Primer apellido',
+        textCapitalization: TextCapitalization.words,
+        formatters: maxLengthFormatters(FieldLimits.name),
+      ),
+      _textField(
+        _guardianSecondLastName,
+        'Segundo apellido',
+        textCapitalization: TextCapitalization.words,
+        formatters: maxLengthFormatters(FieldLimits.name),
+      ),
+      DropdownButtonFormField<String>(
+        initialValue: _guardianDocumentType,
+        isExpanded: true,
+        decoration: const InputDecoration(labelText: 'Tipo de identificacion'),
+        items: _documentTypeItems(),
+        onChanged: (value) =>
+            setState(() => _guardianDocumentType = value ?? 'CC'),
+      ),
+      const SizedBox(height: 16),
+      TextField(
+        controller: _guardianDocument,
+        keyboardType: documentKeyboardType(_guardianDocumentType),
+        inputFormatters: documentInputFormatters(_guardianDocumentType),
+        decoration: const InputDecoration(labelText: 'Numero de documento'),
+      ),
+      const SizedBox(height: 16),
+      _textField(
+        _guardianLandline,
+        'Telefono fijo',
+        keyboardType: TextInputType.phone,
+        formatters: phoneFormatters(),
+      ),
+      _textField(
+        _guardianCellphone,
+        'Celular',
+        keyboardType: TextInputType.phone,
+        formatters: phoneFormatters(),
+      ),
+      _textField(
+        _guardianEmail,
+        'Correo electronico',
+        keyboardType: TextInputType.emailAddress,
+        formatters: maxLengthFormatters(FieldLimits.email),
+      ),
+      _refDropdown(
+        code: 'affiliation_regime',
+        label: 'Regimen de afiliacion',
+        value: _guardianAffiliationRegime,
+        onChanged: (value) => setState(() {
+          _guardianAffiliationRegime = value;
+          _guardianInsurer = null;
+        }),
+      ),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: DropdownButtonFormField<HealthInsurer>(
+          initialValue: _guardianInsurer,
+          isExpanded: true,
+          hint: const Text('Selecciona'),
+          decoration: _pickDecoration(
+            'Aseguradora / EPS',
+            helper: _guardianAffiliationRegime == null
+                ? 'Selecciona primero el regimen de afiliacion.'
+                : (widget.controller
+                          .insurersForRegime(_guardianAffiliationRegime)
+                          .isEmpty
+                      ? 'No hay EPS para este regimen.'
+                      : null),
+            onClear: _guardianInsurer == null
+                ? null
+                : () => setState(() => _guardianInsurer = null),
+          ),
+          items: [
+            for (final insurer in widget.controller.insurersForRegime(
+              _guardianAffiliationRegime,
+            ))
+              DropdownMenuItem(value: insurer, child: Text(insurer.name)),
+          ],
+          onChanged:
+              widget.controller
+                  .insurersForRegime(_guardianAffiliationRegime)
+                  .isEmpty
+              ? null
+              : (value) => setState(() => _guardianInsurer = value),
+        ),
+      ),
+      const SizedBox(height: 16),
+      _yesNoDropdown(
+        _guardianDisplaced,
+        '¿Desplazado?',
+        (value) => setState(() => _guardianDisplaced = value),
       ),
     ],
   );
@@ -721,7 +1581,10 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
   Widget _navBar() {
     final isLast = _step == _steps.length - 1;
     return Container(
-      color: AppColors.surface,
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
       child: SafeArea(
         top: false,
@@ -731,7 +1594,11 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: _saving ? null : _previous,
-                  child: const Text('Anterior'),
+                  child: const Text(
+                    'Anterior',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
             if (_step > 0) const SizedBox(width: 12),
@@ -742,9 +1609,24 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
                 child: _saving
                     ? const SizedBox.square(
                         dimension: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
-                    : Text(isLast ? 'Guardar paciente' : 'Siguiente'),
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(isLast ? 'Guardar paciente' : 'Siguiente'),
+                          const SizedBox(width: 6),
+                          Icon(
+                            isLast
+                                ? Icons.check_rounded
+                                : Icons.arrow_forward_rounded,
+                            size: 18,
+                          ),
+                        ],
+                      ),
               ),
             ),
           ],
@@ -756,14 +1638,16 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
 
 class _HistoryDraft {
   final TextEditingController condition = TextEditingController();
+  final TextEditingController type = TextEditingController();
   final TextEditingController dateText = TextEditingController();
-  final TextEditingController notes = TextEditingController();
+  final TextEditingController observations = TextEditingController();
   DateTime? diagnosedAt;
 
   void dispose() {
     condition.dispose();
+    type.dispose();
     dateText.dispose();
-    notes.dispose();
+    observations.dispose();
   }
 }
 
@@ -773,34 +1657,61 @@ class _StepHint extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    decoration: BoxDecoration(
-      color: AppColors.primary.withValues(alpha: .08),
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(
-          Icons.info_outline_rounded,
-          size: 16,
-          color: AppColors.primary,
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Padding(
+        padding: EdgeInsets.only(top: 2),
+        child: Icon(
+          Icons.subdirectory_arrow_right_rounded,
+          size: 15,
+          color: AppColors.hint,
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: AppColors.primary,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              height: 1.35,
-            ),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: AppColors.slate,
+            fontSize: 12.5,
+            height: 1.35,
           ),
         ),
-      ],
-    ),
+      ),
+    ],
   );
+}
+
+/// Riel de folios: marca el avance del wizard sin ruido (segmentos, no numeros).
+class _FolioRail extends StatelessWidget {
+  const _FolioRail({required this.count, required this.current});
+
+  final int count;
+  final int current;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (var i = 0; i < count; i++) ...[
+          Expanded(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              height: i == current ? 5 : 3,
+              decoration: BoxDecoration(
+                color: i == current
+                    ? AppColors.primary
+                    : i < current
+                    ? AppColors.primary.withValues(alpha: .35)
+                    : AppColors.border,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+          if (i < count - 1) const SizedBox(width: 6),
+        ],
+      ],
+    );
+  }
 }

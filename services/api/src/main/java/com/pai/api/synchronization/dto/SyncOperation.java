@@ -16,12 +16,12 @@ import java.util.UUID;
  * {@code operation_id} que deben procesarse antes.
  */
 public record SyncOperation(
-        @NotNull(message = "El operationId es obligatorio.") UUID operationId,
+    @NotNull(message = "El operationId es obligatorio.") UUID operationId,
 
-        @NotNull(message = "El commandType es obligatorio.") String commandType,
+    @NotNull(message = "El commandType es obligatorio.") String commandType,
 
-        @NotNull(message = "El aggregateId es obligatorio.") UUID aggregateId,
+    @NotNull(message = "El aggregateId es obligatorio.") UUID aggregateId,
 
-        Map<String, Object> payload,
+    Map<String, Object> payload,
 
-        List<UUID> dependencies) {}
+    List<UUID> dependencies) {}
