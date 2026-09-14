@@ -19,14 +19,14 @@ package com.pai.api.identity.entity;
  * </ul>
  */
 public enum ProvisioningOperationStatus {
-    PENDING,
-    AUTH_CREATED,
-    MIRROR_CREATED,
-    ROLE_ASSIGNED,
-    COMPLETED,
-    COMPENSATING,
-    COMPENSATED,
-    COMPENSATION_FAILED,
-    REJECTED,
-    UNCERTAIN
+  PENDING,
+  AUTH_CREATED,
+  MIRROR_CREATED,
+  ROLE_ASSIGNED,
+  COMPLETED,
+  COMPENSATING,
+  COMPENSATED,
+  COMPENSATION_FAILED,
+  REJECTED,
+  UNCERTAIN
 }

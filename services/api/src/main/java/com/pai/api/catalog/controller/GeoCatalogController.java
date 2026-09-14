@@ -19,31 +19,31 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/catalogs/geo")
 public class GeoCatalogController {
 
-    private static final String READ = "@authorization.hasPermission(authentication, "
-            + "'CATALOG_GLOBAL_READ') or @authorization.hasPermission(authentication, "
-            + "'CATALOG_CONFIG_READ')";
+  private static final String READ = "@authorization.hasPermission(authentication, "
+      + "'CATALOG_GLOBAL_READ') or @authorization.hasPermission(authentication, "
+      + "'CATALOG_CONFIG_READ')";
 
-    private final GeoCatalogService service;
+  private final GeoCatalogService service;
 
-    public GeoCatalogController(GeoCatalogService service) {
-        this.service = service;
-    }
+  public GeoCatalogController(GeoCatalogService service) {
+    this.service = service;
+  }
 
-    @GetMapping("/countries")
-    @PreAuthorize(READ)
-    public List<GeoDepartmentResponse> countries() {
-        return service.countries();
-    }
+  @GetMapping("/countries")
+  @PreAuthorize(READ)
+  public List<GeoDepartmentResponse> countries() {
+    return service.countries();
+  }
 
-    @GetMapping("/departments")
-    @PreAuthorize(READ)
-    public List<GeoDepartmentResponse> departments() {
-        return service.departments();
-    }
+  @GetMapping("/departments")
+  @PreAuthorize(READ)
+  public List<GeoDepartmentResponse> departments() {
+    return service.departments();
+  }
 
-    @GetMapping("/municipalities")
-    @PreAuthorize(READ)
-    public List<GeoMunicipalityResponse> municipalities(@RequestParam UUID departmentId) {
-        return service.municipalities(departmentId);
-    }
+  @GetMapping("/municipalities")
+  @PreAuthorize(READ)
+  public List<GeoMunicipalityResponse> municipalities(@RequestParam UUID departmentId) {
+    return service.municipalities(departmentId);
+  }
 }

@@ -16,66 +16,66 @@ import java.util.UUID;
 @Table(name = "patient_demographics", schema = "app")
 public class PatientDemographicEntity {
 
-    @Id
-    @Column(name = "patient_id")
-    private UUID patientId;
+  @Id
+  @Column(name = "patient_id")
+  private UUID patientId;
 
-    private String gender;
+  private String gender;
 
-    private String ethnicity;
+  private String ethnicity;
 
-    @Column(name = "sexual_orientation")
-    private String sexualOrientation;
+  @Column(name = "sexual_orientation")
+  private String sexualOrientation;
 
-    @Column(name = "education_level")
-    private String educationLevel;
+  @Column(name = "education_level")
+  private String educationLevel;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
 
-    protected PatientDemographicEntity() {}
+  protected PatientDemographicEntity() {}
 
-    public PatientDemographicEntity(
-            UUID patientId, String gender, String ethnicity, String educationLevel, Instant now) {
-        this(patientId, gender, ethnicity, null, educationLevel, now);
-    }
+  public PatientDemographicEntity(
+      UUID patientId, String gender, String ethnicity, String educationLevel, Instant now) {
+    this(patientId, gender, ethnicity, null, educationLevel, now);
+  }
 
-    public PatientDemographicEntity(
-            UUID patientId,
-            String gender,
-            String ethnicity,
-            String sexualOrientation,
-            String educationLevel,
-            Instant now) {
-        this.patientId = patientId;
-        this.gender = gender;
-        this.ethnicity = ethnicity;
-        this.sexualOrientation = sexualOrientation;
-        this.educationLevel = educationLevel;
-        this.updatedAt = now;
-    }
+  public PatientDemographicEntity(
+      UUID patientId,
+      String gender,
+      String ethnicity,
+      String sexualOrientation,
+      String educationLevel,
+      Instant now) {
+    this.patientId = patientId;
+    this.gender = gender;
+    this.ethnicity = ethnicity;
+    this.sexualOrientation = sexualOrientation;
+    this.educationLevel = educationLevel;
+    this.updatedAt = now;
+  }
 
-    public UUID getPatientId() {
-        return patientId;
-    }
+  public UUID getPatientId() {
+    return patientId;
+  }
 
-    public String getGender() {
-        return gender;
-    }
+  public String getGender() {
+    return gender;
+  }
 
-    public String getEthnicity() {
-        return ethnicity;
-    }
+  public String getEthnicity() {
+    return ethnicity;
+  }
 
-    public String getSexualOrientation() {
-        return sexualOrientation;
-    }
+  public String getSexualOrientation() {
+    return sexualOrientation;
+  }
 
-    public String getEducationLevel() {
-        return educationLevel;
-    }
+  public String getEducationLevel() {
+    return educationLevel;
+  }
 
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
 }

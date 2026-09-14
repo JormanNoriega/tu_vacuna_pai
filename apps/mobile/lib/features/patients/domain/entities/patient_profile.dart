@@ -157,6 +157,7 @@ class PatientGuardian {
     this.email,
     this.affiliationRegime,
     this.insurer,
+    this.insurerCode,
     this.ethnicity,
     this.displaced,
   });
@@ -174,6 +175,7 @@ class PatientGuardian {
   final String? email;
   final String? affiliationRegime;
   final String? insurer;
+  final String? insurerCode;
   final String? ethnicity;
   final bool? displaced;
 
@@ -192,6 +194,7 @@ class PatientGuardian {
         email: json['email'] as String?,
         affiliationRegime: json['affiliationRegime'] as String?,
         insurer: json['insurer'] as String?,
+        insurerCode: json['insurerCode'] as String?,
         ethnicity: json['ethnicity'] as String?,
         displaced: json['displaced'] as bool?,
       );
@@ -240,15 +243,21 @@ class PatientMedicalHistory {
 }
 
 class PatientAffiliation {
-  const PatientAffiliation({this.affiliationRegime, this.insurer});
+  const PatientAffiliation({
+    this.affiliationRegime,
+    this.insurer,
+    this.insurerCode,
+  });
 
   final String? affiliationRegime;
   final String? insurer;
+  final String? insurerCode;
 
   factory PatientAffiliation.fromJson(Map<String, dynamic> json) =>
       PatientAffiliation(
         affiliationRegime: json['affiliationRegime'] as String?,
         insurer: json['insurer'] as String?,
+        insurerCode: json['insurerCode'] as String?,
       );
 }
 

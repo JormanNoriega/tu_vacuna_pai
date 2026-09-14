@@ -16,19 +16,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/catalogs/reference")
 public class ReferenceCatalogController {
 
-    private static final String READ = "@authorization.hasPermission(authentication, "
-            + "'CATALOG_GLOBAL_READ') or @authorization.hasPermission(authentication, "
-            + "'CATALOG_CONFIG_READ')";
+  private static final String READ = "@authorization.hasPermission(authentication, "
+      + "'CATALOG_GLOBAL_READ') or @authorization.hasPermission(authentication, "
+      + "'CATALOG_CONFIG_READ')";
 
-    private final ReferenceCatalogService service;
+  private final ReferenceCatalogService service;
 
-    public ReferenceCatalogController(ReferenceCatalogService service) {
-        this.service = service;
-    }
+  public ReferenceCatalogController(ReferenceCatalogService service) {
+    this.service = service;
+  }
 
-    @GetMapping
-    @PreAuthorize(READ)
-    public List<ReferenceCatalogResponse> list() {
-        return service.list();
-    }
+  @GetMapping
+  @PreAuthorize(READ)
+  public List<ReferenceCatalogResponse> list() {
+    return service.list();
+  }
 }

@@ -453,6 +453,34 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  # ------------------------------------------------------------------ Catalogos
+  /catalogs/insurers:
+    get:
+      tags: [Catalogs]
+      summary: Listar aseguradoras en salud (EPS) activas
+      description: >
+        Catalogo global de EPS. Con `regime` filtra por regimen incluyendo
+        siempre las de regimen `AMBOS`. Solo devuelve `is_active = true`.
+      parameters:
+        - name: regime
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [CONTRIBUTIVO, SUBSIDIADO, AMBOS]
+      responses:
+        '200':
+          description: Lista de aseguradoras activas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HealthInsurer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   # ------------------------------------------------------------------- Sync
   # Semántica completa de comandos/estados/cursor en docs/synchronization/sync-contract.md
   /sync/push:
@@ -629,6 +657,15 @@ components:
           type: string
         message:
           type: string
+    # ---- Catalogos
+    HealthInsurer:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        nit: { type: string }
+        name: { type: string }
+        code: { type: string, nullable: true }
+        regime: { type: string, enum: [CONTRIBUTIVO, SUBSIDIADO, AMBOS] }
     # ---- Pacientes
     CreatePatientRequest:
       type: object

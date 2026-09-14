@@ -14,16 +14,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1")
 public class IdentityController {
 
-    private final IdentityService identityService;
+  private final IdentityService identityService;
 
-    public IdentityController(IdentityService identityService) {
-        this.identityService = identityService;
-    }
+  public IdentityController(IdentityService identityService) {
+    this.identityService = identityService;
+  }
 
-    @GetMapping("/me")
-    public ResponseEntity<MeResponse> me(Authentication authentication) {
-        AuthorizedUser principal = (AuthorizedUser) authentication.getPrincipal();
-        UUID userId = principal.getId();
-        return ResponseEntity.ok(identityService.getMe(userId));
-    }
+  @GetMapping("/me")
+  public ResponseEntity<MeResponse> me(Authentication authentication) {
+    AuthorizedUser principal = (AuthorizedUser) authentication.getPrincipal();
+    UUID userId = principal.getId();
+    return ResponseEntity.ok(identityService.getMe(userId));
+  }
 }

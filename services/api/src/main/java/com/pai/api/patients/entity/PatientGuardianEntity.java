@@ -12,174 +12,200 @@ import java.util.UUID;
 @Table(name = "patient_guardians", schema = "app")
 public class PatientGuardianEntity {
 
-    public enum Relationship {
-        MOTHER,
-        FATHER,
-        CAREGIVER,
-        OTHER
-    }
+  public enum Relationship {
+    MOTHER,
+    FATHER,
+    CAREGIVER,
+    OTHER
+  }
 
-    @Id
-    private UUID id;
+  @Id
+  private UUID id;
 
-    @Column(name = "patient_id", nullable = false)
-    private UUID patientId;
+  @Column(name = "patient_id", nullable = false)
+  private UUID patientId;
 
-    @Column(nullable = false)
-    private String relationship;
+  @Column(nullable = false)
+  private String relationship;
 
-    @Column(name = "full_name", nullable = false)
-    private String fullName;
+  @Column(name = "full_name", nullable = false)
+  private String fullName;
 
-    @Column(name = "second_name")
-    private String secondName;
+  @Column(name = "second_name")
+  private String secondName;
 
-    @Column(name = "second_last_name")
-    private String secondLastName;
+  @Column(name = "second_last_name")
+  private String secondLastName;
 
-    @Column(name = "document_type")
-    private String documentType;
+  @Column(name = "document_type")
+  private String documentType;
 
-    @Column(name = "document_number")
-    private String documentNumber;
+  @Column(name = "document_number")
+  private String documentNumber;
 
-    private String phone;
+  private String phone;
 
-    private String landline;
+  private String landline;
 
-    private String cellphone;
+  private String cellphone;
 
-    private String email;
+  private String email;
 
-    @Column(name = "affiliation_regime")
-    private String affiliationRegime;
+  @Column(name = "affiliation_regime")
+  private String affiliationRegime;
 
-    private String insurer;
+  private String insurer;
 
-    private String ethnicity;
+  @Column(name = "insurer_code")
+  private String insurerCode;
 
-    private Boolean displaced;
+  private String ethnicity;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+  private Boolean displaced;
 
-    protected PatientGuardianEntity() {}
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt;
 
-    public PatientGuardianEntity(
-            UUID id,
-            UUID patientId,
-            Relationship relationship,
-            String fullName,
-            String documentType,
-            String documentNumber,
-            String phone,
-            Instant now) {
-        this(id, patientId, relationship, fullName, null, null, documentType, documentNumber, phone, null, null, null,
-                null, null, null, null, now);
-    }
+  protected PatientGuardianEntity() {}
 
-    public PatientGuardianEntity(
-            UUID id,
-            UUID patientId,
-            Relationship relationship,
-            String fullName,
-            String secondName,
-            String secondLastName,
-            String documentType,
-            String documentNumber,
-            String phone,
-            String landline,
-            String cellphone,
-            String email,
-            String affiliationRegime,
-            String insurer,
-            String ethnicity,
-            Boolean displaced,
-            Instant now) {
-        this.id = id;
-        this.patientId = patientId;
-        this.relationship = relationship.name();
-        this.fullName = fullName;
-        this.secondName = secondName;
-        this.secondLastName = secondLastName;
-        this.documentType = documentType;
-        this.documentNumber = documentNumber;
-        this.phone = phone;
-        this.landline = landline;
-        this.cellphone = cellphone;
-        this.email = email;
-        this.affiliationRegime = affiliationRegime;
-        this.insurer = insurer;
-        this.ethnicity = ethnicity;
-        this.displaced = displaced;
-        this.createdAt = now;
-    }
+  public PatientGuardianEntity(
+      UUID id,
+      UUID patientId,
+      Relationship relationship,
+      String fullName,
+      String documentType,
+      String documentNumber,
+      String phone,
+      Instant now) {
+    this(
+        id,
+        patientId,
+        relationship,
+        fullName,
+        null,
+        null,
+        documentType,
+        documentNumber,
+        phone,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        now);
+  }
 
-    public String getSecondName() {
-        return secondName;
-    }
+  public PatientGuardianEntity(
+      UUID id,
+      UUID patientId,
+      Relationship relationship,
+      String fullName,
+      String secondName,
+      String secondLastName,
+      String documentType,
+      String documentNumber,
+      String phone,
+      String landline,
+      String cellphone,
+      String email,
+      String affiliationRegime,
+      String insurer,
+      String insurerCode,
+      String ethnicity,
+      Boolean displaced,
+      Instant now) {
+    this.id = id;
+    this.patientId = patientId;
+    this.relationship = relationship.name();
+    this.fullName = fullName;
+    this.secondName = secondName;
+    this.secondLastName = secondLastName;
+    this.documentType = documentType;
+    this.documentNumber = documentNumber;
+    this.phone = phone;
+    this.landline = landline;
+    this.cellphone = cellphone;
+    this.email = email;
+    this.affiliationRegime = affiliationRegime;
+    this.insurer = insurer;
+    this.insurerCode = insurerCode;
+    this.ethnicity = ethnicity;
+    this.displaced = displaced;
+    this.createdAt = now;
+  }
 
-    public String getSecondLastName() {
-        return secondLastName;
-    }
+  public String getSecondName() {
+    return secondName;
+  }
 
-    public String getLandline() {
-        return landline;
-    }
+  public String getSecondLastName() {
+    return secondLastName;
+  }
 
-    public String getCellphone() {
-        return cellphone;
-    }
+  public String getLandline() {
+    return landline;
+  }
 
-    public String getEmail() {
-        return email;
-    }
+  public String getCellphone() {
+    return cellphone;
+  }
 
-    public String getAffiliationRegime() {
-        return affiliationRegime;
-    }
+  public String getEmail() {
+    return email;
+  }
 
-    public String getInsurer() {
-        return insurer;
-    }
+  public String getAffiliationRegime() {
+    return affiliationRegime;
+  }
 
-    public String getEthnicity() {
-        return ethnicity;
-    }
+  public String getInsurer() {
+    return insurer;
+  }
 
-    public Boolean getDisplaced() {
-        return displaced;
-    }
+  public String getInsurerCode() {
+    return insurerCode;
+  }
 
-    public UUID getId() {
-        return id;
-    }
+  public String getEthnicity() {
+    return ethnicity;
+  }
 
-    public UUID getPatientId() {
-        return patientId;
-    }
+  public Boolean getDisplaced() {
+    return displaced;
+  }
 
-    public String getRelationship() {
-        return relationship;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public String getFullName() {
-        return fullName;
-    }
+  public UUID getPatientId() {
+    return patientId;
+  }
 
-    public String getDocumentType() {
-        return documentType;
-    }
+  public String getRelationship() {
+    return relationship;
+  }
 
-    public String getDocumentNumber() {
-        return documentNumber;
-    }
+  public String getFullName() {
+    return fullName;
+  }
 
-    public String getPhone() {
-        return phone;
-    }
+  public String getDocumentType() {
+    return documentType;
+  }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+  public String getDocumentNumber() {
+    return documentNumber;
+  }
+
+  public String getPhone() {
+    return phone;
+  }
+
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
 }

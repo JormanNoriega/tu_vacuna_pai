@@ -6,18 +6,18 @@ import java.time.LocalDate;
 import java.util.List;
 
 /** Reemplaza los antecedentes medicos del paciente. */
-public record UpdatePatientMedicalHistoriesRequest(@Valid List<MedicalHistoryDto> medicalHistories) {
+public record UpdatePatientMedicalHistoriesRequest(
+    @Valid List<MedicalHistoryDto> medicalHistories) {
 
-    public record MedicalHistoryDto(
-            @NotBlank(message = "El antecedente es obligatorio.")
-            String condition,
+  public record MedicalHistoryDto(
+      @NotBlank(message = "El antecedente es obligatorio.") String condition,
 
-            LocalDate diagnosedAt,
-            String notes,
-            Boolean hasContraindication,
-            String contraindicationDetails,
-            Boolean hasPreviousReaction,
-            String reactionDetails,
-            String historyType,
-            String specialObservations) {}
+      LocalDate diagnosedAt,
+      String notes,
+      Boolean hasContraindication,
+      String contraindicationDetails,
+      Boolean hasPreviousReaction,
+      String reactionDetails,
+      String historyType,
+      String specialObservations) {}
 }

@@ -254,3 +254,35 @@ const List<ReferenceOption> documentTypeFallback = [
   ),
   ReferenceOption(code: 'DE', label: 'Documento Extranjero', sortOrder: 13),
 ];
+
+/// Aseguradora en salud (EPS) del catalogo global. `regime` indica los
+/// regimenes que atiende la entidad: `CONTRIBUTIVO`, `SUBSIDIADO` o `AMBOS`.
+class HealthInsurer {
+  const HealthInsurer({
+    required this.id,
+    required this.nit,
+    required this.name,
+    required this.regime,
+    this.code,
+  });
+
+  final String id;
+  final String nit;
+  final String name;
+  final String regime;
+  final String? code;
+
+  /// Sirve para regimen contributivo (`AMBOS` incluido).
+  bool get servesContributive => regime == 'CONTRIBUTIVO' || regime == 'AMBOS';
+
+  /// Sirve para regimen subsidiado (`AMBOS` incluido).
+  bool get servesSubsidized => regime == 'SUBSIDIADO' || regime == 'AMBOS';
+
+  factory HealthInsurer.fromJson(Map<String, dynamic> json) => HealthInsurer(
+    id: json['id'].toString(),
+    nit: json['nit'] as String? ?? '',
+    name: json['name'] as String? ?? '',
+    regime: json['regime'] as String? ?? '',
+    code: json['code'] as String?,
+  );
+}

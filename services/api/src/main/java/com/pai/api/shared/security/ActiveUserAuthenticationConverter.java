@@ -15,32 +15,34 @@ import org.springframework.security.oauth2.jwt.Jwt;
  * claim {@code sub}; los permisos y el perfil se resuelven en Spring desde la
  * base de datos (estado vigente), no desde los claims.
  */
-public class ActiveUserAuthenticationConverter implements Converter<Jwt, UsernamePasswordAuthenticationToken> {
+public class ActiveUserAuthenticationConverter
+    implements Converter<Jwt, UsernamePasswordAuthenticationToken> {
 
-    private final IdentityService identityService;
+  private final IdentityService identityService;
 
-    public ActiveUserAuthenticationConverter(IdentityService identityService) {
-        this.identityService = identityService;
+  public ActiveUserAuthenticationConverter(IdentityService identityService) {
+    this.identityService = identityService;
+  }
+
+  @Override
+  public UsernamePasswordAuthenticationToken convert(Jwt jwt) {
+    UUID userId = UUID.fromString(jwt.getSubject());
+
+    AuthorizedUser authorizedUser;
+    try {
+      // El token viaja en el principal: Spring Security borra las
+      // credenciales del Authentication tras autenticar, de modo que
+      // getCredentials() no es fiable para transportar el JWT.
+      authorizedUser = identityService.resolve(userId).withAccessToken(jwt.getTokenValue());
+    } catch (UserNotFoundException | UserNotActiveException ex) {
+      throw new org.springframework.security.authentication.AuthenticationServiceException(
+          ex.getMessage(), ex);
     }
 
-    @Override
-    public UsernamePasswordAuthenticationToken convert(Jwt jwt) {
-        UUID userId = UUID.fromString(jwt.getSubject());
+    var authorities = authorizedUser.getPermissions().stream()
+        .map(permission -> new SimpleGrantedAuthority("PERMISSION_" + permission))
+        .toList();
 
-        AuthorizedUser authorizedUser;
-        try {
-            // El token viaja en el principal: Spring Security borra las
-            // credenciales del Authentication tras autenticar, de modo que
-            // getCredentials() no es fiable para transportar el JWT.
-            authorizedUser = identityService.resolve(userId).withAccessToken(jwt.getTokenValue());
-        } catch (UserNotFoundException | UserNotActiveException ex) {
-            throw new org.springframework.security.authentication.AuthenticationServiceException(ex.getMessage(), ex);
-        }
-
-        var authorities = authorizedUser.getPermissions().stream()
-                .map(permission -> new SimpleGrantedAuthority("PERMISSION_" + permission))
-                .toList();
-
-        return new UsernamePasswordAuthenticationToken(authorizedUser, jwt, authorities);
-    }
+    return new UsernamePasswordAuthenticationToken(authorizedUser, jwt, authorities);
+  }
 }

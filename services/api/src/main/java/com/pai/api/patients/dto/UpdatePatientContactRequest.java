@@ -12,24 +12,24 @@ import java.util.UUID;
  * endpoint de identidad, que exige justificacion.
  */
 public record UpdatePatientContactRequest(
-        @Valid List<ContactDto> contacts, @Valid List<AddressDto> addresses) {
+    @Valid List<ContactDto> contacts, @Valid List<AddressDto> addresses) {
 
-    public record ContactDto(
-            @NotBlank(message = "El tipo de contacto es obligatorio.")
-            String type,
+  public record ContactDto(
+      @NotBlank(message = "El tipo de contacto es obligatorio.")
+      String type,
 
-            @NotBlank(message = "El valor del contacto es obligatorio.")
-            @Size(max = 120, message = "El contacto no puede superar 120 caracteres.")
-            String value,
+      @NotBlank(message = "El valor del contacto es obligatorio.")
+      @Size(max = 120, message = "El contacto no puede superar 120 caracteres.")
+      String value,
 
-            boolean primary) {}
+      boolean primary) {}
 
-    public record AddressDto(
-            @Size(max = 200, message = "La direccion no puede superar 200 caracteres.")
-            String street,
+  public record AddressDto(
+      @Size(max = 200, message = "La direccion no puede superar 200 caracteres.")
+      String street,
 
-            UUID municipalityId,
-            UUID departmentId,
-            UUID countryId,
-            boolean primary) {}
+      UUID municipalityId,
+      UUID departmentId,
+      UUID countryId,
+      boolean primary) {}
 }

@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface GeoMunicipalityRepository extends JpaRepository<GeoMunicipalityEntity, UUID> {
 
-    Optional<GeoMunicipalityEntity> findByCode(String code);
+  Optional<GeoMunicipalityEntity> findByCode(String code);
 
-    List<GeoMunicipalityEntity> findByDepartmentIdOrderByNameAsc(UUID departmentId);
+  List<GeoMunicipalityEntity> findByDepartmentIdOrderByNameAsc(UUID departmentId);
 }

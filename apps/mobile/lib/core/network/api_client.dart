@@ -825,6 +825,20 @@ class ApiClient {
         fallback: 'Error al consultar los catalogos de referencia.',
       );
 
+  /// Aseguradoras en salud (EPS) activas. Si [regime] viene, el backend filtra
+  /// incluyendo las de regimen AMBOS.
+  Future<List<Map<String, dynamic>>> getInsurers(
+    String token, {
+    String? regime,
+  }) async {
+    final uri = Uri.parse('$baseUrl/catalogs/insurers')
+        .replace(queryParameters: regime == null ? null : {'regime': regime});
+    return _decodeList(
+      await _send(_http.get(uri, headers: _jsonHeaders(token))),
+      fallback: 'Error al consultar las aseguradoras.',
+    );
+  }
+
   Map<String, String> _jsonHeaders(
     String accessToken, {
     String? idempotencyKey,

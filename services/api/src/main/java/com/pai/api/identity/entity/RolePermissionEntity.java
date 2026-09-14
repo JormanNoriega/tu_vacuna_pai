@@ -11,24 +11,24 @@ import java.util.UUID;
 @IdClass(RolePermissionId.class)
 public class RolePermissionEntity {
 
-    @Id
-    private UUID roleId;
+  @Id
+  private UUID roleId;
 
-    @Id
-    private UUID permissionId;
+  @Id
+  private UUID permissionId;
 
-    protected RolePermissionEntity() {}
+  protected RolePermissionEntity() {}
 
-    public RolePermissionEntity(UUID roleId, UUID permissionId) {
-        this.roleId = roleId;
-        this.permissionId = permissionId;
-    }
+  public RolePermissionEntity(UUID roleId, UUID permissionId) {
+    this.roleId = roleId;
+    this.permissionId = permissionId;
+  }
 
-    public UUID getRoleId() {
-        return roleId;
-    }
+  public UUID getRoleId() {
+    return roleId;
+  }
 
-    public UUID getPermissionId() {
-        return permissionId;
-    }
+  public UUID getPermissionId() {
+    return permissionId;
+  }
 }

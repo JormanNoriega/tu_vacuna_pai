@@ -37,6 +37,13 @@ class ListReferenceCatalogs {
       repository.listReferenceCatalogs(token);
 }
 
+class ListInsurers {
+  const ListInsurers(this.repository);
+  final CatalogRepository repository;
+  Future<List<HealthInsurer>> call(String token) =>
+      repository.listInsurers(token);
+}
+
 class ListMunicipalities {
   const ListMunicipalities(this.repository);
   final CatalogRepository repository;

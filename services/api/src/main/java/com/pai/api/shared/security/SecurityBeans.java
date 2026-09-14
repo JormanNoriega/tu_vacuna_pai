@@ -7,8 +7,9 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SecurityBeans {
 
-    @Bean
-    public ActiveUserAuthenticationConverter activeUserAuthenticationConverter(IdentityService identityService) {
-        return new ActiveUserAuthenticationConverter(identityService);
-    }
+  @Bean
+  public ActiveUserAuthenticationConverter activeUserAuthenticationConverter(
+      IdentityService identityService) {
+    return new ActiveUserAuthenticationConverter(identityService);
+  }
 }

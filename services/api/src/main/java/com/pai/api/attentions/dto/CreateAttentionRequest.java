@@ -11,16 +11,16 @@ import java.util.UUID;
  * opcionalmente, la fecha y observaciones.
  */
 public record CreateAttentionRequest(
-        @NotNull(message = "El paciente es obligatorio.") UUID patientId,
+    @NotNull(message = "El paciente es obligatorio.") UUID patientId,
 
-        Instant attentionDate,
+    Instant attentionDate,
 
-        @Size(max = 2000, message = "Las observaciones no pueden superar 2000 caracteres.")
-        String observations,
+    @Size(max = 2000, message = "Las observaciones no pueden superar 2000 caracteres.")
+    String observations,
 
-        Boolean completeScheme,
+    Boolean completeScheme,
 
-        Boolean paiwebRegistered,
+    Boolean paiwebRegistered,
 
-        @Size(max = 500, message = "El motivo de no ingreso no puede superar 500 caracteres.")
-        String paiwebNotRegisteredReason) {}
+    @Size(max = 500, message = "El motivo de no ingreso no puede superar 500 caracteres.")
+    String paiwebNotRegisteredReason) {}

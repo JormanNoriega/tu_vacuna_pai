@@ -109,6 +109,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
 
   String? _affiliationRegime;
   final _insurer = TextEditingController();
+  HealthInsurer? _selectedInsurer;
 
   String? _departmentId;
   String? _municipalityId;
@@ -130,16 +131,20 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
 
   String _guardianRelationship = 'CAREGIVER';
   String _guardianDocumentType = 'CC';
+  String? _guardianAffiliationRegime;
+  HealthInsurer? _guardianInsurer;
   bool? _guardianDisplaced;
 
   DateTime? _birth;
   int _step = 0;
   bool _saving = false;
+  bool _checkingDuplicate = false;
 
   @override
   void initState() {
     super.initState();
     widget.controller.loadReferenceCatalogs();
+    widget.controller.loadInsurers();
     // Colombia viene preseleccionada como pais de nacimiento (editable). Hoy el
     // catalogo solo tiene Colombia; al sembrar mas paises el campo se amplia.
     widget.controller.loadCountries().then((_) {
@@ -222,10 +227,51 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
     String code, {
     List<ReferenceOption> fallback = const [],
   }) => [
-    const DropdownMenuItem(value: null, child: Text('Sin dato')),
     for (final option in _ref(code, fallback: fallback))
       DropdownMenuItem(value: option.code, child: Text(option.label)),
   ];
+
+  /// Decoracion para campos opcionales: placeholder y, si hay valor, un icono
+  /// para volver a dejarlo vacio (los dropdown nativos no lo permiten solos).
+  InputDecoration _pickDecoration(
+    String label, {
+    String? helper,
+    VoidCallback? onClear,
+  }) => InputDecoration(
+    labelText: label,
+    helperText: helper,
+    suffixIcon: onClear == null
+        ? null
+        : IconButton(
+            tooltip: 'Limpiar',
+            icon: const Icon(Icons.close_rounded, size: 18),
+            onPressed: onClear,
+          ),
+  );
+
+  /// Dropdown de un catalogo de referencia opcional, con placeholder y limpiar.
+  Widget _refDropdown({
+    required String code,
+    required String label,
+    required String? value,
+    required ValueChanged<String?> onChanged,
+    List<ReferenceOption> fallback = const [],
+    String? helper,
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: DropdownButtonFormField<String?>(
+      initialValue: value,
+      isExpanded: true,
+      hint: const Text('Selecciona'),
+      decoration: _pickDecoration(
+        label,
+        helper: helper,
+        onClear: value == null ? null : () => onChanged(null),
+      ),
+      items: _refItemsN(code, fallback: fallback),
+      onChanged: onChanged,
+    ),
+  );
 
   static const _sexFallback = [
     ReferenceOption(code: 'MALE', label: 'Masculino', sortOrder: 1),
@@ -325,8 +371,12 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
   }
 
   Future<void> _next() async {
-    if (_step == 0 && !(_identityFormKey.currentState?.validate() ?? false)) {
-      return;
+    if (_step == 0) {
+      if (!(_identityFormKey.currentState?.validate() ?? false)) {
+        return;
+      }
+      // Valida que el documento no este ya registrado antes de continuar.
+      if (await _blockIfDuplicate()) return;
     }
     if (_step < _steps.length - 1) {
       setState(() => _step++);
@@ -336,6 +386,55 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
       return;
     }
     await _save();
+  }
+
+  /// Verifica si el documento del paso 1 ya esta registrado. Si existe, ofrece
+  /// usar al paciente existente (evita duplicados) y devuelve true para no
+  /// avanzar con el alta. Con busqueda fallida no bloquea.
+  Future<bool> _blockIfDuplicate() async {
+    if (_checkingDuplicate) return true;
+    _checkingDuplicate = true;
+    try {
+      final number = _documentNumber.text.trim();
+      await widget.controller.findPatients(
+        offline: widget.offline,
+        documentType: _documentType,
+        documentNumber: number,
+      );
+      if (!mounted) return true;
+      if (widget.controller.error != null) return false;
+      final results = widget.controller.searchResults;
+      if (results.isEmpty) return false;
+
+      final existing = results.first;
+      final useExisting = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Paciente ya registrado'),
+          content: Text(
+            'Ya existe un paciente con el documento $number: '
+            '${existing.fullName}. ¿Deseas usarlo en esta atencion?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Usar este paciente'),
+            ),
+          ],
+        ),
+      );
+      if (useExisting == true && mounted) {
+        widget.controller.selectPatient(existing);
+        Navigator.of(context).pop(true);
+      }
+      return true;
+    } finally {
+      _checkingDuplicate = false;
+    }
   }
 
   void _previous() {
@@ -469,6 +568,9 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
           email: _guardianEmail.text.trim().isEmpty
               ? null
               : _guardianEmail.text.trim(),
+          affiliationRegime: _guardianAffiliationRegime,
+          insurer: _guardianInsurer?.name,
+          insurerCode: _guardianInsurer?.nit,
           displaced: _guardianDisplaced,
         ),
     ];
@@ -503,6 +605,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         : NewPatientAffiliation(
             affiliationRegime: _affiliationRegime,
             insurer: _insurer.text.trim().isEmpty ? null : _insurer.text.trim(),
+            insurerCode: _selectedInsurer?.nit,
           );
 
     final specialConditions =
@@ -777,9 +880,12 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
     child: DropdownButtonFormField<bool?>(
       initialValue: value,
       isExpanded: true,
-      decoration: InputDecoration(labelText: label),
+      hint: const Text('Selecciona'),
+      decoration: _pickDecoration(
+        label,
+        onClear: value == null ? null : () => onChanged(null),
+      ),
       items: const [
-        DropdownMenuItem(value: null, child: Text('Sin dato')),
         DropdownMenuItem(value: true, child: Text('Si')),
         DropdownMenuItem(value: false, child: Text('No')),
       ],
@@ -912,48 +1018,48 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
   Widget _demographicsStep() => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      DropdownButtonFormField<String?>(
-        initialValue: _gender,
-        isExpanded: true,
-        decoration: const InputDecoration(labelText: 'Genero'),
-        items: _refItemsN('gender'),
+      _refDropdown(
+        code: 'gender',
+        label: 'Genero',
+        value: _gender,
         onChanged: (value) => setState(() => _gender = value),
       ),
-      const SizedBox(height: 16),
-      DropdownButtonFormField<String?>(
-        initialValue: _sexualOrientation,
-        isExpanded: true,
-        decoration: const InputDecoration(labelText: 'Orientacion sexual'),
-        items: _refItemsN('sexual_orientation'),
+      _refDropdown(
+        code: 'sexual_orientation',
+        label: 'Orientacion sexual',
+        value: _sexualOrientation,
         onChanged: (value) => setState(() => _sexualOrientation = value),
       ),
-      const SizedBox(height: 16),
-      DropdownButtonFormField<String?>(
-        initialValue: _ethnicity,
-        isExpanded: true,
-        decoration: const InputDecoration(labelText: 'Pertenencia etnica'),
-        items: _refItemsN('ethnicity'),
+      _refDropdown(
+        code: 'ethnicity',
+        label: 'Pertenencia etnica',
+        value: _ethnicity,
         onChanged: (value) => setState(() => _ethnicity = value),
       ),
-      const SizedBox(height: 16),
-      DropdownButtonFormField<String?>(
-        initialValue: _carnetType,
-        isExpanded: true,
-        decoration: const InputDecoration(labelText: 'Tipo de carnet'),
-        items: _refItemsN('carnet_type'),
+      _refDropdown(
+        code: 'carnet_type',
+        label: 'Tipo de carnet',
+        value: _carnetType,
         onChanged: (value) => setState(() => _carnetType = value),
       ),
-      const SizedBox(height: 16),
-      DropdownButtonFormField<String?>(
-        initialValue: _birthCountryId,
-        isExpanded: true,
-        decoration: const InputDecoration(labelText: 'Pais de nacimiento'),
-        items: [
-          const DropdownMenuItem(value: null, child: Text('Sin dato')),
-          for (final GeoCountry country in widget.controller.countries)
-            DropdownMenuItem(value: country.id, child: Text(country.name)),
-        ],
-        onChanged: (value) => setState(() => _birthCountryId = value),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: DropdownButtonFormField<String?>(
+          initialValue: _birthCountryId,
+          isExpanded: true,
+          hint: const Text('Selecciona'),
+          decoration: _pickDecoration(
+            'Pais de nacimiento',
+            onClear: _birthCountryId == null
+                ? null
+                : () => setState(() => _birthCountryId = null),
+          ),
+          items: [
+            for (final GeoCountry country in widget.controller.countries)
+              DropdownMenuItem(value: country.id, child: Text(country.name)),
+          ],
+          onChanged: (value) => setState(() => _birthCountryId = value),
+        ),
       ),
       const SizedBox(height: 16),
       DropdownButtonFormField<String>(
@@ -994,82 +1100,119 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
     ],
   );
 
-  Widget _affiliationStep() => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      DropdownButtonFormField<String?>(
-        initialValue: _affiliationRegime,
-        isExpanded: true,
-        decoration: const InputDecoration(labelText: 'Regimen de afiliacion'),
-        items: _refItemsN('affiliation_regime'),
-        onChanged: (value) => setState(() => _affiliationRegime = value),
-      ),
-      const SizedBox(height: 16),
-      DropdownButtonFormField<String?>(
-        initialValue: null,
-        isExpanded: true,
-        decoration: const InputDecoration(labelText: 'Aseguradora / EPS'),
-        items: _refItemsN('insurer'),
-        onChanged: (value) => setState(() {
-          if (value != null) {
-            final options = _ref('insurer');
-            final match = options.where((o) => o.code == value).toList();
-            _insurer.text = match.isEmpty ? value : match.first.label;
-          }
-        }),
-      ),
-      const SizedBox(height: 16),
-      _textField(_insurer, 'Nombre de la aseguradora (si no esta en la lista)'),
-    ],
-  );
+  Widget _affiliationStep() {
+    final options = widget.controller.insurersForRegime(_affiliationRegime);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _refDropdown(
+          code: 'affiliation_regime',
+          label: 'Regimen de afiliacion',
+          value: _affiliationRegime,
+          onChanged: (value) => setState(() {
+            _affiliationRegime = value;
+            _selectedInsurer = null;
+            _insurer.clear();
+          }),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: DropdownButtonFormField<HealthInsurer>(
+            initialValue: _selectedInsurer,
+            isExpanded: true,
+            hint: const Text('Selecciona'),
+            decoration: _pickDecoration(
+              'Aseguradora / EPS',
+              helper: _affiliationRegime == null
+                  ? 'Selecciona primero el regimen de afiliacion.'
+                  : (options.isEmpty ? 'No hay EPS para este regimen.' : null),
+              onClear: _selectedInsurer == null
+                  ? null
+                  : () => setState(() {
+                      _selectedInsurer = null;
+                      _insurer.clear();
+                    }),
+            ),
+            items: [
+              for (final insurer in options)
+                DropdownMenuItem(value: insurer, child: Text(insurer.name)),
+            ],
+            onChanged: options.isEmpty
+                ? null
+                : (value) => setState(() {
+                    _selectedInsurer = value;
+                    _insurer.text = value?.name ?? '';
+                  }),
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _residenceStep() => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       _lockedCountryField('Pais de residencia'),
       const SizedBox(height: 16),
-      DropdownButtonFormField<String?>(
-        initialValue: _departmentId,
-        isExpanded: true,
-        decoration: const InputDecoration(labelText: 'Departamento'),
-        items: [
-          const DropdownMenuItem(value: null, child: Text('Sin dato')),
-          for (final GeoDepartment department in widget.controller.departments)
-            DropdownMenuItem(
-              value: department.id,
-              child: Text(department.name),
-            ),
-        ],
-        onChanged: (value) {
-          setState(() {
-            _departmentId = value;
-            _municipalityId = null;
-          });
-          if (value != null) widget.controller.loadMunicipalities(value);
-        },
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: DropdownButtonFormField<String?>(
+          initialValue: _departmentId,
+          isExpanded: true,
+          hint: const Text('Selecciona'),
+          decoration: _pickDecoration(
+            'Departamento',
+            onClear: _departmentId == null
+                ? null
+                : () => setState(() {
+                    _departmentId = null;
+                    _municipalityId = null;
+                  }),
+          ),
+          items: [
+            for (final GeoDepartment department
+                in widget.controller.departments)
+              DropdownMenuItem(
+                value: department.id,
+                child: Text(department.name),
+              ),
+          ],
+          onChanged: (value) {
+            setState(() {
+              _departmentId = value;
+              _municipalityId = null;
+            });
+            if (value != null) widget.controller.loadMunicipalities(value);
+          },
+        ),
       ),
-      const SizedBox(height: 16),
-      DropdownButtonFormField<String?>(
-        initialValue: _municipalityId,
-        isExpanded: true,
-        decoration: const InputDecoration(labelText: 'Municipio'),
-        items: [
-          const DropdownMenuItem(value: null, child: Text('Sin dato')),
-          for (final GeoMunicipality municipality
-              in widget.controller.municipalities)
-            DropdownMenuItem(
-              value: municipality.id,
-              child: Text(municipality.name),
-            ),
-        ],
-        onChanged: (value) => setState(() => _municipalityId = value),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: DropdownButtonFormField<String?>(
+          initialValue: _municipalityId,
+          isExpanded: true,
+          hint: const Text('Selecciona'),
+          decoration: _pickDecoration(
+            'Municipio',
+            onClear: _municipalityId == null
+                ? null
+                : () => setState(() => _municipalityId = null),
+          ),
+          items: [
+            for (final GeoMunicipality municipality
+                in widget.controller.municipalities)
+              DropdownMenuItem(
+                value: municipality.id,
+                child: Text(municipality.name),
+              ),
+          ],
+          onChanged: (value) => setState(() => _municipalityId = value),
+        ),
       ),
-      const SizedBox(height: 16),
-      DropdownButtonFormField<String?>(
-        initialValue: _area,
-        isExpanded: true,
-        decoration: const InputDecoration(labelText: 'Area'),
-        items: _refItemsN('area'),
+      _refDropdown(
+        code: 'area',
+        label: 'Area',
+        value: _area,
         onChanged: (value) => setState(() => _area = value),
       ),
       const SizedBox(height: 16),
@@ -1260,13 +1403,10 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DropdownButtonFormField<String?>(
-          initialValue: _userCondition,
-          isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Condicion de la usuaria',
-          ),
-          items: _refItemsN('user_condition'),
+        _refDropdown(
+          code: 'user_condition',
+          label: 'Condicion de la usuaria',
+          value: _userCondition,
           onChanged: (value) => setState(() => _userCondition = value),
         ),
         const SizedBox(height: 16),
@@ -1372,6 +1512,49 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         keyboardType: TextInputType.emailAddress,
         formatters: maxLengthFormatters(FieldLimits.email),
       ),
+      _refDropdown(
+        code: 'affiliation_regime',
+        label: 'Regimen de afiliacion',
+        value: _guardianAffiliationRegime,
+        onChanged: (value) => setState(() {
+          _guardianAffiliationRegime = value;
+          _guardianInsurer = null;
+        }),
+      ),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: DropdownButtonFormField<HealthInsurer>(
+          initialValue: _guardianInsurer,
+          isExpanded: true,
+          hint: const Text('Selecciona'),
+          decoration: _pickDecoration(
+            'Aseguradora / EPS',
+            helper: _guardianAffiliationRegime == null
+                ? 'Selecciona primero el regimen de afiliacion.'
+                : (widget.controller
+                          .insurersForRegime(_guardianAffiliationRegime)
+                          .isEmpty
+                      ? 'No hay EPS para este regimen.'
+                      : null),
+            onClear: _guardianInsurer == null
+                ? null
+                : () => setState(() => _guardianInsurer = null),
+          ),
+          items: [
+            for (final insurer in widget.controller.insurersForRegime(
+              _guardianAffiliationRegime,
+            ))
+              DropdownMenuItem(value: insurer, child: Text(insurer.name)),
+          ],
+          onChanged:
+              widget.controller
+                  .insurersForRegime(_guardianAffiliationRegime)
+                  .isEmpty
+              ? null
+              : (value) => setState(() => _guardianInsurer = value),
+        ),
+      ),
+      const SizedBox(height: 16),
       _yesNoDropdown(
         _guardianDisplaced,
         '¿Desplazado?',

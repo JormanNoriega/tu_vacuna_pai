@@ -9,11 +9,11 @@ import java.time.LocalDate;
  * institucion se crean con {@code null}.
  */
 public record AuthUserProfile(
-        String documentType,
-        String documentNumber,
-        String phone,
-        LocalDate birthDate,
-        String gender,
-        String professionCode,
-        String professionalRegistrationNumber,
-        String professionalRegistrationType) {}
+    String documentType,
+    String documentNumber,
+    String phone,
+    LocalDate birthDate,
+    String gender,
+    String professionCode,
+    String professionalRegistrationNumber,
+    String professionalRegistrationType) {}

@@ -17,26 +17,27 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ReferenceCatalogService {
 
-    private final ReferenceCatalogRepository catalogs;
-    private final ReferenceOptionRepository options;
+  private final ReferenceCatalogRepository catalogs;
+  private final ReferenceOptionRepository options;
 
-    public ReferenceCatalogService(ReferenceCatalogRepository catalogs, ReferenceOptionRepository options) {
-        this.catalogs = catalogs;
-        this.options = options;
-    }
+  public ReferenceCatalogService(
+      ReferenceCatalogRepository catalogs, ReferenceOptionRepository options) {
+    this.catalogs = catalogs;
+    this.options = options;
+  }
 
-    @Transactional(readOnly = true)
-    public List<ReferenceCatalogResponse> list() {
-        List<ReferenceCatalogResponse> result = new ArrayList<>();
-        for (ReferenceCatalogEntity catalog : catalogs.findAllByOrderByCodeAsc()) {
-            List<ReferenceCatalogResponse.OptionDto> optionDtos = new ArrayList<>();
-            for (ReferenceOptionEntity option :
-                    options.findByCatalogCodeAndActiveTrueOrderBySortOrderAsc(catalog.getCode())) {
-                optionDtos.add(new ReferenceCatalogResponse.OptionDto(
-                        option.getCode(), option.getLabel(), option.getSortOrder()));
-            }
-            result.add(new ReferenceCatalogResponse(catalog.getCode(), catalog.getName(), optionDtos));
-        }
-        return result;
+  @Transactional(readOnly = true)
+  public List<ReferenceCatalogResponse> list() {
+    List<ReferenceCatalogResponse> result = new ArrayList<>();
+    for (ReferenceCatalogEntity catalog : catalogs.findAllByOrderByCodeAsc()) {
+      List<ReferenceCatalogResponse.OptionDto> optionDtos = new ArrayList<>();
+      for (ReferenceOptionEntity option :
+          options.findByCatalogCodeAndActiveTrueOrderBySortOrderAsc(catalog.getCode())) {
+        optionDtos.add(new ReferenceCatalogResponse.OptionDto(
+            option.getCode(), option.getLabel(), option.getSortOrder()));
+      }
+      result.add(new ReferenceCatalogResponse(catalog.getCode(), catalog.getName(), optionDtos));
     }
+    return result;
+  }
 }

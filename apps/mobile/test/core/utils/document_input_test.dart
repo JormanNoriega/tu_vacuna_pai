@@ -34,10 +34,7 @@ void main() {
 
   group('documentInputFormatters', () {
     test('CC solo admite digitos', () {
-      final result = applyFormatters(
-        documentInputFormatters('CC'),
-        '12ab34',
-      );
+      final result = applyFormatters(documentInputFormatters('CC'), '12ab34');
       expect(result, '1234');
     });
 

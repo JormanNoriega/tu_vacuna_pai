@@ -21,12 +21,18 @@ Una sola sesión de nueva atención:
 | --- | --- | --- | --- |
 | 1 | Datos basicos | tipo/nº doc, 1er/2do nombre, 1er/2do apellido, fecha nac, sexo | `patients` |
 | 2 | Datos complementarios | genero, orientacion sexual, etnia, tipo carnet, pais nacimiento, estatus migratorio, lugar nacimiento, edad gestacional, escolaridad | `patient_demographics`, `patients` |
-| 3 | Afiliacion | regimen, aseguradora/EPS | `patient_affiliation` |
+| 3 | Afiliacion | regimen, aseguradora/EPS (catalogo, filtrada por regimen) | `patient_affiliation`, `health_insurers` |
 | 4 | Residencia y contacto | pais/depto/municipio, comuna, area, direccion, tel fijo, celular, correo, autoriza llamadas/correo | `patient_addresses`, `patient_contacts`, `patients` |
 | 5 | Condiciones especiales | desplazado, discapacitado, fallecido, victima conflicto, estudia | `patient_special_conditions` |
 | 6 | Antecedentes medicos | contraindica (+cual), reaccion previa (+cual), historicos (tipo, descripcion, fecha, notas) | `patient_medical_histories` |
 | 7 | Condicion de la usuaria | condicion, fecha ultima menstruacion, embarazos previos, lugar atencion parto (condicional: mujer >= 9) | `patient_user_condition` |
-| 8 | Madre / cuidador | parentesco, nombres/apellidos, tipo/nº doc, tel fijo, celular, correo, desplazado | `patient_guardians` |
+| 8 | Madre / cuidador | parentesco, nombres/apellidos, tipo/nº doc, tel fijo, celular, correo, regimen, aseguradora/EPS, desplazado | `patient_guardians`, `health_insurers` |
+
+> Aseguradora (EPS): se elige del catalogo `health_insurers`
+> (`GET /api/v1/catalogs/insurers`), filtrado por regimen (contributivo incluye
+> `AMBOS`; subsidiado incluye `AMBOS`; otros regimenes sin EPS). Se guarda el
+> **nombre** en `insurer` y el **NIT** en `insurerCode` (snapshot, sin FK).
+
 
 ## Paso de la vacuna
 
@@ -65,11 +71,12 @@ Antes de completar la atencion (`UpdateAttentionRequest`):
 ## Catalogos de referencia
 
 Los dropdowns se alimentan de `GET /catalogs/reference` (hoja `Validador`),
-`GET /catalogs/geo/countries|departments|municipalities` y del catalogo efectivo
-de vacunas. Codigos: `document_type`, `sex`, `gender`, `sexual_orientation`,
-`migration_status`, `affiliation_regime`, `ethnicity`, `area`,
-`user_condition`, `carnet_type`, `guardian_relationship`, `contraindication`,
-`reaction`, `insurer`.
+`GET /catalogs/geo/countries|departments|municipalities`, `GET /catalogs/insurers`
+(EPS) y del catalogo efectivo de vacunas. Codigos: `document_type`, `sex`,
+`gender`, `sexual_orientation`, `migration_status`, `affiliation_regime`,
+`ethnicity`, `area`, `user_condition`, `carnet_type`, `guardian_relationship`,
+`contraindication`, `reaction`. Las aseguradoras/EPS viven en la tabla dedicada
+`health_insurers` (ya no como catalogo de referencia `insurer`).
 
 - Los tipos de identificacion se muestran como `CODIGO - Nombre` (ej.
   `CC - Cedula de Ciudadania`) y se usan en el wizard, el buscador de Nueva

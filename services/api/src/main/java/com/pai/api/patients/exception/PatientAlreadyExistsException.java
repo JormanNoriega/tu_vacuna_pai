@@ -13,18 +13,18 @@ import java.util.UUID;
  */
 public class PatientAlreadyExistsException extends RuntimeException {
 
-    private final UUID existingPatientId;
+  private final UUID existingPatientId;
 
-    public PatientAlreadyExistsException(String message) {
-        this(message, null);
-    }
+  public PatientAlreadyExistsException(String message) {
+    this(message, null);
+  }
 
-    public PatientAlreadyExistsException(String message, UUID existingPatientId) {
-        super(message);
-        this.existingPatientId = existingPatientId;
-    }
+  public PatientAlreadyExistsException(String message, UUID existingPatientId) {
+    super(message);
+    this.existingPatientId = existingPatientId;
+  }
 
-    public UUID getExistingPatientId() {
-        return existingPatientId;
-    }
+  public UUID getExistingPatientId() {
+    return existingPatientId;
+  }
 }

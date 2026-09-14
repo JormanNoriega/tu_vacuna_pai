@@ -60,7 +60,18 @@ class HistoryController extends AsyncController {
         : await listPatientAttentions(token, patients.first.id);
   });
 
-  /// Limpia el resultado y el error (al cambiar de busqueda o de sesion).
+  /// Limpia solo el resultado de la busqueda (paciente e historial) sin tocar
+  /// el catalogo de tipos de documento. Se usa al entrar a la vista para no
+  /// arrastrar la busqueda anterior.
+  void resetResults() {
+    _patient = null;
+    _history = const [];
+    clearError();
+    notifyListeners();
+  }
+
+  /// Limpia todo el estado de la sesion (al cerrar sesion o cambiar de
+  /// usuario), incluido el catalogo de tipos de documento.
   void clearSession() {
     _patient = null;
     _history = const [];

@@ -13,120 +13,120 @@ import java.util.UUID;
 @Table(name = "patient_medical_histories", schema = "app")
 public class PatientMedicalHistoryEntity {
 
-    @Id
-    private UUID id;
+  @Id
+  private UUID id;
 
-    @Column(name = "patient_id", nullable = false)
-    private UUID patientId;
+  @Column(name = "patient_id", nullable = false)
+  private UUID patientId;
 
-    @Column(nullable = false)
-    private String condition;
+  @Column(nullable = false)
+  private String condition;
 
-    @Column(name = "diagnosed_at")
-    private LocalDate diagnosedAt;
+  @Column(name = "diagnosed_at")
+  private LocalDate diagnosedAt;
 
-    private String notes;
+  private String notes;
 
-    @Column(name = "has_contraindication", nullable = false)
-    private boolean hasContraindication;
+  @Column(name = "has_contraindication", nullable = false)
+  private boolean hasContraindication;
 
-    @Column(name = "contraindication_details")
-    private String contraindicationDetails;
+  @Column(name = "contraindication_details")
+  private String contraindicationDetails;
 
-    @Column(name = "has_previous_reaction", nullable = false)
-    private boolean hasPreviousReaction;
+  @Column(name = "has_previous_reaction", nullable = false)
+  private boolean hasPreviousReaction;
 
-    @Column(name = "reaction_details")
-    private String reactionDetails;
+  @Column(name = "reaction_details")
+  private String reactionDetails;
 
-    @Column(name = "history_type")
-    private String historyType;
+  @Column(name = "history_type")
+  private String historyType;
 
-    @Column(name = "special_observations")
-    private String specialObservations;
+  @Column(name = "special_observations")
+  private String specialObservations;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt;
 
-    protected PatientMedicalHistoryEntity() {}
+  protected PatientMedicalHistoryEntity() {}
 
-    public PatientMedicalHistoryEntity(
-            UUID id, UUID patientId, String condition, LocalDate diagnosedAt, String notes, Instant now) {
-        this(id, patientId, condition, diagnosedAt, notes, false, null, false, null, null, null, now);
-    }
+  public PatientMedicalHistoryEntity(
+      UUID id, UUID patientId, String condition, LocalDate diagnosedAt, String notes, Instant now) {
+    this(id, patientId, condition, diagnosedAt, notes, false, null, false, null, null, null, now);
+  }
 
-    public PatientMedicalHistoryEntity(
-            UUID id,
-            UUID patientId,
-            String condition,
-            LocalDate diagnosedAt,
-            String notes,
-            boolean hasContraindication,
-            String contraindicationDetails,
-            boolean hasPreviousReaction,
-            String reactionDetails,
-            String historyType,
-            String specialObservations,
-            Instant now) {
-        this.id = id;
-        this.patientId = patientId;
-        this.condition = condition;
-        this.diagnosedAt = diagnosedAt;
-        this.notes = notes;
-        this.hasContraindication = hasContraindication;
-        this.contraindicationDetails = contraindicationDetails;
-        this.hasPreviousReaction = hasPreviousReaction;
-        this.reactionDetails = reactionDetails;
-        this.historyType = historyType;
-        this.specialObservations = specialObservations;
-        this.createdAt = now;
-    }
+  public PatientMedicalHistoryEntity(
+      UUID id,
+      UUID patientId,
+      String condition,
+      LocalDate diagnosedAt,
+      String notes,
+      boolean hasContraindication,
+      String contraindicationDetails,
+      boolean hasPreviousReaction,
+      String reactionDetails,
+      String historyType,
+      String specialObservations,
+      Instant now) {
+    this.id = id;
+    this.patientId = patientId;
+    this.condition = condition;
+    this.diagnosedAt = diagnosedAt;
+    this.notes = notes;
+    this.hasContraindication = hasContraindication;
+    this.contraindicationDetails = contraindicationDetails;
+    this.hasPreviousReaction = hasPreviousReaction;
+    this.reactionDetails = reactionDetails;
+    this.historyType = historyType;
+    this.specialObservations = specialObservations;
+    this.createdAt = now;
+  }
 
-    public boolean isHasContraindication() {
-        return hasContraindication;
-    }
+  public boolean isHasContraindication() {
+    return hasContraindication;
+  }
 
-    public String getContraindicationDetails() {
-        return contraindicationDetails;
-    }
+  public String getContraindicationDetails() {
+    return contraindicationDetails;
+  }
 
-    public boolean isHasPreviousReaction() {
-        return hasPreviousReaction;
-    }
+  public boolean isHasPreviousReaction() {
+    return hasPreviousReaction;
+  }
 
-    public String getReactionDetails() {
-        return reactionDetails;
-    }
+  public String getReactionDetails() {
+    return reactionDetails;
+  }
 
-    public String getHistoryType() {
-        return historyType;
-    }
+  public String getHistoryType() {
+    return historyType;
+  }
 
-    public String getSpecialObservations() {
-        return specialObservations;
-    }
+  public String getSpecialObservations() {
+    return specialObservations;
+  }
 
-    public UUID getId() {
-        return id;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public UUID getPatientId() {
-        return patientId;
-    }
+  public UUID getPatientId() {
+    return patientId;
+  }
 
-    public String getCondition() {
-        return condition;
-    }
+  public String getCondition() {
+    return condition;
+  }
 
-    public LocalDate getDiagnosedAt() {
-        return diagnosedAt;
-    }
+  public LocalDate getDiagnosedAt() {
+    return diagnosedAt;
+  }
 
-    public String getNotes() {
-        return notes;
-    }
+  public String getNotes() {
+    return notes;
+  }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
 }

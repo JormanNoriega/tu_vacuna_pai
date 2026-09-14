@@ -8,11 +8,11 @@ package com.pai.api.shared.exceptions;
  */
 public class UncertainProvisioningException extends RuntimeException {
 
-    public UncertainProvisioningException(String message) {
-        super(message);
-    }
+  public UncertainProvisioningException(String message) {
+    super(message);
+  }
 
-    public UncertainProvisioningException(String message, Throwable cause) {
-        super(message, cause);
-    }
+  public UncertainProvisioningException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

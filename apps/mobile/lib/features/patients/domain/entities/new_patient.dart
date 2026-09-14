@@ -60,6 +60,7 @@ class NewPatientGuardian {
     this.email,
     this.affiliationRegime,
     this.insurer,
+    this.insurerCode,
     this.ethnicity,
     this.displaced,
   });
@@ -76,6 +77,7 @@ class NewPatientGuardian {
   final String? email;
   final String? affiliationRegime;
   final String? insurer;
+  final String? insurerCode;
   final String? ethnicity;
   final bool? displaced;
 }
@@ -128,14 +130,20 @@ class NewPatientDemographic {
 
 /// Afiliacion en salud del alta de paciente.
 class NewPatientAffiliation {
-  const NewPatientAffiliation({this.affiliationRegime, this.insurer});
+  const NewPatientAffiliation({
+    this.affiliationRegime,
+    this.insurer,
+    this.insurerCode,
+  });
 
   final String? affiliationRegime;
   final String? insurer;
+  final String? insurerCode;
 
   bool get isEmpty =>
       (affiliationRegime == null || affiliationRegime!.isEmpty) &&
-      (insurer == null || insurer!.isEmpty);
+      (insurer == null || insurer!.isEmpty) &&
+      (insurerCode == null || insurerCode!.isEmpty);
 }
 
 /// Condiciones especiales (poblaciones) del alta de paciente.

@@ -6,7 +6,7 @@ package com.pai.api.shared.exceptions;
  */
 public class AuthUserProvisioningException extends RuntimeException {
 
-    public AuthUserProvisioningException(String message, Throwable cause) {
-        super(message, cause);
-    }
+  public AuthUserProvisioningException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

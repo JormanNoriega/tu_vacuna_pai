@@ -25,230 +25,231 @@ import java.util.UUID;
 @Table(name = "patients", schema = "app")
 public class PatientEntity {
 
-    public enum Sex {
-        MALE,
-        FEMALE,
-        INDETERMINATE
-    }
+  public enum Sex {
+    MALE,
+    FEMALE,
+    INDETERMINATE
+  }
 
-    public enum Status {
-        ACTIVE,
-        INACTIVE
-    }
+  public enum Status {
+    ACTIVE,
+    INACTIVE
+  }
 
-    @Id
-    private UUID id;
+  @Id
+  private UUID id;
 
-    @Column(name = "institution_id", nullable = false)
-    private UUID institutionId;
+  @Column(name = "institution_id", nullable = false)
+  private UUID institutionId;
 
-    @Column(name = "document_type", nullable = false)
-    private String documentType;
+  @Column(name = "document_type", nullable = false)
+  private String documentType;
 
-    @Column(name = "document_number", nullable = false)
-    private String documentNumber;
+  @Column(name = "document_number", nullable = false)
+  private String documentNumber;
 
-    @Column(name = "first_name", nullable = false)
-    private String firstName;
+  @Column(name = "first_name", nullable = false)
+  private String firstName;
 
-    @Column(name = "second_name")
-    private String secondName;
+  @Column(name = "second_name")
+  private String secondName;
 
-    @Column(name = "last_name", nullable = false)
-    private String lastName;
+  @Column(name = "last_name", nullable = false)
+  private String lastName;
 
-    @Column(name = "second_last_name")
-    private String secondLastName;
+  @Column(name = "second_last_name")
+  private String secondLastName;
 
-    @Column(name = "birth_date", nullable = false)
-    private LocalDate birthDate;
+  @Column(name = "birth_date", nullable = false)
+  private LocalDate birthDate;
 
-    @Column(name = "birth_country_id")
-    private UUID birthCountryId;
+  @Column(name = "birth_country_id")
+  private UUID birthCountryId;
 
-    @Column(name = "birth_place")
-    private String birthPlace;
+  @Column(name = "birth_place")
+  private String birthPlace;
 
-    @Column(name = "migration_status")
-    private String migrationStatus;
+  @Column(name = "migration_status")
+  private String migrationStatus;
 
-    @Column(name = "gestational_age_at_birth")
-    private Integer gestationalAgeAtBirth;
+  @Column(name = "gestational_age_at_birth")
+  private Integer gestationalAgeAtBirth;
 
-    @Column(name = "vaccination_card_type")
-    private String vaccinationCardType;
+  @Column(name = "vaccination_card_type")
+  private String vaccinationCardType;
 
-    @Column(name = "authorize_calls", nullable = false)
-    private boolean authorizeCalls;
+  @Column(name = "authorize_calls", nullable = false)
+  private boolean authorizeCalls;
 
-    @Column(name = "authorize_email", nullable = false)
-    private boolean authorizeEmail;
+  @Column(name = "authorize_email", nullable = false)
+  private boolean authorizeEmail;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Sex sex;
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  private Sex sex;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Status status;
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  private Status status;
 
-    @Version
-    private long version;
+  @Version
+  private long version;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
 
-    protected PatientEntity() {}
+  protected PatientEntity() {}
 
-    public PatientEntity(
-            UUID id,
-            UUID institutionId,
-            String documentType,
-            String documentNumber,
-            String firstName,
-            String lastName,
-            LocalDate birthDate,
-            Sex sex,
-            Instant now) {
-        this.id = id;
-        this.institutionId = institutionId;
-        this.documentType = documentType;
-        this.documentNumber = documentNumber;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.birthDate = birthDate;
-        this.sex = sex;
-        this.status = Status.ACTIVE;
-        this.createdAt = now;
-        this.updatedAt = now;
-    }
+  public PatientEntity(
+      UUID id,
+      UUID institutionId,
+      String documentType,
+      String documentNumber,
+      String firstName,
+      String lastName,
+      LocalDate birthDate,
+      Sex sex,
+      Instant now) {
+    this.id = id;
+    this.institutionId = institutionId;
+    this.documentType = documentType;
+    this.documentNumber = documentNumber;
+    this.firstName = firstName;
+    this.lastName = lastName;
+    this.birthDate = birthDate;
+    this.sex = sex;
+    this.status = Status.ACTIVE;
+    this.createdAt = now;
+    this.updatedAt = now;
+  }
 
-    public void updateIdentity(String firstName, String lastName, LocalDate birthDate, Sex sex, Instant now) {
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.birthDate = birthDate;
-        this.sex = sex;
-        this.updatedAt = now;
-    }
+  public void updateIdentity(
+      String firstName, String lastName, LocalDate birthDate, Sex sex, Instant now) {
+    this.firstName = firstName;
+    this.lastName = lastName;
+    this.birthDate = birthDate;
+    this.sex = sex;
+    this.updatedAt = now;
+  }
 
-    public void setStatus(Status status, Instant now) {
-        this.status = status;
-        this.updatedAt = now;
-    }
+  public void setStatus(Status status, Instant now) {
+    this.status = status;
+    this.updatedAt = now;
+  }
 
-    /** Perfil ampliado de Fase 2 capturado por el wizard (Paso 1/2). */
-    public void applyExtendedProfile(
-            String secondName,
-            String secondLastName,
-            UUID birthCountryId,
-            String birthPlace,
-            String migrationStatus,
-            Integer gestationalAgeAtBirth,
-            String vaccinationCardType,
-            boolean authorizeCalls,
-            boolean authorizeEmail,
-            Instant now) {
-        this.secondName = secondName;
-        this.secondName = secondName;
-        this.secondLastName = secondLastName;
-        this.birthCountryId = birthCountryId;
-        this.birthPlace = birthPlace;
-        this.migrationStatus = migrationStatus;
-        this.gestationalAgeAtBirth = gestationalAgeAtBirth;
-        this.vaccinationCardType = vaccinationCardType;
-        this.authorizeCalls = authorizeCalls;
-        this.authorizeEmail = authorizeEmail;
-        this.updatedAt = now;
-    }
+  /** Perfil ampliado de Fase 2 capturado por el wizard (Paso 1/2). */
+  public void applyExtendedProfile(
+      String secondName,
+      String secondLastName,
+      UUID birthCountryId,
+      String birthPlace,
+      String migrationStatus,
+      Integer gestationalAgeAtBirth,
+      String vaccinationCardType,
+      boolean authorizeCalls,
+      boolean authorizeEmail,
+      Instant now) {
+    this.secondName = secondName;
+    this.secondName = secondName;
+    this.secondLastName = secondLastName;
+    this.birthCountryId = birthCountryId;
+    this.birthPlace = birthPlace;
+    this.migrationStatus = migrationStatus;
+    this.gestationalAgeAtBirth = gestationalAgeAtBirth;
+    this.vaccinationCardType = vaccinationCardType;
+    this.authorizeCalls = authorizeCalls;
+    this.authorizeEmail = authorizeEmail;
+    this.updatedAt = now;
+  }
 
-    public boolean isActive() {
-        return status == Status.ACTIVE;
-    }
+  public boolean isActive() {
+    return status == Status.ACTIVE;
+  }
 
-    public UUID getId() {
-        return id;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public UUID getInstitutionId() {
-        return institutionId;
-    }
+  public UUID getInstitutionId() {
+    return institutionId;
+  }
 
-    public String getDocumentType() {
-        return documentType;
-    }
+  public String getDocumentType() {
+    return documentType;
+  }
 
-    public String getDocumentNumber() {
-        return documentNumber;
-    }
+  public String getDocumentNumber() {
+    return documentNumber;
+  }
 
-    public String getFirstName() {
-        return firstName;
-    }
+  public String getFirstName() {
+    return firstName;
+  }
 
-    public String getSecondName() {
-        return secondName;
-    }
+  public String getSecondName() {
+    return secondName;
+  }
 
-    public String getLastName() {
-        return lastName;
-    }
+  public String getLastName() {
+    return lastName;
+  }
 
-    public String getSecondLastName() {
-        return secondLastName;
-    }
+  public String getSecondLastName() {
+    return secondLastName;
+  }
 
-    public LocalDate getBirthDate() {
-        return birthDate;
-    }
+  public LocalDate getBirthDate() {
+    return birthDate;
+  }
 
-    public UUID getBirthCountryId() {
-        return birthCountryId;
-    }
+  public UUID getBirthCountryId() {
+    return birthCountryId;
+  }
 
-    public String getBirthPlace() {
-        return birthPlace;
-    }
+  public String getBirthPlace() {
+    return birthPlace;
+  }
 
-    public String getMigrationStatus() {
-        return migrationStatus;
-    }
+  public String getMigrationStatus() {
+    return migrationStatus;
+  }
 
-    public Integer getGestationalAgeAtBirth() {
-        return gestationalAgeAtBirth;
-    }
+  public Integer getGestationalAgeAtBirth() {
+    return gestationalAgeAtBirth;
+  }
 
-    public String getVaccinationCardType() {
-        return vaccinationCardType;
-    }
+  public String getVaccinationCardType() {
+    return vaccinationCardType;
+  }
 
-    public boolean isAuthorizeCalls() {
-        return authorizeCalls;
-    }
+  public boolean isAuthorizeCalls() {
+    return authorizeCalls;
+  }
 
-    public boolean isAuthorizeEmail() {
-        return authorizeEmail;
-    }
+  public boolean isAuthorizeEmail() {
+    return authorizeEmail;
+  }
 
-    public Sex getSex() {
-        return sex;
-    }
+  public Sex getSex() {
+    return sex;
+  }
 
-    public Status getStatus() {
-        return status;
-    }
+  public Status getStatus() {
+    return status;
+  }
 
-    public long getVersion() {
-        return version;
-    }
+  public long getVersion() {
+    return version;
+  }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
 
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
 }

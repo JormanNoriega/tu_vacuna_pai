@@ -34,6 +34,7 @@ class AttentionController extends AsyncController {
     required this.listDepartments,
     required this.listMunicipalities,
     required this.listReferenceCatalogs,
+    required this.listInsurers,
     required this.createAttention,
     required this.updateAttention,
     required this.registerDose,
@@ -50,6 +51,7 @@ class AttentionController extends AsyncController {
   final ListDepartments listDepartments;
   final ListMunicipalities listMunicipalities;
   final ListReferenceCatalogs listReferenceCatalogs;
+  final ListInsurers listInsurers;
   final CreateAttention createAttention;
   final UpdateAttention updateAttention;
   final RegisterDose registerDose;
@@ -71,6 +73,7 @@ class AttentionController extends AsyncController {
   List<GeoDepartment> _departments = const [];
   List<GeoMunicipality> _municipalities = const [];
   Map<String, List<ReferenceOption>> _referenceCatalogs = const {};
+  List<HealthInsurer> _insurers = const [];
   Patient? _patient;
   Attention? _attention;
   bool _effectiveCatalogLoaded = false;
@@ -87,6 +90,18 @@ class AttentionController extends AsyncController {
   /// `sex`, `gender`, `affiliation_regime`, `insurer`, ...).
   List<ReferenceOption> referenceOptions(String code) =>
       _referenceCatalogs[code] ?? const [];
+
+  /// Aseguradoras (EPS) activas del catalogo global.
+  List<HealthInsurer> get insurers => List.unmodifiable(_insurers);
+
+  /// Aseguradoras que aplican al regimen dado. Regimenes distintos de
+  /// contributivo/subsidiado no tienen EPS en el catalogo.
+  List<HealthInsurer> insurersForRegime(String? regime) => switch (regime) {
+    'CONTRIBUTIVO' => insurers.where((i) => i.servesContributive).toList(),
+    'SUBSIDIADO' => insurers.where((i) => i.servesSubsidized).toList(),
+    _ => const [],
+  };
+
   Patient? get patient => _patient;
   Attention? get attention => _attention;
   List<AppliedDose> get doses => _attention?.doses ?? const [];
@@ -129,6 +144,14 @@ class AttentionController extends AsyncController {
       _referenceCatalogs = {
         for (final catalog in catalogs) catalog.code: catalog.options,
       };
+    });
+  }
+
+  /// Carga las aseguradoras (EPS) activas (una sola vez).
+  Future<void> loadInsurers() async {
+    if (_insurers.isNotEmpty) return;
+    await execute((token) async {
+      _insurers = await listInsurers(token);
     });
   }
 
@@ -442,6 +465,7 @@ class AttentionController extends AsyncController {
     _departments = const [];
     _municipalities = const [];
     _referenceCatalogs = const {};
+    _insurers = const [];
     clearError();
     notifyListeners();
   }

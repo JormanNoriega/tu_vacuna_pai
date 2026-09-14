@@ -20,72 +20,73 @@ import jakarta.persistence.Entity;
 @AnalyzeClasses(packages = "com.pai.api", importOptions = ImportOption.DoNotIncludeTests.class)
 public class ArchitectureTest {
 
-    @ArchTest
-    static final ArchRule controllers_must_not_depend_on_repositories = noClasses()
-            .that()
-            .resideInAPackage("..controller..")
-            .should()
-            .dependOnClassesThat()
-            .resideInAPackage("..repository..")
-            .as("los controllers no deben consultar repositorios (ADR-006)");
+  @ArchTest
+  static final ArchRule controllers_must_not_depend_on_repositories = noClasses()
+      .that()
+      .resideInAPackage("..controller..")
+      .should()
+      .dependOnClassesThat()
+      .resideInAPackage("..repository..")
+      .as("los controllers no deben consultar repositorios (ADR-006)");
 
-    @ArchTest
-    static final ArchRule controllers_must_not_depend_on_entities = noClasses()
-            .that()
-            .resideInAPackage("..controller..")
-            .should()
-            .dependOnClassesThat()
-            .resideInAPackage("..entity..")
-            .as("los controllers no deben depender de entidades JPA (ADR-006)");
+  @ArchTest
+  static final ArchRule controllers_must_not_depend_on_entities = noClasses()
+      .that()
+      .resideInAPackage("..controller..")
+      .should()
+      .dependOnClassesThat()
+      .resideInAPackage("..entity..")
+      .as("los controllers no deben depender de entidades JPA (ADR-006)");
 
-    @ArchTest
-    static final ArchRule controllers_depend_on_services = classes()
-            .that()
-            .resideInAPackage("..controller..")
-            .should()
-            .dependOnClassesThat()
-            .resideInAPackage("..service..")
-            .as("los controllers deben delegar en los servicios (ADR-006)");
+  @ArchTest
+  static final ArchRule controllers_depend_on_services = classes()
+      .that()
+      .resideInAPackage("..controller..")
+      .should()
+      .dependOnClassesThat()
+      .resideInAPackage("..service..")
+      .as("los controllers deben delegar en los servicios (ADR-006)");
 
-    @ArchTest
-    static final ArchRule controllers_must_return_dtos_not_entities = noMethods()
-            .that()
-            .arePublic()
-            .and()
-            .areDeclaredInClassesThat()
-            .resideInAPackage("..controller..")
-            .should()
-            .haveRawReturnType(
-                    DescribedPredicate.describe("a JPA @Entity", javaClass -> javaClass.isAnnotatedWith(Entity.class)))
-            .as("ningun metodo de controller puede devolver una entidad @Entity; siempre un DTO (ADR-006)");
+  @ArchTest
+  static final ArchRule controllers_must_return_dtos_not_entities = noMethods()
+      .that()
+      .arePublic()
+      .and()
+      .areDeclaredInClassesThat()
+      .resideInAPackage("..controller..")
+      .should()
+      .haveRawReturnType(DescribedPredicate.describe(
+          "a JPA @Entity", javaClass -> javaClass.isAnnotatedWith(Entity.class)))
+      .as("ningun metodo de controller puede devolver una entidad @Entity; siempre un DTO"
+          + " (ADR-006)");
 
-    @ArchTest
-    static final ArchRule services_must_not_depend_on_controllers = noClasses()
-            .that()
-            .resideInAPackage("..service..")
-            .should()
-            .dependOnClassesThat()
-            .resideInAPackage("..controller..")
-            .as("los services no deben depender de controllers (ADR-006)");
+  @ArchTest
+  static final ArchRule services_must_not_depend_on_controllers = noClasses()
+      .that()
+      .resideInAPackage("..service..")
+      .should()
+      .dependOnClassesThat()
+      .resideInAPackage("..controller..")
+      .as("los services no deben depender de controllers (ADR-006)");
 
-    @ArchTest
-    static final ArchRule repositories_may_depend_on_entities = classes()
-            .that()
-            .resideInAPackage("..repository..")
-            .should()
-            .dependOnClassesThat()
-            .resideInAPackage("..entity..")
-            .as("los repositories acceden a las entidades JPA (ADR-006)");
+  @ArchTest
+  static final ArchRule repositories_may_depend_on_entities = classes()
+      .that()
+      .resideInAPackage("..repository..")
+      .should()
+      .dependOnClassesThat()
+      .resideInAPackage("..entity..")
+      .as("los repositories acceden a las entidades JPA (ADR-006)");
 
-    @ArchTest
-    static final ArchRule security_must_not_depend_on_controllers_or_repositories = noClasses()
-            .that()
-            .resideInAPackage("..shared.security..")
-            .should()
-            .dependOnClassesThat()
-            .resideInAPackage("..controller..")
-            .andShould()
-            .dependOnClassesThat()
-            .resideInAPackage("..repository..")
-            .as("la seguridad se mantiene separada de controllers y repositories (ADR-006)");
+  @ArchTest
+  static final ArchRule security_must_not_depend_on_controllers_or_repositories = noClasses()
+      .that()
+      .resideInAPackage("..shared.security..")
+      .should()
+      .dependOnClassesThat()
+      .resideInAPackage("..controller..")
+      .andShould()
+      .dependOnClassesThat()
+      .resideInAPackage("..repository..")
+      .as("la seguridad se mantiene separada de controllers y repositories (ADR-006)");
 }

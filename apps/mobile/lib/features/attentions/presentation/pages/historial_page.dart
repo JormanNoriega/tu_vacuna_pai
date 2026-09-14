@@ -30,13 +30,14 @@ class HistorialPage extends StatefulWidget {
 class _HistorialPageState extends State<HistorialPage> {
   final _number = TextEditingController();
   String _docType = 'CC';
+  bool _searching = false;
 
   @override
   void initState() {
     super.initState();
-    // Entra siempre en blanco: no arrastra la busqueda ni las atenciones de una
-    // visita anterior (el dashboard recrea la pagina al cambiar de pestaña).
-    widget.controller.clearSession();
+    // Entra en blanco (sin resultados previos) pero conserva el catalogo de
+    // tipos de documento: no bloquea la busqueda mientras se precarga.
+    widget.controller.resetResults();
     widget.controller.loadDocumentTypes();
   }
 
@@ -69,11 +70,13 @@ class _HistorialPageState extends State<HistorialPage> {
       );
       return;
     }
+    setState(() => _searching = true);
     await widget.controller.loadHistory(
       documentType: _docType,
       documentNumber: number,
     );
     if (!mounted) return;
+    setState(() => _searching = false);
     if (widget.controller.patient == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -126,11 +129,13 @@ class _HistorialPageState extends State<HistorialPage> {
                     keyboardType: documentKeyboardType(_docType),
                     inputFormatters: documentInputFormatters(_docType),
                     decoration: const InputDecoration(labelText: 'Documento'),
-                    onSubmitted: (_) => _search(),
+                    onSubmitted: (_) {
+                      if (!_searching) _search();
+                    },
                   ),
                   const SizedBox(height: 14),
                   ElevatedButton.icon(
-                    onPressed: controller.isLoading ? null : _search,
+                    onPressed: _searching ? null : _search,
                     icon: const Icon(Icons.search_rounded, size: 20),
                     label: const Text('Buscar historial'),
                   ),
@@ -157,7 +162,7 @@ class _HistorialPageState extends State<HistorialPage> {
               ),
             ],
             const SizedBox(height: 24),
-            if (controller.isLoading)
+            if (_searching)
               const Center(child: CircularProgressIndicator())
             else if (patient == null)
               const EmptyState(

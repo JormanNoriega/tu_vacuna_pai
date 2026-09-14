@@ -5,7 +5,8 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface PatientAffiliationRepository extends JpaRepository<PatientAffiliationEntity, UUID> {
+public interface PatientAffiliationRepository
+    extends JpaRepository<PatientAffiliationEntity, UUID> {
 
-    Optional<PatientAffiliationEntity> findByPatientId(UUID patientId);
+  Optional<PatientAffiliationEntity> findByPatientId(UUID patientId);
 }

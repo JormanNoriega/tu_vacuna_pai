@@ -124,6 +124,7 @@ Future<void> main() async {
     listDepartments: ListDepartments(catalogRepository),
     listMunicipalities: ListMunicipalities(catalogRepository),
     listReferenceCatalogs: ListReferenceCatalogs(catalogRepository),
+    listInsurers: ListInsurers(catalogRepository),
     createAttention: CreateAttention(attentionsRepository),
     updateAttention: UpdateAttention(attentionsRepository),
     registerDose: RegisterDose(attentionsRepository),

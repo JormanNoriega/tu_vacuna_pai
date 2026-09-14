@@ -59,6 +59,7 @@ class PatientsRepositoryImpl implements PatientsRepository {
         'affiliation': _affiliationBody(
           input.affiliation!.affiliationRegime,
           input.affiliation!.insurer,
+          input.affiliation!.insurerCode,
         ),
       if (input.specialConditions != null && !input.specialConditions!.isEmpty)
         'specialConditions': _specialConditionsBody(input.specialConditions!),
@@ -142,9 +143,11 @@ class PatientsRepositoryImpl implements PatientsRepository {
   Map<String, dynamic> _affiliationBody(
     String? affiliationRegime,
     String? insurer,
+    String? insurerCode,
   ) => {
     if (_filled(affiliationRegime)) 'affiliationRegime': affiliationRegime,
     if (_filled(insurer)) 'insurer': insurer,
+    if (_filled(insurerCode)) 'insurerCode': insurerCode,
   };
 
   Map<String, dynamic> _specialConditionsBody(
@@ -227,6 +230,7 @@ class PatientsRepositoryImpl implements PatientsRepository {
         if (_filled(guardian.affiliationRegime))
           'affiliationRegime': guardian.affiliationRegime,
         if (_filled(guardian.insurer)) 'insurer': guardian.insurer,
+        if (_filled(guardian.insurerCode)) 'insurerCode': guardian.insurerCode,
         if (_filled(guardian.ethnicity)) 'ethnicity': guardian.ethnicity,
         if (guardian.displaced != null) 'displaced': guardian.displaced,
       },

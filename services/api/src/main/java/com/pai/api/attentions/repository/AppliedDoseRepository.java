@@ -12,7 +12,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
  */
 public interface AppliedDoseRepository extends JpaRepository<AppliedDoseEntity, UUID> {
 
-    List<AppliedDoseEntity> findByAttentionIdOrderByCreatedAtAsc(UUID attentionId);
+  List<AppliedDoseEntity> findByAttentionIdOrderByCreatedAtAsc(UUID attentionId);
 
-    Optional<AppliedDoseEntity> findByIdAndAttentionId(UUID id, UUID attentionId);
+  Optional<AppliedDoseEntity> findByIdAndAttentionId(UUID id, UUID attentionId);
 }

@@ -12,41 +12,49 @@ import java.util.UUID;
 @Table(name = "patient_affiliation", schema = "app")
 public class PatientAffiliationEntity {
 
-    @Id
-    @Column(name = "patient_id")
-    private UUID patientId;
+  @Id
+  @Column(name = "patient_id")
+  private UUID patientId;
 
-    @Column(name = "affiliation_regime")
-    private String affiliationRegime;
+  @Column(name = "affiliation_regime")
+  private String affiliationRegime;
 
-    private String insurer;
+  private String insurer;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+  @Column(name = "insurer_code")
+  private String insurerCode;
 
-    protected PatientAffiliationEntity() {}
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
 
-    public PatientAffiliationEntity(
-            UUID patientId, String affiliationRegime, String insurer, Instant now) {
-        this.patientId = patientId;
-        this.affiliationRegime = affiliationRegime;
-        this.insurer = insurer;
-        this.updatedAt = now;
-    }
+  protected PatientAffiliationEntity() {}
 
-    public UUID getPatientId() {
-        return patientId;
-    }
+  public PatientAffiliationEntity(
+      UUID patientId, String affiliationRegime, String insurer, String insurerCode, Instant now) {
+    this.patientId = patientId;
+    this.affiliationRegime = affiliationRegime;
+    this.insurer = insurer;
+    this.insurerCode = insurerCode;
+    this.updatedAt = now;
+  }
 
-    public String getAffiliationRegime() {
-        return affiliationRegime;
-    }
+  public UUID getPatientId() {
+    return patientId;
+  }
 
-    public String getInsurer() {
-        return insurer;
-    }
+  public String getAffiliationRegime() {
+    return affiliationRegime;
+  }
 
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
+  public String getInsurer() {
+    return insurer;
+  }
+
+  public String getInsurerCode() {
+    return insurerCode;
+  }
+
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
 }

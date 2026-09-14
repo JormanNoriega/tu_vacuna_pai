@@ -423,6 +423,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         children: [
           _info('Regimen', _humanize(affiliation?.affiliationRegime)),
           _info('Aseguradora / EPS', affiliation?.insurer),
+          _info('Codigo (NIT)', affiliation?.insurerCode, mono: true),
         ],
       ),
     );
@@ -577,6 +578,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     _info('Correo electronico', guardian.email),
     _info('Regimen', _humanize(guardian.affiliationRegime)),
     _info('Aseguradora / EPS', guardian.insurer),
+    _info('Codigo (NIT)', guardian.insurerCode, mono: true),
     _info('Pertenencia etnica', _humanize(guardian.ethnicity)),
     _flagRow('Desplazado', guardian.displaced),
   ];
@@ -1050,9 +1052,18 @@ class _DemographicsDialogState extends State<_DemographicsDialog> {
         DropdownButtonFormField<String?>(
           initialValue: _gender,
           isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Genero'),
+          hint: const Text('Selecciona'),
+          decoration: InputDecoration(
+            labelText: 'Genero',
+            suffixIcon: _gender == null
+                ? null
+                : IconButton(
+                    tooltip: 'Limpiar',
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    onPressed: () => setState(() => _gender = null),
+                  ),
+          ),
           items: const [
-            DropdownMenuItem(value: null, child: Text('Sin dato')),
             DropdownMenuItem(value: 'MALE', child: Text('Masculino')),
             DropdownMenuItem(value: 'FEMALE', child: Text('Femenino')),
             DropdownMenuItem(value: 'OTHER', child: Text('Otro')),
@@ -1212,9 +1223,21 @@ class _AddressDialogState extends State<_AddressDialog> {
           DropdownButtonFormField<String?>(
             initialValue: _departmentId,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Departamento'),
+            hint: const Text('Selecciona'),
+            decoration: InputDecoration(
+              labelText: 'Departamento',
+              suffixIcon: _departmentId == null
+                  ? null
+                  : IconButton(
+                      tooltip: 'Limpiar',
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      onPressed: () => setState(() {
+                        _departmentId = null;
+                        _municipalityId = null;
+                      }),
+                    ),
+            ),
             items: [
-              const DropdownMenuItem(value: null, child: Text('Sin dato')),
               for (final GeoDepartment department
                   in widget.controller.departments)
                 DropdownMenuItem(
@@ -1234,9 +1257,18 @@ class _AddressDialogState extends State<_AddressDialog> {
           DropdownButtonFormField<String?>(
             initialValue: _municipalityId,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Municipio'),
+            hint: const Text('Selecciona'),
+            decoration: InputDecoration(
+              labelText: 'Municipio',
+              suffixIcon: _municipalityId == null
+                  ? null
+                  : IconButton(
+                      tooltip: 'Limpiar',
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      onPressed: () => setState(() => _municipalityId = null),
+                    ),
+            ),
             items: [
-              const DropdownMenuItem(value: null, child: Text('Sin dato')),
               for (final GeoMunicipality municipality
                   in widget.controller.municipalities)
                 DropdownMenuItem(

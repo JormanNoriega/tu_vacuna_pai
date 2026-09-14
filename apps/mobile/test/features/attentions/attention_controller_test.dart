@@ -6,6 +6,7 @@ import 'package:tu_vacuna_pai/features/attentions/domain/use_cases/attentions_us
 import 'package:tu_vacuna_pai/features/attentions/presentation/attention_controller.dart';
 import 'package:tu_vacuna_pai/features/attentions/presentation/history_controller.dart';
 import 'package:tu_vacuna_pai/features/auth/domain/entities/session_restore_result.dart';
+import 'package:tu_vacuna_pai/features/catalogs/domain/entities/catalog_entities.dart';
 import 'package:tu_vacuna_pai/features/catalogs/domain/entities/effective_catalog.dart';
 import 'package:tu_vacuna_pai/features/catalogs/domain/repositories/catalog_repository.dart';
 import 'package:tu_vacuna_pai/features/catalogs/domain/use_cases/catalog_use_cases.dart';
@@ -55,6 +56,7 @@ void main() {
       listDepartments: ListDepartments(_NoopCatalogRepository()),
       listMunicipalities: ListMunicipalities(_NoopCatalogRepository()),
       listReferenceCatalogs: ListReferenceCatalogs(_NoopCatalogRepository()),
+      listInsurers: ListInsurers(_NoopCatalogRepository()),
       createAttention: CreateAttention(attentions),
       updateAttention: UpdateAttention(attentions),
       registerDose: RegisterDose(attentions),
@@ -249,6 +251,40 @@ void main() {
       expect(controller.effectiveCatalogLoaded, isFalse);
       expect(controller.error, isNull);
     });
+
+    test('filtra aseguradoras por regimen', () async {
+      final catalog = _InsurerCatalogRepository();
+      final controller = AttentionController(
+        sessionManager: FakeSessionManager('token-123'),
+        searchPatient: SearchPatient(patients),
+        createPatient: CreatePatient(patients),
+        listEffectiveCatalog: ListEffectiveCatalog(catalog),
+        listCountries: ListCountries(catalog),
+        listDepartments: ListDepartments(catalog),
+        listMunicipalities: ListMunicipalities(catalog),
+        listReferenceCatalogs: ListReferenceCatalogs(catalog),
+        listInsurers: ListInsurers(catalog),
+        createAttention: CreateAttention(attentions),
+        updateAttention: UpdateAttention(attentions),
+        registerDose: RegisterDose(attentions),
+        completeAttention: CompleteAttention(attentions),
+        cancelAttention: CancelAttention(attentions),
+        cancelDose: CancelDose(attentions),
+      );
+
+      await controller.loadInsurers();
+
+      expect(controller.insurers, hasLength(3));
+      expect(
+        controller.insurersForRegime('CONTRIBUTIVO').map((i) => i.name),
+        containsAll(<String>['Aliansalud EPS', 'Nueva EPS']),
+      );
+      expect(
+        controller.insurersForRegime('SUBSIDIADO').map((i) => i.name),
+        containsAll(<String>['Asmet Salud', 'Nueva EPS']),
+      );
+      expect(controller.insurersForRegime('NO_ASEGURADO'), isEmpty);
+    });
   });
 
   group('HistoryController', () {
@@ -291,6 +327,34 @@ void main() {
       expect(history.patient, isNull);
       expect(history.history, isEmpty);
     });
+
+    test(
+      'resetResults limpia resultados pero conserva los tipos de documento',
+      () async {
+        final catalog = _ReferenceCatalogRepository();
+        final history = HistoryController(
+          sessionManager: FakeSessionManager('token-123'),
+          searchPatient: SearchPatient(patients),
+          listPatientAttentions: ListPatientAttentions(attentions),
+          listReferenceCatalogs: ListReferenceCatalogs(catalog),
+        );
+
+        await history.loadDocumentTypes();
+        expect(history.documentTypes, isNotEmpty);
+
+        await history.loadHistory(
+          documentType: 'CC',
+          documentNumber: '12345678',
+        );
+        expect(history.patient, isNotNull);
+
+        history.resetResults();
+
+        expect(history.patient, isNull);
+        expect(history.history, isEmpty);
+        expect(history.documentTypes, isNotEmpty);
+      },
+    );
   });
 }
 
@@ -497,6 +561,20 @@ class FakeAttentionsRepository implements AttentionsRepository {
 }
 
 /// Repositorio de catalogo no usado por el flujo bajo prueba.
+class _InsurerCatalogRepository extends _NoopCatalogRepository {
+  @override
+  Future<List<HealthInsurer>> listInsurers(String token) async => const [
+    HealthInsurer(
+      id: '1',
+      nit: '1',
+      name: 'Aliansalud EPS',
+      regime: 'CONTRIBUTIVO',
+    ),
+    HealthInsurer(id: '2', nit: '2', name: 'Asmet Salud', regime: 'SUBSIDIADO'),
+    HealthInsurer(id: '3', nit: '3', name: 'Nueva EPS', regime: 'AMBOS'),
+  ];
+}
+
 class _NoopCatalogRepository implements CatalogRepository {
   @override
   Future<List<EffectiveVaccine>> listEffectiveCatalog(String token) async =>
@@ -505,4 +583,16 @@ class _NoopCatalogRepository implements CatalogRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) =>
       throw UnimplementedError('No usado en el test');
+}
+
+class _ReferenceCatalogRepository extends _NoopCatalogRepository {
+  @override
+  Future<List<ReferenceCatalog>> listReferenceCatalogs(String token) async =>
+      const [
+        ReferenceCatalog(
+          code: 'document_type',
+          name: 'Tipo de documento',
+          options: [ReferenceOption(code: 'CC', label: 'Cedula', sortOrder: 1)],
+        ),
+      ];
 }

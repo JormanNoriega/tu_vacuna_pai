@@ -16,44 +16,44 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class AuditService {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final AuditEventRepository repository;
+  private final AuditEventRepository repository;
 
-    public AuditService(AuditEventRepository repository) {
-        this.repository = repository;
+  public AuditService(AuditEventRepository repository) {
+    this.repository = repository;
+  }
+
+  /**
+   * Registra un evento de auditoria. {@code payload} es cualquier valor
+   * serializable a JSON (DTO, mapa o record).
+   */
+  public void record(
+      UUID actorId,
+      UUID institutionId,
+      AuditAction action,
+      String resourceType,
+      UUID resourceId,
+      UUID clientOperationId,
+      Object payload) {
+    repository.save(new AuditEventEntity(
+        UUID.randomUUID(),
+        actorId,
+        institutionId,
+        action.name(),
+        resourceType,
+        resourceId,
+        clientOperationId,
+        toJson(payload),
+        Instant.now()));
+  }
+
+  private String toJson(Object payload) {
+    try {
+      return MAPPER.writeValueAsString(payload);
+    } catch (Exception ex) {
+      // No debe romper la operacion de negocio por un fallo de auditoria.
+      return "{}";
     }
-
-    /**
-     * Registra un evento de auditoria. {@code payload} es cualquier valor
-     * serializable a JSON (DTO, mapa o record).
-     */
-    public void record(
-            UUID actorId,
-            UUID institutionId,
-            AuditAction action,
-            String resourceType,
-            UUID resourceId,
-            UUID clientOperationId,
-            Object payload) {
-        repository.save(new AuditEventEntity(
-                UUID.randomUUID(),
-                actorId,
-                institutionId,
-                action.name(),
-                resourceType,
-                resourceId,
-                clientOperationId,
-                toJson(payload),
-                Instant.now()));
-    }
-
-    private String toJson(Object payload) {
-        try {
-            return MAPPER.writeValueAsString(payload);
-        } catch (Exception ex) {
-            // No debe romper la operacion de negocio por un fallo de auditoria.
-            return "{}";
-        }
-    }
+  }
 }

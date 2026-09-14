@@ -168,7 +168,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
       await widget.controller.loadEffectiveCatalog();
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Paciente registrado.')));
+          .showSnackBar(const SnackBar(content: Text('Paciente listo.')));
     }
   }
 

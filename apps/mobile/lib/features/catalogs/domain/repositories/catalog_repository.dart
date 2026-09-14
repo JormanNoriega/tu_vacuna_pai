@@ -19,6 +19,9 @@ abstract interface class CatalogRepository {
   /// genero, regimen, etnia, contraindicaciones, EPS, ...).
   Future<List<ReferenceCatalog>> listReferenceCatalogs(String token);
 
+  /// Aseguradoras en salud (EPS) activas del catalogo global.
+  Future<List<HealthInsurer>> listInsurers(String token);
+
   /// Municipios de un departamento.
   Future<List<GeoMunicipality>> listMunicipalities(
     String token,

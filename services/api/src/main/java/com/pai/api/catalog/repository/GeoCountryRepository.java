@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface GeoCountryRepository extends JpaRepository<GeoCountryEntity, UUID> {
 
-    Optional<GeoCountryEntity> findByCode(String code);
+  Optional<GeoCountryEntity> findByCode(String code);
 
-    List<GeoCountryEntity> findAllByOrderByNameAsc();
+  List<GeoCountryEntity> findAllByOrderByNameAsc();
 }
