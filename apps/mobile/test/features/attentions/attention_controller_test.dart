@@ -1,5 +1,9 @@
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tu_vacuna_pai/core/auth/offline_access.dart';
+import 'package:tu_vacuna_pai/core/storage/app_database.dart';
+import 'package:tu_vacuna_pai/core/synchronization/clinical_offline_repository.dart';
+import 'package:tu_vacuna_pai/core/synchronization/sync_outbox.dart';
 import 'package:tu_vacuna_pai/features/attentions/domain/entities/attention.dart';
 import 'package:tu_vacuna_pai/features/attentions/domain/repositories/attentions_repository.dart';
 import 'package:tu_vacuna_pai/features/attentions/domain/use_cases/attentions_use_cases.dart';
@@ -30,6 +34,10 @@ void main() {
   );
   const offlineLocked = OfflineAccess(
     status: SessionStatus.offlineLocked,
+    permissions: ['PATIENT_WRITE', 'ATTENTION_CREATE', 'ATTENTION_READ'],
+  );
+  const offlineAuthorized = OfflineAccess(
+    status: SessionStatus.offlineAuthorized,
     permissions: ['PATIENT_WRITE', 'ATTENTION_CREATE', 'ATTENTION_READ'],
   );
 
@@ -285,6 +293,73 @@ void main() {
       );
       expect(controller.insurersForRegime('NO_ASEGURADO'), isEmpty);
     });
+
+    test(
+      'el cierre offline conserva la atencion local sin llamar a la API',
+      () async {
+        final db = AppDatabase(NativeDatabase.memory());
+        addTearDown(db.close);
+        await db.upsertCurrentUser(
+          id: 'user-1',
+          email: 'vac@test.co',
+          fullName: 'Vacunador',
+          institutionId: 'inst-1',
+          roles: const ['VACCINATOR'],
+          permissions: const ['ATTENTION_CREATE', 'PATIENT_WRITE'],
+          offlineWindowHours: 24,
+          lastOnlineValidation: 0,
+        );
+        final offlineController = AttentionController(
+          sessionManager: FakeSessionManager('token-123'),
+          searchPatient: SearchPatient(patients),
+          createPatient: CreatePatient(patients),
+          listEffectiveCatalog: ListEffectiveCatalog(_NoopCatalogRepository()),
+          listCountries: ListCountries(_NoopCatalogRepository()),
+          listDepartments: ListDepartments(_NoopCatalogRepository()),
+          listMunicipalities: ListMunicipalities(_NoopCatalogRepository()),
+          listReferenceCatalogs: ListReferenceCatalogs(
+            _NoopCatalogRepository(),
+          ),
+          listInsurers: ListInsurers(_NoopCatalogRepository()),
+          createAttention: CreateAttention(attentions),
+          updateAttention: UpdateAttention(attentions),
+          registerDose: RegisterDose(attentions),
+          completeAttention: CompleteAttention(attentions),
+          cancelAttention: CancelAttention(attentions),
+          cancelDose: CancelDose(attentions),
+          offlineRepository: ClinicalOfflineRepository(
+            database: db,
+            outboxRepository: SyncOutboxRepository(db),
+          ),
+        );
+
+        offlineController.selectPatient(existing);
+        final added = await offlineController.addDose(
+          offline: offlineAuthorized,
+          vaccineId: 'vac-1',
+          doseOptionId: 'dose-1',
+        );
+        expect(added, isTrue);
+
+        final result = await offlineController.updateAttentionDetails(
+          offline: offlineAuthorized,
+          completeScheme: true,
+          paiwebRegistered: false,
+          paiwebNotRegisteredReason: 'sin acceso',
+        );
+
+        expect(result, isNotNull);
+        expect(result!.status, 'DRAFT');
+        // El cierre offline no toca la API: el repositorio online no se invoca.
+        expect(attentions.updateAttentionCalls, 0);
+
+        expect(
+          await offlineController.finishAttention(offline: offlineAuthorized),
+          isTrue,
+        );
+        expect(offlineController.attention?.status, 'COMPLETED');
+      },
+    );
   });
 
   group('HistoryController', () {
@@ -424,6 +499,7 @@ class FakeAttentionsRepository implements AttentionsRepository {
   List<Attention> historyList = const [];
   String status = 'DRAFT';
   int createAttentionCalls = 0;
+  int updateAttentionCalls = 0;
   String? lastObservations;
   String? lastApplicationDate;
   String? lastAttentionDate;
@@ -462,18 +538,21 @@ class FakeAttentionsRepository implements AttentionsRepository {
     bool? paiwebRegistered,
     String? paiwebNotRegisteredReason,
     String? attentionDate,
-  }) async => Attention(
-    id: attentionId,
-    patientId: 'pat-1',
-    professionalId: 'pro-1',
-    status: 'IN_PROGRESS',
-    version: version + 1,
-    doses: List.of(registered),
-    observations: observations,
-    completeScheme: completeScheme ?? false,
-    paiwebRegistered: paiwebRegistered ?? false,
-    paiwebNotRegisteredReason: paiwebNotRegisteredReason,
-  );
+  }) async {
+    updateAttentionCalls++;
+    return Attention(
+      id: attentionId,
+      patientId: 'pat-1',
+      professionalId: 'pro-1',
+      status: 'IN_PROGRESS',
+      version: version + 1,
+      doses: List.of(registered),
+      observations: observations,
+      completeScheme: completeScheme ?? false,
+      paiwebRegistered: paiwebRegistered ?? false,
+      paiwebNotRegisteredReason: paiwebNotRegisteredReason,
+    );
+  }
 
   @override
   Future<AppliedDose> registerDose(

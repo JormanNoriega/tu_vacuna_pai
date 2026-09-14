@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/auth/offline_access.dart';
+import '../../../../core/presentation/widgets/app_snackbar.dart';
 import '../admin_controller.dart';
 
 /// Formulario para crear un ADMIN_INSTITUTION para una institucion existente.
@@ -51,9 +52,7 @@ class _CreateInstitutionAdminPageState
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     if (_selectedInstitutionId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Primero crea una institucion.')),
-      );
+      AppSnackbar.warning(context, 'Primero crea una institucion.');
       return;
     }
     if (!(_formKey.currentState?.validate() ?? false)) return;

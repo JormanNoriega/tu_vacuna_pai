@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/auth/offline_access.dart';
+import '../../../../core/presentation/widgets/app_snackbar.dart';
 import '../../domain/entities/clone_catalog_result.dart';
 import '../../domain/entities/institution.dart';
 import '../admin_controller.dart';
@@ -40,9 +41,7 @@ class _AdminPageState extends State<AdminPage> {
       ),
     );
     if (created != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Institucion "${created.name}" creada.')),
-      );
+      AppSnackbar.success(context, 'Institucion "${created.name}" creada.');
     }
   }
 
@@ -65,12 +64,9 @@ class _AdminPageState extends State<AdminPage> {
       ),
     );
     if (saved == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Ventana offline de "${institution.name}" actualizada.',
-          ),
-        ),
+      AppSnackbar.success(
+        context,
+        'Ventana offline de "${institution.name}" actualizada.',
       );
     }
   }
@@ -96,14 +92,11 @@ class _AdminPageState extends State<AdminPage> {
       ),
     );
     if (!mounted || result == null) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Catalogo clonado en "${institution.name}": '
-          '${result.vaccinesEnabled} vacunas habilitadas '
-          '(${result.optionsCopied} opciones copiadas).',
-        ),
-      ),
+    AppSnackbar.success(
+      context,
+      'Catalogo clonado en "${institution.name}": '
+      '${result.vaccinesEnabled} vacunas habilitadas '
+      '(${result.optionsCopied} opciones copiadas).',
     );
   }
 

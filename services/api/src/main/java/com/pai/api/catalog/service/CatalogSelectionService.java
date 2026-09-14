@@ -26,121 +26,118 @@ import org.springframework.stereotype.Service;
 @Service
 public class CatalogSelectionService implements VaccineCatalogPolicy {
 
-    private static final String FIELD_LABORATORY = "laboratory";
-    private static final String FIELD_SYRINGE = "syringe";
-    private static final String FIELD_DROPPER = "dropper";
-    private static final String FIELD_OBSERVATION = "observation";
+  private static final String FIELD_LABORATORY = "laboratory";
+  private static final String FIELD_SYRINGE = "syringe";
+  private static final String FIELD_DROPPER = "dropper";
+  private static final String FIELD_OBSERVATION = "observation";
 
-    private final VaccineRepository vaccines;
-    private final VaccineOptionRepository vaccineOptions;
-    private final InstitutionVaccineRepository institutionVaccines;
-    private final InstitutionVaccineOptionRepository institutionOptions;
+  private final VaccineRepository vaccines;
+  private final VaccineOptionRepository vaccineOptions;
+  private final InstitutionVaccineRepository institutionVaccines;
+  private final InstitutionVaccineOptionRepository institutionOptions;
 
-    public CatalogSelectionService(
-            VaccineRepository vaccines,
-            VaccineOptionRepository vaccineOptions,
-            InstitutionVaccineRepository institutionVaccines,
-            InstitutionVaccineOptionRepository institutionOptions) {
-        this.vaccines = vaccines;
-        this.vaccineOptions = vaccineOptions;
-        this.institutionVaccines = institutionVaccines;
-        this.institutionOptions = institutionOptions;
+  public CatalogSelectionService(
+      VaccineRepository vaccines,
+      VaccineOptionRepository vaccineOptions,
+      InstitutionVaccineRepository institutionVaccines,
+      InstitutionVaccineOptionRepository institutionOptions) {
+    this.vaccines = vaccines;
+    this.vaccineOptions = vaccineOptions;
+    this.institutionVaccines = institutionVaccines;
+    this.institutionOptions = institutionOptions;
+  }
+
+  @Override
+  public DoseSelection resolve(ResolutionRequest request) {
+    VaccineEntity vaccine = requireEnabledVaccine(request.institutionId(), request.vaccineId());
+
+    VaccineOptionEntity doseOption = requireGlobalOption(
+        request.doseOptionId(), vaccine.getId(), "dose", "La dosis seleccionada no es valida.");
+    VaccineOptionEntity pneumo = request.pneumococcalTypeOptionId() == null
+        ? null
+        : requireGlobalOption(
+            request.pneumococcalTypeOptionId(),
+            vaccine.getId(),
+            "pneumococcalType",
+            "El tipo de neumococo seleccionado no es valido.");
+
+    InstitutionVaccineOptionEntity laboratory = requireInstitutionalOption(
+        request.institutionId(), vaccine.getId(), request.laboratoryId(), FIELD_LABORATORY);
+    InstitutionVaccineOptionEntity syringe = requireInstitutionalOption(
+        request.institutionId(), vaccine.getId(), request.syringeId(), FIELD_SYRINGE);
+    InstitutionVaccineOptionEntity dropper = requireInstitutionalOption(
+        request.institutionId(), vaccine.getId(), request.dropperId(), FIELD_DROPPER);
+    InstitutionVaccineOptionEntity observation = requireInstitutionalOption(
+        request.institutionId(), vaccine.getId(), request.observationId(), FIELD_OBSERVATION);
+
+    return new DoseSelection(
+        vaccine.getId(),
+        vaccine.getName(),
+        vaccine.getCode(),
+        vaccine.getVersion(),
+        doseOption.getId(),
+        doseOption.getDisplayName(),
+        doseOption.getValue(),
+        pneumo != null ? pneumo.getId() : null,
+        pneumo != null ? pneumo.getDisplayName() : null,
+        id(laboratory),
+        label(laboratory),
+        id(syringe),
+        label(syringe),
+        id(dropper),
+        label(dropper),
+        id(observation),
+        label(observation));
+  }
+
+  private VaccineEntity requireEnabledVaccine(UUID institutionId, UUID vaccineId) {
+    VaccineEntity vaccine = vaccines
+        .findById(vaccineId)
+        .orElseThrow(() -> new IllegalArgumentException("La vacuna no existe."));
+    if (!vaccine.isActive()) {
+      throw new InvalidClinicalStateException("La vacuna esta inactiva.");
     }
-
-    @Override
-    public DoseSelection resolve(ResolutionRequest request) {
-        VaccineEntity vaccine = requireEnabledVaccine(request.institutionId(), request.vaccineId());
-
-        VaccineOptionEntity doseOption = requireGlobalOption(
-                request.doseOptionId(),
-                vaccine.getId(),
-                "dose",
-                "La dosis seleccionada no es valida.");
-        VaccineOptionEntity pneumo = request.pneumococcalTypeOptionId() == null
-                ? null
-                : requireGlobalOption(
-                        request.pneumococcalTypeOptionId(),
-                        vaccine.getId(),
-                        "pneumococcalType",
-                        "El tipo de neumococo seleccionado no es valido.");
-
-        InstitutionVaccineOptionEntity laboratory = requireInstitutionalOption(
-                request.institutionId(),
-                vaccine.getId(),
-                request.laboratoryId(),
-                FIELD_LABORATORY);
-        InstitutionVaccineOptionEntity syringe =
-                requireInstitutionalOption(request.institutionId(), vaccine.getId(), request.syringeId(), FIELD_SYRINGE);
-        InstitutionVaccineOptionEntity dropper =
-                requireInstitutionalOption(request.institutionId(), vaccine.getId(), request.dropperId(), FIELD_DROPPER);
-        InstitutionVaccineOptionEntity observation = requireInstitutionalOption(
-                request.institutionId(), vaccine.getId(), request.observationId(), FIELD_OBSERVATION);
-
-        return new DoseSelection(
-                vaccine.getId(),
-                vaccine.getName(),
-                vaccine.getCode(),
-                vaccine.getVersion(),
-                doseOption.getId(),
-                doseOption.getDisplayName(),
-                doseOption.getValue(),
-                pneumo != null ? pneumo.getId() : null,
-                pneumo != null ? pneumo.getDisplayName() : null,
-                id(laboratory),
-                label(laboratory),
-                id(syringe),
-                label(syringe),
-                id(dropper),
-                label(dropper),
-                id(observation),
-                label(observation));
+    boolean enabled = institutionVaccines
+        .findByInstitutionIdAndVaccineId(institutionId, vaccineId)
+        .filter(InstitutionVaccineEntity::isEnabled)
+        .isPresent();
+    if (!enabled) {
+      throw new InvalidClinicalStateException("La vacuna no esta habilitada en tu institucion.");
     }
+    return vaccine;
+  }
 
-    private VaccineEntity requireEnabledVaccine(UUID institutionId, UUID vaccineId) {
-        VaccineEntity vaccine =
-                vaccines.findById(vaccineId).orElseThrow(() -> new IllegalArgumentException("La vacuna no existe."));
-        if (!vaccine.isActive()) {
-            throw new InvalidClinicalStateException("La vacuna esta inactiva.");
-        }
-        boolean enabled = institutionVaccines
-                .findByInstitutionIdAndVaccineId(institutionId, vaccineId)
-                .filter(InstitutionVaccineEntity::isEnabled)
-                .isPresent();
-        if (!enabled) {
-            throw new InvalidClinicalStateException("La vacuna no esta habilitada en tu institucion.");
-        }
-        return vaccine;
+  private VaccineOptionEntity requireGlobalOption(
+      UUID optionId, UUID vaccineId, String fieldType, String message) {
+    VaccineOptionEntity option = vaccineOptions
+        .findByIdAndVaccineId(optionId, vaccineId)
+        .orElseThrow(() -> new IllegalArgumentException(message));
+    if (!option.isActive() || !fieldType.equals(option.getFieldType())) {
+      throw new IllegalArgumentException(message);
     }
+    return option;
+  }
 
-    private VaccineOptionEntity requireGlobalOption(UUID optionId, UUID vaccineId, String fieldType, String message) {
-        VaccineOptionEntity option = vaccineOptions
-                .findByIdAndVaccineId(optionId, vaccineId)
-                .orElseThrow(() -> new IllegalArgumentException(message));
-        if (!option.isActive() || !fieldType.equals(option.getFieldType())) {
-            throw new IllegalArgumentException(message);
-        }
-        return option;
+  private InstitutionVaccineOptionEntity requireInstitutionalOption(
+      UUID institutionId, UUID vaccineId, UUID optionId, String fieldType) {
+    if (optionId == null) {
+      return null;
     }
+    InstitutionVaccineOptionEntity option = institutionOptions
+        .findByIdAndInstitutionIdAndVaccineId(optionId, institutionId, vaccineId)
+        .orElseThrow(
+            () -> new IllegalArgumentException("La opcion operativa seleccionada no es valida."));
+    if (!option.isActive() || !fieldType.equals(option.getFieldType())) {
+      throw new IllegalArgumentException("La opcion operativa seleccionada no es valida.");
+    }
+    return option;
+  }
 
-    private InstitutionVaccineOptionEntity requireInstitutionalOption(
-            UUID institutionId, UUID vaccineId, UUID optionId, String fieldType) {
-        if (optionId == null) {
-            return null;
-        }
-        InstitutionVaccineOptionEntity option = institutionOptions
-                .findByIdAndInstitutionIdAndVaccineId(optionId, institutionId, vaccineId)
-                .orElseThrow(() -> new IllegalArgumentException("La opcion operativa seleccionada no es valida."));
-        if (!option.isActive() || !fieldType.equals(option.getFieldType())) {
-            throw new IllegalArgumentException("La opcion operativa seleccionada no es valida.");
-        }
-        return option;
-    }
+  private UUID id(InstitutionVaccineOptionEntity option) {
+    return option == null ? null : option.getId();
+  }
 
-    private UUID id(InstitutionVaccineOptionEntity option) {
-        return option == null ? null : option.getId();
-    }
-
-    private String label(InstitutionVaccineOptionEntity option) {
-        return option == null ? null : option.getDisplayName();
-    }
+  private String label(InstitutionVaccineOptionEntity option) {
+    return option == null ? null : option.getDisplayName();
+  }
 }

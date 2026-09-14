@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../app/widgets/clinical_components.dart';
 import '../../../../core/auth/offline_access.dart';
+import '../../../../core/presentation/offline_messages.dart';
+import '../../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../../core/utils/document_input.dart';
 import '../../../../core/utils/field_input.dart';
 import '../../../auth/domain/entities/auth_user.dart';
@@ -126,9 +128,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
     FocusScope.of(context).unfocus();
     final number = _searchNumber.text.trim();
     if (number.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa el numero de documento.')),
-      );
+      AppSnackbar.warning(context, 'Ingresa el numero de documento.');
       return;
     }
     await widget.controller.findPatients(
@@ -139,10 +139,9 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
     if (!mounted) return;
     setState(() => _searched = true);
     if (widget.controller.searchResults.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No se encontro un paciente con ese documento.'),
-        ),
+      AppSnackbar.warning(
+        context,
+        'No se encontro un paciente con ese documento.',
       );
     }
   }
@@ -167,8 +166,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
     if (created == true) {
       await widget.controller.loadEffectiveCatalog();
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Paciente listo.')));
+      AppSnackbar.success(context, 'Paciente listo.');
     }
   }
 
@@ -258,11 +256,11 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
       reason: reason,
     );
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(ok ? 'Dosis anulada.' : 'No se pudo anular la dosis.'),
-      ),
-    );
+    if (ok) {
+      AppSnackbar.success(context, 'Dosis anulada.');
+    } else {
+      AppSnackbar.error(context, 'No se pudo anular la dosis.');
+    }
   }
 
   Future<void> _cancelAttention() async {
@@ -274,22 +272,18 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
     );
     if (!mounted) return;
     if (ok) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Atencion anulada.')));
+      AppSnackbar.success(context, 'Atencion anulada.');
       _resetFlow();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo anular la atencion.')),
-      );
+      AppSnackbar.error(context, 'No se pudo anular la atencion.');
     }
   }
 
   Future<void> _finish() async {
     if (!_paiwebRegistered && _paiwebReason.text.trim().length < 5) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Indica el motivo de no ingreso al aplicativo PAIWEB.'),
-        ),
+      AppSnackbar.warning(
+        context,
+        'Indica el motivo de no ingreso al aplicativo PAIWEB.',
       );
       return;
     }
@@ -303,18 +297,18 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
     );
     if (!mounted) return;
     if (details == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No se pudo guardar el cierre del registro.'),
-        ),
-      );
+      AppSnackbar.error(context, 'No se pudo guardar el cierre del registro.');
       return;
     }
     final ok = await widget.controller.finishAttention(offline: widget.offline);
     if (!mounted) return;
     if (ok) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Atencion completada.')));
+      AppSnackbar.success(
+        context,
+        OfflineMessages.isOffline(widget.offline)
+            ? OfflineMessages.savedAttention
+            : 'Atencion completada.',
+      );
       _resetFlow();
     }
   }

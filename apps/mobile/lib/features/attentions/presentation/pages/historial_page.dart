@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../app/widgets/clinical_components.dart';
 import '../../../../core/auth/offline_access.dart';
+import '../../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../../core/utils/document_input.dart';
 import '../../../catalogs/domain/entities/catalog_entities.dart';
 import '../../../patients/presentation/patient_detail_controller.dart';
@@ -65,9 +66,7 @@ class _HistorialPageState extends State<HistorialPage> {
     FocusScope.of(context).unfocus();
     final number = _number.text.trim();
     if (number.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa el numero de documento.')),
-      );
+      AppSnackbar.warning(context, 'Ingresa el numero de documento.');
       return;
     }
     setState(() => _searching = true);
@@ -78,10 +77,9 @@ class _HistorialPageState extends State<HistorialPage> {
     if (!mounted) return;
     setState(() => _searching = false);
     if (widget.controller.patient == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No se encontro un paciente con ese documento.'),
-        ),
+      AppSnackbar.warning(
+        context,
+        'No se encontro un paciente con ese documento.',
       );
     }
   }

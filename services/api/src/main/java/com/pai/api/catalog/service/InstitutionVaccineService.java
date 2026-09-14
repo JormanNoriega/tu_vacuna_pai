@@ -31,351 +31,375 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class InstitutionVaccineService {
-    private final InstitutionVaccineRepository relations;
-    private final InstitutionVaccineOptionRepository local;
-    private final VaccineRepository vaccines;
-    private final VaccineOptionTemplateRepository templates;
-    private final DataScope scope;
-    private final PermissionGuard guard;
-    private final CatalogMapper mapper;
+  private final InstitutionVaccineRepository relations;
+  private final InstitutionVaccineOptionRepository local;
+  private final VaccineRepository vaccines;
+  private final VaccineOptionTemplateRepository templates;
+  private final DataScope scope;
+  private final PermissionGuard guard;
+  private final CatalogMapper mapper;
 
-    public InstitutionVaccineService(
-            InstitutionVaccineRepository relations,
-            InstitutionVaccineOptionRepository local,
-            VaccineRepository vaccines,
-            VaccineOptionTemplateRepository templates,
-            DataScope scope,
-            PermissionGuard guard,
-            CatalogMapper mapper) {
-        this.relations = relations;
-        this.local = local;
-        this.vaccines = vaccines;
-        this.templates = templates;
-        this.scope = scope;
-        this.guard = guard;
-        this.mapper = mapper;
+  public InstitutionVaccineService(
+      InstitutionVaccineRepository relations,
+      InstitutionVaccineOptionRepository local,
+      VaccineRepository vaccines,
+      VaccineOptionTemplateRepository templates,
+      DataScope scope,
+      PermissionGuard guard,
+      CatalogMapper mapper) {
+    this.relations = relations;
+    this.local = local;
+    this.vaccines = vaccines;
+    this.templates = templates;
+    this.scope = scope;
+    this.guard = guard;
+    this.mapper = mapper;
+  }
+
+  private UUID institution(AuthorizedUser actor, UUID requestedInstitution) {
+    return scope.resolveInstitutionId(actor, requestedInstitution);
+  }
+
+  @Transactional(readOnly = true)
+  public List<InstitutionVaccineResponse> list(UUID actorId, UUID requestedInstitution) {
+    AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_READ");
+    UUID institutionId = institution(actor, requestedInstitution);
+
+    List<InstitutionVaccineEntity> relationList = relations.findByInstitutionId(institutionId);
+    // Carga las vacunas en bloque (1 query) en lugar de un findById por relacion.
+    Map<UUID, VaccineEntity> vaccinesById = vaccines
+        .findAllById(relationList.stream()
+            .map(InstitutionVaccineEntity::getVaccineId)
+            .distinct()
+            .toList())
+        .stream()
+        .collect(Collectors.toMap(VaccineEntity::getId, vaccine -> vaccine));
+
+    return relationList.stream()
+        .map(relation -> {
+          VaccineEntity vaccine = vaccinesById.get(relation.getVaccineId());
+          if (vaccine == null) {
+            throw new IllegalArgumentException("Vacuna no existe.");
+          }
+          return mapper.toInstitutionVaccine(relation, vaccine, institutionId);
+        })
+        .toList();
+  }
+
+  @Transactional
+  public void enable(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
+    AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
+    UUID institutionId = institution(actor, requestedInstitution);
+    VaccineEntity vaccine = vaccines
+        .findById(vaccineId)
+        .orElseThrow(() -> new IllegalArgumentException("Vacuna no existe."));
+    if (!vaccine.isActive()) {
+      throw new IllegalArgumentException("La vacuna esta inactiva.");
     }
 
-    private UUID institution(AuthorizedUser actor, UUID requestedInstitution) {
-        return scope.resolveInstitutionId(actor, requestedInstitution);
+    int inserted = relations.insertEnabledIfAbsent(institutionId, vaccineId, actor.getId());
+
+    if (inserted > 0) {
+      for (VaccineOptionTemplateEntity template :
+          templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccineId)) {
+        local.save(new InstitutionVaccineOptionEntity(
+            UUID.randomUUID(),
+            institutionId,
+            vaccineId,
+            template.getFieldType(),
+            template.getValue(),
+            template.getDisplayName(),
+            template.getSortOrder(),
+            false,
+            template.getId(),
+            actor.getId(),
+            Instant.now()));
+      }
+      return;
     }
 
-    @Transactional(readOnly = true)
-    public List<InstitutionVaccineResponse> list(UUID actorId, UUID requestedInstitution) {
-        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_READ");
-        UUID institutionId = institution(actor, requestedInstitution);
+    relations
+        .findByInstitutionIdAndVaccineId(institutionId, vaccineId)
+        .filter(relation -> !relation.isEnabled())
+        .ifPresent(relation -> relations.setEnabledById(relation.getId(), true));
+  }
 
-        List<InstitutionVaccineEntity> relationList = relations.findByInstitutionId(institutionId);
-        // Carga las vacunas en bloque (1 query) en lugar de un findById por relacion.
-        Map<UUID, VaccineEntity> vaccinesById = vaccines
-                .findAllById(relationList.stream()
-                        .map(InstitutionVaccineEntity::getVaccineId)
-                        .distinct()
-                        .toList())
-                .stream()
-                .collect(Collectors.toMap(VaccineEntity::getId, vaccine -> vaccine));
+  @Transactional
+  public void disable(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
+    AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
+    UUID institutionId = institution(actor, requestedInstitution);
+    relations
+        .findByInstitutionIdAndVaccineId(institutionId, vaccineId)
+        .ifPresent(relation -> relations.setEnabledById(relation.getId(), false));
+  }
 
-        return relationList.stream()
-                .map(relation -> {
-                    VaccineEntity vaccine = vaccinesById.get(relation.getVaccineId());
-                    if (vaccine == null) {
-                        throw new IllegalArgumentException("Vacuna no existe.");
-                    }
-                    return mapper.toInstitutionVaccine(relation, vaccine, institutionId);
-                })
-                .toList();
-    }
+  /**
+   * Clona el catalogo global hacia una institucion: habilita las vacunas
+   * activas que aun no tienen relacion con la institucion y, cuando
+   * [includeDefaultConfig] es true, copia las opciones operativas de los
+   * templates como configuracion por defecto.
+   *
+   * <p>La operacion es copy-once e idempotente y respeta la autonomia de la
+   * institucion: las vacunas con relacion existente (habilitadas o
+   * deshabilitadas) nunca se tocan, por lo que el re-clone no pisa decisiones
+   * locales. Las opciones locales existentes no se sobrescriben.
+   */
+  @Transactional
+  public CloneCatalogResponse clone(
+      UUID actorId, UUID requestedInstitution, boolean includeDefaultConfig) {
+    AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
+    UUID institutionId = institution(actor, requestedInstitution);
+    return doClone(institutionId, actor.getId(), includeDefaultConfig);
+  }
 
-    @Transactional
-    public void enable(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
-        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
-        UUID institutionId = institution(actor, requestedInstitution);
-        VaccineEntity vaccine =
-                vaccines.findById(vaccineId).orElseThrow(() -> new IllegalArgumentException("Vacuna no existe."));
-        if (!vaccine.isActive()) {
-            throw new IllegalArgumentException("La vacuna esta inactiva.");
+  /**
+   * Siembra el catalogo global activo en una institucion como accion de
+   * sistema (sin chequeo de permisos): al crear una institucion y en el
+   * backfill de instituciones sin catalogo. Copy-once e idempotente.
+   */
+  @Transactional
+  public CloneCatalogResponse seedInstitution(UUID institutionId, UUID actorId) {
+    return doClone(institutionId, actorId, true);
+  }
+
+  private CloneCatalogResponse doClone(
+      UUID institutionId, UUID actorId, boolean includeDefaultConfig) {
+    List<VaccineEntity> active = vaccines.findByActiveTrueOrderByNameAsc();
+    int vaccinesEnabled = 0;
+    int optionsCopied = 0;
+
+    for (VaccineEntity vaccine : active) {
+      int inserted = relations.insertEnabledIfAbsent(institutionId, vaccine.getId(), actorId);
+
+      if (inserted == 0) {
+        // La relacion ya existia (habilitada o deshabilitada): no se toca.
+        continue;
+      }
+
+      vaccinesEnabled++;
+      if (includeDefaultConfig) {
+        for (VaccineOptionTemplateEntity template :
+            templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(
+                vaccine.getId())) {
+          local.save(new InstitutionVaccineOptionEntity(
+              UUID.randomUUID(),
+              institutionId,
+              vaccine.getId(),
+              template.getFieldType(),
+              template.getValue(),
+              template.getDisplayName(),
+              template.getSortOrder(),
+              false,
+              template.getId(),
+              actorId,
+              Instant.now()));
+          optionsCopied++;
         }
+      }
+    }
+    return new CloneCatalogResponse(vaccinesEnabled, optionsCopied, active.size());
+  }
 
-        int inserted = relations.insertEnabledIfAbsent(institutionId, vaccineId, actor.getId());
+  /**
+   * Devuelve las vacunas activas del catalogo global que aun no tienen
+   * relacion con la institucion, para que el ADMIN_INSTITUTION pueda
+   * habilitarlas cuando lo decida. Las deshabilitadas en la institucion no
+   * aparecen aqui: ya tienen relacion y su estado se respeta.
+   */
+  @Transactional(readOnly = true)
+  public List<VaccineResponse> available(UUID actorId, UUID requestedInstitution) {
+    AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_READ");
+    UUID institutionId = institution(actor, requestedInstitution);
 
-        if (inserted > 0) {
-            for (VaccineOptionTemplateEntity template :
-                    templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccineId)) {
-                local.save(new InstitutionVaccineOptionEntity(
-                        UUID.randomUUID(),
-                        institutionId,
-                        vaccineId,
-                        template.getFieldType(),
-                        template.getValue(),
-                        template.getDisplayName(),
-                        template.getSortOrder(),
-                        false,
-                        template.getId(),
-                        actor.getId(),
-                        Instant.now()));
-            }
-            return;
-        }
+    Set<UUID> existing = relations.findByInstitutionId(institutionId).stream()
+        .map(InstitutionVaccineEntity::getVaccineId)
+        .collect(java.util.stream.Collectors.toSet());
 
-        relations
-                .findByInstitutionIdAndVaccineId(institutionId, vaccineId)
-                .filter(relation -> !relation.isEnabled())
-                .ifPresent(relation -> relations.setEnabledById(relation.getId(), true));
+    return vaccines.findByActiveTrueOrderByNameAsc().stream()
+        .filter(vaccine -> !existing.contains(vaccine.getId()))
+        .map(mapper::toVaccine)
+        .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public List<OptionResponse> options(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
+    AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_READ");
+    UUID institutionId = institution(actor, requestedInstitution);
+    requireEnabled(institutionId, vaccineId);
+
+    return local
+        .findByInstitutionIdAndVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(
+            institutionId, vaccineId)
+        .stream()
+        .map(option -> mapper.toInstitutionOption(option, vaccineId, institutionId))
+        .toList();
+  }
+
+  @Transactional
+  public OptionResponse createOption(
+      UUID actorId, UUID requestedInstitution, UUID vaccineId, OptionRequest request) {
+    AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
+    UUID institutionId = institution(actor, requestedInstitution);
+    requireEnabled(institutionId, vaccineId);
+    CatalogRules.requireLocalOptionType(request.fieldType());
+
+    if (request.isDefault()) {
+      clearDefaults(institutionId, vaccineId, request.fieldType(), actor.getId());
     }
 
-    @Transactional
-    public void disable(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
-        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
-        UUID institutionId = institution(actor, requestedInstitution);
-        relations
-                .findByInstitutionIdAndVaccineId(institutionId, vaccineId)
-                .ifPresent(relation -> relations.setEnabledById(relation.getId(), false));
+    InstitutionVaccineOptionEntity option = local.save(new InstitutionVaccineOptionEntity(
+        UUID.randomUUID(),
+        institutionId,
+        vaccineId,
+        request.fieldType(),
+        request.value(),
+        request.displayName(),
+        request.sortOrder(),
+        request.isDefault(),
+        null,
+        actor.getId(),
+        Instant.now()));
+    return mapper.toInstitutionOption(option, vaccineId, institutionId);
+  }
+
+  @Transactional
+  public OptionResponse updateOption(
+      UUID actorId,
+      UUID requestedInstitution,
+      UUID vaccineId,
+      UUID optionId,
+      OptionRequest request) {
+    AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
+    UUID institutionId = institution(actor, requestedInstitution);
+    requireEnabled(institutionId, vaccineId);
+    CatalogRules.requireLocalOptionType(request.fieldType());
+
+    InstitutionVaccineOptionEntity option = local
+        .findByIdAndInstitutionIdAndVaccineId(optionId, institutionId, vaccineId)
+        .orElseThrow(() -> new IllegalArgumentException("Opcion local no existe."));
+    if (option.getVersion() != request.version()) {
+      throw new OptimisticCatalogException("La opcion fue modificada por otro usuario.");
+    }
+    if (request.isDefault()) {
+      clearDefaults(institutionId, vaccineId, request.fieldType(), actor.getId(), optionId);
     }
 
-    /**
-     * Clona el catalogo global hacia una institucion: habilita las vacunas
-     * activas que aun no tienen relacion con la institucion y, cuando
-     * [includeDefaultConfig] es true, copia las opciones operativas de los
-     * templates como configuracion por defecto.
-     *
-     * <p>La operacion es copy-once e idempotente y respeta la autonomia de la
-     * institucion: las vacunas con relacion existente (habilitadas o
-     * deshabilitadas) nunca se tocan, por lo que el re-clone no pisa decisiones
-     * locales. Las opciones locales existentes no se sobrescriben.
-     */
-    @Transactional
-    public CloneCatalogResponse clone(UUID actorId, UUID requestedInstitution, boolean includeDefaultConfig) {
-        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
-        UUID institutionId = institution(actor, requestedInstitution);
-        return doClone(institutionId, actor.getId(), includeDefaultConfig);
+    option.update(
+        request.value(),
+        request.displayName(),
+        request.sortOrder(),
+        request.isDefault(),
+        request.isActive(),
+        actor.getId());
+    return mapper.toInstitutionOption(option, vaccineId, institutionId);
+  }
+
+  @Transactional
+  public void deleteOption(
+      UUID actorId, UUID requestedInstitution, UUID vaccineId, UUID optionId, long version) {
+    AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
+    UUID institutionId = institution(actor, requestedInstitution);
+    requireEnabled(institutionId, vaccineId);
+
+    InstitutionVaccineOptionEntity option = local
+        .findByIdAndInstitutionIdAndVaccineId(optionId, institutionId, vaccineId)
+        .orElseThrow(() -> new IllegalArgumentException("Opcion local no existe."));
+    if (option.getVersion() != version) {
+      throw new OptimisticCatalogException("La opcion fue modificada por otro usuario.");
     }
+    option.update(
+        option.getValue(),
+        option.getDisplayName(),
+        option.getSortOrder(),
+        false,
+        false,
+        actor.getId());
+  }
 
-    /**
-     * Siembra el catalogo global activo en una institucion como accion de
-     * sistema (sin chequeo de permisos): al crear una institucion y en el
-     * backfill de instituciones sin catalogo. Copy-once e idempotente.
-     */
-    @Transactional
-    public CloneCatalogResponse seedInstitution(UUID institutionId, UUID actorId) {
-        return doClone(institutionId, actorId, true);
-    }
+  @Transactional(readOnly = true)
+  public List<OptionResponse> suggested(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
+    AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_READ");
+    UUID institutionId = institution(actor, requestedInstitution);
+    Set<String> existing = new HashSet<>(local
+        .findByInstitutionIdAndVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(
+            institutionId, vaccineId)
+        .stream()
+        .map(option -> option.getValueNormalized())
+        .toList());
 
-    private CloneCatalogResponse doClone(UUID institutionId, UUID actorId, boolean includeDefaultConfig) {
-        List<VaccineEntity> active = vaccines.findByActiveTrueOrderByNameAsc();
-        int vaccinesEnabled = 0;
-        int optionsCopied = 0;
+    return templates
+        .findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccineId)
+        .stream()
+        .filter(template -> !existing.contains(template.getValueNormalized()))
+        .map(template -> mapper.toSuggestedOption(template, vaccineId, institutionId))
+        .toList();
+  }
 
-        for (VaccineEntity vaccine : active) {
-            int inserted = relations.insertEnabledIfAbsent(institutionId, vaccine.getId(), actorId);
+  @Transactional
+  public List<OptionResponse> importSuggested(
+      UUID actorId, UUID requestedInstitution, UUID vaccineId) {
+    AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
+    UUID institutionId = institution(actor, requestedInstitution);
+    requireEnabled(institutionId, vaccineId);
+    Set<String> existing = new HashSet<>(local
+        .findByInstitutionIdAndVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(
+            institutionId, vaccineId)
+        .stream()
+        .map(option -> option.getValueNormalized())
+        .toList());
+    List<OptionResponse> imported = new ArrayList<>();
 
-            if (inserted == 0) {
-                // La relacion ya existia (habilitada o deshabilitada): no se toca.
-                continue;
-            }
-
-            vaccinesEnabled++;
-            if (includeDefaultConfig) {
-                for (VaccineOptionTemplateEntity template :
-                        templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccine.getId())) {
-                    local.save(new InstitutionVaccineOptionEntity(
-                            UUID.randomUUID(),
-                            institutionId,
-                            vaccine.getId(),
-                            template.getFieldType(),
-                            template.getValue(),
-                            template.getDisplayName(),
-                            template.getSortOrder(),
-                            false,
-                            template.getId(),
-                            actorId,
-                            Instant.now()));
-                    optionsCopied++;
-                }
-            }
-        }
-        return new CloneCatalogResponse(vaccinesEnabled, optionsCopied, active.size());
-    }
-
-    /**
-     * Devuelve las vacunas activas del catalogo global que aun no tienen
-     * relacion con la institucion, para que el ADMIN_INSTITUTION pueda
-     * habilitarlas cuando lo decida. Las deshabilitadas en la institucion no
-     * aparecen aqui: ya tienen relacion y su estado se respeta.
-     */
-    @Transactional(readOnly = true)
-    public List<VaccineResponse> available(UUID actorId, UUID requestedInstitution) {
-        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_READ");
-        UUID institutionId = institution(actor, requestedInstitution);
-
-        Set<UUID> existing = relations.findByInstitutionId(institutionId).stream()
-                .map(InstitutionVaccineEntity::getVaccineId)
-                .collect(java.util.stream.Collectors.toSet());
-
-        return vaccines.findByActiveTrueOrderByNameAsc().stream()
-                .filter(vaccine -> !existing.contains(vaccine.getId()))
-                .map(mapper::toVaccine)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<OptionResponse> options(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
-        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_READ");
-        UUID institutionId = institution(actor, requestedInstitution);
-        requireEnabled(institutionId, vaccineId);
-
-        return local
-                .findByInstitutionIdAndVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(institutionId, vaccineId)
-                .stream()
-                .map(option -> mapper.toInstitutionOption(option, vaccineId, institutionId))
-                .toList();
-    }
-
-    @Transactional
-    public OptionResponse createOption(UUID actorId, UUID requestedInstitution, UUID vaccineId, OptionRequest request) {
-        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
-        UUID institutionId = institution(actor, requestedInstitution);
-        requireEnabled(institutionId, vaccineId);
-        CatalogRules.requireLocalOptionType(request.fieldType());
-
-        if (request.isDefault()) {
-            clearDefaults(institutionId, vaccineId, request.fieldType(), actor.getId());
-        }
-
-        InstitutionVaccineOptionEntity option = local.save(new InstitutionVaccineOptionEntity(
+    for (VaccineOptionTemplateEntity template :
+        templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccineId)) {
+      if (!existing.add(template.getValueNormalized())) {
+        continue;
+      }
+      try {
+        InstitutionVaccineOptionEntity option =
+            local.saveAndFlush(new InstitutionVaccineOptionEntity(
                 UUID.randomUUID(),
                 institutionId,
                 vaccineId,
-                request.fieldType(),
-                request.value(),
-                request.displayName(),
-                request.sortOrder(),
-                request.isDefault(),
-                null,
+                template.getFieldType(),
+                template.getValue(),
+                template.getDisplayName(),
+                template.getSortOrder(),
+                false,
+                template.getId(),
                 actor.getId(),
                 Instant.now()));
-        return mapper.toInstitutionOption(option, vaccineId, institutionId);
+        imported.add(mapper.toInstitutionOption(option, vaccineId, institutionId));
+      } catch (DataIntegrityViolationException ignored) {
+        // Another request imported the same suggestion first.
+      }
     }
+    return imported;
+  }
 
-    @Transactional
-    public OptionResponse updateOption(
-            UUID actorId, UUID requestedInstitution, UUID vaccineId, UUID optionId, OptionRequest request) {
-        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
-        UUID institutionId = institution(actor, requestedInstitution);
-        requireEnabled(institutionId, vaccineId);
-        CatalogRules.requireLocalOptionType(request.fieldType());
+  private void clearDefaults(UUID institutionId, UUID vaccineId, String fieldType, UUID actorId) {
+    clearDefaults(institutionId, vaccineId, fieldType, actorId, null);
+  }
 
-        InstitutionVaccineOptionEntity option = local.findByIdAndInstitutionIdAndVaccineId(
-                        optionId, institutionId, vaccineId)
-                .orElseThrow(() -> new IllegalArgumentException("Opcion local no existe."));
-        if (option.getVersion() != request.version()) {
-            throw new OptimisticCatalogException("La opcion fue modificada por otro usuario.");
-        }
-        if (request.isDefault()) {
-            clearDefaults(institutionId, vaccineId, request.fieldType(), actor.getId(), optionId);
-        }
+  private void clearDefaults(
+      UUID institutionId, UUID vaccineId, String fieldType, UUID actorId, UUID exceptId) {
+    local.lockActive(institutionId, vaccineId).stream()
+        .filter(option -> option.getFieldType().equals(fieldType))
+        .filter(option -> exceptId == null || !option.getId().equals(exceptId))
+        .forEach(option -> option.update(
+            option.getValue(),
+            option.getDisplayName(),
+            option.getSortOrder(),
+            false,
+            option.isActive(),
+            actorId));
+  }
 
-        option.update(
-                request.value(),
-                request.displayName(),
-                request.sortOrder(),
-                request.isDefault(),
-                request.isActive(),
-                actor.getId());
-        return mapper.toInstitutionOption(option, vaccineId, institutionId);
+  private void requireEnabled(UUID institutionId, UUID vaccineId) {
+    if (relations
+        .findByInstitutionIdAndVaccineId(institutionId, vaccineId)
+        .filter(relation -> relation.isEnabled())
+        .isEmpty()) {
+      throw new IllegalArgumentException("La vacuna no esta habilitada en la institucion.");
     }
-
-    @Transactional
-    public void deleteOption(UUID actorId, UUID requestedInstitution, UUID vaccineId, UUID optionId, long version) {
-        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
-        UUID institutionId = institution(actor, requestedInstitution);
-        requireEnabled(institutionId, vaccineId);
-
-        InstitutionVaccineOptionEntity option = local.findByIdAndInstitutionIdAndVaccineId(
-                        optionId, institutionId, vaccineId)
-                .orElseThrow(() -> new IllegalArgumentException("Opcion local no existe."));
-        if (option.getVersion() != version) {
-            throw new OptimisticCatalogException("La opcion fue modificada por otro usuario.");
-        }
-        option.update(option.getValue(), option.getDisplayName(), option.getSortOrder(), false, false, actor.getId());
-    }
-
-    @Transactional(readOnly = true)
-    public List<OptionResponse> suggested(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
-        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_READ");
-        UUID institutionId = institution(actor, requestedInstitution);
-        Set<String> existing = new HashSet<>(local
-                .findByInstitutionIdAndVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(institutionId, vaccineId)
-                .stream()
-                .map(option -> option.getValueNormalized())
-                .toList());
-
-        return templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccineId).stream()
-                .filter(template -> !existing.contains(template.getValueNormalized()))
-                .map(template -> mapper.toSuggestedOption(template, vaccineId, institutionId))
-                .toList();
-    }
-
-    @Transactional
-    public List<OptionResponse> importSuggested(UUID actorId, UUID requestedInstitution, UUID vaccineId) {
-        AuthorizedUser actor = guard.require(actorId, "CATALOG_CONFIG_WRITE");
-        UUID institutionId = institution(actor, requestedInstitution);
-        requireEnabled(institutionId, vaccineId);
-        Set<String> existing = new HashSet<>(local
-                .findByInstitutionIdAndVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(institutionId, vaccineId)
-                .stream()
-                .map(option -> option.getValueNormalized())
-                .toList());
-        List<OptionResponse> imported = new ArrayList<>();
-
-        for (VaccineOptionTemplateEntity template :
-                templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccineId)) {
-            if (!existing.add(template.getValueNormalized())) {
-                continue;
-            }
-            try {
-                InstitutionVaccineOptionEntity option = local.saveAndFlush(new InstitutionVaccineOptionEntity(
-                        UUID.randomUUID(),
-                        institutionId,
-                        vaccineId,
-                        template.getFieldType(),
-                        template.getValue(),
-                        template.getDisplayName(),
-                        template.getSortOrder(),
-                        false,
-                        template.getId(),
-                        actor.getId(),
-                        Instant.now()));
-                imported.add(mapper.toInstitutionOption(option, vaccineId, institutionId));
-            } catch (DataIntegrityViolationException ignored) {
-                // Another request imported the same suggestion first.
-            }
-        }
-        return imported;
-    }
-
-    private void clearDefaults(UUID institutionId, UUID vaccineId, String fieldType, UUID actorId) {
-        clearDefaults(institutionId, vaccineId, fieldType, actorId, null);
-    }
-
-    private void clearDefaults(UUID institutionId, UUID vaccineId, String fieldType, UUID actorId, UUID exceptId) {
-        local.lockActive(institutionId, vaccineId).stream()
-                .filter(option -> option.getFieldType().equals(fieldType))
-                .filter(option -> exceptId == null || !option.getId().equals(exceptId))
-                .forEach(option -> option.update(
-                        option.getValue(),
-                        option.getDisplayName(),
-                        option.getSortOrder(),
-                        false,
-                        option.isActive(),
-                        actorId));
-    }
-
-    private void requireEnabled(UUID institutionId, UUID vaccineId) {
-        if (relations
-                .findByInstitutionIdAndVaccineId(institutionId, vaccineId)
-                .filter(relation -> relation.isEnabled())
-                .isEmpty()) {
-            throw new IllegalArgumentException("La vacuna no esta habilitada en la institucion.");
-        }
-    }
+  }
 }

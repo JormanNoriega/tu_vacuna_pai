@@ -7457,6 +7457,17 @@ class $SyncOutboxTable extends SyncOutbox
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _summaryMeta = const VerificationMeta(
+    'summary',
+  );
+  @override
+  late final GeneratedColumn<String> summary = GeneratedColumn<String>(
+    'summary',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -7490,6 +7501,7 @@ class $SyncOutboxTable extends SyncOutbox
     retryCount,
     nextRetryAt,
     lastError,
+    summary,
     createdAt,
     updatedAt,
   ];
@@ -7578,6 +7590,12 @@ class $SyncOutboxTable extends SyncOutbox
         lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
       );
     }
+    if (data.containsKey('summary')) {
+      context.handle(
+        _summaryMeta,
+        summary.isAcceptableOrUnknown(data['summary']!, _summaryMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -7643,6 +7661,10 @@ class $SyncOutboxTable extends SyncOutbox
         DriftSqlType.string,
         data['${effectivePrefix}last_error'],
       ),
+      summary: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}summary'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
@@ -7670,6 +7692,10 @@ class SyncOutboxData extends DataClass implements Insertable<SyncOutboxData> {
   final int retryCount;
   final int? nextRetryAt;
   final String? lastError;
+
+  /// Etiqueta legible del comprobante (p. ej. "Vacuna aplicada - Influenza").
+  /// Es metadata local para la bandeja de pendientes; no viaja en el push.
+  final String? summary;
   final int createdAt;
   final int updatedAt;
   const SyncOutboxData({
@@ -7682,6 +7708,7 @@ class SyncOutboxData extends DataClass implements Insertable<SyncOutboxData> {
     required this.retryCount,
     this.nextRetryAt,
     this.lastError,
+    this.summary,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -7700,6 +7727,9 @@ class SyncOutboxData extends DataClass implements Insertable<SyncOutboxData> {
     }
     if (!nullToAbsent || lastError != null) {
       map['last_error'] = Variable<String>(lastError);
+    }
+    if (!nullToAbsent || summary != null) {
+      map['summary'] = Variable<String>(summary);
     }
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
@@ -7721,6 +7751,9 @@ class SyncOutboxData extends DataClass implements Insertable<SyncOutboxData> {
       lastError: lastError == null && nullToAbsent
           ? const Value.absent()
           : Value(lastError),
+      summary: summary == null && nullToAbsent
+          ? const Value.absent()
+          : Value(summary),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -7741,6 +7774,7 @@ class SyncOutboxData extends DataClass implements Insertable<SyncOutboxData> {
       retryCount: serializer.fromJson<int>(json['retryCount']),
       nextRetryAt: serializer.fromJson<int?>(json['nextRetryAt']),
       lastError: serializer.fromJson<String?>(json['lastError']),
+      summary: serializer.fromJson<String?>(json['summary']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
     );
@@ -7758,6 +7792,7 @@ class SyncOutboxData extends DataClass implements Insertable<SyncOutboxData> {
       'retryCount': serializer.toJson<int>(retryCount),
       'nextRetryAt': serializer.toJson<int?>(nextRetryAt),
       'lastError': serializer.toJson<String?>(lastError),
+      'summary': serializer.toJson<String?>(summary),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
     };
@@ -7773,6 +7808,7 @@ class SyncOutboxData extends DataClass implements Insertable<SyncOutboxData> {
     int? retryCount,
     Value<int?> nextRetryAt = const Value.absent(),
     Value<String?> lastError = const Value.absent(),
+    Value<String?> summary = const Value.absent(),
     int? createdAt,
     int? updatedAt,
   }) => SyncOutboxData(
@@ -7785,6 +7821,7 @@ class SyncOutboxData extends DataClass implements Insertable<SyncOutboxData> {
     retryCount: retryCount ?? this.retryCount,
     nextRetryAt: nextRetryAt.present ? nextRetryAt.value : this.nextRetryAt,
     lastError: lastError.present ? lastError.value : this.lastError,
+    summary: summary.present ? summary.value : this.summary,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -7809,6 +7846,7 @@ class SyncOutboxData extends DataClass implements Insertable<SyncOutboxData> {
           ? data.nextRetryAt.value
           : this.nextRetryAt,
       lastError: data.lastError.present ? data.lastError.value : this.lastError,
+      summary: data.summary.present ? data.summary.value : this.summary,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -7826,6 +7864,7 @@ class SyncOutboxData extends DataClass implements Insertable<SyncOutboxData> {
           ..write('retryCount: $retryCount, ')
           ..write('nextRetryAt: $nextRetryAt, ')
           ..write('lastError: $lastError, ')
+          ..write('summary: $summary, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -7843,6 +7882,7 @@ class SyncOutboxData extends DataClass implements Insertable<SyncOutboxData> {
     retryCount,
     nextRetryAt,
     lastError,
+    summary,
     createdAt,
     updatedAt,
   );
@@ -7859,6 +7899,7 @@ class SyncOutboxData extends DataClass implements Insertable<SyncOutboxData> {
           other.retryCount == this.retryCount &&
           other.nextRetryAt == this.nextRetryAt &&
           other.lastError == this.lastError &&
+          other.summary == this.summary &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -7873,6 +7914,7 @@ class SyncOutboxCompanion extends UpdateCompanion<SyncOutboxData> {
   final Value<int> retryCount;
   final Value<int?> nextRetryAt;
   final Value<String?> lastError;
+  final Value<String?> summary;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   const SyncOutboxCompanion({
@@ -7885,6 +7927,7 @@ class SyncOutboxCompanion extends UpdateCompanion<SyncOutboxData> {
     this.retryCount = const Value.absent(),
     this.nextRetryAt = const Value.absent(),
     this.lastError = const Value.absent(),
+    this.summary = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -7898,6 +7941,7 @@ class SyncOutboxCompanion extends UpdateCompanion<SyncOutboxData> {
     this.retryCount = const Value.absent(),
     this.nextRetryAt = const Value.absent(),
     this.lastError = const Value.absent(),
+    this.summary = const Value.absent(),
     required int createdAt,
     required int updatedAt,
   }) : operationId = Value(operationId),
@@ -7917,6 +7961,7 @@ class SyncOutboxCompanion extends UpdateCompanion<SyncOutboxData> {
     Expression<int>? retryCount,
     Expression<int>? nextRetryAt,
     Expression<String>? lastError,
+    Expression<String>? summary,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
   }) {
@@ -7930,6 +7975,7 @@ class SyncOutboxCompanion extends UpdateCompanion<SyncOutboxData> {
       if (retryCount != null) 'retry_count': retryCount,
       if (nextRetryAt != null) 'next_retry_at': nextRetryAt,
       if (lastError != null) 'last_error': lastError,
+      if (summary != null) 'summary': summary,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -7945,6 +7991,7 @@ class SyncOutboxCompanion extends UpdateCompanion<SyncOutboxData> {
     Value<int>? retryCount,
     Value<int?>? nextRetryAt,
     Value<String?>? lastError,
+    Value<String?>? summary,
     Value<int>? createdAt,
     Value<int>? updatedAt,
   }) {
@@ -7958,6 +8005,7 @@ class SyncOutboxCompanion extends UpdateCompanion<SyncOutboxData> {
       retryCount: retryCount ?? this.retryCount,
       nextRetryAt: nextRetryAt ?? this.nextRetryAt,
       lastError: lastError ?? this.lastError,
+      summary: summary ?? this.summary,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -7993,6 +8041,9 @@ class SyncOutboxCompanion extends UpdateCompanion<SyncOutboxData> {
     if (lastError.present) {
       map['last_error'] = Variable<String>(lastError.value);
     }
+    if (summary.present) {
+      map['summary'] = Variable<String>(summary.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -8014,6 +8065,7 @@ class SyncOutboxCompanion extends UpdateCompanion<SyncOutboxData> {
           ..write('retryCount: $retryCount, ')
           ..write('nextRetryAt: $nextRetryAt, ')
           ..write('lastError: $lastError, ')
+          ..write('summary: $summary, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -11959,6 +12011,7 @@ typedef $$SyncOutboxTableCreateCompanionBuilder = SyncOutboxCompanion Function({
   Value<int> retryCount,
   Value<int?> nextRetryAt,
   Value<String?> lastError,
+  Value<String?> summary,
   required int createdAt,
   required int updatedAt,
 });
@@ -11972,6 +12025,7 @@ typedef $$SyncOutboxTableUpdateCompanionBuilder = SyncOutboxCompanion Function({
   Value<int> retryCount,
   Value<int?> nextRetryAt,
   Value<String?> lastError,
+  Value<String?> summary,
   Value<int> createdAt,
   Value<int> updatedAt,
 });
@@ -12027,6 +12081,11 @@ class $$SyncOutboxTableFilterComposer
 
   ColumnFilters<String> get lastError => $composableBuilder(
     column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get summary => $composableBuilder(
+    column: $table.summary,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12095,6 +12154,11 @@ class $$SyncOutboxTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get summary => $composableBuilder(
+    column: $table.summary,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -12152,6 +12216,9 @@ class $$SyncOutboxTableAnnotationComposer
   GeneratedColumn<String> get lastError =>
       $composableBuilder(column: $table.lastError, builder: (column) => column);
 
+  GeneratedColumn<String> get summary =>
+      $composableBuilder(column: $table.summary, builder: (column) => column);
+
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -12199,6 +12266,7 @@ class $$SyncOutboxTableTableManager
                 Value<int> retryCount = const Value.absent(),
                 Value<int?> nextRetryAt = const Value.absent(),
                 Value<String?> lastError = const Value.absent(),
+                Value<String?> summary = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
               }) => SyncOutboxCompanion(
@@ -12211,6 +12279,7 @@ class $$SyncOutboxTableTableManager
                 retryCount: retryCount,
                 nextRetryAt: nextRetryAt,
                 lastError: lastError,
+                summary: summary,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -12225,6 +12294,7 @@ class $$SyncOutboxTableTableManager
                 Value<int> retryCount = const Value.absent(),
                 Value<int?> nextRetryAt = const Value.absent(),
                 Value<String?> lastError = const Value.absent(),
+                Value<String?> summary = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
               }) => SyncOutboxCompanion.insert(
@@ -12237,6 +12307,7 @@ class $$SyncOutboxTableTableManager
                 retryCount: retryCount,
                 nextRetryAt: nextRetryAt,
                 lastError: lastError,
+                summary: summary,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),

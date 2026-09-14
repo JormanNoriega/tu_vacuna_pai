@@ -30,4 +30,16 @@ public interface AttentionRepository extends JpaRepository<AttentionEntity, UUID
       WHERE a.institutionId = :institutionId
       """)
   long maxConsecutive(@Param("institutionId") UUID institutionId);
+
+  /**
+   * Pacientes distintos con al menos una atencion no anulada en la institucion.
+   * Alimenta la metrica del home (acumulado historico).
+   */
+  @Query("""
+      SELECT COUNT(DISTINCT a.patientId) FROM AttentionEntity a
+      WHERE a.institutionId = :institutionId AND a.status <> :excluded
+      """)
+  long countDistinctPatientsByInstitutionId(
+      @Param("institutionId") UUID institutionId,
+      @Param("excluded") AttentionEntity.Status excluded);
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../app/widgets/clinical_components.dart';
 import '../../../../core/auth/offline_access.dart';
+import '../../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../../core/utils/field_input.dart';
 import '../../../attentions/domain/entities/attention.dart';
 import '../../../catalogs/domain/entities/catalog_entities.dart';
@@ -898,9 +899,11 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
   }
 
   void _notify(bool ok, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(ok ? message : 'No se pudo guardar el cambio.')),
-    );
+    if (ok) {
+      AppSnackbar.success(context, message);
+    } else {
+      AppSnackbar.error(context, 'No se pudo guardar el cambio.');
+    }
   }
 
   List<NewPatientContact> _currentContacts(PatientProfile profile) => [

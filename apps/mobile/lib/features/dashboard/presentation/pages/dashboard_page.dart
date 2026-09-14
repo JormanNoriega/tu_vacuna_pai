@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/auth/offline_access.dart';
 import '../../../../core/network/network_info.dart';
+import '../../../../core/presentation/widgets/app_snackbar.dart';
+import '../../../../core/presentation/widgets/sync_pending_sheet.dart';
 import '../../../../core/synchronization/sync_status_controller.dart';
 import '../../../admin/presentation/admin_controller.dart';
 import '../../../admin/presentation/pages/admin_page.dart';
@@ -22,6 +24,7 @@ import '../../../attentions/presentation/history_controller.dart';
 import '../../../attentions/presentation/pages/historial_page.dart';
 import '../../../attentions/presentation/pages/nueva_atencion_page.dart';
 import '../../../patients/presentation/patient_detail_controller.dart';
+import '../metrics_controller.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
@@ -37,6 +40,7 @@ class DashboardPage extends StatefulWidget {
     this.offlineReason,
     this.networkInfo,
     this.syncStatusController,
+    this.metricsController,
     super.key,
   });
 
@@ -78,6 +82,10 @@ class DashboardPage extends StatefulWidget {
   /// Proyeccion observable del estado de sincronizacion (outbox + ultimo
   /// resultado del engine). Null en tests y demos.
   final SyncStatusController? syncStatusController;
+
+  /// Metricas del home (pacientes atendidos y dosis aplicadas). Null en tests
+  /// y demos.
+  final MetricsController? metricsController;
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -273,6 +281,10 @@ class _DashboardPageState extends State<DashboardPage> {
       userName: widget.user.name,
       permissions: widget.user.permissions,
       onAction: _openQuickAction,
+      metricsController: widget.metricsController,
+      syncStatusController: widget.syncStatusController,
+      institutionId: widget.user.institution.id,
+      offline: widget.sessionStatus != SessionStatus.signedIn,
     );
   }
 
@@ -293,9 +305,7 @@ class _DashboardPageState extends State<DashboardPage> {
       return;
     }
     if (label == 'Exportar datos') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Exportar datos: proximamente.')),
-      );
+      AppSnackbar.info(context, 'Exportar datos: proximamente.');
     }
   }
 
@@ -378,7 +388,10 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
         actions: [
           if (widget.syncStatusController != null)
-            _SyncStatusBadge(controller: widget.syncStatusController!),
+            _SyncStatusBadge(
+              controller: widget.syncStatusController!,
+              isOffline: widget.sessionStatus != SessionStatus.signedIn,
+            ),
           IconButton(
             tooltip: 'Cerrar sesion',
             onPressed: widget.onSignOut,
@@ -400,14 +413,18 @@ class _DashboardPageState extends State<DashboardPage> {
 /// Insignia de sincronizacion en la barra superior: pendientes del outbox y
 /// accion de forzar un ciclo. Se actualiza con [SyncStatusController].
 class _SyncStatusBadge extends StatelessWidget {
-  const _SyncStatusBadge({required this.controller});
+  const _SyncStatusBadge({required this.controller, this.isOffline = false});
 
   final SyncStatusController controller;
+
+  /// Sesion en la ventana offline: los fallos de red se explican como pendientes
+  /// guardados, no como errores.
+  final bool isOffline;
 
   String _tooltip(int pending, bool syncing) {
     if (syncing) return 'Sincronizando...';
     if (pending > 0) {
-      return '$pending operacion(es) pendiente(s). Toca para sincronizar.';
+      return '$pending registro(s) pendiente(s). Toca para ver y sincronizar.';
     }
     return 'Todo sincronizado.';
   }
@@ -422,21 +439,11 @@ class _SyncStatusBadge extends StatelessWidget {
         final active = syncing || pending > 0;
         return IconButton(
           tooltip: _tooltip(pending, syncing),
-          onPressed: syncing
-              ? null
-              : () async {
-                  final outcome = await controller.syncNow();
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        outcome.isSuccess
-                            ? 'Sincronizacion completada.'
-                            : 'No se pudo sincronizar: ${outcome.error}',
-                      ),
-                    ),
-                  );
-                },
+          onPressed: () => showSyncPendingSheet(
+            context,
+            controller,
+            isOffline: isOffline,
+          ),
           icon: Badge(
             isLabelVisible: pending > 0,
             label: Text('$pending'),
@@ -563,6 +570,9 @@ class _SuperAdminHomeState extends State<_SuperAdminHome> {
   void initState() {
     super.initState();
     widget.controller.loadInstitutions();
+    // Carga los administradores al abrir el home para que el contador salga sin
+    // tener que entrar a la vista de Usuarios.
+    widget.controller.loadAdmins();
   }
 
   Future<void> _openCreateInstitution() async {
@@ -575,9 +585,7 @@ class _SuperAdminHomeState extends State<_SuperAdminHome> {
       ),
     );
     if (created != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Institucion "${created.name}" creada.')),
-      );
+      AppSnackbar.success(context, 'Institucion "${created.name}" creada.');
     }
   }
 
@@ -591,9 +599,7 @@ class _SuperAdminHomeState extends State<_SuperAdminHome> {
       ),
     );
     if (created == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Usuario admin creado correctamente.')),
-      );
+      AppSnackbar.success(context, 'Usuario admin creado correctamente.');
     }
   }
 
@@ -997,19 +1003,47 @@ class _DashboardDestination {
   bool get isCatalog => label == 'Inventario';
 }
 
-class _DashboardContent extends StatelessWidget {
+class _DashboardContent extends StatefulWidget {
   const _DashboardContent({
     required this.userName,
     required this.permissions,
     required this.onAction,
+    required this.institutionId,
+    required this.offline,
+    this.metricsController,
+    this.syncStatusController,
   });
 
   final String userName;
   final List<String> permissions;
   final ValueChanged<String> onAction;
+  final String institutionId;
+  final bool offline;
+  final MetricsController? metricsController;
+  final SyncStatusController? syncStatusController;
+
+  @override
+  State<_DashboardContent> createState() => _DashboardContentState();
+}
+
+class _DashboardContentState extends State<_DashboardContent> {
+  @override
+  void initState() {
+    super.initState();
+    widget.metricsController?.load(
+      institutionId: widget.institutionId,
+      offline: widget.offline,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final controllers = [
+      if (widget.metricsController != null) widget.metricsController!,
+      if (widget.syncStatusController != null) widget.syncStatusController!,
+    ];
+    final listenable = Listenable.merge(controllers);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final horizontalPadding = constraints.maxWidth >= 700 ? 32.0 : 16.0;
@@ -1034,13 +1068,29 @@ class _DashboardContent extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    userName,
+                    widget.userName,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: 28),
                   const _SyncBanner(),
                   const SizedBox(height: 24),
-                  _StatsGrid(columns: columns),
+                  AnimatedBuilder(
+                    animation: listenable,
+                    builder: (context, _) => _StatsGrid(
+                      columns: columns,
+                      patientsAttended:
+                          widget.metricsController?.summary.patientsAttended
+                              .toString() ??
+                          '0',
+                      dosesApplied:
+                          widget.metricsController?.summary.dosesApplied
+                              .toString() ??
+                          '0',
+                      pendingSync:
+                          widget.syncStatusController?.pendingCount.toString() ??
+                          '0',
+                    ),
+                  ),
                   const SizedBox(height: 32),
                   Text(
                     'Acciones frecuentes',
@@ -1049,8 +1099,8 @@ class _DashboardContent extends StatelessWidget {
                   const SizedBox(height: 16),
                   _ActionsGrid(
                     columns: columns == 1 ? 2 : 4,
-                    permissions: permissions,
-                    onAction: onAction,
+                    permissions: widget.permissions,
+                    onAction: widget.onAction,
                   ),
                 ],
               ),
@@ -1208,31 +1258,38 @@ class _OfflineLockedBanner extends StatelessWidget {
 }
 
 class _StatsGrid extends StatelessWidget {
-  const _StatsGrid({required this.columns});
+  const _StatsGrid({
+    required this.columns,
+    required this.patientsAttended,
+    required this.dosesApplied,
+    required this.pendingSync,
+  });
 
   final int columns;
+  final String patientsAttended;
+  final String dosesApplied;
+  final String pendingSync;
 
   @override
   Widget build(BuildContext context) {
-    // Datos reales en cero hasta que el modulo clinico los alimente. Cuando
-    // exista, estos contadores se computan SIEMPRE acotados a la institucion
-    // del actor (misma regla de alcance que el backend).
-    const stats = [
+    // Contadores reales acotados a la institucion del actor (misma regla de
+    // alcance que el backend). "Pendientes de sync" sale del outbox local.
+    final stats = [
       (
         icon: Icons.people_alt_outlined,
-        value: '0',
+        value: patientsAttended,
         label: 'Pacientes atendidos',
         color: AppColors.primary,
       ),
       (
         icon: Icons.vaccines_outlined,
-        value: '0',
+        value: dosesApplied,
         label: 'Dosis aplicadas',
         color: AppColors.success,
       ),
       (
         icon: Icons.pending_actions_rounded,
-        value: '0',
+        value: pendingSync,
         label: 'Pendientes de sync',
         color: AppColors.warning,
       ),

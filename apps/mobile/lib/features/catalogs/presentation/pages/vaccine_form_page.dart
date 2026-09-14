@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/auth/offline_access.dart';
+import '../../../../core/presentation/widgets/app_snackbar.dart';
 import '../../domain/entities/catalog_entities.dart';
 import '../catalog_controller.dart';
 
@@ -416,10 +417,9 @@ class _VaccineFormPageState extends State<VaccineFormPage> {
     if (ok) {
       Navigator.pop(context);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(widget.controller.error ?? 'No se pudo guardar.'),
-        ),
+      AppSnackbar.error(
+        context,
+        widget.controller.error ?? 'No se pudo guardar.',
       );
     }
   }

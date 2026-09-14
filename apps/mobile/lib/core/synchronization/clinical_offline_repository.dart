@@ -48,6 +48,7 @@ class ClinicalOfflineRepository {
       commandType: SyncCommandType.createPatient,
       aggregateId: patientId,
       payload: CommandPayloads.createPatient(input),
+      summary: 'Paciente nuevo - ${input.firstName} ${input.lastName}'.trim(),
     );
 
     await _outbox.commitLocalWrite(
@@ -81,6 +82,7 @@ class ClinicalOfflineRepository {
     required String patientId,
     String? attentionDate,
     String? observations,
+    String? summary,
     List<String> dependencies = const [],
   }) async {
     final attentionId = uuidV4();
@@ -93,6 +95,7 @@ class ClinicalOfflineRepository {
         attentionDate: attentionDate,
         observations: observations,
       ),
+      summary: summary ?? 'Atencion',
       dependencies: dependencies,
     );
 
@@ -149,6 +152,7 @@ class ClinicalOfflineRepository {
         selectedDropperId: selectedDropperId,
         selectedObservationId: selectedObservationId,
       ),
+      summary: 'Vacuna aplicada - $vaccineNameSnapshot',
       dependencies: dependencies,
     );
 
@@ -182,6 +186,7 @@ class ClinicalOfflineRepository {
       commandType: SyncCommandType.completeAttention,
       aggregateId: attentionId,
       payload: CommandPayloads.completeAttention,
+      summary: 'Cierre de atencion',
       dependencies: dependencies,
     );
 
@@ -241,6 +246,7 @@ class ClinicalOfflineRepository {
     required String patientId,
     String? attentionDate,
     String? observations,
+    String? summary,
     List<String> dependencies = const [],
   }) async {
     final write = await createAttention(
@@ -248,6 +254,7 @@ class ClinicalOfflineRepository {
       patientId: patientId,
       attentionDate: attentionDate,
       observations: observations,
+      summary: summary,
       dependencies: dependencies,
     );
     return _toAttention(write.entity);

@@ -17,6 +17,7 @@ import '../features/catalogs/presentation/catalog_controller.dart';
 import '../features/attentions/presentation/attention_controller.dart';
 import '../features/attentions/presentation/history_controller.dart';
 import '../features/patients/presentation/patient_detail_controller.dart';
+import '../features/dashboard/presentation/metrics_controller.dart';
 import 'theme/app_theme.dart';
 
 class TuVacunaApp extends StatefulWidget {
@@ -32,6 +33,7 @@ class TuVacunaApp extends StatefulWidget {
     this.networkInfo,
     this.syncStatusController,
     this.clinicalOfflineRepository,
+    this.metricsController,
   });
 
   /// Repositorio de autenticacion. En produccion se inyecta desde [main];
@@ -70,6 +72,10 @@ class TuVacunaApp extends StatefulWidget {
   /// Se inyecta desde [main]; null en tests y demos.
   final ClinicalOfflineRepository? clinicalOfflineRepository;
 
+  /// Metricas del home (pacientes atendidos y dosis aplicadas). Se inyecta
+  /// desde [main]; null en tests y demos.
+  final MetricsController? metricsController;
+
   @override
   State<TuVacunaApp> createState() => _TuVacunaAppState();
 }
@@ -104,6 +110,7 @@ class _TuVacunaAppState extends State<TuVacunaApp> {
     widget.attentionController?.clearSession();
     widget.historyController?.clearSession();
     widget.patientDetailController?.clearSession();
+    widget.metricsController?.clearSession();
   }
 
   @override
@@ -152,6 +159,7 @@ class _TuVacunaAppState extends State<TuVacunaApp> {
         offlineReason: _authController.offlineReason,
         networkInfo: widget.networkInfo,
         syncStatusController: widget.syncStatusController,
+        metricsController: widget.metricsController,
       );
     }
     return LoginPage(controller: _authController);
