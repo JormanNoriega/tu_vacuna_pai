@@ -1,0 +1,776 @@
+@startuml diagrama-clases-solid
+'
+' Diagrama de Clases UML COMPLETO - Tu Vacuna PAI (backend services/api)
+' Taller No. 3 (Principios de diseño)
+' Cobertura: todo services/api/src/main/java/com/pai (SOLID + restante).
+' Regenerado a partir de las firmas reales del codigo.
+'
+skinparam classAttributeIconSize 0
+skinparam classFontSize 11
+skinparam classAttributeFontSize 10
+skinparam packageFontSize 13
+skinparam packageTitleAlignment left
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam padding 4
+skinparam ranksep 30
+hide empty members
+hide circle
+
+top to bottom direction
+
+' =====================================================================
+' shared (security, application, util, exceptions)
+' =====================================================================
+package "shared" {
+
+  package "security" {
+    class "shared.security::SecurityConfig" as SC <<config>>
+    class "shared.security::SecurityBeans" as SB <<config>>
+    class "shared.security::AuthorizationService" as AUTHZ <<service>>
+    class "shared.security::PermissionGuard" as PG <<service>> {
+      - IdentityService identity
+      + require(actorId, permission) : AuthorizedUser
+    }
+    class "shared.security::ActiveUserAuthenticationConverter" as AUTC <<service>>
+    interface "org.springframework.core.convert.converter::Converter<Jwt, UsernamePasswordAuthenticationToken>" as CNV <<framework>>
+  }
+
+  package "application" {
+    class "shared.application::IdempotencyCoordinator" as IC <<component>> {
+      - AuditService audit
+      - ProcessedOperationsService processedOperations
+      + {record} WriteResult<T>(aggregateId, response)
+      + {record} AuditContext(actorId, institutionId, action, resourceType)
+      + <T> T execute(...) : cuerpo DIP
+      + <T> T executeAudited(...)
+    }
+  }
+
+  package "util" {
+    class "shared.util::Strings" as STR <<final>> {
+      + {static} blankToNull(String)
+      + {static} trimToNull(String)
+      + {static} <T> List<T> safe(List<T>)
+    }
+    class "shared.util::DocumentNormalizer" as DN <<final>> {
+      + {static} normalize(String)
+      + {static} normalizeType(String)
+      + {static} isValidForType(String, String)
+    }
+  }
+
+  package "exceptions" {
+    class "shared.exceptions::RuntimeException" as RTE <<framework>>
+    class "shared.exceptions::PermissionDeniedException" as PDE <<extends>>
+    class "shared.exceptions::ScopeViolationException" as SVE <<extends>>
+    class "shared.exceptions::UserNotFoundException" as UNFE <<extends>>
+    class "shared.exceptions::UserNotActiveException" as UNAE <<extends>>
+    class "shared.exceptions::RoleNotFoundException" as RNFE <<extends>>
+    class "shared.exceptions::InstitutionNotFoundException" as INFE <<extends>>
+    class "shared.exceptions::EmailAlreadyExistsException" as EAEE <<extends>>
+    class "shared.exceptions::InstitutionCodeAlreadyExistsException" as ICAEE <<extends>>
+    class "shared.exceptions::AuthUserProvisioningException" as AUPE <<extends>>
+    class "shared.exceptions::ProvisioningPendingException" as PPE <<extends>>
+    class "shared.exceptions::UncertainProvisioningException" as UPE <<extends>>
+    class "shared.exceptions::GlobalExceptionHandler" as GEH <<advice>>
+  }
+}
+
+' =====================================================================
+' attentions
+' =====================================================================
+package "attentions (clinica)" {
+
+  class "attentions.controller::AttentionController" as ATP {
+    - AttentionService service
+  }
+
+  interface "attentions.service::VaccineCatalogPolicy" as VCP <<interface>> {
+    + {record} DoseSelection ... (17 campos snapshot)
+    + {record} ResolutionRequest ...
+    + DoseSelection resolve(ResolutionRequest)
+  }
+
+  class "attentions.service::AttentionService" as AT <<service>> {
+    - AttentionRepository attentions
+    - AppliedDoseRepository doses
+    - PatientRepository patients
+    - VaccineCatalogPolicy catalogPolicy
+    - IdentityService identity
+    - DataScope dataScope
+    - AuditService audit
+    - IdempotencyCoordinator coordinator
+    - AttentionMapper mapper
+    - ObjectMapper objectMapper
+    + create / get / update / complete / cancel
+    + registerDose / cancelDose
+  }
+
+  class "attentions.service::AttentionMapper" as ATM <<component>> {
+    + toResponse(AttentionEntity, doses) : AttentionResponse
+    + toDoseResponse(AppliedDoseEntity) : AppliedDoseResponse
+  }
+
+  class "attentions.entity::AttentionEntity" as ATT <<entity>>
+  class "attentions.entity::AppliedDoseEntity" as ADE <<entity>>
+  class "attentions.exception::InvalidClinicalStateException" as ICSE <<extends>>
+  class "attentions.exception::AttentionNotFoundException" as ANFE <<extends>>
+  class "attentions.exception::DoseNotFoundException" as DNFE <<extends>>
+
+  class "attentions.dto" as ATD <<group>> {
+    CreateAttentionRequest
+    UpdateAttentionRequest
+    CancelAttentionRequest
+    RegisterDoseRequest
+    CancelDoseRequest
+    AttentionResponse
+    AppliedDoseResponse
+  }
+}
+
+' =====================================================================
+' patients
+' =====================================================================
+package "patients" {
+
+  class "patients.controller::PatientController" as PP {
+    - PatientService service
+  }
+
+  class "patients.service::PatientService" as PS <<service>> {
+    - PatientRepository patients
+    - PatientContactRepository contacts
+    - PatientDemographicRepository demographics
+    - PatientAddressRepository addresses
+    - PatientGuardianRepository guardians
+    - PatientMedicalHistoryRepository medicalHistories
+    - PatientAffiliationRepository affiliations
+    - PatientSpecialConditionRepository specialConditions
+    - PatientUserConditionRepository userConditions
+    - IdentityService / DataScope / AuditService
+    - IdempotencyCoordinator coordinator
+    - PatientMapper mapper
+    + create / update* / get / list
+  }
+
+  class "patients.service::PatientMapper" as PM <<component>> {
+    + toResponse(patient, demographic, contacts, addresses, guardians,
+      medicalHistories, affiliation, specialConditions, userCondition)
+  }
+
+  class "patients.service::PatientMergeRequestService" as PMR <<service>> {
+    - PatientMergeRequestRepository repository
+  }
+
+  class "patients.entity::PatientEntity" as PE <<entity>>
+  class "patients.entity::PatientDemographicEntity" as PDe <<entity>>
+  class "patients.entity::PatientContactEntity" as PCo <<entity>>
+  class "patients.entity::PatientAddressEntity" as PAd <<entity>>
+  class "patients.entity::PatientGuardianEntity" as PGu <<entity>>
+  class "patients.entity::PatientMedicalHistoryEntity" as PMH <<entity>>
+  class "patients.entity::PatientAffiliationEntity" as PAf <<entity>>
+  class "patients.entity::PatientSpecialConditionEntity" as PSC <<entity>>
+  class "patients.entity::PatientUserConditionEntity" as PUC <<entity>>
+  class "patients.entity::PatientMergeRequestEntity" as PME <<entity>>
+  class "patients.exception::PatientNotFoundException" as PNFE <<extends>>
+  class "patients.exception::PatientAlreadyExistsException" as PAEE <<extends>>
+
+  class "patients.dto" as PD <<group>> {
+    CreatePatientRequest
+    UpdatePatientIdentity/Contact/Demographics/MedicalHistoriesRequest
+    PatientResponse
+  }
+}
+
+' =====================================================================
+' catalog
+' =====================================================================
+package "catalog" {
+
+  package "controllers" {
+    class "catalog.controller::CatalogController" as CC {
+      - VaccineService service
+      - EffectiveCatalogService effective
+    }
+    class "catalog.controller::InstitutionCatalogController" as ICC {
+      - InstitutionVaccineService service
+    }
+    class "catalog.controller::GeoCatalogController" as GCC {
+      - GeoCatalogService service
+    }
+    class "catalog.controller::ReferenceCatalogController" as RCC {
+      - ReferenceCatalogService service
+    }
+  }
+
+  package "services" {
+    class "catalog.service::VaccineService" as VS <<service>> {
+      - VaccineRepository vaccines
+      - VaccineOptionRepository options
+      - VaccineOptionTemplateRepository templates
+      - PermissionGuard guard
+      - CatalogMapper mapper
+    }
+    class "catalog.service::InstitutionVaccineService" as IVS <<service>> {
+      - InstitutionVaccineRepository relations
+      - InstitutionVaccineOptionRepository local
+      - VaccineRepository vaccines
+      - VaccineOptionTemplateRepository templates
+      - DataScope / PermissionGuard / CatalogMapper
+    }
+    class "catalog.service::CatalogSelectionService" as CSS <<service>> {
+      - VaccineRepository vaccines
+      - VaccineOptionRepository vaccineOptions
+      - InstitutionVaccineRepository institutionVaccines
+      - InstitutionVaccineOptionRepository institutionOptions
+      + resolve(ResolutionRequest) : DoseSelection
+    }
+    class "catalog.service::EffectiveCatalogService" as ECS <<service>> {
+      - InstitutionVaccineRepository institutionVaccines
+      - InstitutionVaccineOptionRepository institutionOptions
+      - VaccineRepository vaccines
+      - VaccineOptionRepository vaccineOptions
+      - IdentityService / DataScope
+    }
+    class "catalog.service::GeoCatalogService" as GEO <<service>> {
+      - GeoDepartmentRepository departments
+      - GeoMunicipalityRepository municipalities
+    }
+    class "catalog.service::ReferenceCatalogService" as REF <<service>> {
+      - ReferenceCatalogRepository catalogs
+      - ReferenceOptionRepository options
+    }
+    class "catalog.service::GeoCatalogImporter" as GIMP <<runner>> {
+      - GeoCountry/Department/MunicipalityRepository
+    }
+    class "catalog.service::LegacyCatalogImporter" as LIMP <<runner>> {
+      - VaccineRepository vaccines
+      - VaccineOptionRepository options
+      - VaccineOptionTemplateRepository templates
+    }
+  }
+
+  package "ui-mapping" {
+    class "catalog.service::CatalogMapper" as CM <<component>> {
+      + toVaccine / toGlobalOption / toTemplate
+      + toInstitutionOption / toSuggestedOption / toInstitutionVaccine
+    }
+    class "catalog.service::CatalogRules" as CR <<final>> {
+      + {static} requireValue(String)
+      + {static} requireGlobalOptionType(String)
+      + {static} requireTemplateType(String)
+      + {static} requireLocalOptionType(String)
+    }
+  }
+
+  package "entities" {
+    class "catalog.entity::VaccineEntity" as VE <<entity>>
+    class "catalog.entity::VaccineOptionEntity" as VO <<entity>>
+    class "catalog.entity::VaccineOptionTemplateEntity" as VOT <<entity>>
+    class "catalog.entity::InstitutionVaccineEntity" as IV <<entity>>
+    class "catalog.entity::InstitutionVaccineOptionEntity" as IVO <<entity>>
+    class "catalog.entity::ReferenceCatalogEntity" as RC <<entity>>
+    class "catalog.entity::ReferenceOptionEntity" as RO <<entity>>
+    class "catalog.entity::GeoCountryEntity" as GC <<entity>>
+    class "catalog.entity::GeoDepartmentEntity" as GD <<entity>>
+    class "catalog.entity::GeoMunicipalityEntity" as GM <<entity>>
+    class "catalog.exception::OptimisticCatalogException" as OCE <<extends>>
+  }
+
+  class "catalog.dto" as CD <<group>> {
+    VaccineRequest / VaccineResponse
+    OptionRequest / OptionResponse
+    CloneCatalogRequest / CloneCatalogResponse
+    EffectiveCatalogResponse
+    InstitutionVaccineResponse
+    GeoDepartmentResponse / GeoMunicipalityResponse
+    ReferenceCatalogResponse
+  }
+}
+
+' =====================================================================
+' identity
+' =====================================================================
+package "identity" {
+
+  package "controllers" {
+    class "identity.controller::IdentityController" as ID {
+      - IdentityService identityService
+    }
+    class "identity.controller::AdminController" as ADM {
+      - InstitutionService institutionService
+      - UserService userService
+      - UserProvisioningService userProvisioningService
+      - ProvisioningReconciliationService reconciliationService
+    }
+  }
+
+  package "services" {
+    class "identity.service::IdentityService" as IS <<service>> {
+      - UserRepository userRepository
+      - InstitutionRepository institutionRepository
+      + resolve(userId) : AuthorizedUser
+      + me(userId) : MeResponse
+    }
+    class "identity.service::AuthorizedUser" as AU <<dominio>> {
+      - id, email, fullName
+      - InstitutionEntity institution
+      - List<String> roles, permissions
+      - accessToken
+    }
+    class "identity.service::DataScope" as DSc <<service>> {
+      + currentScope(actor) : InstitutionScope
+      + resolveInstitutionId(actor, requested) : UUID
+      + requireSameInstitution(actor, target)
+    }
+    class "identity.service::InstitutionScope" as INS <<record>> {
+      boolean unrestricted
+      UUID institutionId
+    }
+    class "identity.service::UserService" as US <<service>> {
+      - UserRepository / RoleRepository / UserRoleRepository
+      - IdentityService / DataScope / IdentityMapper
+      + listByInstitution / updateStatus / updateRoles
+    }
+    class "identity.service::UserProvisioningService" as UPS <<service>> {
+      - PermissionGuard guard
+      - InstitutionRepository / ProfessionRepository
+      - AuthUserProvisioningClient authUserClient
+      - ProvisioningOperationRepository
+      - AuthUserLookupService / UserMirrorWriter / IdentityMapper
+      + createInstitutionAdmin / createVaccinator / updateInstitutionStatus
+    }
+    class "identity.service::UserMirrorWriter" as UMW <<service>> {
+      - UserRepository / RoleRepository / UserRoleRepository
+      - ProvisioningOperationRepository / IdentityMapper
+      + writeMirrorAndRoles(operation, roleCode)
+    }
+    class "identity.service::ProvisioningReconciliationService" as PRS <<service>> {
+      - AuthUserLookupService
+      - ProvisioningOperationRepository
+      - UserMirrorWriter
+    }
+    class "identity.service::InstitutionService" as INSTS <<service>> {
+      - InstitutionRepository institutionRepository
+      - InstitutionVaccineService institutionVaccineService
+    }
+    class "identity.service::AuthUserLookupService" as ALK <<service>> {
+      - JdbcTemplate jdbcTemplate
+      + {record} AuthUserRecord / OrphanRecord
+    }
+    class "identity.service::AuthUserProvisioningClient" as AUPC <<interface>> {
+      + createAuthUser(...) : UUID
+      + deleteAuthUser(accessToken, userId)
+      + findByEmail(...)
+    }
+    class "identity.service::SupabaseAuthUserClient" as SUP <<service>> {
+      - RestClient restClient
+    }
+    class "identity.service::AuthUserProfile" as AUP <<record>>
+  }
+
+  package "mapeo-y-reglas" {
+    class "identity.service::IdentityMapper" as IM <<component>> {
+      - UserRepository userRepository
+      + toUserResponse(entity) / (entity, status) / (operation)
+    }
+    class "identity.service::IdentityRules" as IR <<final>> {
+      + {static} parseUserStatus(String)
+      + {static} parseInstitutionStatus(String)
+    }
+    class "identity.service::IdentityPermissions" as IP <<final>> {
+      + {static} INSTITUTION_WRITE : String
+      + {static} USER_MANAGE : String
+    }
+  }
+
+  package "entities" {
+    class "identity.entity::UserEntity" as UE <<entity>>
+    class "identity.entity::RoleEntity" as RE <<entity>>
+    class "identity.entity::PermissionEntity" as PRE <<entity>>
+    class "identity.entity::UserRoleEntity" as URE <<entity>>
+    class "identity.entity::RolePermissionEntity" as RPE <<entity>>
+    class "identity.entity::InstitutionEntity" as IE <<entity>>
+    class "identity.entity::ProfessionEntity" as PROFE <<entity>>
+    class "identity.entity::ProvisioningOperationEntity" as POE <<entity>>
+    class "identity.entity::ProvisioningOperationStatus" as POS <<enum>>
+  }
+
+  class "identity.dto" as IDD <<group>> {
+    MeResponse / UserResponse / InstitutionResponse
+    CreateInstitutionAdmin/VaccinatorRequest
+    CreateInstitutionRequest
+    UpdateUserStatus/RolesRequest
+    UpdateInstitutionStatus/ConfigRequest
+    ProvisioningOperationResponse
+    ReconciliationResultResponse
+  }
+}
+
+' =====================================================================
+' audit
+' =====================================================================
+package "audit" {
+  class "audit.service::AuditService" as ADS <<service>> {
+    - AuditEventRepository repository
+    + record(actorId, institutionId, action, resourceType, resourceId, clientOperationId, payload)
+  }
+  class "audit.entity::AuditEventEntity" as AEE <<entity>>
+  class "audit.AuditAction" as AACT <<enum>>
+}
+
+' =====================================================================
+' synchronization
+' =====================================================================
+package "synchronization" {
+  class "synchronization.controller::SyncController" as SRC {
+    - SyncPushService pushService
+    - SyncPullService pullService
+  }
+  class "synchronization.service::SyncPushService" as SPU <<service>> {
+    - PatientService patients
+    - AttentionService attentions
+    - PatientMergeRequestService mergeRequests
+    - IdentityService / ProcessedOperationsService / ObjectMapper
+  }
+  class "synchronization.service::SyncPullService" as SPL <<service>> {
+    - ProcessedOperationRepository repository
+    - IdentityService / DataScope / ObjectMapper
+  }
+  class "synchronization.service::ProcessedOperationsService" as PES <<service>> {
+    - ProcessedOperationRepository repository
+  }
+  class "synchronization.entity::ProcessedOperationEntity" as POENT <<entity>>
+  class "synchronization.dto" as SYD <<group>> {
+    SyncPushRequest / SyncPushResponse
+    SyncPullResponse / SyncOperation / RejectedOperation
+  }
+}
+
+' =====================================================================
+' api bootstrap
+' =====================================================================
+package "api" {
+  class "api::ApiApplication" as AP <<@SpringBootApplication>>
+}
+
+' =====================================================================
+' Spring Data framework (herencia real de repositorios)
+' =====================================================================
+package "Spring Data" {
+  interface "org.springframework.data.jpa.repository::JpaRepository<T, ID>" as JPAR <<framework>>
+  interface "org.springframework.boot::ApplicationRunner" as AR <<framework>>
+}
+
+' =====================================================================
+' ---- shared: transversal ----
+' =====================================================================
+PG -> IS : identidad
+AUTC ..|> CNV : implements
+IC --> ADS : audita (OCP)
+IC --> PES : idempotencia (OCP)
+AT ..> STR : trimToNull
+PS ..> STR : trimToNull/safe
+UPS ..> STR : trimToNull
+UPS ..> DN : normaliza profesion
+PDE --|> RTE
+SVE --|> RTE
+UNFE --|> RTE
+UNAE --|> RTE
+RNFE --|> RTE
+INFE --|> RTE
+EAEE --|> RTE
+ICAEE --|> RTE
+AUPE --|> RTE
+PPE --|> RTE
+UPE --|> RTE
+
+' =====================================================================
+' ---- attentions ----
+' =====================================================================
+ATP -> AT : delega
+AT ..> VCP : <<use>> puerto (DIP)
+CSS ..|> VCP : implements
+AT --> IC : ceremonia + auditoria (OCP)
+AT -> IS : resolve actor
+AT -> DSc : institution(actor)
+AT -> ATM : mapeo (SRP)
+AT ..> ATT : usa
+AT ..> ADE : usa
+AT ..> STR : helpers
+ATT *-- ADE : 1..* dosis
+ATM ..> ATT : lee
+ATM ..> ADE : lee
+ICSE --|> RTE
+ANFE --|> RTE
+DNFE --|> RTE
+ATD -- ATM : produce
+ATD -- AT : retorna
+
+' =====================================================================
+' ---- patients ----
+' =====================================================================
+PP -> PS : delega
+PS --> IC : ceremonia + auditoria (OCP)
+PS -> IS : resolve actor
+PS -> DSc : scope
+PS -> PM : mapeo (SRP)
+PS ..> PE : usa
+PMR ..> PME : usa
+PE *-- PDe : 1
+PE *-- PCo : 1..*
+PE *-- PAd : 1..*
+PE *-- PGu : 1..*
+PE *-- PMH : 1..*
+PE *-- PAf : 1
+PE *-- PSC : 1
+PE *-- PUC : 1
+PE *-- PME : 0..1 merge
+PS ..> STR : helpers
+PM ..> PE : lee
+PNFE --|> RTE
+PAEE --|> RTE
+PD -- PM : produce
+PD -- PS : retorna
+
+' =====================================================================
+' ---- catalog ----
+' =====================================================================
+CC -> VS : gestion global
+CC -> ECS : catalogo efectivo
+ICC -> IVS : gestion local
+GCC -> GEO : geo
+RCC -> REF : referencia
+VS -> PG : autoriza
+VS -> CM : mapea
+VS -> CR : valida
+IVS -> PG : autoriza
+IVS -> DSc : scope
+IVS -> CM : mapea
+IVS -> CR : valida
+ECS -> IS : resolver actor
+ECS -> DSc : scope
+CSS ..|> VCP : implements
+CSS ..> VE : consulta
+CSS ..> VO : consulta
+CSS ..> IV : consulta
+CSS ..> IVO : consulta
+GEO ..> GD : consulta
+GEO ..> GM : consulta
+REF ..> RC : consulta
+REF ..> RO : consulta
+GIMP ..|> AR : implements
+LIMP ..|> AR : implements
+VE *-- VO : 1..* opciones
+VE *-- VOT : 0..* templates
+IV *-- IVO : 1..* opciones locales
+OCE --|> RTE
+CR -- CSS : usa
+CD -- CM : produce
+
+' =====================================================================
+' ---- identity ----
+' =====================================================================
+ID -> IS : /me
+ADM -> INSTS : instituciones
+ADM -> US : usuarios
+ADM -> UPS : aprovisionamiento
+ADM -> PRS : reconciliacion
+IS ..> UE : lee
+IS ..> IE : lee
+IS ..> AU : construye
+DSc -> IP : permisos canonicos
+DSc ..> INS : produce
+US -> IS : actor
+US -> DSc : scope
+US -> IM : mapea
+UPS -> PG : autoriza (CC-10)
+UPS -> AUPC : fase remota
+UPS -> ALK : correlacion
+UPS -> UMW : fase espejo
+UPS -> IM : mapea
+UMW -> IM : mapea
+PRS -> ALK : correlacion
+PRS -> UMW : fase espejo
+INSTS -> IVS : habilita vacunas
+INSTS -> DSc : scope
+SUP ..|> AUPC : implements
+ALK -> AUP : lee perfil
+UE o-- URE : join roles
+URE --> RE : rol
+RE o-- RPE : join permisos
+RPE --> PRE : permiso
+IE o-- UE : 1..* usuarios
+US ..> IR : parse estados
+INSTS ..> IR : parse estados
+UPS ..> IP : constantes
+US ..> IP : constantes
+POE ..> POS : estado
+IM ..> UE : lee
+IDD -- IM : produce
+IDD -- IS : retorna
+
+' =====================================================================
+' ---- audit ----
+' =====================================================================
+ADS ..> AEE : guarda
+ADS ..> AACT : accion
+
+' =====================================================================
+' ---- synchronization ----
+' =====================================================================
+SRC -> SPU : push
+SRC -> SPL : pull
+SPU -> PS : crea paciente
+SPU -> AT : aplica atencion/dosis
+SPU -> PMR : merges
+SPU -> PES : marca procesada
+SPU -> IS : actor
+SPL -> PES : planilla
+SPL -> IS : actor
+SPL -> DSc : scope
+PES ..> POENT : guarda
+SYD -- SPU : DTOs push
+SYD -- SPL : DTOs pull
+
+' =====================================================================
+' ---- repositorios -> JpaRepository (herencia) ----
+' =====================================================================
+ART --|> JPAR
+ADR --|> JPAR
+PAT --|> JPAR
+PCR --|> JPAR
+PDR --|> JPAR
+PADR --|> JPAR
+PGR --|> JPAR
+PMHR --|> JPAR
+PAFR --|> JPAR
+PSCR --|> JPAR
+PUCR --|> JPAR
+PMRR --|> JPAR
+VR --|> JPAR
+VOR --|> JPAR
+VOTR --|> JPAR
+IVR --|> JPAR
+IVOR --|> JPAR
+RCR --|> JPAR
+ROR --|> JPAR
+GCR --|> JPAR
+GDR --|> JPAR
+GMR --|> JPAR
+UR --|> JPAR
+RR --|> JPAR
+URR --|> JPAR
+INSTR --|> JPAR
+PROR --|> JPAR
+PORE --|> JPAR
+AER --|> JPAR
+PENTR --|> JPAR
+
+' ----- alias de repositorios para flechas concisas -----
+class "attentions.repository::AttentionRepository" as ART <<repository>>
+class "attentions.repository::AppliedDoseRepository" as ADR <<repository>>
+class "patients.repository::PatientRepository" as PAT <<repository>>
+class "patients.repository::PatientContactRepository" as PCR <<repository>>
+class "patients.repository::PatientDemographicRepository" as PDR <<repository>>
+class "patients.repository::PatientAddressRepository" as PADR <<repository>>
+class "patients.repository::PatientGuardianRepository" as PGR <<repository>>
+class "patients.repository::PatientMedicalHistoryRepository" as PMHR <<repository>>
+class "patients.repository::PatientAffiliationRepository" as PAFR <<repository>>
+class "patients.repository::PatientSpecialConditionRepository" as PSCR <<repository>>
+class "patients.repository::PatientUserConditionRepository" as PUCR <<repository>>
+class "patients.repository::PatientMergeRequestRepository" as PMRR <<repository>>
+class "catalog.repository::VaccineRepository" as VR <<repository>>
+class "catalog.repository::VaccineOptionRepository" as VOR <<repository>>
+class "catalog.repository::VaccineOptionTemplateRepository" as VOTR <<repository>>
+class "catalog.repository::InstitutionVaccineRepository" as IVR <<repository>>
+class "catalog.repository::InstitutionVaccineOptionRepository" as IVOR <<repository>>
+class "catalog.repository::ReferenceCatalogRepository" as RCR <<repository>>
+class "catalog.repository::ReferenceOptionRepository" as ROR <<repository>>
+class "catalog.repository::GeoCountryRepository" as GCR <<repository>>
+class "catalog.repository::GeoDepartmentRepository" as GDR <<repository>>
+class "catalog.repository::GeoMunicipalityRepository" as GMR <<repository>>
+class "identity.repository::UserRepository" as UR <<repository>>
+class "identity.repository::RoleRepository" as RR <<repository>>
+class "identity.repository::UserRoleRepository" as URR <<repository>>
+class "identity.repository::InstitutionRepository" as INSTR <<repository>>
+class "identity.repository::ProfessionRepository" as PROR <<repository>>
+class "identity.repository::ProvisioningOperationRepository" as PORE <<repository>>
+class "audit.repository::AuditEventRepository" as AER <<repository>>
+class "synchronization.repository::ProcessedOperationRepository" as PENTR <<repository>>
+
+' =====================================================================
+' ---- flechas de services -> repositorios (dependencia) ----
+' =====================================================================
+AT ..> ART
+AT ..> ADR
+AT ..> PAT
+PS ..> PAT
+PS ..> PCR
+PS ..> PDR
+PS ..> PADR
+PS ..> PGR
+PS ..> PMHR
+PS ..> PAFR
+PS ..> PSCR
+PS ..> PUCR
+PMR ..> PMRR
+VS ..> VR
+VS ..> VOR
+VS ..> VOTR
+IVS ..> IVR
+IVS ..> IVOR
+IVS ..> VR
+IVS ..> VOTR
+CSS ..> VR
+CSS ..> VOR
+CSS ..> IVR
+CSS ..> IVOR
+ECS ..> IVR
+ECS ..> IVOR
+ECS ..> VR
+ECS ..> VOR
+GEO ..> GDR
+GEO ..> GMR
+REF ..> RCR
+REF ..> ROR
+GIMP ..> GCR
+GIMP ..> GDR
+GIMP ..> GMR
+LIMP ..> VR
+LIMP ..> VOR
+LIMP ..> VOTR
+IS ..> UR
+IS ..> INSTR
+US ..> UR
+US ..> RR
+US ..> URR
+UPS ..> INSTR
+UPS ..> PROR
+UPS ..> PORE
+UMW ..> UR
+UMW ..> RR
+UMW ..> URR
+UMW ..> PORE
+PRS ..> PORE
+INSTS ..> INSTR
+ADS ..> AER
+PES ..> PENTR
+SPL ..> PENTR
+
+legend right
+  == Tipos de relacion ==
+  ==> composicion *-- (rombo lleno, parte inseparable)
+  ==> agregacion o-- (rombo vacio, contiene)
+  ==> herencia --|> (extends; repos -> JpaRepository, importer -> ApplicationRunner)
+  ==> realizacion ..|> (implements; CSS -> VaccineCatalogPolicy)
+  ==> dependencia ..> (usa: controller->service, service->mapper/repo)
+  == SOLID aplicado ==
+  = SRP -> mappers/rules separan conversion
+  = DIP -> catalogo via VaccineCatalogPolicy
+  = OCP -> IdempotencyCoordinator transversal
+  = DRY -> helpers Shared y permisos canonicos
+endlegend
+
+@enduml
