@@ -25,10 +25,11 @@ void main() {
         _entry('attention', dependencies: ['patient']),
       ]);
 
-      expect(
-        ordered.map((entry) => entry.operation.operationId),
-        ['patient', 'attention', 'dose'],
-      );
+      expect(ordered.map((entry) => entry.operation.operationId), [
+        'patient',
+        'attention',
+        'dose',
+      ]);
     });
 
     test('ignora dependencias ausentes sin bloquear el batch', () {

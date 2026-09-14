@@ -11,26 +11,26 @@ import java.time.Instant;
 @Table(name = "reference_catalogs", schema = "app")
 public class ReferenceCatalogEntity {
 
-    @Id
-    private String code;
+  @Id
+  private String code;
 
-    @Column(nullable = false)
-    private String name;
+  @Column(nullable = false)
+  private String name;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
 
-    protected ReferenceCatalogEntity() {}
+  protected ReferenceCatalogEntity() {}
 
-    public String getCode() {
-        return code;
-    }
+  public String getCode() {
+    return code;
+  }
 
-    public String getName() {
-        return name;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
 }

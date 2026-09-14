@@ -13,55 +13,55 @@ import java.util.UUID;
 @Table(name = "reference_options", schema = "app")
 public class ReferenceOptionEntity {
 
-    @Id
-    @GeneratedValue
-    private UUID id;
+  @Id
+  @GeneratedValue
+  private UUID id;
 
-    @Column(name = "catalog_code", nullable = false)
-    private String catalogCode;
+  @Column(name = "catalog_code", nullable = false)
+  private String catalogCode;
 
-    @Column(nullable = false)
-    private String code;
+  @Column(nullable = false)
+  private String code;
 
-    @Column(nullable = false)
-    private String label;
+  @Column(nullable = false)
+  private String label;
 
-    @Column(name = "sort_order", nullable = false)
-    private int sortOrder;
+  @Column(name = "sort_order", nullable = false)
+  private int sortOrder;
 
-    @Column(name = "is_active", nullable = false)
-    private boolean active;
+  @Column(name = "is_active", nullable = false)
+  private boolean active;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
 
-    protected ReferenceOptionEntity() {}
+  protected ReferenceOptionEntity() {}
 
-    public UUID getId() {
-        return id;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public String getCatalogCode() {
-        return catalogCode;
-    }
+  public String getCatalogCode() {
+    return catalogCode;
+  }
 
-    public String getCode() {
-        return code;
-    }
+  public String getCode() {
+    return code;
+  }
 
-    public String getLabel() {
-        return label;
-    }
+  public String getLabel() {
+    return label;
+  }
 
-    public int getSortOrder() {
-        return sortOrder;
-    }
+  public int getSortOrder() {
+    return sortOrder;
+  }
 
-    public boolean isActive() {
-        return active;
-    }
+  public boolean isActive() {
+    return active;
+  }
 
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
 }

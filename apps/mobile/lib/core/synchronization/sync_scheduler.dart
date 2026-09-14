@@ -35,11 +35,11 @@ class SyncScheduler {
   void start() {
     if (_started) return;
     _started = true;
-    _connectivitySubscription = networkInfo.connectivityChanges.listen(
-      (connected) {
-        if (connected) unawaited(_run());
-      },
-    );
+    _connectivitySubscription = networkInfo.connectivityChanges.listen((
+      connected,
+    ) {
+      if (connected) unawaited(_run());
+    });
     _timer = Timer.periodic(interval, (_) => unawaited(_run()));
     unawaited(_run());
   }

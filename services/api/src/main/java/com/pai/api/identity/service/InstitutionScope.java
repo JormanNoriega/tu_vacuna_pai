@@ -23,11 +23,11 @@ import java.util.UUID;
  */
 public record InstitutionScope(boolean unrestricted, UUID institutionId) {
 
-    public static InstitutionScope restricted(UUID institutionId) {
-        return new InstitutionScope(false, institutionId);
-    }
+  public static InstitutionScope restricted(UUID institutionId) {
+    return new InstitutionScope(false, institutionId);
+  }
 
-    public static InstitutionScope global() {
-        return new InstitutionScope(true, null);
-    }
+  public static InstitutionScope global() {
+    return new InstitutionScope(true, null);
+  }
 }

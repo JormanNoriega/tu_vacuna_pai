@@ -10,32 +10,32 @@ import java.util.UUID;
  * institucion, que rol, y el resultado (incluido el de una compensacion).
  */
 public record ProvisioningOperationResponse(
-        UUID operationId,
-        UUID authUserId,
-        String email,
-        String fullName,
-        UUID institutionId,
-        String role,
-        UUID actorId,
-        ProvisioningOperationStatus status,
-        short attempts,
-        String error,
-        Instant createdAt,
-        Instant updatedAt) {
+    UUID operationId,
+    UUID authUserId,
+    String email,
+    String fullName,
+    UUID institutionId,
+    String role,
+    UUID actorId,
+    ProvisioningOperationStatus status,
+    short attempts,
+    String error,
+    Instant createdAt,
+    Instant updatedAt) {
 
-    public static ProvisioningOperationResponse from(ProvisioningOperationEntity entity) {
-        return new ProvisioningOperationResponse(
-                entity.getOperationId(),
-                entity.getAuthUserId(),
-                entity.getEmail(),
-                entity.getFullName(),
-                entity.getInstitutionId(),
-                entity.getRole(),
-                entity.getActorId(),
-                entity.getStatus(),
-                entity.getAttempts(),
-                entity.getError(),
-                entity.getCreatedAt(),
-                entity.getUpdatedAt());
-    }
+  public static ProvisioningOperationResponse from(ProvisioningOperationEntity entity) {
+    return new ProvisioningOperationResponse(
+        entity.getOperationId(),
+        entity.getAuthUserId(),
+        entity.getEmail(),
+        entity.getFullName(),
+        entity.getInstitutionId(),
+        entity.getRole(),
+        entity.getActorId(),
+        entity.getStatus(),
+        entity.getAttempts(),
+        entity.getError(),
+        entity.getCreatedAt(),
+        entity.getUpdatedAt());
+  }
 }

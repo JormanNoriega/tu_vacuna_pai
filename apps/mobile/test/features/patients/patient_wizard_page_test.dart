@@ -7,6 +7,7 @@ import 'package:tu_vacuna_pai/features/attentions/presentation/attention_control
 import 'package:tu_vacuna_pai/features/auth/domain/entities/session_restore_result.dart';
 import 'package:tu_vacuna_pai/features/catalogs/domain/repositories/catalog_repository.dart';
 import 'package:tu_vacuna_pai/features/catalogs/domain/use_cases/catalog_use_cases.dart';
+import 'package:tu_vacuna_pai/features/patients/domain/entities/patient.dart';
 import 'package:tu_vacuna_pai/features/patients/domain/repositories/patients_repository.dart';
 import 'package:tu_vacuna_pai/features/patients/domain/use_cases/create_patient.dart';
 import 'package:tu_vacuna_pai/features/patients/domain/use_cases/search_patient.dart';
@@ -20,15 +21,23 @@ void main() {
     permissions: ['PATIENT_WRITE', 'ATTENTION_CREATE', 'ATTENTION_READ'],
   );
 
-  Future<void> openWizard(WidgetTester tester) async {
+  Future<void> openWizard(
+    WidgetTester tester, {
+    PatientsRepository? patients,
+  }) async {
+    final repository = patients ?? _UnusedPatientsRepository();
     final controller = AttentionController(
       sessionManager: FakeSessionManager('token-123'),
-      searchPatient: SearchPatient(_UnusedPatientsRepository()),
-      createPatient: CreatePatient(_UnusedPatientsRepository()),
+      searchPatient: SearchPatient(repository),
+      createPatient: CreatePatient(repository),
       listEffectiveCatalog: ListEffectiveCatalog(_UnusedCatalogRepository()),
+      listCountries: ListCountries(_UnusedCatalogRepository()),
       listDepartments: ListDepartments(_UnusedCatalogRepository()),
       listMunicipalities: ListMunicipalities(_UnusedCatalogRepository()),
+      listReferenceCatalogs: ListReferenceCatalogs(_UnusedCatalogRepository()),
+      listInsurers: ListInsurers(_UnusedCatalogRepository()),
       createAttention: CreateAttention(_UnusedAttentionsRepository()),
+      updateAttention: UpdateAttention(_UnusedAttentionsRepository()),
       registerDose: RegisterDose(_UnusedAttentionsRepository()),
       completeAttention: CompleteAttention(_UnusedAttentionsRepository()),
       cancelAttention: CancelAttention(_UnusedAttentionsRepository()),
@@ -94,6 +103,54 @@ void main() {
     expect(find.text('Descartar cambios'), findsNothing);
     expect(find.byType(PatientWizardPage), findsNothing);
   });
+
+  testWidgets('avisa si el documento ya esta registrado y permite usarlo', (
+    tester,
+  ) async {
+    await openWizard(
+      tester,
+      patients: _FakePatientsRepository(const [
+        Patient(
+          id: 'p1',
+          documentType: 'CC',
+          documentNumber: '1003239695',
+          firstName: 'Juan',
+          lastName: 'Perez',
+          birthDate: null,
+          sex: 'MALE',
+          status: 'ACTIVE',
+        ),
+      ]),
+    );
+
+    await tester.enterText(find.byType(TextFormField).at(0), '1003239695');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Ana');
+    await tester.enterText(find.byType(TextFormField).at(2), 'Diaz');
+    await tester.pump();
+
+    await tester.tap(find.text('Siguiente'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Paciente ya registrado'), findsOneWidget);
+
+    await tester.tap(find.text('Usar este paciente'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PatientWizardPage), findsNothing);
+  });
+}
+
+class _FakePatientsRepository extends _UnusedPatientsRepository {
+  _FakePatientsRepository(this.patients);
+
+  final List<Patient> patients;
+
+  @override
+  Future<List<Patient>> searchByDocument(
+    String accessToken, {
+    required String documentType,
+    required String documentNumber,
+  }) async => patients;
 }
 
 class _UnusedPatientsRepository implements PatientsRepository {

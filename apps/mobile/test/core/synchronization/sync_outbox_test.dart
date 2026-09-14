@@ -31,10 +31,7 @@ void main() {
 
     final pending = await outbox.pendingOperations();
 
-    expect(
-      pending.map((entry) => entry.operation.operationId),
-      ['op1', 'op2'],
-    );
+    expect(pending.map((entry) => entry.operation.operationId), ['op1', 'op2']);
     expect(pending[0].operation.payload, {'documentType': 'CC'});
     expect(pending[1].operation.dependencies, ['op1']);
     expect(await outbox.pendingCount(), 2);
@@ -74,15 +71,21 @@ void main() {
     expect(pending.single.status, SyncOutboxStatus.pending);
   });
 
-  test('markCompleted y markQuarantined cambian el estado persistido', () async {
-    await outbox.enqueue(operation('ok'));
-    await outbox.enqueue(operation('bad'));
-    await outbox.markCompleted('ok');
-    await outbox.markQuarantined('bad', error: 'USER_NOT_ACTIVE');
+  test(
+    'markCompleted y markQuarantined cambian el estado persistido',
+    () async {
+      await outbox.enqueue(operation('ok'));
+      await outbox.enqueue(operation('bad'));
+      await outbox.markCompleted('ok');
+      await outbox.markQuarantined('bad', error: 'USER_NOT_ACTIVE');
 
-    expect((await outbox.byOperationId('ok'))!.status, SyncOutboxStatus.completed);
-    final bad = await outbox.byOperationId('bad');
-    expect(bad!.status, SyncOutboxStatus.quarantined);
-    expect(await outbox.pendingCount(), 0);
-  });
+      expect(
+        (await outbox.byOperationId('ok'))!.status,
+        SyncOutboxStatus.completed,
+      );
+      final bad = await outbox.byOperationId('bad');
+      expect(bad!.status, SyncOutboxStatus.quarantined);
+      expect(await outbox.pendingCount(), 0);
+    },
+  );
 }

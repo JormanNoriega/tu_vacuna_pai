@@ -8,7 +8,7 @@ package com.pai.api.shared.exceptions;
  */
 public class ProvisioningPendingException extends RuntimeException {
 
-    public ProvisioningPendingException(String message) {
-        super(message);
-    }
+  public ProvisioningPendingException(String message) {
+    super(message);
+  }
 }

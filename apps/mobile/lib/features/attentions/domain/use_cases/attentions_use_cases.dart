@@ -17,6 +17,10 @@ class CreateAttention {
     required OfflineAccess offline,
     required String patientId,
     String? observations,
+    String? attentionDate,
+    bool? completeScheme,
+    bool? paiwebRegistered,
+    String? paiwebNotRegisteredReason,
     String? operationId,
   }) {
     _offlinePolicy.ensureWritable(
@@ -28,7 +32,49 @@ class CreateAttention {
       accessToken,
       patientId: patientId,
       observations: observations,
+      attentionDate: attentionDate,
+      completeScheme: completeScheme,
+      paiwebRegistered: paiwebRegistered,
+      paiwebNotRegisteredReason: paiwebNotRegisteredReason,
       operationId: operationId,
+    );
+  }
+}
+
+class UpdateAttention {
+  const UpdateAttention(
+    this._repository, [
+    this._offlinePolicy = const OfflinePolicy(),
+  ]);
+
+  final AttentionsRepository _repository;
+  final OfflinePolicy _offlinePolicy;
+
+  Future<Attention> call(
+    String accessToken,
+    String attentionId, {
+    required OfflineAccess offline,
+    required int version,
+    String? observations,
+    bool? completeScheme,
+    bool? paiwebRegistered,
+    String? paiwebNotRegisteredReason,
+    String? attentionDate,
+  }) {
+    _offlinePolicy.ensureWritable(
+      status: offline.status,
+      permissions: offline.permissions,
+      operation: OperationPermission.createAttention,
+    );
+    return _repository.updateAttention(
+      accessToken,
+      attentionId,
+      version: version,
+      observations: observations,
+      completeScheme: completeScheme,
+      paiwebRegistered: paiwebRegistered,
+      paiwebNotRegisteredReason: paiwebNotRegisteredReason,
+      attentionDate: attentionDate,
     );
   }
 }
@@ -55,6 +101,10 @@ class RegisterDose {
     String? selectedSyringeId,
     String? selectedDropperId,
     String? selectedObservationId,
+    String? syringeLot,
+    String? diluent,
+    int? vialCount,
+    String? customObservation,
     String? operationId,
   }) {
     _offlinePolicy.ensureWritable(
@@ -74,6 +124,10 @@ class RegisterDose {
       selectedSyringeId: selectedSyringeId,
       selectedDropperId: selectedDropperId,
       selectedObservationId: selectedObservationId,
+      syringeLot: syringeLot,
+      diluent: diluent,
+      vialCount: vialCount,
+      customObservation: customObservation,
       operationId: operationId,
     );
   }

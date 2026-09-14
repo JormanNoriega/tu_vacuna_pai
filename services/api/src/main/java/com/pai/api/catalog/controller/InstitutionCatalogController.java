@@ -13,103 +13,105 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/institutions/{institutionId}/vaccines")
 public class InstitutionCatalogController {
-    private final InstitutionVaccineService service;
+  private final InstitutionVaccineService service;
 
-    public InstitutionCatalogController(InstitutionVaccineService s) {
-        service = s;
-    }
+  public InstitutionCatalogController(InstitutionVaccineService s) {
+    service = s;
+  }
 
-    private UUID actor(Authentication a) {
-        return ((AuthorizedUser) a.getPrincipal()).getId();
-    }
+  private UUID actor(Authentication a) {
+    return ((AuthorizedUser) a.getPrincipal()).getId();
+  }
 
-    @GetMapping
-    @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_READ')")
-    public List<InstitutionVaccineResponse> list(Authentication a, @PathVariable UUID institutionId) {
-        return service.list(actor(a), institutionId);
-    }
+  @GetMapping
+  @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_READ')")
+  public List<InstitutionVaccineResponse> list(Authentication a, @PathVariable UUID institutionId) {
+    return service.list(actor(a), institutionId);
+  }
 
-    @GetMapping("/available")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_READ')")
-    public List<VaccineResponse> available(Authentication a, @PathVariable UUID institutionId) {
-        return service.available(actor(a), institutionId);
-    }
+  @GetMapping("/available")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_READ')")
+  public List<VaccineResponse> available(Authentication a, @PathVariable UUID institutionId) {
+    return service.available(actor(a), institutionId);
+  }
 
-    @PostMapping("/{vaccineId}/enable")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_WRITE')")
-    public ResponseEntity<Void> enable(
-            Authentication a, @PathVariable UUID institutionId, @PathVariable UUID vaccineId) {
-        service.enable(actor(a), institutionId, vaccineId);
-        return ResponseEntity.noContent().build();
-    }
+  @PostMapping("/{vaccineId}/enable")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_WRITE')")
+  public ResponseEntity<Void> enable(
+      Authentication a, @PathVariable UUID institutionId, @PathVariable UUID vaccineId) {
+    service.enable(actor(a), institutionId, vaccineId);
+    return ResponseEntity.noContent().build();
+  }
 
-    @PostMapping("/{vaccineId}/disable")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_WRITE')")
-    public ResponseEntity<Void> disable(
-            Authentication a, @PathVariable UUID institutionId, @PathVariable UUID vaccineId) {
-        service.disable(actor(a), institutionId, vaccineId);
-        return ResponseEntity.noContent().build();
-    }
+  @PostMapping("/{vaccineId}/disable")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_WRITE')")
+  public ResponseEntity<Void> disable(
+      Authentication a, @PathVariable UUID institutionId, @PathVariable UUID vaccineId) {
+    service.disable(actor(a), institutionId, vaccineId);
+    return ResponseEntity.noContent().build();
+  }
 
-    @PostMapping("/clone")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_WRITE')")
-    public CloneCatalogResponse clone(
-            Authentication a, @PathVariable UUID institutionId, @Valid @RequestBody CloneCatalogRequest r) {
-        return service.clone(actor(a), institutionId, r.includeDefaultConfig());
-    }
+  @PostMapping("/clone")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_WRITE')")
+  public CloneCatalogResponse clone(
+      Authentication a,
+      @PathVariable UUID institutionId,
+      @Valid @RequestBody CloneCatalogRequest r) {
+    return service.clone(actor(a), institutionId, r.includeDefaultConfig());
+  }
 
-    @GetMapping("/{vaccineId}/options")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_READ')")
-    public List<OptionResponse> options(
-            Authentication a, @PathVariable UUID institutionId, @PathVariable UUID vaccineId) {
-        return service.options(actor(a), institutionId, vaccineId);
-    }
+  @GetMapping("/{vaccineId}/options")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_READ')")
+  public List<OptionResponse> options(
+      Authentication a, @PathVariable UUID institutionId, @PathVariable UUID vaccineId) {
+    return service.options(actor(a), institutionId, vaccineId);
+  }
 
-    @PostMapping("/{vaccineId}/options")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_WRITE')")
-    public ResponseEntity<OptionResponse> createOption(
-            Authentication a,
-            @PathVariable UUID institutionId,
-            @PathVariable UUID vaccineId,
-            @Valid @RequestBody OptionRequest r) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(service.createOption(actor(a), institutionId, vaccineId, r));
-    }
+  @PostMapping("/{vaccineId}/options")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_WRITE')")
+  public ResponseEntity<OptionResponse> createOption(
+      Authentication a,
+      @PathVariable UUID institutionId,
+      @PathVariable UUID vaccineId,
+      @Valid @RequestBody OptionRequest r) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(service.createOption(actor(a), institutionId, vaccineId, r));
+  }
 
-    @PutMapping("/{vaccineId}/options/{optionId}")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_WRITE')")
-    public OptionResponse update(
-            Authentication a,
-            @PathVariable UUID institutionId,
-            @PathVariable UUID vaccineId,
-            @PathVariable UUID optionId,
-            @Valid @RequestBody OptionRequest r) {
-        return service.updateOption(actor(a), institutionId, vaccineId, optionId, r);
-    }
+  @PutMapping("/{vaccineId}/options/{optionId}")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_WRITE')")
+  public OptionResponse update(
+      Authentication a,
+      @PathVariable UUID institutionId,
+      @PathVariable UUID vaccineId,
+      @PathVariable UUID optionId,
+      @Valid @RequestBody OptionRequest r) {
+    return service.updateOption(actor(a), institutionId, vaccineId, optionId, r);
+  }
 
-    @DeleteMapping("/{vaccineId}/options/{optionId}")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_WRITE')")
-    public ResponseEntity<Void> delete(
-            Authentication a,
-            @PathVariable UUID institutionId,
-            @PathVariable UUID vaccineId,
-            @PathVariable UUID optionId,
-            @RequestParam long version) {
-        service.deleteOption(actor(a), institutionId, vaccineId, optionId, version);
-        return ResponseEntity.noContent().build();
-    }
+  @DeleteMapping("/{vaccineId}/options/{optionId}")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_WRITE')")
+  public ResponseEntity<Void> delete(
+      Authentication a,
+      @PathVariable UUID institutionId,
+      @PathVariable UUID vaccineId,
+      @PathVariable UUID optionId,
+      @RequestParam long version) {
+    service.deleteOption(actor(a), institutionId, vaccineId, optionId, version);
+    return ResponseEntity.noContent().build();
+  }
 
-    @GetMapping("/{vaccineId}/suggested-options")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_READ')")
-    public List<OptionResponse> suggested(
-            Authentication a, @PathVariable UUID institutionId, @PathVariable UUID vaccineId) {
-        return service.suggested(actor(a), institutionId, vaccineId);
-    }
+  @GetMapping("/{vaccineId}/suggested-options")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_READ')")
+  public List<OptionResponse> suggested(
+      Authentication a, @PathVariable UUID institutionId, @PathVariable UUID vaccineId) {
+    return service.suggested(actor(a), institutionId, vaccineId);
+  }
 
-    @PostMapping("/{vaccineId}/import-suggested-options")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_WRITE')")
-    public List<OptionResponse> importSuggested(
-            Authentication a, @PathVariable UUID institutionId, @PathVariable UUID vaccineId) {
-        return service.importSuggested(actor(a), institutionId, vaccineId);
-    }
+  @PostMapping("/{vaccineId}/import-suggested-options")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_WRITE')")
+  public List<OptionResponse> importSuggested(
+      Authentication a, @PathVariable UUID institutionId, @PathVariable UUID vaccineId) {
+    return service.importSuggested(actor(a), institutionId, vaccineId);
+  }
 }

@@ -14,7 +14,10 @@ void main() {
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
     outbox = SyncOutboxRepository(db);
-    clinical = ClinicalOfflineRepository(database: db, outboxRepository: outbox);
+    clinical = ClinicalOfflineRepository(
+      database: db,
+      outboxRepository: outbox,
+    );
     await db.upsertCurrentUser(
       id: 'user-1',
       email: 'vac@test.co',
@@ -85,7 +88,8 @@ void main() {
     final attentionLocal = await db.attentionLocalById(attention.entity.id);
     expect(attentionLocal!.status, 'COMPLETED');
     expect(
-      (await db.appliedDosesLocalByAttention(attention.entity.id)).single
+      (await db.appliedDosesLocalByAttention(attention.entity.id))
+          .single
           .vaccineNameSnapshot,
       'BCG',
     );

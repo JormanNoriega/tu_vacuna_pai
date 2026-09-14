@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tu_vacuna_pai/core/auth/offline_access.dart';
+import 'package:tu_vacuna_pai/features/attentions/domain/repositories/attentions_repository.dart';
+import 'package:tu_vacuna_pai/features/attentions/domain/use_cases/attentions_use_cases.dart';
 import 'package:tu_vacuna_pai/features/auth/domain/entities/session_restore_result.dart';
 import 'package:tu_vacuna_pai/features/catalogs/domain/entities/effective_catalog.dart';
 import 'package:tu_vacuna_pai/features/catalogs/domain/entities/geo.dart';
@@ -35,8 +37,10 @@ void main() {
       updateDemographics: UpdatePatientDemographics(repository),
       updateContact: UpdatePatientContact(repository),
       updateMedicalHistories: UpdatePatientMedicalHistories(repository),
+      listCountries: ListCountries(_NoopCatalogRepository()),
       listDepartments: ListDepartments(_NoopCatalogRepository()),
       listMunicipalities: ListMunicipalities(_NoopCatalogRepository()),
+      listPatientAttentions: ListPatientAttentions(_NoopAttentionsRepository()),
     );
   });
 
@@ -163,6 +167,12 @@ class _NoopCatalogRepository implements CatalogRepository {
   Future<List<EffectiveVaccine>> listEffectiveCatalog(String token) async =>
       const [];
 
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('No usado en el test');
+}
+
+class _NoopAttentionsRepository implements AttentionsRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) =>
       throw UnimplementedError('No usado en el test');

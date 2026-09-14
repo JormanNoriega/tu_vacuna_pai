@@ -3,7 +3,8 @@ import 'package:tu_vacuna_pai/core/auth/offline_policy.dart';
 import 'package:tu_vacuna_pai/core/network/api_exception.dart';
 import 'package:tu_vacuna_pai/core/presentation/async_controller.dart';
 
-import '../../features/admin/fake_admin_repository.dart' show FakeSessionManager;
+import '../../features/admin/fake_admin_repository.dart'
+    show FakeSessionManager;
 
 class _Controller extends AsyncController {
   _Controller({required super.sessionManager});
@@ -19,7 +20,8 @@ class _Controller extends AsyncController {
   });
 
   @override
-  String mapApiError(ApiException e) => e.statusCode == 409 ? 'conflicto' : e.message;
+  String mapApiError(ApiException e) =>
+      e.statusCode == 409 ? 'conflicto' : e.message;
 }
 
 class _OfflineFailingController extends AsyncController {
@@ -56,7 +58,9 @@ void main() {
     });
 
     test('mapea excepciones de politica offline', () async {
-      final c = _OfflineFailingController(sessionManager: FakeSessionManager('t'));
+      final c = _OfflineFailingController(
+        sessionManager: FakeSessionManager('t'),
+      );
       await c.run();
       expect(c.error, contains('requiere conexion'));
     });

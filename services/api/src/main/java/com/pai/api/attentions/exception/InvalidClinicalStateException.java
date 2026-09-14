@@ -7,7 +7,7 @@ package com.pai.api.attentions.exception;
  */
 public class InvalidClinicalStateException extends RuntimeException {
 
-    public InvalidClinicalStateException(String message) {
-        super(message);
-    }
+  public InvalidClinicalStateException(String message) {
+    super(message);
+  }
 }

@@ -8,10 +8,7 @@ import 'sync_outbox.dart';
 /// No es un estado del contrato: agrega el outbox (`pendingCount`) y el ultimo
 /// resultado del [SyncEngine] para pintar banners/insignias.
 class SyncStatusController extends ChangeNotifier {
-  SyncStatusController({
-    required this.outbox,
-    required this.engine,
-  });
+  SyncStatusController({required this.outbox, required this.engine});
 
   final SyncOutboxRepository outbox;
   final SyncEngine engine;

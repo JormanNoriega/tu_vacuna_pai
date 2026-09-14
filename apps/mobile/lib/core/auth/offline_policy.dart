@@ -35,10 +35,7 @@ enum OperationPermission {
     requiredPermission: 'ATTENTION_CREATE',
     offlineAuthorized: true,
   ),
-  registerDose(
-    requiredPermission: 'ATTENTION_CREATE',
-    offlineAuthorized: true,
-  ),
+  registerDose(requiredPermission: 'ATTENTION_CREATE', offlineAuthorized: true),
   completeAttention(
     requiredPermission: 'ATTENTION_CREATE',
     offlineAuthorized: true,

@@ -52,7 +52,9 @@ class ClinicalOfflineRepository {
 
     await _outbox.commitLocalWrite(
       writeLocal: () async {
-        await _db.upsertPatientLocal(_patientCompanion(institutionId, patientId, input));
+        await _db.upsertPatientLocal(
+          _patientCompanion(institutionId, patientId, input),
+        );
         final guardians = input.guardians;
         if (guardians.isNotEmpty) {
           await _db.replacePatientGuardiansLocal(patientId, [
@@ -375,10 +377,7 @@ class ClinicalOfflineRepository {
     );
   }
 
-  static String? _firstContact(
-    List<NewPatientContact> contacts,
-    String type,
-  ) {
+  static String? _firstContact(List<NewPatientContact> contacts, String type) {
     for (final contact in contacts) {
       if (contact.type == type && contact.value.isNotEmpty) {
         return contact.value;

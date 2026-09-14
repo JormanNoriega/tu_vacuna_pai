@@ -13,13 +13,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
  */
 public interface PatientRepository extends JpaRepository<PatientEntity, UUID> {
 
-    Optional<PatientEntity> findByIdAndInstitutionId(UUID id, UUID institutionId);
+  Optional<PatientEntity> findByIdAndInstitutionId(UUID id, UUID institutionId);
 
-    Optional<PatientEntity> findByInstitutionIdAndDocumentTypeAndDocumentNumber(
-            UUID institutionId, String documentType, String documentNumber);
+  Optional<PatientEntity> findByInstitutionIdAndDocumentTypeAndDocumentNumber(
+      UUID institutionId, String documentType, String documentNumber);
 
-    List<PatientEntity> findByInstitutionIdAndDocumentNumber(UUID institutionId, String documentNumber);
+  List<PatientEntity> findByInstitutionIdAndDocumentNumber(
+      UUID institutionId, String documentNumber);
 
-    boolean existsByInstitutionIdAndDocumentTypeAndDocumentNumber(
-            UUID institutionId, String documentType, String documentNumber);
+  boolean existsByInstitutionIdAndDocumentTypeAndDocumentNumber(
+      UUID institutionId, String documentType, String documentNumber);
 }

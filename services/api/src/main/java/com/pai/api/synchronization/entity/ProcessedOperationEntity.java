@@ -24,81 +24,81 @@ import org.hibernate.type.SqlTypes;
 @Table(name = "processed_operations", schema = "app")
 public class ProcessedOperationEntity {
 
-    @Id
-    @Column(name = "operation_id")
-    private UUID operationId;
+  @Id
+  @Column(name = "operation_id")
+  private UUID operationId;
 
-    @Column(name = "command_type", nullable = false)
-    private String commandType;
+  @Column(name = "command_type", nullable = false)
+  private String commandType;
 
-    @Column(name = "aggregate_id")
-    private UUID aggregateId;
+  @Column(name = "aggregate_id")
+  private UUID aggregateId;
 
-    @Column(name = "institution_id")
-    private UUID institutionId;
+  @Column(name = "institution_id")
+  private UUID institutionId;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "payload", nullable = false)
-    private String payload;
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "payload", nullable = false)
+  private String payload;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "response_payload", nullable = false)
-    private String responsePayload;
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "response_payload", nullable = false)
+  private String responsePayload;
 
-    @Column(name = "sync_sequence", insertable = false, updatable = false)
-    private Long syncSequence;
+  @Column(name = "sync_sequence", insertable = false, updatable = false)
+  private Long syncSequence;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt;
 
-    protected ProcessedOperationEntity() {}
+  protected ProcessedOperationEntity() {}
 
-    public ProcessedOperationEntity(
-            UUID operationId,
-            String commandType,
-            UUID aggregateId,
-            UUID institutionId,
-            String payload,
-            String responsePayload,
-            Instant now) {
-        this.operationId = operationId;
-        this.commandType = commandType;
-        this.aggregateId = aggregateId;
-        this.institutionId = institutionId;
-        this.payload = payload;
-        this.responsePayload = responsePayload;
-        this.createdAt = now;
-    }
+  public ProcessedOperationEntity(
+      UUID operationId,
+      String commandType,
+      UUID aggregateId,
+      UUID institutionId,
+      String payload,
+      String responsePayload,
+      Instant now) {
+    this.operationId = operationId;
+    this.commandType = commandType;
+    this.aggregateId = aggregateId;
+    this.institutionId = institutionId;
+    this.payload = payload;
+    this.responsePayload = responsePayload;
+    this.createdAt = now;
+  }
 
-    public UUID getOperationId() {
-        return operationId;
-    }
+  public UUID getOperationId() {
+    return operationId;
+  }
 
-    public String getCommandType() {
-        return commandType;
-    }
+  public String getCommandType() {
+    return commandType;
+  }
 
-    public UUID getAggregateId() {
-        return aggregateId;
-    }
+  public UUID getAggregateId() {
+    return aggregateId;
+  }
 
-    public UUID getInstitutionId() {
-        return institutionId;
-    }
+  public UUID getInstitutionId() {
+    return institutionId;
+  }
 
-    public String getPayload() {
-        return payload;
-    }
+  public String getPayload() {
+    return payload;
+  }
 
-    public String getResponsePayload() {
-        return responsePayload;
-    }
+  public String getResponsePayload() {
+    return responsePayload;
+  }
 
-    public Long getSyncSequence() {
-        return syncSequence;
-    }
+  public Long getSyncSequence() {
+    return syncSequence;
+  }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
 }

@@ -6,5 +6,5 @@ import java.util.List;
 
 /** Batch de operaciones del outbox del cliente. */
 public record SyncPushRequest(
-        @NotNull(message = "El batch de operaciones es obligatorio.")
-        @Valid List<SyncOperation> operations) {}
+    @NotNull(message = "El batch de operaciones es obligatorio.") @Valid
+    List<SyncOperation> operations) {}

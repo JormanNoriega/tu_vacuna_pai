@@ -14,185 +14,185 @@ import java.util.UUID;
 @Table(name = "users", schema = "app")
 public class UserEntity {
 
-    public enum Status {
-        ACTIVE,
-        INACTIVE
-    }
+  public enum Status {
+    ACTIVE,
+    INACTIVE
+  }
 
-    @Id
-    private UUID id;
+  @Id
+  private UUID id;
 
-    @Column(nullable = false)
-    private String email;
+  @Column(nullable = false)
+  private String email;
 
-    @Column(name = "full_name", nullable = false)
-    private String fullName;
+  @Column(name = "full_name", nullable = false)
+  private String fullName;
 
-    @Column(name = "institution_id", nullable = false)
-    private UUID institutionId;
+  @Column(name = "institution_id", nullable = false)
+  private UUID institutionId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Status status;
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  private Status status;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
 
-    @Column(name = "document_type")
-    private String documentType;
+  @Column(name = "document_type")
+  private String documentType;
 
-    @Column(name = "document_number")
-    private String documentNumber;
+  @Column(name = "document_number")
+  private String documentNumber;
 
-    private String phone;
+  private String phone;
 
-    @Column(name = "birth_date")
-    private LocalDate birthDate;
+  @Column(name = "birth_date")
+  private LocalDate birthDate;
 
-    private String gender;
+  private String gender;
 
-    @Column(name = "profession_code")
-    private String professionCode;
+  @Column(name = "profession_code")
+  private String professionCode;
 
-    @Column(name = "professional_registration_number")
-    private String professionalRegistrationNumber;
+  @Column(name = "professional_registration_number")
+  private String professionalRegistrationNumber;
 
-    @Column(name = "professional_registration_type")
-    private String professionalRegistrationType;
+  @Column(name = "professional_registration_type")
+  private String professionalRegistrationType;
 
-    protected UserEntity() {}
+  protected UserEntity() {}
 
-    public UserEntity(
-            UUID id,
-            String email,
-            String fullName,
-            UUID institutionId,
-            Status status,
-            Instant createdAt,
-            Instant updatedAt) {
-        this(
-                id,
-                email,
-                fullName,
-                institutionId,
-                status,
-                createdAt,
-                updatedAt,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null);
-    }
+  public UserEntity(
+      UUID id,
+      String email,
+      String fullName,
+      UUID institutionId,
+      Status status,
+      Instant createdAt,
+      Instant updatedAt) {
+    this(
+        id,
+        email,
+        fullName,
+        institutionId,
+        status,
+        createdAt,
+        updatedAt,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
+  }
 
-    public UserEntity(
-            UUID id,
-            String email,
-            String fullName,
-            UUID institutionId,
-            Status status,
-            Instant createdAt,
-            Instant updatedAt,
-            String documentType,
-            String documentNumber,
-            String phone,
-            LocalDate birthDate,
-            String gender,
-            String professionCode,
-            String professionalRegistrationNumber,
-            String professionalRegistrationType) {
-        this.id = id;
-        this.email = email;
-        this.fullName = fullName;
-        this.institutionId = institutionId;
-        this.status = status;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-        this.documentType = documentType;
-        this.documentNumber = documentNumber;
-        this.phone = phone;
-        this.birthDate = birthDate;
-        this.gender = gender;
-        this.professionCode = professionCode;
-        this.professionalRegistrationNumber = professionalRegistrationNumber;
-        this.professionalRegistrationType = professionalRegistrationType;
-    }
+  public UserEntity(
+      UUID id,
+      String email,
+      String fullName,
+      UUID institutionId,
+      Status status,
+      Instant createdAt,
+      Instant updatedAt,
+      String documentType,
+      String documentNumber,
+      String phone,
+      LocalDate birthDate,
+      String gender,
+      String professionCode,
+      String professionalRegistrationNumber,
+      String professionalRegistrationType) {
+    this.id = id;
+    this.email = email;
+    this.fullName = fullName;
+    this.institutionId = institutionId;
+    this.status = status;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
+    this.documentType = documentType;
+    this.documentNumber = documentNumber;
+    this.phone = phone;
+    this.birthDate = birthDate;
+    this.gender = gender;
+    this.professionCode = professionCode;
+    this.professionalRegistrationNumber = professionalRegistrationNumber;
+    this.professionalRegistrationType = professionalRegistrationType;
+  }
 
-    public boolean isActive() {
-        return status == Status.ACTIVE;
-    }
+  public boolean isActive() {
+    return status == Status.ACTIVE;
+  }
 
-    public void setStatus(Status status) {
-        this.status = status;
-    }
+  public void setStatus(Status status) {
+    this.status = status;
+  }
 
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
+  public void setUpdatedAt(Instant updatedAt) {
+    this.updatedAt = updatedAt;
+  }
 
-    public UUID getId() {
-        return id;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public String getEmail() {
-        return email;
-    }
+  public String getEmail() {
+    return email;
+  }
 
-    public String getFullName() {
-        return fullName;
-    }
+  public String getFullName() {
+    return fullName;
+  }
 
-    public UUID getInstitutionId() {
-        return institutionId;
-    }
+  public UUID getInstitutionId() {
+    return institutionId;
+  }
 
-    public Status getStatus() {
-        return status;
-    }
+  public Status getStatus() {
+    return status;
+  }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
 
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
 
-    public String getDocumentType() {
-        return documentType;
-    }
+  public String getDocumentType() {
+    return documentType;
+  }
 
-    public String getDocumentNumber() {
-        return documentNumber;
-    }
+  public String getDocumentNumber() {
+    return documentNumber;
+  }
 
-    public String getPhone() {
-        return phone;
-    }
+  public String getPhone() {
+    return phone;
+  }
 
-    public LocalDate getBirthDate() {
-        return birthDate;
-    }
+  public LocalDate getBirthDate() {
+    return birthDate;
+  }
 
-    public String getGender() {
-        return gender;
-    }
+  public String getGender() {
+    return gender;
+  }
 
-    public String getProfessionCode() {
-        return professionCode;
-    }
+  public String getProfessionCode() {
+    return professionCode;
+  }
 
-    public String getProfessionalRegistrationNumber() {
-        return professionalRegistrationNumber;
-    }
+  public String getProfessionalRegistrationNumber() {
+    return professionalRegistrationNumber;
+  }
 
-    public String getProfessionalRegistrationType() {
-        return professionalRegistrationType;
-    }
+  public String getProfessionalRegistrationType() {
+    return professionalRegistrationType;
+  }
 }

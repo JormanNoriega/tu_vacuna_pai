@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface InstitutionRepository extends JpaRepository<InstitutionEntity, UUID> {
 
-    Optional<InstitutionEntity> findByCode(String code);
+  Optional<InstitutionEntity> findByCode(String code);
 
-    List<InstitutionEntity> findAllByOrderByNameAsc();
+  List<InstitutionEntity> findAllByOrderByNameAsc();
 }

@@ -7,139 +7,140 @@ import java.util.UUID;
 @Entity
 @Table(name = "institution_vaccine_options", schema = "app")
 public class InstitutionVaccineOptionEntity {
-    @Id
-    private UUID id;
+  @Id
+  private UUID id;
 
-    @Column(name = "institution_id", nullable = false)
-    private UUID institutionId;
+  @Column(name = "institution_id", nullable = false)
+  private UUID institutionId;
 
-    @Column(name = "vaccine_id", nullable = false)
-    private UUID vaccineId;
+  @Column(name = "vaccine_id", nullable = false)
+  private UUID vaccineId;
 
-    @Column(name = "field_type", nullable = false)
-    private String fieldType;
+  @Column(name = "field_type", nullable = false)
+  private String fieldType;
 
-    @Column(nullable = false)
-    private String value;
+  @Column(nullable = false)
+  private String value;
 
-    @Column(name = "value_normalized", insertable = false, updatable = false)
-    private String valueNormalized;
+  @Column(name = "value_normalized", insertable = false, updatable = false)
+  private String valueNormalized;
 
-    @Column(name = "display_name", nullable = false)
-    private String displayName;
+  @Column(name = "display_name", nullable = false)
+  private String displayName;
 
-    @Column(name = "sort_order", nullable = false)
-    private int sortOrder;
+  @Column(name = "sort_order", nullable = false)
+  private int sortOrder;
 
-    @Column(name = "is_default", nullable = false)
-    private boolean isDefault;
+  @Column(name = "is_default", nullable = false)
+  private boolean isDefault;
 
-    @Column(name = "is_active", nullable = false)
-    private boolean active;
+  @Column(name = "is_active", nullable = false)
+  private boolean active;
 
-    @Column(name = "source_template_id")
-    private UUID sourceTemplateId;
+  @Column(name = "source_template_id")
+  private UUID sourceTemplateId;
 
-    @Version
-    private long version;
+  @Version
+  private long version;
 
-    @Column(name = "created_by")
-    private UUID createdBy;
+  @Column(name = "created_by")
+  private UUID createdBy;
 
-    @Column(name = "updated_by")
-    private UUID updatedBy;
+  @Column(name = "updated_by")
+  private UUID updatedBy;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
 
-    protected InstitutionVaccineOptionEntity() {}
+  protected InstitutionVaccineOptionEntity() {}
 
-    public InstitutionVaccineOptionEntity(
-            UUID id,
-            UUID inst,
-            UUID vaccine,
-            String type,
-            String value,
-            String display,
-            int order,
-            boolean def,
-            UUID template,
-            UUID actor,
-            Instant now) {
-        this.id = id;
-        institutionId = inst;
-        vaccineId = vaccine;
-        fieldType = type;
-        this.value = value;
-        displayName = display;
-        sortOrder = order;
-        isDefault = def;
-        active = true;
-        sourceTemplateId = template;
-        createdBy = actor;
-        updatedBy = actor;
-        createdAt = now;
-        updatedAt = now;
-    }
+  public InstitutionVaccineOptionEntity(
+      UUID id,
+      UUID inst,
+      UUID vaccine,
+      String type,
+      String value,
+      String display,
+      int order,
+      boolean def,
+      UUID template,
+      UUID actor,
+      Instant now) {
+    this.id = id;
+    institutionId = inst;
+    vaccineId = vaccine;
+    fieldType = type;
+    this.value = value;
+    displayName = display;
+    sortOrder = order;
+    isDefault = def;
+    active = true;
+    sourceTemplateId = template;
+    createdBy = actor;
+    updatedBy = actor;
+    createdAt = now;
+    updatedAt = now;
+  }
 
-    public UUID getId() {
-        return id;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public UUID getInstitutionId() {
-        return institutionId;
-    }
+  public UUID getInstitutionId() {
+    return institutionId;
+  }
 
-    public UUID getVaccineId() {
-        return vaccineId;
-    }
+  public UUID getVaccineId() {
+    return vaccineId;
+  }
 
-    public String getFieldType() {
-        return fieldType;
-    }
+  public String getFieldType() {
+    return fieldType;
+  }
 
-    public String getValue() {
-        return value;
-    }
+  public String getValue() {
+    return value;
+  }
 
-    public String getDisplayName() {
-        return displayName;
-    }
+  public String getDisplayName() {
+    return displayName;
+  }
 
-    public int getSortOrder() {
-        return sortOrder;
-    }
+  public int getSortOrder() {
+    return sortOrder;
+  }
 
-    public boolean isDefault() {
-        return isDefault;
-    }
+  public boolean isDefault() {
+    return isDefault;
+  }
 
-    public boolean isActive() {
-        return active;
-    }
+  public boolean isActive() {
+    return active;
+  }
 
-    public long getVersion() {
-        return version;
-    }
+  public long getVersion() {
+    return version;
+  }
 
-    public String getValueNormalized() {
-        return valueNormalized;
-    }
+  public String getValueNormalized() {
+    return valueNormalized;
+  }
 
-    public UUID getSourceTemplateId() {
-        return sourceTemplateId;
-    }
+  public UUID getSourceTemplateId() {
+    return sourceTemplateId;
+  }
 
-    public void update(String value, String display, int order, boolean def, boolean active, UUID actor) {
-        this.value = value;
-        displayName = display;
-        sortOrder = order;
-        isDefault = def;
-        this.active = active;
-        updatedBy = actor;
-        updatedAt = Instant.now();
-    }
+  public void update(
+      String value, String display, int order, boolean def, boolean active, UUID actor) {
+    this.value = value;
+    displayName = display;
+    sortOrder = order;
+    isDefault = def;
+    this.active = active;
+    updatedBy = actor;
+    updatedAt = Instant.now();
+  }
 }

@@ -31,29 +31,29 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/sync")
 public class SyncController {
 
-    private final SyncPushService pushService;
-    private final SyncPullService pullService;
+  private final SyncPushService pushService;
+  private final SyncPullService pullService;
 
-    public SyncController(SyncPushService pushService, SyncPullService pullService) {
-        this.pushService = pushService;
-        this.pullService = pullService;
-    }
+  public SyncController(SyncPushService pushService, SyncPullService pullService) {
+    this.pushService = pushService;
+    this.pullService = pullService;
+  }
 
-    @PostMapping("/push")
-    public ResponseEntity<SyncPushResponse> push(
-            Authentication authentication, @Valid @RequestBody SyncPushRequest request) {
-        return ResponseEntity.ok(pushService.push(actorId(authentication), request));
-    }
+  @PostMapping("/push")
+  public ResponseEntity<SyncPushResponse> push(
+      Authentication authentication, @Valid @RequestBody SyncPushRequest request) {
+    return ResponseEntity.ok(pushService.push(actorId(authentication), request));
+  }
 
-    @GetMapping("/pull")
-    public ResponseEntity<SyncPullResponse> pull(
-            Authentication authentication,
-            @RequestParam(value = "since", required = false) String since,
-            @RequestParam(value = "limit", required = false) Integer limit) {
-        return ResponseEntity.ok(pullService.pull(actorId(authentication), since, limit));
-    }
+  @GetMapping("/pull")
+  public ResponseEntity<SyncPullResponse> pull(
+      Authentication authentication,
+      @RequestParam(value = "since", required = false) String since,
+      @RequestParam(value = "limit", required = false) Integer limit) {
+    return ResponseEntity.ok(pullService.pull(actorId(authentication), since, limit));
+  }
 
-    private UUID actorId(Authentication authentication) {
-        return ((AuthorizedUser) authentication.getPrincipal()).getId();
-    }
+  private UUID actorId(Authentication authentication) {
+    return ((AuthorizedUser) authentication.getPrincipal()).getId();
+  }
 }

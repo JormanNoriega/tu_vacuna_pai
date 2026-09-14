@@ -6,15 +6,17 @@ import java.util.*;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
-public interface VaccineOptionTemplateRepository extends JpaRepository<VaccineOptionTemplateEntity, UUID> {
-    List<VaccineOptionTemplateEntity> findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(UUID id);
+public interface VaccineOptionTemplateRepository
+    extends JpaRepository<VaccineOptionTemplateEntity, UUID> {
+  List<VaccineOptionTemplateEntity> findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(
+      UUID id);
 
-    Optional<VaccineOptionTemplateEntity> findByIdAndVaccineId(UUID id, UUID vaccineId);
+  Optional<VaccineOptionTemplateEntity> findByIdAndVaccineId(UUID id, UUID vaccineId);
 
-    boolean existsByVaccineIdAndFieldTypeAndValueNormalizedAndActiveTrue(
-            UUID vaccineId, String fieldType, String valueNormalized);
+  boolean existsByVaccineIdAndFieldTypeAndValueNormalizedAndActiveTrue(
+      UUID vaccineId, String fieldType, String valueNormalized);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select t from VaccineOptionTemplateEntity t where t.vaccineId=:v and t.active=true")
-    List<VaccineOptionTemplateEntity> lockActive(@Param("v") UUID vaccineId);
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select t from VaccineOptionTemplateEntity t where t.vaccineId=:v and t.active=true")
+  List<VaccineOptionTemplateEntity> lockActive(@Param("v") UUID vaccineId);
 }

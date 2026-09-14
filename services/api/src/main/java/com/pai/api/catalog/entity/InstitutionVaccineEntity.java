@@ -7,46 +7,46 @@ import java.util.UUID;
 @Entity
 @Table(name = "institution_vaccines", schema = "app")
 public class InstitutionVaccineEntity {
-    @Id
-    private UUID id;
+  @Id
+  private UUID id;
 
-    @Column(name = "institution_id", nullable = false)
-    private UUID institutionId;
+  @Column(name = "institution_id", nullable = false)
+  private UUID institutionId;
 
-    @Column(name = "vaccine_id", nullable = false)
-    private UUID vaccineId;
+  @Column(name = "vaccine_id", nullable = false)
+  private UUID vaccineId;
 
-    @Column(name = "is_enabled", nullable = false)
-    private boolean enabled;
+  @Column(name = "is_enabled", nullable = false)
+  private boolean enabled;
 
-    @Column(name = "enabled_at")
-    private Instant enabledAt;
+  @Column(name = "enabled_at")
+  private Instant enabledAt;
 
-    @Column(name = "enabled_by")
-    private UUID enabledBy;
+  @Column(name = "enabled_by")
+  private UUID enabledBy;
 
-    @Version
-    private long version;
+  @Version
+  private long version;
 
-    protected InstitutionVaccineEntity() {}
+  protected InstitutionVaccineEntity() {}
 
-    public UUID getId() {
-        return id;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public UUID getInstitutionId() {
-        return institutionId;
-    }
+  public UUID getInstitutionId() {
+    return institutionId;
+  }
 
-    public UUID getVaccineId() {
-        return vaccineId;
-    }
+  public UUID getVaccineId() {
+    return vaccineId;
+  }
 
-    public boolean isEnabled() {
-        return enabled;
-    }
+  public boolean isEnabled() {
+    return enabled;
+  }
 
-    public long getVersion() {
-        return version;
-    }
+  public long getVersion() {
+    return version;
+  }
 }

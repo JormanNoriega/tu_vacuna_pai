@@ -15,10 +15,10 @@ import org.springframework.stereotype.Component;
 @Component("authorization")
 public class AuthorizationService {
 
-    public boolean hasPermission(Authentication authentication, String permission) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof AuthorizedUser user)) {
-            return false;
-        }
-        return user.getPermissions().contains(permission);
+  public boolean hasPermission(Authentication authentication, String permission) {
+    if (authentication == null || !(authentication.getPrincipal() instanceof AuthorizedUser user)) {
+      return false;
     }
+    return user.getPermissions().contains(permission);
+  }
 }

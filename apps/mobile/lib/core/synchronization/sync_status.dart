@@ -15,8 +15,10 @@ enum SyncOutboxStatus {
   /// Valor persistido en la columna `sync_outbox.status`.
   final String value;
 
-  static SyncOutboxStatus fromValue(String value) =>
-      values.firstWhere((status) => status.value == value, orElse: () => pending);
+  static SyncOutboxStatus fromValue(String value) => values.firstWhere(
+    (status) => status.value == value,
+    orElse: () => pending,
+  );
 }
 
 /// Estado visible del agregado en la UI. Es una proyeccion del outbox + sesion

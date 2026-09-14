@@ -34,76 +34,77 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/patients")
 public class PatientController {
 
-    private final PatientService service;
+  private final PatientService service;
 
-    public PatientController(PatientService service) {
-        this.service = service;
-    }
+  public PatientController(PatientService service) {
+    this.service = service;
+  }
 
-    @PostMapping
-    @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_WRITE')")
-    public ResponseEntity<PatientResponse> create(
-            Authentication authentication,
-            @RequestHeader(value = "Idempotency-Key", required = false) String operationId,
-            @Valid @RequestBody CreatePatientRequest request) {
-        UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(actorId, operationId, request));
-    }
+  @PostMapping
+  @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_WRITE')")
+  public ResponseEntity<PatientResponse> create(
+      Authentication authentication,
+      @RequestHeader(value = "Idempotency-Key", required = false) String operationId,
+      @Valid @RequestBody CreatePatientRequest request) {
+    UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(service.create(actorId, operationId, request));
+  }
 
-    @GetMapping("/{id}")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_READ')")
-    public ResponseEntity<PatientResponse> get(Authentication authentication, @PathVariable UUID id) {
-        UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
-        return ResponseEntity.ok(service.get(actorId, id));
-    }
+  @GetMapping("/{id}")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_READ')")
+  public ResponseEntity<PatientResponse> get(Authentication authentication, @PathVariable UUID id) {
+    UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
+    return ResponseEntity.ok(service.get(actorId, id));
+  }
 
-    @GetMapping
-    @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_READ')")
-    public ResponseEntity<List<PatientResponse>> search(
-            Authentication authentication,
-            @RequestParam(required = false) String documentType,
-            @RequestParam String documentNumber) {
-        UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
-        return ResponseEntity.ok(service.search(actorId, documentType, documentNumber));
-    }
+  @GetMapping
+  @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_READ')")
+  public ResponseEntity<List<PatientResponse>> search(
+      Authentication authentication,
+      @RequestParam(required = false) String documentType,
+      @RequestParam String documentNumber) {
+    UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
+    return ResponseEntity.ok(service.search(actorId, documentType, documentNumber));
+  }
 
-    @PutMapping("/{id}/contact")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_WRITE')")
-    public ResponseEntity<PatientResponse> updateContact(
-            Authentication authentication,
-            @PathVariable UUID id,
-            @Valid @RequestBody UpdatePatientContactRequest request) {
-        UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
-        return ResponseEntity.ok(service.updateContact(actorId, id, request));
-    }
+  @PutMapping("/{id}/contact")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_WRITE')")
+  public ResponseEntity<PatientResponse> updateContact(
+      Authentication authentication,
+      @PathVariable UUID id,
+      @Valid @RequestBody UpdatePatientContactRequest request) {
+    UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
+    return ResponseEntity.ok(service.updateContact(actorId, id, request));
+  }
 
-    @PutMapping("/{id}/identity")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_WRITE')")
-    public ResponseEntity<PatientResponse> updateIdentity(
-            Authentication authentication,
-            @PathVariable UUID id,
-            @Valid @RequestBody UpdatePatientIdentityRequest request) {
-        UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
-        return ResponseEntity.ok(service.updateIdentity(actorId, id, request));
-    }
+  @PutMapping("/{id}/identity")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_WRITE')")
+  public ResponseEntity<PatientResponse> updateIdentity(
+      Authentication authentication,
+      @PathVariable UUID id,
+      @Valid @RequestBody UpdatePatientIdentityRequest request) {
+    UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
+    return ResponseEntity.ok(service.updateIdentity(actorId, id, request));
+  }
 
-    @PutMapping("/{id}/demographics")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_WRITE')")
-    public ResponseEntity<PatientResponse> updateDemographics(
-            Authentication authentication,
-            @PathVariable UUID id,
-            @Valid @RequestBody UpdatePatientDemographicsRequest request) {
-        UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
-        return ResponseEntity.ok(service.updateDemographics(actorId, id, request));
-    }
+  @PutMapping("/{id}/demographics")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_WRITE')")
+  public ResponseEntity<PatientResponse> updateDemographics(
+      Authentication authentication,
+      @PathVariable UUID id,
+      @Valid @RequestBody UpdatePatientDemographicsRequest request) {
+    UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
+    return ResponseEntity.ok(service.updateDemographics(actorId, id, request));
+  }
 
-    @PutMapping("/{id}/medical-histories")
-    @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_WRITE')")
-    public ResponseEntity<PatientResponse> updateMedicalHistories(
-            Authentication authentication,
-            @PathVariable UUID id,
-            @Valid @RequestBody UpdatePatientMedicalHistoriesRequest request) {
-        UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
-        return ResponseEntity.ok(service.updateMedicalHistories(actorId, id, request));
-    }
+  @PutMapping("/{id}/medical-histories")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_WRITE')")
+  public ResponseEntity<PatientResponse> updateMedicalHistories(
+      Authentication authentication,
+      @PathVariable UUID id,
+      @Valid @RequestBody UpdatePatientMedicalHistoriesRequest request) {
+    UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
+    return ResponseEntity.ok(service.updateMedicalHistories(actorId, id, request));
+  }
 }

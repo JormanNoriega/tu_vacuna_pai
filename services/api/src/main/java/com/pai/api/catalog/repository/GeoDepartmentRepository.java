@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface GeoDepartmentRepository extends JpaRepository<GeoDepartmentEntity, UUID> {
 
-    Optional<GeoDepartmentEntity> findByCode(String code);
+  Optional<GeoDepartmentEntity> findByCode(String code);
 
-    List<GeoDepartmentEntity> findAllByOrderByNameAsc();
+  List<GeoDepartmentEntity> findAllByOrderByNameAsc();
 }

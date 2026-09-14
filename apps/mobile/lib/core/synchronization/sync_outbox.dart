@@ -61,10 +61,8 @@ class SyncOutboxRepository {
     return row == null ? null : _toEntry(row);
   }
 
-  Future<void> markProcessing(String operationId) => _db.updateOutboxStatus(
-    operationId,
-    SyncOutboxStatus.processing.value,
-  );
+  Future<void> markProcessing(String operationId) =>
+      _db.updateOutboxStatus(operationId, SyncOutboxStatus.processing.value);
 
   Future<void> markCompleted(String operationId) => _db.updateOutboxStatus(
     operationId,

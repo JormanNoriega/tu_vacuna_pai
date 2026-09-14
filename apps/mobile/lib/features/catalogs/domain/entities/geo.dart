@@ -1,3 +1,18 @@
+/// Pais del catalogo geografico.
+class GeoCountry {
+  const GeoCountry({required this.id, required this.code, required this.name});
+
+  final String id;
+  final String code;
+  final String name;
+
+  factory GeoCountry.fromJson(Map<String, dynamic> json) => GeoCountry(
+    id: json['id'].toString(),
+    code: json['code'] as String,
+    name: json['name'] as String,
+  );
+}
+
 /// Departamento del catalogo geografico (DIVIPOLA).
 class GeoDepartment {
   const GeoDepartment({

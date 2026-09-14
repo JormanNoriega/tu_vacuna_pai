@@ -15,28 +15,31 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PatientMergeRequestService {
 
-    private final PatientMergeRequestRepository repository;
+  private final PatientMergeRequestRepository repository;
 
-    public PatientMergeRequestService(PatientMergeRequestRepository repository) {
-        this.repository = repository;
-    }
+  public PatientMergeRequestService(PatientMergeRequestRepository repository) {
+    this.repository = repository;
+  }
 
-    /**
-     * Abre una solicitud {@code PENDING_REVIEW} para el paciente existente.
-     * Es idempotente: si ya hay una pendiente para el mismo paciente no crea otra
-     * (un reintento de push no debe multiplicar la bandeja). Devuelve {@code null}
-     * si no hay paciente existente que referenciar.
-     */
-    @Transactional
-    public PatientMergeRequestEntity requestReview(UUID existingPatientId) {
-        if (existingPatientId == null) {
-            return null;
-        }
-        if (repository.existsByDuplicatePatientIdAndStatus(
-                existingPatientId, PatientMergeRequestEntity.Status.PENDING_REVIEW)) {
-            return null;
-        }
-        return repository.save(new PatientMergeRequestEntity(
-                UUID.randomUUID(), existingPatientId, PatientMergeRequestEntity.Status.PENDING_REVIEW, Instant.now()));
+  /**
+   * Abre una solicitud {@code PENDING_REVIEW} para el paciente existente.
+   * Es idempotente: si ya hay una pendiente para el mismo paciente no crea otra
+   * (un reintento de push no debe multiplicar la bandeja). Devuelve {@code null}
+   * si no hay paciente existente que referenciar.
+   */
+  @Transactional
+  public PatientMergeRequestEntity requestReview(UUID existingPatientId) {
+    if (existingPatientId == null) {
+      return null;
     }
+    if (repository.existsByDuplicatePatientIdAndStatus(
+        existingPatientId, PatientMergeRequestEntity.Status.PENDING_REVIEW)) {
+      return null;
+    }
+    return repository.save(new PatientMergeRequestEntity(
+        UUID.randomUUID(),
+        existingPatientId,
+        PatientMergeRequestEntity.Status.PENDING_REVIEW,
+        Instant.now()));
+  }
 }

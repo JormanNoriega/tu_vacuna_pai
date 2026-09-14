@@ -1,4 +1,6 @@
 import '../../../core/presentation/async_controller.dart';
+import '../../catalogs/domain/entities/catalog_entities.dart';
+import '../../catalogs/domain/use_cases/catalog_use_cases.dart';
 import '../../patients/domain/entities/patient.dart';
 import '../../patients/domain/use_cases/search_patient.dart';
 import '../domain/entities/attention.dart';
@@ -12,16 +14,35 @@ class HistoryController extends AsyncController {
     required super.sessionManager,
     required this.searchPatient,
     required this.listPatientAttentions,
+    required this.listReferenceCatalogs,
   });
 
   final SearchPatient searchPatient;
   final ListPatientAttentions listPatientAttentions;
+  final ListReferenceCatalogs listReferenceCatalogs;
 
   Patient? _patient;
   List<Attention> _history = const [];
+  List<ReferenceOption> _documentTypes = const [];
 
   Patient? get patient => _patient;
   List<Attention> get history => List.unmodifiable(_history);
+
+  /// Tipos de identificacion para el buscador (catalogo `document_type`).
+  List<ReferenceOption> get documentTypes => List.unmodifiable(_documentTypes);
+
+  /// Carga los tipos de identificacion (una sola vez).
+  Future<void> loadDocumentTypes() async {
+    if (_documentTypes.isNotEmpty) return;
+    await execute((token) async {
+      final catalogs = await listReferenceCatalogs(token);
+      for (final catalog in catalogs) {
+        if (catalog.code == 'document_type') {
+          _documentTypes = catalog.options;
+        }
+      }
+    });
+  }
 
   /// Busca al paciente por documento y carga sus atenciones.
   Future<void> loadHistory({
@@ -39,10 +60,22 @@ class HistoryController extends AsyncController {
         : await listPatientAttentions(token, patients.first.id);
   });
 
-  /// Limpia el resultado y el error (al cambiar de busqueda o de sesion).
+  /// Limpia solo el resultado de la busqueda (paciente e historial) sin tocar
+  /// el catalogo de tipos de documento. Se usa al entrar a la vista para no
+  /// arrastrar la busqueda anterior.
+  void resetResults() {
+    _patient = null;
+    _history = const [];
+    clearError();
+    notifyListeners();
+  }
+
+  /// Limpia todo el estado de la sesion (al cerrar sesion o cambiar de
+  /// usuario), incluido el catalogo de tipos de documento.
   void clearSession() {
     _patient = null;
     _history = const [];
+    _documentTypes = const [];
     clearError();
     notifyListeners();
   }
