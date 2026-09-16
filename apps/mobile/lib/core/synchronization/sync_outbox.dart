@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:drift/drift.dart' show Value;
+
 import '../storage/app_database.dart';
 import 'sync_operation.dart';
 import 'sync_status.dart';
@@ -36,6 +38,7 @@ class SyncOutboxRepository {
         aggregateId: operation.aggregateId,
         payload: _encodePayload(operation.payload),
         status: SyncOutboxStatus.pending.value,
+        summary: Value(operation.summary),
         createdAt: now,
         updatedAt: now,
       ),
@@ -119,6 +122,12 @@ class SyncOutboxRepository {
 
   Future<int> pendingCount() => _db.pendingOutboxCount();
 
+  /// Comprobantes aun por subir (PENDING/PROCESSING) para la bandeja.
+  Future<List<OutboxEntry>> pendingEntries() async {
+    final rows = await _db.openOutboxOperations();
+    return Future.wait(rows.map(_toEntry));
+  }
+
   Future<void> clear() => _db.clearOutbox();
 
   Future<OutboxEntry> _toEntry(SyncOutboxData row) async {
@@ -132,9 +141,14 @@ class SyncOutboxRepository {
         dependencies: dependencies
             .map((dependency) => dependency.dependsOnOperationId)
             .toList(),
+        summary: row.summary,
       ),
       status: SyncOutboxStatus.fromValue(row.status),
       retryCount: row.retryCount,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        row.createdAt * 1000,
+        isUtc: true,
+      ),
     );
   }
 

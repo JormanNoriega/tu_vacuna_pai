@@ -9,24 +9,24 @@ import java.util.List;
  */
 public final class Strings {
 
-    private Strings() {}
+  private Strings() {}
 
-    /** Devuelve {@code null} si el valor es nulo o solo espacios en blanco. */
-    public static String blankToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+  /** Devuelve {@code null} si el valor es nulo o solo espacios en blanco. */
+  public static String blankToNull(String value) {
+    if (value == null) {
+      return null;
     }
+    String trimmed = value.trim();
+    return trimmed.isEmpty() ? null : trimmed;
+  }
 
-    /** Alias de {@link #blankToNull(String)}: normaliza a {@code null} un texto en blanco. */
-    public static String trimToNull(String value) {
-        return blankToNull(value);
-    }
+  /** Alias de {@link #blankToNull(String)}: normaliza a {@code null} un texto en blanco. */
+  public static String trimToNull(String value) {
+    return blankToNull(value);
+  }
 
-    /** Devuelve una lista vacia inmutable si el argumento es {@code null}. */
-    public static <T> List<T> safe(List<T> list) {
-        return list == null ? List.of() : list;
-    }
+  /** Devuelve una lista vacia inmutable si el argumento es {@code null}. */
+  public static <T> List<T> safe(List<T> list) {
+    return list == null ? List.of() : list;
+  }
 }

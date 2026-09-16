@@ -42,7 +42,6 @@ public class IdentityService {
    * @throws UserNotActiveException si el usuario o su institucion no estan activos
    */
   @Transactional(readOnly = true)
-  @SuppressWarnings("null")
   public AuthorizedUser resolve(UUID userId) {
     UserEntity user = userRepository
         .findById(userId)

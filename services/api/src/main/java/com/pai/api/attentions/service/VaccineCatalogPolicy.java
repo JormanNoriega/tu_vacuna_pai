@@ -18,48 +18,48 @@ import java.util.UUID;
  */
 public interface VaccineCatalogPolicy {
 
-    /**
-     * Datos validados del catalogo necesarios para registrar una dosis
-     * (snapshot que quedara grabado en {@code AppliedDoseEntity}).
-     */
-    record DoseSelection(
-            UUID vaccineId,
-            String vaccineName,
-            String vaccineCode,
-            long catalogVersion,
-            UUID doseOptionId,
-            String doseLabel,
-            String doseValue,
-            UUID pneumococcalTypeOptionId,
-            String pneumococcalTypeSnapshot,
-            UUID laboratoryId,
-            String laboratorySnapshot,
-            UUID syringeId,
-            String syringeSnapshot,
-            UUID dropperId,
-            String dropperSnapshot,
-            UUID observationId,
-            String observationSnapshot) {}
+  /**
+   * Datos validados del catalogo necesarios para registrar una dosis
+   * (snapshot que quedara grabado en {@code AppliedDoseEntity}).
+   */
+  record DoseSelection(
+      UUID vaccineId,
+      String vaccineName,
+      String vaccineCode,
+      long catalogVersion,
+      UUID doseOptionId,
+      String doseLabel,
+      String doseValue,
+      UUID pneumococcalTypeOptionId,
+      String pneumococcalTypeSnapshot,
+      UUID laboratoryId,
+      String laboratorySnapshot,
+      UUID syringeId,
+      String syringeSnapshot,
+      UUID dropperId,
+      String dropperSnapshot,
+      UUID observationId,
+      String observationSnapshot) {}
 
-    /** Seleccion del clinico de los campos de la dosis, tal como llega de la UI. */
-    record ResolutionRequest(
-            UUID institutionId,
-            UUID vaccineId,
-            UUID doseOptionId,
-            UUID pneumococcalTypeOptionId,
-            UUID laboratoryId,
-            UUID syringeId,
-            UUID dropperId,
-            UUID observationId) {}
+  /** Seleccion del clinico de los campos de la dosis, tal como llega de la UI. */
+  record ResolutionRequest(
+      UUID institutionId,
+      UUID vaccineId,
+      UUID doseOptionId,
+      UUID pneumococcalTypeOptionId,
+      UUID laboratoryId,
+      UUID syringeId,
+      UUID dropperId,
+      UUID observationId) {}
 
-    /**
-     * Valida la seleccion (vacuna habilitada e institucional, opciones globales
-     * validas, opciones operativas institucionales) y devuelve el snapshot.
-     *
-     * <p>Lanza las mismas excepciones de dominio que antes se centralizaban en
-     * {@code AttentionService}: {@code IllegalArgumentException} para seleccion
-     * invalida y {@code InvalidClinicalStateException} para vacuna inactiva o no
-     * habilitada.
-     */
-    DoseSelection resolve(ResolutionRequest request);
+  /**
+   * Valida la seleccion (vacuna habilitada e institucional, opciones globales
+   * validas, opciones operativas institucionales) y devuelve el snapshot.
+   *
+   * <p>Lanza las mismas excepciones de dominio que antes se centralizaban en
+   * {@code AttentionService}: {@code IllegalArgumentException} para seleccion
+   * invalida y {@code InvalidClinicalStateException} para vacuna inactiva o no
+   * habilitada.
+   */
+  DoseSelection resolve(ResolutionRequest request);
 }

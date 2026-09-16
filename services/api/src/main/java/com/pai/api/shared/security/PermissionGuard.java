@@ -17,21 +17,21 @@ import org.springframework.stereotype.Service;
 @Service
 public class PermissionGuard {
 
-    private final IdentityService identity;
+  private final IdentityService identity;
 
-    public PermissionGuard(IdentityService identity) {
-        this.identity = identity;
-    }
+  public PermissionGuard(IdentityService identity) {
+    this.identity = identity;
+  }
 
-    /**
-     * Resuelve el actor y lanza {@link PermissionDeniedException} si no tiene
-     * el permiso {@code permission}.
-     */
-    public AuthorizedUser require(UUID actorId, String permission) {
-        AuthorizedUser actor = identity.resolve(actorId);
-        if (!actor.getPermissions().contains(permission)) {
-            throw new PermissionDeniedException("Permiso insuficiente: " + permission);
-        }
-        return actor;
+  /**
+   * Resuelve el actor y lanza {@link PermissionDeniedException} si no tiene
+   * el permiso {@code permission}.
+   */
+  public AuthorizedUser require(UUID actorId, String permission) {
+    AuthorizedUser actor = identity.resolve(actorId);
+    if (!actor.getPermissions().contains(permission)) {
+      throw new PermissionDeniedException("Permiso insuficiente: " + permission);
     }
+    return actor;
+  }
 }

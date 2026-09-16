@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/auth/offline_access.dart';
+import '../../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../auth/domain/entities/auth_user.dart';
 import '../catalog_controller.dart';
 import '../../domain/entities/catalog_entities.dart';
@@ -195,13 +196,10 @@ class _CatalogPageState extends State<CatalogPage> {
       widget.user.institution.id,
     );
     if (mounted && ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '"${vaccine.name}" habilitada en tu institucion. '
-            'Puedes configurar sus opciones.',
-          ),
-        ),
+      AppSnackbar.success(
+        context,
+        '"${vaccine.name}" habilitada en tu institucion. '
+        'Puedes configurar sus opciones.',
       );
       widget.controller.loadInstitution(widget.user.institution.id);
     }
@@ -468,12 +466,9 @@ class _CatalogPageState extends State<CatalogPage> {
       widget.offline,
     );
     if (mounted && ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            enabled ? 'Vacuna habilitada.' : 'Vacuna deshabilitada.',
-          ),
-        ),
+      AppSnackbar.success(
+        context,
+        enabled ? 'Vacuna habilitada.' : 'Vacuna deshabilitada.',
       );
     }
   }
@@ -604,10 +599,9 @@ class _CatalogPageState extends State<CatalogPage> {
       offline: widget.offline,
     );
     if (mounted && !ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(widget.controller.error ?? 'No se pudo agregar.'),
-        ),
+      AppSnackbar.error(
+        context,
+        widget.controller.error ?? 'No se pudo agregar.',
       );
     }
   }

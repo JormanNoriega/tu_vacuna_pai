@@ -88,4 +88,25 @@ void main() {
       expect(await outbox.pendingCount(), 0);
     },
   );
+
+  test('pendingEntries expone resumen, estado y fecha de encolado', () async {
+    await outbox.enqueue(
+      SyncOperation(
+        operationId: 'op1',
+        commandType: SyncCommandType.registerAppliedDose,
+        aggregateId: 'dose-1',
+        payload: const {'vaccineId': 'vac-1'},
+        summary: 'Vacuna aplicada - Influenza',
+      ),
+    );
+
+    final entries = await outbox.pendingEntries();
+
+    expect(entries, hasLength(1));
+    expect(entries.single.operation.summary, 'Vacuna aplicada - Influenza');
+    expect(entries.single.status, SyncOutboxStatus.pending);
+    expect(entries.single.createdAt, isNotNull);
+    // El resumen es metadata local: no viaja en el push.
+    expect(entries.single.operation.toJson().containsKey('summary'), isFalse);
+  });
 }

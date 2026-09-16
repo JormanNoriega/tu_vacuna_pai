@@ -260,6 +260,11 @@ class SyncOutbox extends Table {
   IntColumn get retryCount => integer().withDefault(const Constant(0))();
   IntColumn get nextRetryAt => integer().nullable()();
   TextColumn get lastError => text().nullable()();
+
+  /// Etiqueta legible del comprobante (p. ej. "Vacuna aplicada - Influenza").
+  /// Es metadata local para la bandeja de pendientes; no viaja en el push.
+  TextColumn get summary => text().nullable()();
+
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
 
@@ -342,7 +347,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -376,6 +381,10 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(appliedDosesLocal);
         await m.createTable(syncOutbox);
         await m.createTable(syncOutboxDependencies);
+      }
+      if (from < 6) {
+        // V6: etiqueta legible del comprobante en la bandeja de pendientes.
+        await m.addColumn(syncOutbox, syncOutbox.summary);
       }
     },
   );
@@ -763,6 +772,16 @@ class AppDatabase extends _$AppDatabase {
             ..orderBy([(t) => OrderingTerm.asc(t.id)]))
           .get();
 
+  /// Operaciones abiertas (PENDING/PROCESSING) para la bandeja de pendientes,
+  /// sin filtrar por backoff: se muestran todas las que faltan por subir.
+  Future<List<SyncOutboxData>> openOutboxOperations() =>
+      (select(syncOutbox)
+            ..where(
+              (t) => t.status.isIn(['PENDING', 'PROCESSING']),
+            )
+            ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+          .get();
+
   Future<SyncOutboxData?> outboxByOperationId(String operationId) => (select(
     syncOutbox,
   )..where((t) => t.operationId.equals(operationId))).getSingleOrNull();
@@ -837,5 +856,38 @@ class AppDatabase extends _$AppDatabase {
   Future<void> clearOutbox() async {
     await delete(syncOutboxDependencies).go();
     await delete(syncOutbox).go();
+  }
+
+  // ---------- Metricas locales (respaldo offline del home) ----------
+
+  /// Pacientes distintos con al menos una atencion no anulada en la institucion.
+  Future<int> countDistinctPatientsLocal(String institutionId) async {
+    final count = attentionsLocal.patientId.count(distinct: true);
+    final query = selectOnly(attentionsLocal)
+      ..addColumns([count])
+      ..where(
+        attentionsLocal.institutionId.equals(institutionId) &
+            attentionsLocal.status.equals('CANCELLED').not(),
+      );
+    final row = await query.getSingle();
+    return row.read(count) ?? 0;
+  }
+
+  /// Dosis no anuladas de la institucion (via la atencion a la que pertenecen).
+  Future<int> countAppliedDosesLocal(String institutionId) async {
+    final count = appliedDosesLocal.id.count();
+    final query = selectOnly(appliedDosesLocal).join([
+      innerJoin(
+        attentionsLocal,
+        attentionsLocal.id.equalsExp(appliedDosesLocal.attentionId),
+      ),
+    ])
+      ..addColumns([count])
+      ..where(
+        attentionsLocal.institutionId.equals(institutionId) &
+            appliedDosesLocal.status.equals('CANCELLED').not(),
+      );
+    final row = await query.getSingle();
+    return row.read(count) ?? 0;
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../app/widgets/clinical_components.dart';
 import '../../../../core/auth/offline_access.dart';
+import '../../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../../core/utils/document_input.dart';
 import '../../../../core/utils/field_input.dart';
 import '../../../attentions/presentation/attention_controller.dart';
@@ -512,9 +513,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
   Future<void> _save() async {
     if (_birth == null) {
       setState(() => _step = 0);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona la fecha de nacimiento.')),
-      );
+      AppSnackbar.warning(context, 'Selecciona la fecha de nacimiento.');
       return;
     }
     setState(() => _saving = true);

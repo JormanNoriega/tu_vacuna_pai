@@ -11,33 +11,35 @@ import java.util.Set;
  */
 public final class CatalogRules {
 
-    private static final Set<String> GLOBAL_TYPES = Set.of("dose", "pneumococcalType");
-    private static final Set<String> TEMPLATE_TYPES = Set.of("laboratory", "syringe", "dropper", "observation");
-    private static final Set<String> LOCAL_TYPES = Set.of("laboratory", "syringe", "dropper", "observation");
+  private static final Set<String> GLOBAL_TYPES = Set.of("dose", "pneumococcalType");
+  private static final Set<String> TEMPLATE_TYPES =
+      Set.of("laboratory", "syringe", "dropper", "observation");
+  private static final Set<String> LOCAL_TYPES =
+      Set.of("laboratory", "syringe", "dropper", "observation");
 
-    private CatalogRules() {}
+  private CatalogRules() {}
 
-    public static void requireValue(String value) {
-        if (value == null || value.trim().isEmpty()) {
-            throw new IllegalArgumentException("El valor no puede estar vacio.");
-        }
+  public static void requireValue(String value) {
+    if (value == null || value.trim().isEmpty()) {
+      throw new IllegalArgumentException("El valor no puede estar vacio.");
     }
+  }
 
-    public static void requireGlobalOptionType(String type) {
-        if (!GLOBAL_TYPES.contains(type)) {
-            throw new IllegalArgumentException("Tipo de opcion global invalido.");
-        }
+  public static void requireGlobalOptionType(String type) {
+    if (!GLOBAL_TYPES.contains(type)) {
+      throw new IllegalArgumentException("Tipo de opcion global invalido.");
     }
+  }
 
-    public static void requireTemplateType(String type) {
-        if (!TEMPLATE_TYPES.contains(type)) {
-            throw new IllegalArgumentException("Tipo de template invalido.");
-        }
+  public static void requireTemplateType(String type) {
+    if (!TEMPLATE_TYPES.contains(type)) {
+      throw new IllegalArgumentException("Tipo de template invalido.");
     }
+  }
 
-    public static void requireLocalOptionType(String type) {
-        if (!LOCAL_TYPES.contains(type)) {
-            throw new IllegalArgumentException("Tipo de opcion local invalido.");
-        }
+  public static void requireLocalOptionType(String type) {
+    if (!LOCAL_TYPES.contains(type)) {
+      throw new IllegalArgumentException("Tipo de opcion local invalido.");
     }
+  }
 }

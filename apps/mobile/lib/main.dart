@@ -40,6 +40,9 @@ import 'features/attentions/data/attentions_repository_impl.dart';
 import 'features/attentions/domain/use_cases/attentions_use_cases.dart';
 import 'features/attentions/presentation/attention_controller.dart';
 import 'features/attentions/presentation/history_controller.dart';
+import 'features/dashboard/data/metrics_repository_impl.dart';
+import 'features/dashboard/domain/use_cases/get_metrics_summary.dart';
+import 'features/dashboard/presentation/metrics_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -150,6 +153,16 @@ Future<void> main() async {
     listMunicipalities: ListMunicipalities(catalogRepository),
     listPatientAttentions: ListPatientAttentions(attentionsRepository),
   );
+  final metricsController = MetricsController(
+    sessionManager: sessionManager,
+    getSummary: GetMetricsSummary(
+      MetricsRepositoryImpl(
+        api: apiClient,
+        database: appDatabase,
+        outbox: syncOutbox,
+      ),
+    ),
+  );
 
   runApp(
     TuVacunaApp(
@@ -163,6 +176,7 @@ Future<void> main() async {
       networkInfo: networkInfo,
       syncStatusController: syncStatusController,
       clinicalOfflineRepository: clinicalOfflineRepository,
+      metricsController: metricsController,
     ),
   );
 

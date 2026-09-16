@@ -9,24 +9,25 @@ import org.junit.jupiter.api.Test;
 
 class IdentityRulesTest {
 
-    @Test
-    void parseUserStatus_normalizesCaseAndSpaces() {
-        assertThat(IdentityRules.parseUserStatus(" inactive ")).isEqualTo(UserEntity.Status.INACTIVE);
-        assertThat(IdentityRules.parseUserStatus("ACTIVE")).isEqualTo(UserEntity.Status.ACTIVE);
-    }
+  @Test
+  void parseUserStatus_normalizesCaseAndSpaces() {
+    assertThat(IdentityRules.parseUserStatus(" inactive ")).isEqualTo(UserEntity.Status.INACTIVE);
+    assertThat(IdentityRules.parseUserStatus("ACTIVE")).isEqualTo(UserEntity.Status.ACTIVE);
+  }
 
-    @Test
-    void parseUserStatus_rejectsUnknownStatus() {
-        assertThatThrownBy(() -> IdentityRules.parseUserStatus("SUSPENDED"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Estado invalido. Usa ACTIVE o INACTIVE.");
-    }
+  @Test
+  void parseUserStatus_rejectsUnknownStatus() {
+    assertThatThrownBy(() -> IdentityRules.parseUserStatus("SUSPENDED"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Estado invalido. Usa ACTIVE o INACTIVE.");
+  }
 
-    @Test
-    void parseInstitutionStatus_normalizesAndRejectsUnknown() {
-        assertThat(IdentityRules.parseInstitutionStatus(" inactive ")).isEqualTo(InstitutionEntity.Status.INACTIVE);
-        assertThatThrownBy(() -> IdentityRules.parseInstitutionStatus("X"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Estado invalido. Usa ACTIVE o INACTIVE.");
-    }
+  @Test
+  void parseInstitutionStatus_normalizesAndRejectsUnknown() {
+    assertThat(IdentityRules.parseInstitutionStatus(" inactive "))
+        .isEqualTo(InstitutionEntity.Status.INACTIVE);
+    assertThatThrownBy(() -> IdentityRules.parseInstitutionStatus("X"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Estado invalido. Usa ACTIVE o INACTIVE.");
+  }
 }
