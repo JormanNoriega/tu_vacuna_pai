@@ -162,7 +162,6 @@ public class UserProvisioningService {
   /**
    * Flujo completo de aprovisionamiento para un actor ya autorizado.
    */
-  @SuppressWarnings("null")
   private UserResponse provision(
       AuthorizedUser actor,
       String accessToken,

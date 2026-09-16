@@ -3,6 +3,7 @@ package com.pai.api.catalog.repository;
 import com.pai.api.catalog.entity.HealthInsurerEntity;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -11,4 +12,6 @@ public interface HealthInsurerRepository extends JpaRepository<HealthInsurerEnti
   List<HealthInsurerEntity> findByActiveTrueOrderByNameAsc();
 
   List<HealthInsurerEntity> findByActiveTrueAndRegimeInOrderByNameAsc(Collection<String> regimes);
+
+  Optional<HealthInsurerEntity> findByNit(String nit);
 }

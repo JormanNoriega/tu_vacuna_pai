@@ -35,7 +35,6 @@ public class IdentityMapper {
    * cambio en memoria sin persistirse aun (o via actualizacion scopeada),
    * para que la respuesta refleje el estado recien aplicado.
    */
-  @SuppressWarnings("null")
   public UserResponse toUserResponse(UserEntity user, String status) {
     return new UserResponse(
         user.getId(),

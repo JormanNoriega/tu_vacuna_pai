@@ -112,7 +112,6 @@ public class UserService {
    * <p>Regla de defensa: no se puede desactivar la propia cuenta.
    */
   @Transactional
-  @SuppressWarnings("null")
   public UserResponse updateStatus(UUID actorId, UUID userId, String status) {
     AuthorizedUser actor = identityService.resolve(actorId);
     InstitutionScope scope = dataScope.currentScope(actor);
@@ -178,7 +177,6 @@ public class UserService {
    * restringidos un recurso de otra institucion se materializa como "no
    * existe" en la propia query.
    */
-  @SuppressWarnings("null")
   private UserEntity requireScopedManagedUser(UUID userId, InstitutionScope scope) {
     UserEntity user = userRepository
         .findByIdAndInstitutionId(userId, scope.institutionId())

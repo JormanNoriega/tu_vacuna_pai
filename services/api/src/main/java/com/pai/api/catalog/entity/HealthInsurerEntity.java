@@ -40,6 +40,56 @@ public class HealthInsurerEntity {
 
   protected HealthInsurerEntity() {}
 
+  public HealthInsurerEntity(
+      UUID id,
+      String nit,
+      String name,
+      String code,
+      String mobilityCode,
+      String regime,
+      boolean active,
+      Instant createdAt,
+      Instant updatedAt) {
+    this.id = id;
+    this.nit = nit;
+    this.name = name;
+    this.code = code;
+    this.mobilityCode = mobilityCode;
+    this.regime = regime;
+    this.active = active;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
+  }
+
+  /**
+   * Aplica los datos del seed idempotente. No reactiva la fila ({@code active}
+   * se conserva) y devuelve {@code true} solo si algun campo cambio.
+   */
+  public boolean applySeed(
+      String name, String code, String mobilityCode, String regime, Instant now) {
+    boolean changed = false;
+    if (name != null && !name.equals(this.name)) {
+      this.name = name;
+      changed = true;
+    }
+    if (code != null && !code.equals(this.code)) {
+      this.code = code;
+      changed = true;
+    }
+    if (mobilityCode != null && !mobilityCode.equals(this.mobilityCode)) {
+      this.mobilityCode = mobilityCode;
+      changed = true;
+    }
+    if (regime != null && !regime.equals(this.regime)) {
+      this.regime = regime;
+      changed = true;
+    }
+    if (changed) {
+      this.updatedAt = now;
+    }
+    return changed;
+  }
+
   public UUID getId() {
     return id;
   }
