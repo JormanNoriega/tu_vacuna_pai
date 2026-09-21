@@ -9,10 +9,12 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Alta de un paciente. El documento y el nombre son obligatorios; el resto del
- * perfil (identidad ampliada, demografia, contactos, direcciones, tutores,
- * antecedentes, afiliacion y condiciones) es opcional. El documento viaja crudo:
- * el backend lo normaliza y valida antes de persistir.
+ * Alta de un paciente. Obligatorios: tipo/numero de documento, primer
+ * nombre/apellido, fecha de nacimiento y sexo. Ademas, cuando el bloque viaja,
+ * se exige: afiliacion (regimen + aseguradora), las 5 condiciones especiales
+ * (Si/No) y los antecedentes con su respuesta de contraindicacion/reaccion. El
+ * tutor es obligatorio para menores de 18 (regla en {@code PatientService}). El
+ * documento viaja crudo: el backend lo normaliza y valida antes de persistir.
  */
 public record CreatePatientRequest(
     @NotBlank(message = "El tipo de documento es obligatorio.")
@@ -134,13 +136,13 @@ public record CreatePatientRequest(
       @Size(max = 20, message = "El documento no puede superar 20 caracteres.")
       String documentNumber,
 
-      @Size(max = 20, message = "El telefono no puede superar 20 caracteres.")
+      @Size(max = 10, message = "El telefono no puede superar 10 caracteres.")
       String phone,
 
-      @Size(max = 20, message = "El telefono fijo no puede superar 20 caracteres.")
+      @Size(max = 10, message = "El telefono fijo no puede superar 10 caracteres.")
       String landline,
 
-      @Size(max = 20, message = "El celular no puede superar 20 caracteres.")
+      @Size(max = 10, message = "El celular no puede superar 10 caracteres.")
       String cellphone,
 
       @Size(max = 120, message = "El correo no puede superar 120 caracteres.")
@@ -170,11 +172,13 @@ public record CreatePatientRequest(
       @Size(max = 500, message = "Las notas no pueden superar 500 caracteres.")
       String notes,
 
+      @NotNull(message = "Debe indicar si existe contraindicacion.")
       Boolean hasContraindication,
 
       @Size(max = 120, message = "La contraindicacion no puede superar 120 caracteres.")
       String contraindicationDetails,
 
+      @NotNull(message = "Debe indicar si hubo reaccion previa.")
       Boolean hasPreviousReaction,
 
       @Size(max = 120, message = "La reaccion no puede superar 120 caracteres.")
@@ -187,9 +191,11 @@ public record CreatePatientRequest(
       String specialObservations) {}
 
   public record AffiliationDto(
+      @NotBlank(message = "El regimen de afiliacion es obligatorio.")
       @Size(max = 40, message = "El regimen no puede superar 40 caracteres.")
       String affiliationRegime,
 
+      @NotBlank(message = "La aseguradora es obligatoria.")
       @Size(max = 120, message = "La aseguradora no puede superar 120 caracteres.")
       String insurer,
 
@@ -197,10 +203,19 @@ public record CreatePatientRequest(
       String insurerCode) {}
 
   public record SpecialConditionsDto(
+      @NotNull(message = "El campo desplazado es obligatorio.")
       Boolean displaced,
+
+      @NotNull(message = "El campo discapacitado es obligatorio.")
       Boolean disabled,
+
+      @NotNull(message = "El campo fallecido es obligatorio.")
       Boolean deceased,
+
+      @NotNull(message = "El campo victima del conflicto es obligatorio.")
       Boolean armedConflictVictim,
+
+      @NotNull(message = "El campo estudia actualmente es obligatorio.")
       Boolean currentlyStudying) {}
 
   public record UserConditionDto(

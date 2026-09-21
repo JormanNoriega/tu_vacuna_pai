@@ -33,9 +33,7 @@ void main() {
 
   tearDown(AppSnackbar.dismiss);
 
-  testWidgets('muestra el mensaje arriba y se oculta a los 3s', (
-    tester,
-  ) async {
+  testWidgets('muestra el mensaje arriba y se oculta a los 3s', (tester) async {
     await pumpApp(tester);
     AppSnackbar.success(ctx, 'Paciente listo.');
     await settleIn(tester);

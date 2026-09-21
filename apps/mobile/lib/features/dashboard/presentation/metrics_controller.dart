@@ -8,10 +8,7 @@ import '../domain/use_cases/get_metrics_summary.dart';
 /// resumen local (cache del servidor + pendientes). No bloquea la UI: ante
 /// error conserva el ultimo valor.
 class MetricsController extends AsyncController {
-  MetricsController({
-    required super.sessionManager,
-    required this.getSummary,
-  });
+  MetricsController({required super.sessionManager, required this.getSummary});
 
   final GetMetricsSummary getSummary;
 

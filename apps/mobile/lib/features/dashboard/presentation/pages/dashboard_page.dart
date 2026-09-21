@@ -439,11 +439,8 @@ class _SyncStatusBadge extends StatelessWidget {
         final active = syncing || pending > 0;
         return IconButton(
           tooltip: _tooltip(pending, syncing),
-          onPressed: () => showSyncPendingSheet(
-            context,
-            controller,
-            isOffline: isOffline,
-          ),
+          onPressed: () =>
+              showSyncPendingSheet(context, controller, isOffline: isOffline),
           icon: Badge(
             isLabelVisible: pending > 0,
             label: Text('$pending'),
@@ -1087,7 +1084,8 @@ class _DashboardContentState extends State<_DashboardContent> {
                               .toString() ??
                           '0',
                       pendingSync:
-                          widget.syncStatusController?.pendingCount.toString() ??
+                          widget.syncStatusController?.pendingCount
+                              .toString() ??
                           '0',
                     ),
                   ),

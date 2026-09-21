@@ -27,10 +27,11 @@ void main() {
     expect(result.length, FieldLimits.name);
   });
 
-  test('phoneFormatters permite solo digitos y simbolos y limita', () {
+  test('phoneFormatters deja solo digitos y limita a 10', () {
     final input = '300abc123+45(x)${'9' * 30}';
     final result = applyFormatters(phoneFormatters(), input);
-    expect(result.contains(RegExp(r'[a-zA-Z]')), isFalse);
+    expect(RegExp(r'[^0-9]').hasMatch(result), isFalse);
     expect(result.length <= FieldLimits.phone, isTrue);
+    expect(FieldLimits.phone, 10);
   });
 }

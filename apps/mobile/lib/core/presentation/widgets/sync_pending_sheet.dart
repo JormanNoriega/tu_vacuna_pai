@@ -21,7 +21,8 @@ Future<void> showSyncPendingSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (_) => _SyncPendingSheet(controller: controller, isOffline: isOffline),
+    builder: (_) =>
+        _SyncPendingSheet(controller: controller, isOffline: isOffline),
   );
 }
 
@@ -84,7 +85,12 @@ class _SyncPendingSheetState extends State<_SyncPendingSheet> {
         maxHeight: MediaQuery.sizeOf(context).height * 0.8,
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          12,
+          20,
+          16 + MediaQuery.viewPaddingOf(context).bottom,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
