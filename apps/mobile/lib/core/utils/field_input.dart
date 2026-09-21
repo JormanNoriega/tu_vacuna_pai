@@ -5,7 +5,7 @@ abstract final class FieldLimits {
   static const name = 120;
   static const ethnicity = 80;
   static const educationLevel = 120;
-  static const phone = 20;
+  static const phone = 10;
   static const email = 120;
   static const street = 200;
   static const historyCondition = 200;
@@ -19,8 +19,9 @@ List<TextInputFormatter> maxLengthFormatters(int max) => [
   LengthLimitingTextInputFormatter(max),
 ];
 
-/// Teclado + restriccion para telefonos (digitos y simbolos de marcado).
+/// Teclado + restriccion para telefonos: solo digitos, maximo [max]
+/// (Colombia: indicativo + numero, hasta 10 digitos).
 List<TextInputFormatter> phoneFormatters({int max = FieldLimits.phone}) => [
-  FilteringTextInputFormatter.allow(RegExp(r'[0-9+()\-\s]')),
+  FilteringTextInputFormatter.digitsOnly,
   LengthLimitingTextInputFormatter(max),
 ];

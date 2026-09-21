@@ -35,6 +35,7 @@ import com.pai.api.shared.application.IdempotencyCoordinator;
 import com.pai.api.shared.util.DocumentNormalizer;
 import com.pai.api.shared.util.Strings;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -142,6 +143,7 @@ public class PatientService {
           String documentType = DocumentNormalizer.normalizeType(request.documentType());
           String documentNumber = DocumentNormalizer.normalize(request.documentNumber());
           validateDocument(documentType, documentNumber);
+          validateGuardianForMinor(request);
           PatientEntity.Sex sex = parseSex(request.sex());
 
           if (patients.existsByInstitutionIdAndDocumentTypeAndDocumentNumber(
@@ -361,6 +363,53 @@ public class PatientService {
     }
   }
 
+  /**
+   * Un menor de 18 anios exige un tutor (madre o cuidador) con los campos base
+   * del formato PAI; si el parentesco es {@code MOTHER}, exige ademas regimen,
+   * etnia y desplazado. Regla de negocio (no expresable con Bean Validation).
+   */
+  private void validateGuardianForMinor(CreatePatientRequest request) {
+    LocalDate birthDate = request.birthDate();
+    if (birthDate == null) {
+      return; // Bean Validation ya exige la fecha de nacimiento.
+    }
+    boolean isMinor = birthDate.isAfter(LocalDate.now().minusYears(18));
+    if (!isMinor) {
+      return;
+    }
+    boolean hasValidGuardian = Strings.safe(request.guardians()).stream().anyMatch(guardian -> {
+      if (Strings.blankToNull(guardian.fullName()) == null
+          || Strings.blankToNull(guardian.documentNumber()) == null) {
+        return false;
+      }
+      if ("MOTHER".equalsIgnoreCase(Strings.blankToNull(guardian.relationship()))) {
+        return Strings.blankToNull(guardian.affiliationRegime()) != null
+            && Strings.blankToNull(guardian.ethnicity()) != null
+            && guardian.displaced() != null;
+      }
+      return true;
+    });
+    if (!hasValidGuardian) {
+      throw new IllegalArgumentException(
+          "El tutor (madre o cuidador) es obligatorio para menores de edad, con nombre y"
+              + " documento.");
+    }
+  }
+
+  /** Maximo de digitos de un telefono (indicativo + numero, Colombia). */
+  private static final int MAX_PHONE_DIGITS = 10;
+
+  /** Los contactos de tipo telefono no pueden superar 10 digitos. */
+  private void validatePhone(String type, String value) {
+    if (type == null || value == null || !"PHONE".equalsIgnoreCase(type.trim())) {
+      return;
+    }
+    String digits = value.replaceAll("\\D", "");
+    if (digits.length() > MAX_PHONE_DIGITS) {
+      throw new IllegalArgumentException("El telefono no puede superar 10 digitos.");
+    }
+  }
+
   private PatientEntity.Sex parseSex(String raw) {
     try {
       return PatientEntity.Sex.valueOf(raw.trim().toUpperCase());
@@ -452,6 +501,7 @@ public class PatientService {
   private void saveContacts(
       UUID patientId, List<CreatePatientRequest.ContactDto> list, Instant now) {
     for (CreatePatientRequest.ContactDto dto : Strings.safe(list)) {
+      validatePhone(dto.type(), dto.value());
       contacts.save(new PatientContactEntity(
           UUID.randomUUID(),
           patientId,
@@ -527,6 +577,7 @@ public class PatientService {
   private void saveContactUpdates(
       UUID patientId, List<UpdatePatientContactRequest.ContactDto> list, Instant now) {
     for (UpdatePatientContactRequest.ContactDto dto : Strings.safe(list)) {
+      validatePhone(dto.type(), dto.value());
       contacts.save(new PatientContactEntity(
           UUID.randomUUID(),
           patientId,

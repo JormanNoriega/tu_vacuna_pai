@@ -776,9 +776,7 @@ class AppDatabase extends _$AppDatabase {
   /// sin filtrar por backoff: se muestran todas las que faltan por subir.
   Future<List<SyncOutboxData>> openOutboxOperations() =>
       (select(syncOutbox)
-            ..where(
-              (t) => t.status.isIn(['PENDING', 'PROCESSING']),
-            )
+            ..where((t) => t.status.isIn(['PENDING', 'PROCESSING']))
             ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
           .get();
 
@@ -876,17 +874,18 @@ class AppDatabase extends _$AppDatabase {
   /// Dosis no anuladas de la institucion (via la atencion a la que pertenecen).
   Future<int> countAppliedDosesLocal(String institutionId) async {
     final count = appliedDosesLocal.id.count();
-    final query = selectOnly(appliedDosesLocal).join([
-      innerJoin(
-        attentionsLocal,
-        attentionsLocal.id.equalsExp(appliedDosesLocal.attentionId),
-      ),
-    ])
-      ..addColumns([count])
-      ..where(
-        attentionsLocal.institutionId.equals(institutionId) &
-            appliedDosesLocal.status.equals('CANCELLED').not(),
-      );
+    final query =
+        selectOnly(appliedDosesLocal).join([
+            innerJoin(
+              attentionsLocal,
+              attentionsLocal.id.equalsExp(appliedDosesLocal.attentionId),
+            ),
+          ])
+          ..addColumns([count])
+          ..where(
+            attentionsLocal.institutionId.equals(institutionId) &
+                appliedDosesLocal.status.equals('CANCELLED').not(),
+          );
     final row = await query.getSingle();
     return row.read(count) ?? 0;
   }

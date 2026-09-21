@@ -121,6 +121,10 @@ class PatientServiceTest {
   }
 
   private CreatePatientRequest request(String documentNumber) {
+    return request(documentNumber, LocalDate.of(1990, 5, 1));
+  }
+
+  private CreatePatientRequest request(String documentNumber, LocalDate birthDate) {
     return new CreatePatientRequest(
         "CC",
         documentNumber,
@@ -128,7 +132,7 @@ class PatientServiceTest {
         null,
         "Perez",
         null,
-        LocalDate.of(2020, 5, 1),
+        birthDate,
         "MALE",
         null,
         null,
@@ -228,6 +232,20 @@ class PatientServiceTest {
 
     assertThatThrownBy(() -> service.create(ACTOR_ID, OPERATION_ID, request("12")))
         .isInstanceOf(IllegalArgumentException.class);
+    verify(patients, never()).save(any());
+  }
+
+  @Test
+  void create_requiresGuardianForMinor() {
+    when(processedOperations.find(OPERATION_ID, PatientResponse.class))
+        .thenReturn(Optional.empty());
+    when(identity.resolve(ACTOR_ID)).thenReturn(vaccinatorActor());
+
+    CreatePatientRequest minor = request("12345678", LocalDate.now().minusYears(5));
+
+    assertThatThrownBy(() -> service.create(ACTOR_ID, OPERATION_ID, minor))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("tutor");
     verify(patients, never()).save(any());
   }
 

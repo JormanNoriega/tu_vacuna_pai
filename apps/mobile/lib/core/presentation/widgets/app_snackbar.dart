@@ -120,10 +120,7 @@ class _AppSnackbarState extends State<_AppSnackbar>
   );
 
   late final Animation<Offset> _slide =
-      Tween<Offset>(
-        begin: const Offset(0, -1.2),
-        end: Offset.zero,
-      ).animate(
+      Tween<Offset>(begin: const Offset(0, -1.2), end: Offset.zero).animate(
         CurvedAnimation(
           parent: _controller,
           curve: Curves.easeOutCubic,

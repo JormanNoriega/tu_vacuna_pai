@@ -138,6 +138,17 @@ void main() {
 
     expect(find.byType(PatientWizardPage), findsNothing);
   });
+
+  testWidgets('el paso 1 exige tipo de documento, sexo y fecha de nacimiento', (
+    tester,
+  ) async {
+    await openWizard(tester);
+
+    await tester.tap(find.text('Siguiente'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Selecciona el tipo de documento.'), findsOneWidget);
+  });
 }
 
 class _FakePatientsRepository extends _UnusedPatientsRepository {
