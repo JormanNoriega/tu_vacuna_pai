@@ -5,12 +5,14 @@ import '../core/synchronization/clinical_offline_repository.dart';
 import '../core/synchronization/sync_status_controller.dart';
 import '../features/admin/presentation/admin_controller.dart';
 import '../features/auth/data/in_memory_auth_repository.dart';
+import '../features/auth/domain/entities/session_restore_result.dart';
 import '../features/auth/domain/repositories/auth_repository.dart';
 import '../features/auth/domain/use_cases/restore_session.dart';
 import '../features/auth/domain/use_cases/sign_in.dart';
 import '../features/auth/domain/use_cases/sign_out.dart';
 import '../features/auth/presentation/auth_controller.dart';
 import '../features/auth/presentation/pages/login_page.dart';
+import '../features/catalogs/application/catalog_warmup.dart';
 import '../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../features/users/presentation/users_controller.dart';
 import '../features/catalogs/presentation/catalog_controller.dart';
@@ -27,6 +29,7 @@ class TuVacunaApp extends StatefulWidget {
     this.adminController,
     this.usersController,
     this.catalogController,
+    this.catalogWarmup,
     this.attentionController,
     this.historyController,
     this.patientDetailController,
@@ -49,6 +52,10 @@ class TuVacunaApp extends StatefulWidget {
   /// Se inyecta desde [main]; es null en tests y demos.
   final UsersController? usersController;
   final CatalogController? catalogController;
+
+  /// Precarga de catalogos al iniciar sesion online (para el flujo offline).
+  /// Se inyecta desde [main]; null en tests y demos.
+  final CatalogWarmup? catalogWarmup;
 
   /// Controlador del flujo clinico (nueva atencion e historial).
   final AttentionController? attentionController;
@@ -94,16 +101,31 @@ class _TuVacunaAppState extends State<TuVacunaApp> {
   /// otra cuenta), evitando que se arrastren datos de la cuenta anterior.
   String? _sessionUserId;
 
+  /// Usuario para el que ya se disparo la precarga de catalogos, para no
+  /// repetirla en cada notificacion de auth.
+  String? _warmedUpUserId;
+
   void _handleAuthChanged() {
     final userId = _authController.user?.id;
     if (userId != _sessionUserId) {
       _sessionUserId = userId;
       _resetSessionState();
     }
+    _warmupCatalogsIfSignedIn(userId);
     setState(() {});
   }
 
+  /// Precarga los catalogos (geo, referencia, EPS, catalogo efectivo) una vez
+  /// por usuario y solo con sesion validada online.
+  void _warmupCatalogsIfSignedIn(String? userId) {
+    if (userId == null || userId == _warmedUpUserId) return;
+    if (_authController.status != SessionStatus.signedIn) return;
+    _warmedUpUserId = userId;
+    widget.catalogWarmup?.run();
+  }
+
   void _resetSessionState() {
+    _warmedUpUserId = null;
     widget.adminController?.clearSession();
     widget.usersController?.clearSession();
     widget.catalogController?.clearSession();

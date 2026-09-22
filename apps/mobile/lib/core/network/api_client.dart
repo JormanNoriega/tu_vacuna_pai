@@ -825,6 +825,18 @@ class ApiClient {
     );
   }
 
+  /// Catalogo geografico completo (departamentos con sus municipios).
+  Future<List<Map<String, dynamic>>> getFullGeo(String token) async =>
+      _decodeList(
+        await _send(
+          _http.get(
+            Uri.parse('$baseUrl/catalogs/geo/full'),
+            headers: _jsonHeaders(token),
+          ),
+        ),
+        fallback: 'Error al consultar el catalogo geografico.',
+      );
+
   // ---------- Catalogos de referencia ----------
 
   Future<List<Map<String, dynamic>>> getReferenceCatalogs(String token) async =>

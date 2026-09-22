@@ -29,7 +29,7 @@ public class PermissionGuard {
    */
   public AuthorizedUser require(UUID actorId, String permission) {
     AuthorizedUser actor = identity.resolve(actorId);
-    if (!actor.getPermissions().contains(permission)) {
+    if (!actor.hasPermission(permission)) {
       throw new PermissionDeniedException("Permiso insuficiente: " + permission);
     }
     return actor;

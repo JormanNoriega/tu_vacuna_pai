@@ -1,13 +1,12 @@
 package com.pai.api.synchronization.controller;
 
-import com.pai.api.identity.service.AuthorizedUser;
+import com.pai.api.shared.security.ActorResolver;
 import com.pai.api.synchronization.dto.SyncPullResponse;
 import com.pai.api.synchronization.dto.SyncPushRequest;
 import com.pai.api.synchronization.dto.SyncPushResponse;
 import com.pai.api.synchronization.service.SyncPullService;
 import com.pai.api.synchronization.service.SyncPushService;
 import jakarta.validation.Valid;
-import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,7 +41,7 @@ public class SyncController {
   @PostMapping("/push")
   public ResponseEntity<SyncPushResponse> push(
       Authentication authentication, @Valid @RequestBody SyncPushRequest request) {
-    return ResponseEntity.ok(pushService.push(actorId(authentication), request));
+    return ResponseEntity.ok(pushService.push(ActorResolver.actorId(authentication), request));
   }
 
   @GetMapping("/pull")
@@ -50,10 +49,6 @@ public class SyncController {
       Authentication authentication,
       @RequestParam(value = "since", required = false) String since,
       @RequestParam(value = "limit", required = false) Integer limit) {
-    return ResponseEntity.ok(pullService.pull(actorId(authentication), since, limit));
-  }
-
-  private UUID actorId(Authentication authentication) {
-    return ((AuthorizedUser) authentication.getPrincipal()).getId();
+    return ResponseEntity.ok(pullService.pull(ActorResolver.actorId(authentication), since, limit));
   }
 }

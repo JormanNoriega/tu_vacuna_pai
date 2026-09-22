@@ -13,6 +13,10 @@ import java.util.UUID;
 /**
  * Registro de una operacion de aprovisionamiento de identidad. Ver
  * {@link ProvisioningOperationStatus} para la maquina de estados.
+ *
+ * <p>La entidad controla sus propias transiciones ({@link #applyTransition} y
+ * {@link #resetForRetry}) en lugar de exponer setters: el estado solo cambia a
+ * traves de metodos con significado de dominio.
  */
 @Entity
 @Table(name = "provisioning_operations", schema = "app")
@@ -92,42 +96,6 @@ public class ProvisioningOperationEntity {
       short attempts,
       String error,
       Instant createdAt,
-      Instant updatedAt) {
-    this(
-        operationId,
-        authUserId,
-        email,
-        fullName,
-        institutionId,
-        role,
-        actorId,
-        status,
-        attempts,
-        error,
-        createdAt,
-        updatedAt,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null);
-  }
-
-  public ProvisioningOperationEntity(
-      UUID operationId,
-      UUID authUserId,
-      String email,
-      String fullName,
-      UUID institutionId,
-      String role,
-      UUID actorId,
-      ProvisioningOperationStatus status,
-      short attempts,
-      String error,
-      Instant createdAt,
       Instant updatedAt,
       String documentType,
       String documentNumber,
@@ -157,6 +125,35 @@ public class ProvisioningOperationEntity {
     this.professionCode = professionCode;
     this.professionalRegistrationNumber = professionalRegistrationNumber;
     this.professionalRegistrationType = professionalRegistrationType;
+  }
+
+  /**
+   * Aplica una transicion de estado ya confirmada en la base de datos. Es el
+   * unico punto de mutacion del estado y del auth.user asociado.
+   */
+  public void applyTransition(
+      ProvisioningOperationStatus next, UUID authUserId, String error, Instant now) {
+    this.status = next;
+    this.authUserId = authUserId;
+    this.error = error;
+    this.updatedAt = now;
+  }
+
+  /**
+   * Reabre una operacion compensada para un reintento: vuelve a {@code PENDING},
+   * limpia el auth.user y el error, y suma un intento.
+   */
+  public void resetForRetry(Instant now) {
+    this.status = ProvisioningOperationStatus.PENDING;
+    this.attempts = (short) (attempts + 1);
+    this.error = null;
+    this.authUserId = null;
+    this.updatedAt = now;
+  }
+
+  /** Indica si la operacion ya tiene su espejo creado. */
+  public boolean isCompleted() {
+    return status == ProvisioningOperationStatus.COMPLETED;
   }
 
   public UUID getOperationId() {
@@ -237,25 +234,5 @@ public class ProvisioningOperationEntity {
 
   public String getProfessionalRegistrationType() {
     return professionalRegistrationType;
-  }
-
-  public void setAuthUserId(UUID authUserId) {
-    this.authUserId = authUserId;
-  }
-
-  public void setStatus(ProvisioningOperationStatus status) {
-    this.status = status;
-  }
-
-  public void setAttempts(short attempts) {
-    this.attempts = attempts;
-  }
-
-  public void setError(String error) {
-    this.error = error;
-  }
-
-  public void setUpdatedAt(Instant updatedAt) {
-    this.updatedAt = updatedAt;
   }
 }

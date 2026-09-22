@@ -1,14 +1,26 @@
 package com.pai.api.shared.exceptions;
 
+import org.springframework.http.HttpStatus;
+
 /**
  * El usuario autenticado no posee el permiso requerido para la operacion.
  * Representa la segunda barrera de autorizacion en el servicio: el permiso se
  * valida en el controller ({@code @PreAuthorize}) y se revalida en el servicio
  * para que ninguna llamada directa pueda saltarse la regla.
  */
-public class PermissionDeniedException extends RuntimeException {
+public class PermissionDeniedException extends DomainRuntimeException {
 
   public PermissionDeniedException(String message) {
     super(message);
+  }
+
+  @Override
+  public String errorCode() {
+    return "PERMISSION_DENIED";
+  }
+
+  @Override
+  public HttpStatus status() {
+    return HttpStatus.FORBIDDEN;
   }
 }

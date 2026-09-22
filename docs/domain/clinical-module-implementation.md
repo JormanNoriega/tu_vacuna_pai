@@ -146,7 +146,7 @@ CREATE TABLE app.audit_events (
     id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     actor_id              UUID NOT NULL REFERENCES app.users(id),
     institution_id        UUID NOT NULL REFERENCES app.institutions(id),
-    action                TEXT NOT NULL,  -- enum: PATIENT_CREATED, ATTENTION_COMPLETED, DOSE_REGISTERED, DOSE_CANCELLED, PATIENT_MERGED, etc.
+    action                TEXT NOT NULL,  -- enum: PATIENT_CREATED, ATTENTION_COMPLETED, DOSE_REGISTERED, DOSE_CANCELLED, etc.
     resource_type         TEXT NOT NULL,  -- enum: PATIENT, ATTENTION, APPLIED_DOSE, PATIENT_MERGE_REQUEST
     resource_id           UUID NOT NULL,
     client_operation_id   UUID,           -- operation_id del cliente (para trazabilidad sync)

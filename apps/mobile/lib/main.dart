@@ -28,6 +28,7 @@ import 'features/users/data/users_repository_impl.dart';
 import 'features/users/domain/use_cases/create_vaccinator.dart';
 import 'features/users/domain/use_cases/list_users.dart';
 import 'features/users/presentation/users_controller.dart';
+import 'features/catalogs/application/catalog_warmup.dart';
 import 'features/catalogs/data/catalog_repository_impl.dart';
 import 'features/catalogs/domain/use_cases/catalog_use_cases.dart';
 import 'features/catalogs/presentation/catalog_controller.dart';
@@ -115,6 +116,10 @@ Future<void> main() async {
     toggle: ToggleInstitutionVaccine(catalogRepository),
     listAvailableVaccines: ListAvailableInstitutionVaccines(catalogRepository),
   );
+  final catalogWarmup = CatalogWarmup(
+    sessionManager: sessionManager,
+    repository: catalogRepository,
+  );
 
   final patientsRepository = PatientsRepositoryImpl(apiClient);
   final attentionsRepository = AttentionsRepositoryImpl(apiClient);
@@ -170,6 +175,7 @@ Future<void> main() async {
       adminController: adminController,
       usersController: usersController,
       catalogController: catalogController,
+      catalogWarmup: catalogWarmup,
       attentionController: attentionController,
       historyController: historyController,
       patientDetailController: patientDetailController,

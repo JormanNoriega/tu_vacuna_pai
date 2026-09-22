@@ -56,10 +56,9 @@ public interface VaccineCatalogPolicy {
    * Valida la seleccion (vacuna habilitada e institucional, opciones globales
    * validas, opciones operativas institucionales) y devuelve el snapshot.
    *
-   * <p>Lanza las mismas excepciones de dominio que antes se centralizaban en
-   * {@code AttentionService}: {@code IllegalArgumentException} para seleccion
-   * invalida y {@code InvalidClinicalStateException} para vacuna inactiva o no
-   * habilitada.
+   * <p>Lanza {@code IllegalArgumentException} para una seleccion invalida y
+   * {@link com.pai.api.attentions.exception.InvalidCatalogSelectionException}
+   * para vacuna inactiva o no habilitada.
    */
   DoseSelection resolve(ResolutionRequest request);
 }

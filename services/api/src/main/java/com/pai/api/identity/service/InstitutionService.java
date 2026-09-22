@@ -1,12 +1,11 @@
 package com.pai.api.identity.service;
 
-import com.pai.api.catalog.service.InstitutionVaccineService;
 import com.pai.api.identity.dto.CreateInstitutionRequest;
 import com.pai.api.identity.dto.InstitutionResponse;
 import com.pai.api.identity.entity.InstitutionEntity;
+import com.pai.api.identity.exception.InstitutionCodeAlreadyExistsException;
+import com.pai.api.identity.exception.InstitutionNotFoundException;
 import com.pai.api.identity.repository.InstitutionRepository;
-import com.pai.api.shared.exceptions.InstitutionCodeAlreadyExistsException;
-import com.pai.api.shared.exceptions.InstitutionNotFoundException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -17,18 +16,21 @@ import org.springframework.transaction.annotation.Transactional;
  * Gestion de instituciones. Escrituras exclusivas de {@code SUPER_ADMIN}
  * (permiso {@code INSTITUTION_WRITE}); la autorizacion se valida en el
  * controller con {@code @PreAuthorize}.
+ *
+ * <p>El sembrado del catalogo global al crear una institucion se delega en el
+ * puerto {@link InstitutionCatalogSeeder} (DIP): {@code identity} no conoce los
+ * servicios del modulo {@code catalog}.
  */
 @Service
 public class InstitutionService {
 
   private final InstitutionRepository institutionRepository;
-  private final InstitutionVaccineService institutionVaccineService;
+  private final InstitutionCatalogSeeder catalogSeeder;
 
   public InstitutionService(
-      InstitutionRepository institutionRepository,
-      InstitutionVaccineService institutionVaccineService) {
+      InstitutionRepository institutionRepository, InstitutionCatalogSeeder catalogSeeder) {
     this.institutionRepository = institutionRepository;
-    this.institutionVaccineService = institutionVaccineService;
+    this.catalogSeeder = catalogSeeder;
   }
 
   @Transactional
@@ -57,7 +59,7 @@ public class InstitutionService {
     // Toda institucion nueva arranca con el catalogo global activo habilitado
     // (con su configuracion por defecto). Luego la institucion deshabilita lo
     // que no use; el re-clone respeta esas deshabilitaciones.
-    institutionVaccineService.seedInstitution(saved.getId(), actorId);
+    catalogSeeder.seed(saved.getId(), actorId);
     return toResponse(saved);
   }
 

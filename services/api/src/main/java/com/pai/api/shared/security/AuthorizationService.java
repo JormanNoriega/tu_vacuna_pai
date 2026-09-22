@@ -19,6 +19,6 @@ public class AuthorizationService {
     if (authentication == null || !(authentication.getPrincipal() instanceof AuthorizedUser user)) {
       return false;
     }
-    return user.getPermissions().contains(permission);
+    return user.hasPermission(permission);
   }
 }

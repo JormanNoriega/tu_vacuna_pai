@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.pai.api.attentions.exception.InvalidClinicalStateException;
+import com.pai.api.attentions.exception.InvalidCatalogSelectionException;
 import com.pai.api.attentions.service.VaccineCatalogPolicy.DoseSelection;
 import com.pai.api.attentions.service.VaccineCatalogPolicy.ResolutionRequest;
 import com.pai.api.catalog.entity.InstitutionVaccineEntity;
@@ -131,7 +131,7 @@ class CatalogSelectionServiceTest {
         .thenReturn(Optional.of(mock(InstitutionVaccineEntity.class)));
 
     assertThatThrownBy(() -> service.resolve(request(UUID.randomUUID(), null)))
-        .isInstanceOf(InvalidClinicalStateException.class);
+        .isInstanceOf(InvalidCatalogSelectionException.class);
   }
 
   @Test
@@ -141,7 +141,7 @@ class CatalogSelectionServiceTest {
     when(vaccines.findById(VACCINE)).thenReturn(Optional.of(inactive));
 
     assertThatThrownBy(() -> service.resolve(request(UUID.randomUUID(), null)))
-        .isInstanceOf(InvalidClinicalStateException.class);
+        .isInstanceOf(InvalidCatalogSelectionException.class);
   }
 
   @Test

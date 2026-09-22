@@ -1,9 +1,8 @@
 package com.pai.api.identity.controller;
 
 import com.pai.api.identity.dto.MeResponse;
-import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.IdentityService;
-import java.util.UUID;
+import com.pai.api.shared.security.ActorResolver;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,8 +21,6 @@ public class IdentityController {
 
   @GetMapping("/me")
   public ResponseEntity<MeResponse> me(Authentication authentication) {
-    AuthorizedUser principal = (AuthorizedUser) authentication.getPrincipal();
-    UUID userId = principal.getId();
-    return ResponseEntity.ok(identityService.getMe(userId));
+    return ResponseEntity.ok(identityService.getMe(ActorResolver.actorId(authentication)));
   }
 }

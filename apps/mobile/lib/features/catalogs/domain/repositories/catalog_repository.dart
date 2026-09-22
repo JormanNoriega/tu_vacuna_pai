@@ -12,6 +12,10 @@ abstract interface class CatalogRepository {
   /// Departamentos del catalogo geografico (DIVIPOLA).
   Future<List<GeoDepartment>> listDepartments(String token);
 
+  /// Catalogo geografico completo (departamentos con sus municipios). Precarga
+  /// la cache para que las direcciones funcionen offline.
+  Future<List<GeoDepartment>> listFullGeo(String token);
+
   /// Paises del catalogo geografico.
   Future<List<GeoCountry>> listCountries(String token);
 

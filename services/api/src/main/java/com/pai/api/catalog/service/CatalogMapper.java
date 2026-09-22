@@ -1,5 +1,6 @@
 package com.pai.api.catalog.service;
 
+import com.pai.api.catalog.dto.EffectiveCatalogResponse;
 import com.pai.api.catalog.dto.InstitutionVaccineResponse;
 import com.pai.api.catalog.dto.OptionResponse;
 import com.pai.api.catalog.dto.VaccineResponse;
@@ -8,6 +9,8 @@ import com.pai.api.catalog.entity.InstitutionVaccineOptionEntity;
 import com.pai.api.catalog.entity.VaccineEntity;
 import com.pai.api.catalog.entity.VaccineOptionEntity;
 import com.pai.api.catalog.entity.VaccineOptionTemplateEntity;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -43,32 +46,28 @@ public class CatalogMapper {
   }
 
   public OptionResponse toGlobalOption(VaccineOptionEntity x) {
-    return new OptionResponse(
+    return globalOption(
         x.getId(),
         x.getVaccineId(),
-        null,
         x.getFieldType(),
         x.getValue(),
         x.getDisplayName(),
         x.getSortOrder(),
         x.isDefault(),
         x.isActive(),
-        null,
         x.getVersion());
   }
 
   public OptionResponse toTemplate(VaccineOptionTemplateEntity x) {
-    return new OptionResponse(
+    return globalOption(
         x.getId(),
         x.getVaccineId(),
-        null,
         x.getFieldType(),
         x.getValue(),
         x.getDisplayName(),
         x.getSortOrder(),
         x.isDefault(),
         x.isActive(),
-        null,
         x.getVersion());
   }
 
@@ -115,5 +114,102 @@ public class CatalogMapper {
         vaccine.getCategory(),
         relation.isEnabled(),
         relation.getVersion());
+  }
+
+  /**
+   * Ensambla la vacuna del catalogo efectivo con sus dosis, tipos de neumococo
+   * y opciones operativas (antes se construia inline en
+   * {@code EffectiveCatalogService}).
+   */
+  public EffectiveCatalogResponse.EffectiveVaccine toEffectiveVaccine(
+      VaccineEntity vaccine,
+      List<VaccineOptionEntity> doses,
+      List<VaccineOptionEntity> pneumococcalTypes,
+      List<InstitutionVaccineOptionEntity> operationalOptions) {
+    return new EffectiveCatalogResponse.EffectiveVaccine(
+        vaccine.getId(),
+        vaccine.getName(),
+        vaccine.getCode(),
+        vaccine.getCategory(),
+        vaccine.getMaxDoses(),
+        vaccine.getMinAgeMonths(),
+        vaccine.getMaxAgeMonths(),
+        vaccine.getVersion(),
+        vaccine.hasLaboratory(),
+        vaccine.hasLot(),
+        vaccine.hasSyringe(),
+        vaccine.hasSyringeLot(),
+        vaccine.hasDiluent(),
+        vaccine.hasDropper(),
+        vaccine.hasPneumococcalType(),
+        vaccine.hasVialCount(),
+        vaccine.hasObservation(),
+        globalItems(doses),
+        globalItems(pneumococcalTypes),
+        institutionItems(operationalOptions));
+  }
+
+  private OptionResponse globalOption(
+      UUID id,
+      UUID vaccineId,
+      String fieldType,
+      String value,
+      String displayName,
+      int sortOrder,
+      boolean isDefault,
+      boolean isActive,
+      long version) {
+    return new OptionResponse(
+        id,
+        vaccineId,
+        null,
+        fieldType,
+        value,
+        displayName,
+        sortOrder,
+        isDefault,
+        isActive,
+        null,
+        version);
+  }
+
+  private List<EffectiveCatalogResponse.OptionItem> globalItems(List<VaccineOptionEntity> options) {
+    List<EffectiveCatalogResponse.OptionItem> items = new ArrayList<>(options.size());
+    for (VaccineOptionEntity option : options) {
+      items.add(item(
+          option.getId(),
+          option.getFieldType(),
+          option.getValue(),
+          option.getDisplayName(),
+          option.getSortOrder(),
+          option.isDefault()));
+    }
+    return items;
+  }
+
+  private List<EffectiveCatalogResponse.OptionItem> institutionItems(
+      List<InstitutionVaccineOptionEntity> options) {
+    List<EffectiveCatalogResponse.OptionItem> items = new ArrayList<>(options.size());
+    for (InstitutionVaccineOptionEntity option : options) {
+      items.add(item(
+          option.getId(),
+          option.getFieldType(),
+          option.getValue(),
+          option.getDisplayName(),
+          option.getSortOrder(),
+          option.isDefault()));
+    }
+    return items;
+  }
+
+  private EffectiveCatalogResponse.OptionItem item(
+      UUID id,
+      String fieldType,
+      String value,
+      String displayName,
+      int sortOrder,
+      boolean isDefault) {
+    return new EffectiveCatalogResponse.OptionItem(
+        id, fieldType, value, displayName, sortOrder, isDefault);
   }
 }

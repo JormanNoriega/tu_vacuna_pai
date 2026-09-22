@@ -15,8 +15,6 @@ import org.springframework.data.repository.query.Param;
  */
 public interface UserRoleRepository extends JpaRepository<UserRoleEntity, UserRoleId> {
 
-  boolean existsByUserId(UUID userId);
-
   void deleteByUserId(UUID userId);
 
   /**

@@ -3,6 +3,7 @@ package com.pai.api.patients.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -10,13 +11,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.pai.api.audit.AuditAction;
+import com.pai.api.audit.AuditResourceType;
 import com.pai.api.audit.service.AuditService;
-import com.pai.api.identity.entity.InstitutionEntity;
-import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.DataScope;
 import com.pai.api.identity.service.IdentityService;
 import com.pai.api.patients.dto.CreatePatientRequest;
 import com.pai.api.patients.dto.PatientResponse;
+import com.pai.api.patients.dto.PatientSummaryResponse;
 import com.pai.api.patients.dto.UpdatePatientDemographicsRequest;
 import com.pai.api.patients.dto.UpdatePatientMedicalHistoriesRequest;
 import com.pai.api.patients.entity.PatientDemographicEntity;
@@ -33,6 +34,7 @@ import com.pai.api.patients.repository.PatientMedicalHistoryRepository;
 import com.pai.api.patients.repository.PatientRepository;
 import com.pai.api.patients.repository.PatientSpecialConditionRepository;
 import com.pai.api.patients.repository.PatientUserConditionRepository;
+import com.pai.api.patients.support.PatientTestFixtures;
 import com.pai.api.shared.application.IdempotencyCoordinator;
 import com.pai.api.synchronization.service.ProcessedOperationsService;
 import java.time.Instant;
@@ -81,8 +83,8 @@ class PatientServiceTest {
     audit = mock(AuditService.class);
     processedOperations = mock(ProcessedOperationsService.class);
     IdempotencyCoordinator coordinator = new IdempotencyCoordinator(audit, processedOperations);
-    service = new PatientService(
-        patients,
+    PatientMapper mapper = new PatientMapper();
+    PatientSubEntitiesWriter subEntities = new PatientSubEntitiesWriter(
         contacts,
         demographics,
         addresses,
@@ -91,102 +93,36 @@ class PatientServiceTest {
         affiliations,
         specialConditions,
         userConditions,
-        identity,
-        dataScope,
-        audit,
-        coordinator,
-        new PatientMapper());
-  }
-
-  private InstitutionEntity institution() {
-    return new InstitutionEntity(
-        INSTITUTION_ID,
-        "HOSP-A",
-        "Hospital A",
-        InstitutionEntity.Status.ACTIVE,
-        (short) 72,
-        Instant.now(),
-        Instant.now());
-  }
-
-  private AuthorizedUser vaccinatorActor() {
-    return new AuthorizedUser(
-        ACTOR_ID,
-        "vac@hosp.a",
-        "Ana Vacunadora",
-        institution(),
-        List.of("VACCINATOR"),
-        List.of("PATIENT_READ", "PATIENT_WRITE"),
-        Instant.now());
-  }
-
-  private CreatePatientRequest request(String documentNumber) {
-    return request(documentNumber, LocalDate.of(1990, 5, 1));
-  }
-
-  private CreatePatientRequest request(String documentNumber, LocalDate birthDate) {
-    return new CreatePatientRequest(
-        "CC",
-        documentNumber,
-        "Juan",
-        null,
-        "Perez",
-        null,
-        birthDate,
-        "MALE",
-        null,
-        null,
-        null,
-        null,
-        null,
-        false,
-        false,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null);
-  }
-
-  private PatientEntity patient(UUID id) {
-    return new PatientEntity(
-        id,
-        INSTITUTION_ID,
-        "CC",
-        "12345678",
-        "Juan",
-        "Perez",
-        LocalDate.of(2020, 5, 1),
-        PatientEntity.Sex.MALE,
-        Instant.now());
+        mapper);
+    service = new PatientService(patients, identity, dataScope, coordinator, subEntities, mapper);
   }
 
   private void stubEmptyChildren(UUID patientId) {
-    when(demographics.findByPatientId(patientId)).thenReturn(Optional.empty());
-    when(contacts.findByPatientIdOrderByCreatedAtAsc(patientId)).thenReturn(List.of());
-    when(addresses.findByPatientIdOrderByCreatedAtAsc(patientId)).thenReturn(List.of());
-    when(guardians.findByPatientIdOrderByCreatedAtAsc(patientId)).thenReturn(List.of());
-    when(medicalHistories.findByPatientIdOrderByCreatedAtAsc(patientId)).thenReturn(List.of());
-    when(affiliations.findByPatientId(patientId)).thenReturn(Optional.empty());
-    when(specialConditions.findByPatientId(patientId)).thenReturn(Optional.empty());
-    when(userConditions.findByPatientId(patientId)).thenReturn(Optional.empty());
+    List<UUID> ids = List.of(patientId);
+    when(demographics.findByPatientIdIn(ids)).thenReturn(List.of());
+    when(contacts.findByPatientIdInOrderByCreatedAtAsc(ids)).thenReturn(List.of());
+    when(addresses.findByPatientIdInOrderByCreatedAtAsc(ids)).thenReturn(List.of());
+    when(guardians.findByPatientIdInOrderByCreatedAtAsc(ids)).thenReturn(List.of());
+    when(medicalHistories.findByPatientIdInOrderByCreatedAtAsc(ids)).thenReturn(List.of());
+    when(affiliations.findByPatientIdIn(ids)).thenReturn(List.of());
+    when(specialConditions.findByPatientIdIn(ids)).thenReturn(List.of());
+    when(userConditions.findByPatientIdIn(ids)).thenReturn(List.of());
   }
 
   @Test
   void create_normalizesDocumentAndPersistsPatient() {
     when(processedOperations.find(OPERATION_ID, PatientResponse.class))
         .thenReturn(Optional.empty());
-    when(identity.resolve(ACTOR_ID)).thenReturn(vaccinatorActor());
+    when(identity.resolve(ACTOR_ID))
+        .thenReturn(PatientTestFixtures.vaccinator(ACTOR_ID, INSTITUTION_ID));
     when(patients.existsByInstitutionIdAndDocumentTypeAndDocumentNumber(
             INSTITUTION_ID, "CC", "12345678"))
         .thenReturn(false);
     when(patients.save(any(PatientEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
-    PatientResponse response = service.create(ACTOR_ID, OPERATION_ID, request("12.345.678"));
+    PatientResponse response =
+        service.create(ACTOR_ID, OPERATION_ID, PatientTestFixtures.request("12.345.678"));
 
     assertThat(response.documentNumber()).isEqualTo("12345678");
     assertThat(response.institutionId()).isEqualTo(INSTITUTION_ID);
@@ -198,14 +134,11 @@ class PatientServiceTest {
     assertThat(captor.getValue().getInstitutionId()).isEqualTo(INSTITUTION_ID);
 
     verify(audit)
-        .record(
-            eq(ACTOR_ID),
-            eq(INSTITUTION_ID),
-            eq(AuditAction.PATIENT_CREATED),
-            eq("PATIENT"),
-            any(),
-            eq(UUID.fromString(OPERATION_ID)),
-            any());
+        .record(argThat(record -> record.actorId().equals(ACTOR_ID)
+            && record.institutionId().equals(INSTITUTION_ID)
+            && record.action() == AuditAction.PATIENT_CREATED
+            && record.resourceType() == AuditResourceType.PATIENT
+            && record.clientOperationId().equals(UUID.fromString(OPERATION_ID))));
     verify(processedOperations)
         .record(eq(OPERATION_ID), eq("CREATE_PATIENT"), any(), any(), any(), any());
   }
@@ -214,12 +147,14 @@ class PatientServiceTest {
   void create_rejectsDuplicateDocumentInInstitution() {
     when(processedOperations.find(OPERATION_ID, PatientResponse.class))
         .thenReturn(Optional.empty());
-    when(identity.resolve(ACTOR_ID)).thenReturn(vaccinatorActor());
+    when(identity.resolve(ACTOR_ID))
+        .thenReturn(PatientTestFixtures.vaccinator(ACTOR_ID, INSTITUTION_ID));
     when(patients.existsByInstitutionIdAndDocumentTypeAndDocumentNumber(
             INSTITUTION_ID, "CC", "12345678"))
         .thenReturn(true);
 
-    assertThatThrownBy(() -> service.create(ACTOR_ID, OPERATION_ID, request("12345678")))
+    assertThatThrownBy(
+            () -> service.create(ACTOR_ID, OPERATION_ID, PatientTestFixtures.request("12345678")))
         .isInstanceOf(PatientAlreadyExistsException.class);
     verify(patients, never()).save(any());
   }
@@ -228,9 +163,11 @@ class PatientServiceTest {
   void create_rejectsInvalidDocumentNumberForType() {
     when(processedOperations.find(OPERATION_ID, PatientResponse.class))
         .thenReturn(Optional.empty());
-    when(identity.resolve(ACTOR_ID)).thenReturn(vaccinatorActor());
+    when(identity.resolve(ACTOR_ID))
+        .thenReturn(PatientTestFixtures.vaccinator(ACTOR_ID, INSTITUTION_ID));
 
-    assertThatThrownBy(() -> service.create(ACTOR_ID, OPERATION_ID, request("12")))
+    assertThatThrownBy(
+            () -> service.create(ACTOR_ID, OPERATION_ID, PatientTestFixtures.request("12")))
         .isInstanceOf(IllegalArgumentException.class);
     verify(patients, never()).save(any());
   }
@@ -239,9 +176,11 @@ class PatientServiceTest {
   void create_requiresGuardianForMinor() {
     when(processedOperations.find(OPERATION_ID, PatientResponse.class))
         .thenReturn(Optional.empty());
-    when(identity.resolve(ACTOR_ID)).thenReturn(vaccinatorActor());
+    when(identity.resolve(ACTOR_ID))
+        .thenReturn(PatientTestFixtures.vaccinator(ACTOR_ID, INSTITUTION_ID));
 
-    CreatePatientRequest minor = request("12345678", LocalDate.now().minusYears(5));
+    CreatePatientRequest minor =
+        PatientTestFixtures.request("12345678", LocalDate.now().minusYears(5));
 
     assertThatThrownBy(() -> service.create(ACTOR_ID, OPERATION_ID, minor))
         .isInstanceOf(IllegalArgumentException.class)
@@ -284,17 +223,19 @@ class PatientServiceTest {
     when(processedOperations.find(OPERATION_ID, PatientResponse.class))
         .thenReturn(Optional.of(original));
 
-    PatientResponse response = service.create(ACTOR_ID, OPERATION_ID, request("99999999"));
+    PatientResponse response =
+        service.create(ACTOR_ID, OPERATION_ID, PatientTestFixtures.request("99999999"));
 
     assertThat(response).isEqualTo(original);
     verify(patients, never()).save(any());
-    verify(audit, never()).record(any(), any(), any(), any(), any(), any(), any());
+    verify(audit, never()).record(any());
   }
 
   @Test
   void get_rejectsPatientFromOtherInstitution() {
     UUID patientId = UUID.randomUUID();
-    when(identity.resolve(ACTOR_ID)).thenReturn(vaccinatorActor());
+    when(identity.resolve(ACTOR_ID))
+        .thenReturn(PatientTestFixtures.vaccinator(ACTOR_ID, INSTITUTION_ID));
     when(patients.findByIdAndInstitutionId(patientId, INSTITUTION_ID)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.get(ACTOR_ID, patientId))
@@ -304,17 +245,9 @@ class PatientServiceTest {
   @Test
   void get_returnsPatientScopedToActorInstitution() {
     UUID patientId = UUID.randomUUID();
-    PatientEntity patient = new PatientEntity(
-        patientId,
-        INSTITUTION_ID,
-        "CC",
-        "12345678",
-        "Juan",
-        "Perez",
-        LocalDate.of(2020, 5, 1),
-        PatientEntity.Sex.MALE,
-        Instant.now());
-    when(identity.resolve(ACTOR_ID)).thenReturn(vaccinatorActor());
+    PatientEntity patient = PatientTestFixtures.patient(patientId, INSTITUTION_ID);
+    when(identity.resolve(ACTOR_ID))
+        .thenReturn(PatientTestFixtures.vaccinator(ACTOR_ID, INSTITUTION_ID));
     when(patients.findByIdAndInstitutionId(patientId, INSTITUTION_ID))
         .thenReturn(Optional.of(patient));
     stubEmptyChildren(patientId);
@@ -327,24 +260,15 @@ class PatientServiceTest {
 
   @Test
   void search_normalizesNumberAndScopesByInstitution() {
-    when(identity.resolve(ACTOR_ID)).thenReturn(vaccinatorActor());
+    when(identity.resolve(ACTOR_ID))
+        .thenReturn(PatientTestFixtures.vaccinator(ACTOR_ID, INSTITUTION_ID));
     UUID patientId = UUID.randomUUID();
-    PatientEntity patient = new PatientEntity(
-        patientId,
-        INSTITUTION_ID,
-        "CC",
-        "12345678",
-        "Juan",
-        "Perez",
-        LocalDate.of(2020, 5, 1),
-        PatientEntity.Sex.MALE,
-        Instant.now());
+    PatientEntity patient = PatientTestFixtures.patient(patientId, INSTITUTION_ID);
     when(patients.findByInstitutionIdAndDocumentTypeAndDocumentNumber(
             INSTITUTION_ID, "CC", "12345678"))
         .thenReturn(Optional.of(patient));
-    stubEmptyChildren(patientId);
 
-    List<PatientResponse> result = service.search(ACTOR_ID, "cc", "12.345.678");
+    List<PatientSummaryResponse> result = service.search(ACTOR_ID, "cc", "12.345.678");
 
     assertThat(result).hasSize(1);
     assertThat(result.get(0).documentNumber()).isEqualTo("12345678");
@@ -353,9 +277,10 @@ class PatientServiceTest {
   @Test
   void updateDemographics_normalizesGenderAndPersists() {
     UUID patientId = UUID.randomUUID();
-    when(identity.resolve(ACTOR_ID)).thenReturn(vaccinatorActor());
+    when(identity.resolve(ACTOR_ID))
+        .thenReturn(PatientTestFixtures.vaccinator(ACTOR_ID, INSTITUTION_ID));
     when(patients.findByIdAndInstitutionId(patientId, INSTITUTION_ID))
-        .thenReturn(Optional.of(patient(patientId)));
+        .thenReturn(Optional.of(PatientTestFixtures.patient(patientId, INSTITUTION_ID)));
     when(demographics.findByPatientId(patientId)).thenReturn(Optional.empty());
     stubEmptyChildren(patientId);
 
@@ -368,22 +293,20 @@ class PatientServiceTest {
     assertThat(captor.getValue().getGender()).isEqualTo("FEMALE");
     assertThat(captor.getValue().getEthnicity()).isEqualTo("Mestiza");
     verify(audit)
-        .record(
-            eq(ACTOR_ID),
-            eq(INSTITUTION_ID),
-            eq(AuditAction.PATIENT_DEMOGRAPHICS_UPDATED),
-            eq("PATIENT"),
-            eq(patientId),
-            any(),
-            any());
+        .record(argThat(record -> record.actorId().equals(ACTOR_ID)
+            && record.institutionId().equals(INSTITUTION_ID)
+            && record.action() == AuditAction.PATIENT_DEMOGRAPHICS_UPDATED
+            && record.resourceType() == AuditResourceType.PATIENT
+            && record.resourceId().equals(patientId)));
   }
 
   @Test
   void updateDemographics_rejectsInvalidGender() {
     UUID patientId = UUID.randomUUID();
-    when(identity.resolve(ACTOR_ID)).thenReturn(vaccinatorActor());
+    when(identity.resolve(ACTOR_ID))
+        .thenReturn(PatientTestFixtures.vaccinator(ACTOR_ID, INSTITUTION_ID));
     when(patients.findByIdAndInstitutionId(patientId, INSTITUTION_ID))
-        .thenReturn(Optional.of(patient(patientId)));
+        .thenReturn(Optional.of(PatientTestFixtures.patient(patientId, INSTITUTION_ID)));
 
     assertThatThrownBy(() -> service.updateDemographics(
             ACTOR_ID, patientId, new UpdatePatientDemographicsRequest("X", null, null)))
@@ -394,9 +317,10 @@ class PatientServiceTest {
   @Test
   void updateMedicalHistories_replacesList() {
     UUID patientId = UUID.randomUUID();
-    when(identity.resolve(ACTOR_ID)).thenReturn(vaccinatorActor());
+    when(identity.resolve(ACTOR_ID))
+        .thenReturn(PatientTestFixtures.vaccinator(ACTOR_ID, INSTITUTION_ID));
     when(patients.findByIdAndInstitutionId(patientId, INSTITUTION_ID))
-        .thenReturn(Optional.of(patient(patientId)));
+        .thenReturn(Optional.of(PatientTestFixtures.patient(patientId, INSTITUTION_ID)));
     stubEmptyChildren(patientId);
 
     service.updateMedicalHistories(
@@ -409,13 +333,10 @@ class PatientServiceTest {
     verify(medicalHistories).deleteByPatientId(patientId);
     verify(medicalHistories).save(any(PatientMedicalHistoryEntity.class));
     verify(audit)
-        .record(
-            eq(ACTOR_ID),
-            eq(INSTITUTION_ID),
-            eq(AuditAction.PATIENT_HISTORY_UPDATED),
-            eq("PATIENT"),
-            eq(patientId),
-            any(),
-            any());
+        .record(argThat(record -> record.actorId().equals(ACTOR_ID)
+            && record.institutionId().equals(INSTITUTION_ID)
+            && record.action() == AuditAction.PATIENT_HISTORY_UPDATED
+            && record.resourceType() == AuditResourceType.PATIENT
+            && record.resourceId().equals(patientId)));
   }
 }

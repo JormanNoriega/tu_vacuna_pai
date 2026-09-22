@@ -8,7 +8,7 @@ import com.pai.api.attentions.dto.CreateAttentionRequest;
 import com.pai.api.attentions.dto.RegisterDoseRequest;
 import com.pai.api.attentions.dto.UpdateAttentionRequest;
 import com.pai.api.attentions.service.AttentionService;
-import com.pai.api.identity.service.AuthorizedUser;
+import com.pai.api.shared.security.ActorResolver;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -47,7 +47,7 @@ public class AttentionController {
       Authentication authentication,
       @RequestHeader(value = "Idempotency-Key", required = false) String operationId,
       @Valid @RequestBody CreateAttentionRequest request) {
-    UUID actorId = actorId(authentication);
+    UUID actorId = ActorResolver.actorId(authentication);
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(service.create(actorId, operationId, request));
   }
@@ -56,14 +56,15 @@ public class AttentionController {
   @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_READ')")
   public ResponseEntity<AttentionResponse> get(
       Authentication authentication, @PathVariable UUID id) {
-    return ResponseEntity.ok(service.get(actorId(authentication), id));
+    return ResponseEntity.ok(service.get(ActorResolver.actorId(authentication), id));
   }
 
   @GetMapping
   @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_READ')")
   public ResponseEntity<List<AttentionResponse>> listByPatient(
       Authentication authentication, @RequestParam UUID patientId) {
-    return ResponseEntity.ok(service.listByPatient(actorId(authentication), patientId));
+    return ResponseEntity.ok(
+        service.listByPatient(ActorResolver.actorId(authentication), patientId));
   }
 
   @PutMapping("/{id}")
@@ -72,7 +73,7 @@ public class AttentionController {
       Authentication authentication,
       @PathVariable UUID id,
       @Valid @RequestBody UpdateAttentionRequest request) {
-    return ResponseEntity.ok(service.update(actorId(authentication), id, request));
+    return ResponseEntity.ok(service.update(ActorResolver.actorId(authentication), id, request));
   }
 
   @PostMapping("/{id}/complete")
@@ -81,7 +82,8 @@ public class AttentionController {
       Authentication authentication,
       @PathVariable UUID id,
       @RequestHeader(value = "Idempotency-Key", required = false) String operationId) {
-    return ResponseEntity.ok(service.complete(actorId(authentication), operationId, id));
+    return ResponseEntity.ok(
+        service.complete(ActorResolver.actorId(authentication), operationId, id));
   }
 
   @PostMapping("/{id}/cancel")
@@ -90,7 +92,7 @@ public class AttentionController {
       Authentication authentication,
       @PathVariable UUID id,
       @Valid @RequestBody CancelAttentionRequest request) {
-    return ResponseEntity.ok(service.cancel(actorId(authentication), id, request));
+    return ResponseEntity.ok(service.cancel(ActorResolver.actorId(authentication), id, request));
   }
 
   @PostMapping("/{id}/doses")
@@ -101,7 +103,8 @@ public class AttentionController {
       @RequestHeader(value = "Idempotency-Key", required = false) String operationId,
       @Valid @RequestBody RegisterDoseRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(service.registerDose(actorId(authentication), operationId, id, request));
+        .body(
+            service.registerDose(ActorResolver.actorId(authentication), operationId, id, request));
   }
 
   @PostMapping("/{id}/doses/{doseId}/cancel")
@@ -111,10 +114,7 @@ public class AttentionController {
       @PathVariable UUID id,
       @PathVariable UUID doseId,
       @Valid @RequestBody CancelDoseRequest request) {
-    return ResponseEntity.ok(service.cancelDose(actorId(authentication), id, doseId, request));
-  }
-
-  private UUID actorId(Authentication authentication) {
-    return ((AuthorizedUser) authentication.getPrincipal()).getId();
+    return ResponseEntity.ok(
+        service.cancelDose(ActorResolver.actorId(authentication), id, doseId, request));
   }
 }

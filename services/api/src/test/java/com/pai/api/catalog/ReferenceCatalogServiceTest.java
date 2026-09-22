@@ -1,6 +1,7 @@
 package com.pai.api.catalog;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -32,13 +33,12 @@ class ReferenceCatalogServiceTest {
     ReferenceCatalogEntity ethnicity = referenceCatalog("ethnicity", "Etnia");
     ReferenceCatalogEntity gender = referenceCatalog("gender", "Genero");
     when(catalogs.findAllByOrderByCodeAsc()).thenReturn(List.of(ethnicity, gender));
-    List<ReferenceOptionEntity> ethnicityOptions =
-        List.of(referenceOption("mestizo", "Mestizo", 1), referenceOption("afro", "Afro", 2));
-    when(options.findByCatalogCodeAndActiveTrueOrderBySortOrderAsc("ethnicity"))
-        .thenReturn(ethnicityOptions);
-    List<ReferenceOptionEntity> genderOptions = List.of(referenceOption("M", "Masculino", 1));
-    when(options.findByCatalogCodeAndActiveTrueOrderBySortOrderAsc("gender"))
-        .thenReturn(genderOptions);
+    List<ReferenceOptionEntity> allOptions = List.of(
+        referenceOption("ethnicity", "mestizo", "Mestizo", 1),
+        referenceOption("ethnicity", "afro", "Afro", 2),
+        referenceOption("gender", "M", "Masculino", 1));
+    when(options.findByCatalogCodeInAndActiveTrueOrderByCatalogCodeAscSortOrderAsc(any()))
+        .thenReturn(allOptions);
 
     List<ReferenceCatalogResponse> result = service.list();
 
@@ -57,7 +57,7 @@ class ReferenceCatalogServiceTest {
   void list_returnsEmptyOptionsForCatalogWithoutRows() {
     ReferenceCatalogEntity documentType = referenceCatalog("documentType", "Tipo de documento");
     when(catalogs.findAllByOrderByCodeAsc()).thenReturn(List.of(documentType));
-    when(options.findByCatalogCodeAndActiveTrueOrderBySortOrderAsc("documentType"))
+    when(options.findByCatalogCodeInAndActiveTrueOrderByCatalogCodeAscSortOrderAsc(any()))
         .thenReturn(List.of());
 
     List<ReferenceCatalogResponse> result = service.list();
@@ -73,12 +73,13 @@ class ReferenceCatalogServiceTest {
     return entity;
   }
 
-  private ReferenceOptionEntity referenceOption(String code, String label, int sortOrder) {
+  private ReferenceOptionEntity referenceOption(
+      String catalogCode, String code, String label, int sortOrder) {
     ReferenceOptionEntity entity = mock(ReferenceOptionEntity.class);
+    when(entity.getCatalogCode()).thenReturn(catalogCode);
     when(entity.getCode()).thenReturn(code);
     when(entity.getLabel()).thenReturn(label);
     when(entity.getSortOrder()).thenReturn(sortOrder);
-    when(entity.isActive()).thenReturn(true);
     return entity;
   }
 }

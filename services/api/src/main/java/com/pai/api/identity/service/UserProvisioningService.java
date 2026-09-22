@@ -5,20 +5,13 @@ import com.pai.api.identity.dto.CreateVaccinatorRequest;
 import com.pai.api.identity.dto.UserResponse;
 import com.pai.api.identity.entity.ProvisioningOperationEntity;
 import com.pai.api.identity.entity.ProvisioningOperationStatus;
+import com.pai.api.identity.exception.AuthUserProvisioningException;
+import com.pai.api.identity.exception.EmailAlreadyExistsException;
+import com.pai.api.identity.exception.InstitutionNotFoundException;
+import com.pai.api.identity.exception.UncertainProvisioningException;
 import com.pai.api.identity.repository.InstitutionRepository;
-import com.pai.api.identity.repository.ProfessionRepository;
-import com.pai.api.identity.repository.ProvisioningOperationRepository;
-import com.pai.api.shared.exceptions.AuthUserProvisioningException;
-import com.pai.api.shared.exceptions.EmailAlreadyExistsException;
-import com.pai.api.shared.exceptions.InstitutionNotFoundException;
-import com.pai.api.shared.exceptions.ProvisioningPendingException;
-import com.pai.api.shared.exceptions.UncertainProvisioningException;
 import com.pai.api.shared.security.PermissionGuard;
-import com.pai.api.shared.util.DocumentNormalizer;
-import com.pai.api.shared.util.Strings;
-import java.time.Instant;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +37,10 @@ import org.springframework.stereotype.Service;
  *       el borrado.</li>
  * </ol>
  *
+ * <p>El ciclo de vida del estado y las reglas de idempotencia viven en
+ * {@link ProvisioningStateMachine}, y el perfil ampliado del vacunador en
+ * {@link VaccinatorProfileFactory}; este servicio solo orquesta las fases.
+ *
  * <p>La institucion del vacunador se deriva exclusivamente del actor; la del
  * admin de institucion la decide el actor con {@code INSTITUTION_WRITE}.
  */
@@ -52,38 +49,32 @@ public class UserProvisioningService {
 
   private static final Logger log = LoggerFactory.getLogger(UserProvisioningService.class);
 
-  private static final String ADMIN_INSTITUTION_ROLE = "ADMIN_INSTITUTION";
-  private static final String VACCINATOR_ROLE = "VACCINATOR";
-
-  private static final Set<ProvisioningOperationStatus> ADOPTABLE_FROM =
-      Set.of(ProvisioningOperationStatus.PENDING, ProvisioningOperationStatus.UNCERTAIN);
-
   private final PermissionGuard guard;
   private final InstitutionRepository institutionRepository;
-  private final ProfessionRepository professionRepository;
   private final AuthUserProvisioningClient authUserClient;
-  private final ProvisioningOperationRepository operationRepository;
   private final AuthUserLookupService authUserLookup;
   private final UserMirrorWriter mirrorWriter;
   private final IdentityMapper mapper;
+  private final ProvisioningStateMachine stateMachine;
+  private final VaccinatorProfileFactory profileFactory;
 
   public UserProvisioningService(
       PermissionGuard guard,
       InstitutionRepository institutionRepository,
-      ProfessionRepository professionRepository,
       AuthUserProvisioningClient authUserClient,
-      ProvisioningOperationRepository operationRepository,
       AuthUserLookupService authUserLookup,
       UserMirrorWriter mirrorWriter,
-      IdentityMapper mapper) {
+      IdentityMapper mapper,
+      ProvisioningStateMachine stateMachine,
+      VaccinatorProfileFactory profileFactory) {
     this.guard = guard;
     this.institutionRepository = institutionRepository;
-    this.professionRepository = professionRepository;
     this.authUserClient = authUserClient;
-    this.operationRepository = operationRepository;
     this.authUserLookup = authUserLookup;
     this.mirrorWriter = mirrorWriter;
     this.mapper = mapper;
+    this.stateMachine = stateMachine;
+    this.profileFactory = profileFactory;
   }
 
   /**
@@ -107,7 +98,7 @@ public class UserProvisioningService {
         request.fullName(),
         request.temporaryPassword(),
         request.institutionId(),
-        ADMIN_INSTITUTION_ROLE,
+        RoleCodes.ADMIN_INSTITUTION,
         null);
   }
 
@@ -116,36 +107,11 @@ public class UserProvisioningService {
    * Exclusivo de {@code USER_MANAGE} (ADMIN_INSTITUTION); el permiso se
    * revalida aqui como segunda barrera ademas del {@code @PreAuthorize}. El
    * {@code institutionId} nunca se recibe del cliente: se deriva del actor.
-   *
-   * <p>El documento se normaliza aqui (autoridad final) ANTES de comprobar
-   * unicidad y persistir; la profesion debe existir en el catalogo
-   * {@code app.professions}.
    */
   public UserResponse createVaccinator(
       UUID actorId, String accessToken, CreateVaccinatorRequest request) {
     AuthorizedUser actor = guard.require(actorId, IdentityPermissions.USER_MANAGE);
-
-    String documentType = DocumentNormalizer.normalizeType(request.documentType());
-    String documentNumber = DocumentNormalizer.normalize(request.documentNumber());
-    if (!DocumentNormalizer.isValidForType(documentNumber, documentType)) {
-      throw new IllegalArgumentException(
-          "El numero de documento no es valido para el tipo seleccionado.");
-    }
-
-    String professionCode = DocumentNormalizer.normalizeType(request.professionCode());
-    if (!professionRepository.existsByCode(professionCode)) {
-      throw new IllegalArgumentException("La profesion seleccionada no esta configurada.");
-    }
-
-    AuthUserProfile profile = new AuthUserProfile(
-        documentType,
-        documentNumber,
-        Strings.trimToNull(request.phone()),
-        request.birthDate(),
-        DocumentNormalizer.normalizeType(request.gender()),
-        professionCode,
-        DocumentNormalizer.normalize(request.professionalRegistrationNumber()),
-        Strings.trimToNull(request.professionalRegistrationType()));
+    AuthUserProfile profile = profileFactory.create(request);
 
     return provision(
         actor,
@@ -155,7 +121,7 @@ public class UserProvisioningService {
         request.fullName(),
         request.temporaryPassword(),
         actor.getInstitution().getId(),
-        VACCINATOR_ROLE,
+        RoleCodes.VACCINATOR,
         profile);
   }
 
@@ -175,9 +141,9 @@ public class UserProvisioningService {
 
     String email = rawEmail.trim().toLowerCase();
 
-    ProvisioningOperationEntity op = resolveOperation(
+    ProvisioningOperationEntity op = stateMachine.resolveOrStart(
         operationId, email, fullName, institutionId, roleCode, actor.getId(), profile);
-    if (op.getStatus() == ProvisioningOperationStatus.COMPLETED) {
+    if (op.isCompleted()) {
       return replayResult(op);
     }
 
@@ -191,7 +157,7 @@ public class UserProvisioningService {
             .map(AuthUserLookupService.AuthUserRecord::authUserId)
             .orElse(null);
         if (authUserId != null) {
-          transition(
+          stateMachine.transition(
               op,
               ProvisioningOperationStatus.UNCERTAIN,
               ProvisioningOperationStatus.AUTH_CREATED,
@@ -204,24 +170,17 @@ public class UserProvisioningService {
         try {
           authUserId = authUserClient.createAuthUser(
               accessToken, operationId, email, temporaryPassword, fullName, profile);
-          int adopted = operationRepository.adoptAuthUser(
-              operationId, ADOPTABLE_FROM, authUserId, Instant.now());
-          if (adopted == 0) {
-            ProvisioningOperationEntity fresh =
-                operationRepository.findById(operationId).orElseThrow();
-            if (fresh.getStatus() == ProvisioningOperationStatus.COMPLETED) {
+          if (!stateMachine.adoptAuthUser(op, authUserId)) {
+            ProvisioningOperationEntity fresh = stateMachine.find(operationId).orElseThrow();
+            if (fresh.isCompleted()) {
               return replayResult(fresh);
             }
             op = fresh;
             authUserId = op.getAuthUserId();
-          } else {
-            op.setAuthUserId(authUserId);
-            op.setStatus(ProvisioningOperationStatus.AUTH_CREATED);
-            op.setUpdatedAt(Instant.now());
           }
         } catch (EmailAlreadyExistsException ex) {
           // No se creo nada: estado REJECTED (no hay compensacion).
-          transition(
+          stateMachine.transition(
               op,
               ProvisioningOperationStatus.PENDING,
               ProvisioningOperationStatus.REJECTED,
@@ -229,7 +188,7 @@ public class UserProvisioningService {
               ex.getMessage());
           throw ex;
         } catch (AuthUserProvisioningException ex) {
-          transition(
+          stateMachine.transition(
               op,
               ProvisioningOperationStatus.PENDING,
               ProvisioningOperationStatus.REJECTED,
@@ -240,7 +199,7 @@ public class UserProvisioningService {
           // Timeout/5xx: el auth.user pudo crearse. Se marca UNCERTAIN y
           // se intenta auto-recuperar por correlacion; si no hay
           // evidencia, queda pendiente de reconciliacion.
-          transition(
+          stateMachine.transition(
               op,
               ProvisioningOperationStatus.PENDING,
               ProvisioningOperationStatus.UNCERTAIN,
@@ -250,7 +209,7 @@ public class UserProvisioningService {
               authUserLookup.findByOperation(operationId);
           if (existing.isPresent()) {
             authUserId = existing.get().authUserId();
-            transition(
+            stateMachine.transition(
                 op,
                 ProvisioningOperationStatus.UNCERTAIN,
                 ProvisioningOperationStatus.AUTH_CREATED,
@@ -268,111 +227,13 @@ public class UserProvisioningService {
       return mirrorWriter.writeMirrorAndRoles(op, roleCode);
     } catch (DataIntegrityViolationException ex) {
       // Concurrencia: otra request o el reconciler ya creo el espejo.
-      ProvisioningOperationEntity fresh =
-          operationRepository.findById(operationId).orElseThrow();
-      if (fresh.getStatus() == ProvisioningOperationStatus.COMPLETED) {
+      ProvisioningOperationEntity fresh = stateMachine.find(operationId).orElseThrow();
+      if (fresh.isCompleted()) {
         return replayResult(fresh);
       }
       throw ex;
     } catch (RuntimeException ex) {
       compensate(op, accessToken, ex);
-      throw ex;
-    }
-  }
-
-  /**
-   * Carga la operacion por {@code operationId} o la crea en {@code PENDING}.
-   * Aplica las reglas de idempotencia de reintentos.
-   */
-  private ProvisioningOperationEntity resolveOperation(
-      UUID operationId,
-      String email,
-      String fullName,
-      UUID institutionId,
-      String roleCode,
-      UUID actorId,
-      AuthUserProfile profile) {
-    ProvisioningOperationEntity op = operationRepository.findById(operationId).orElse(null);
-    if (op == null) {
-      return startOperation(
-          operationId, email, fullName, institutionId, roleCode, actorId, profile);
-    }
-
-    if (!op.getEmail().equals(email)) {
-      throw new IllegalArgumentException("La operacion ya fue registrada con otro correo.");
-    }
-    if (profile != null
-        && op.getDocumentNumber() != null
-        && !op.getDocumentNumber().equals(profile.documentNumber())) {
-      throw new IllegalArgumentException("La operacion ya fue registrada con otro documento.");
-    }
-
-    switch (op.getStatus()) {
-      case COMPLETED -> {
-        // Se repliega en provision() con el resultado ya persistido.
-      }
-      case REJECTED ->
-        throw new EmailAlreadyExistsException("Ya existe un usuario con ese correo.");
-      case COMPENSATION_FAILED ->
-        throw new ProvisioningPendingException(
-            "La creacion quedo pendiente de compensacion. Revisa la reconciliacion.");
-      case COMPENSATING ->
-        throw new ProvisioningPendingException("La operacion esta en proceso de compensacion.");
-      case COMPENSATED -> {
-        // El auth.user ya se borro: el correo quedo libre; se reintenta.
-        op.setStatus(ProvisioningOperationStatus.PENDING);
-        op.setAttempts((short) (op.getAttempts() + 1));
-        op.setError(null);
-        op.setAuthUserId(null);
-        op.setUpdatedAt(Instant.now());
-        operationRepository.save(op);
-      }
-      default -> {
-        // PENDING, AUTH_CREATED, UNCERTAIN: se continua en provision().
-      }
-    }
-    return op;
-  }
-
-  private ProvisioningOperationEntity startOperation(
-      UUID operationId,
-      String email,
-      String fullName,
-      UUID institutionId,
-      String roleCode,
-      UUID actorId,
-      AuthUserProfile profile) {
-    Instant now = Instant.now();
-    ProvisioningOperationEntity op = new ProvisioningOperationEntity(
-        operationId,
-        null,
-        email,
-        fullName,
-        institutionId,
-        roleCode,
-        actorId,
-        ProvisioningOperationStatus.PENDING,
-        (short) 1,
-        null,
-        now,
-        now,
-        profile == null ? null : profile.documentType(),
-        profile == null ? null : profile.documentNumber(),
-        profile == null ? null : profile.phone(),
-        profile == null ? null : profile.birthDate(),
-        profile == null ? null : profile.gender(),
-        profile == null ? null : profile.professionCode(),
-        profile == null ? null : profile.professionalRegistrationNumber(),
-        profile == null ? null : profile.professionalRegistrationType());
-    try {
-      return operationRepository.save(op);
-    } catch (DataIntegrityViolationException ex) {
-      // Concurrencia: otro request inserto la misma operacion.
-      ProvisioningOperationEntity existing =
-          operationRepository.findById(operationId).orElseThrow();
-      if (existing.getEmail().equals(email)) {
-        return existing;
-      }
       throw ex;
     }
   }
@@ -388,7 +249,7 @@ public class UserProvisioningService {
     if (authUserId == null) {
       return;
     }
-    boolean started = transition(
+    boolean started = stateMachine.transition(
         op,
         ProvisioningOperationStatus.AUTH_CREATED,
         ProvisioningOperationStatus.COMPENSATING,
@@ -400,7 +261,7 @@ public class UserProvisioningService {
     }
     try {
       authUserClient.deleteAuthUser(accessToken, authUserId);
-      transition(
+      stateMachine.transition(
           op,
           ProvisioningOperationStatus.COMPENSATING,
           ProvisioningOperationStatus.COMPENSATED,
@@ -408,7 +269,7 @@ public class UserProvisioningService {
           null);
     } catch (RuntimeException compensationEx) {
       log.error("No se pudo compensar el auth.user huerfano {}", authUserId, compensationEx);
-      transition(
+      stateMachine.transition(
           op,
           ProvisioningOperationStatus.COMPENSATING,
           ProvisioningOperationStatus.COMPENSATION_FAILED,
@@ -424,26 +285,5 @@ public class UserProvisioningService {
    */
   private UserResponse replayResult(ProvisioningOperationEntity op) {
     return mapper.toUserResponse(op);
-  }
-
-  /**
-   * Transicion con guarda de estado. Devuelve false si el estado ya avanzo.
-   */
-  private boolean transition(
-      ProvisioningOperationEntity op,
-      ProvisioningOperationStatus from,
-      ProvisioningOperationStatus to,
-      UUID authUserId,
-      String error) {
-    int rows = operationRepository.transition(
-        op.getOperationId(), from, to, authUserId, error, Instant.now());
-    if (rows == 0) {
-      return false;
-    }
-    op.setStatus(to);
-    op.setAuthUserId(authUserId);
-    op.setError(error);
-    op.setUpdatedAt(Instant.now());
-    return true;
   }
 }

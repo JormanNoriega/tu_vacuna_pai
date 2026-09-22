@@ -4,17 +4,20 @@ import com.pai.api.identity.dto.UserResponse;
 import com.pai.api.identity.entity.RoleEntity;
 import com.pai.api.identity.entity.UserEntity;
 import com.pai.api.identity.entity.UserRoleEntity;
+import com.pai.api.identity.exception.RoleNotFoundException;
+import com.pai.api.identity.exception.UserNotFoundException;
 import com.pai.api.identity.repository.RoleRepository;
+import com.pai.api.identity.repository.UserAuthorizationRepository;
 import com.pai.api.identity.repository.UserRepository;
 import com.pai.api.identity.repository.UserRoleRepository;
-import com.pai.api.shared.exceptions.RoleNotFoundException;
 import com.pai.api.shared.exceptions.ScopeViolationException;
-import com.pai.api.shared.exceptions.UserNotFoundException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,21 +34,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class UserService {
 
-  private static final String ADMIN_INSTITUTION_ROLE = "ADMIN_INSTITUTION";
-  private static final String VACCINATOR_ROLE = "VACCINATOR";
-  private static final String READ_ONLY_ROLE = "READ_ONLY";
-  private static final String SUPER_ADMIN_ROLE = "SUPER_ADMIN";
-
   /**
    * Roles que un ADMIN_INSTITUTION administra. El listado de gestion se
    * fuerza a estos roles en el servidor: un admin nunca ve ni toca perfiles
    * de otros administradores.
    */
-  private static final Set<String> MANAGED_ROLES = Set.of(VACCINATOR_ROLE, READ_ONLY_ROLE);
+  private static final Set<String> MANAGED_ROLES =
+      Set.of(RoleCodes.VACCINATOR, RoleCodes.READ_ONLY);
 
   private final UserRepository userRepository;
   private final RoleRepository roleRepository;
   private final UserRoleRepository userRoleRepository;
+  private final UserAuthorizationRepository authorizationRepository;
   private final IdentityService identityService;
   private final DataScope dataScope;
   private final IdentityMapper mapper;
@@ -54,12 +54,14 @@ public class UserService {
       UserRepository userRepository,
       RoleRepository roleRepository,
       UserRoleRepository userRoleRepository,
+      UserAuthorizationRepository authorizationRepository,
       IdentityService identityService,
       DataScope dataScope,
       IdentityMapper mapper) {
     this.userRepository = userRepository;
     this.roleRepository = roleRepository;
     this.userRoleRepository = userRoleRepository;
+    this.authorizationRepository = authorizationRepository;
     this.identityService = identityService;
     this.dataScope = dataScope;
     this.mapper = mapper;
@@ -98,7 +100,10 @@ public class UserService {
     List<UserEntity> users = (effectiveRoles == null || effectiveRoles.isEmpty())
         ? userRepository.findByInstitutionId(institutionId)
         : userRepository.findByInstitutionIdAndRoleCodes(institutionId, effectiveRoles);
-    return users.stream().map(mapper::toUserResponse).toList();
+    Map<UUID, List<String>> rolesByUser = roleCodesByUser(users);
+    return users.stream()
+        .map(user -> mapper.toUserResponse(user, rolesByUser.getOrDefault(user.getId(), List.of())))
+        .toList();
   }
 
   /**
@@ -128,7 +133,7 @@ public class UserService {
       UserEntity user = findById(userId);
       user.setStatus(parsed);
       user.setUpdatedAt(now);
-      return mapper.toUserResponse(userRepository.save(user));
+      return mapper.toUserResponse(userRepository.save(user), roleCodesOf(userId));
     }
 
     UserEntity user = requireScopedManagedUser(userId, scope);
@@ -136,7 +141,7 @@ public class UserService {
     if (updated == 0) {
       throw new ScopeViolationException("El usuario no existe o no pertenece a tu institucion.");
     }
-    return mapper.toUserResponse(user, parsed.name());
+    return mapper.toUserResponse(user, parsed.name(), roleCodesOf(userId));
   }
 
   /**
@@ -159,7 +164,7 @@ public class UserService {
       replaceRoles(userId, roles);
       user.setUpdatedAt(now);
       userRepository.save(user);
-      return mapper.toUserResponse(user);
+      return mapper.toUserResponse(user, roleCodesOf(userId));
     }
 
     UserEntity user = requireScopedManagedUser(userId, scope);
@@ -168,7 +173,7 @@ public class UserService {
       userRoleRepository.save(new UserRoleEntity(userId, role.getId()));
     }
     userRepository.touchUpdatedAtScoped(userId, scope.institutionId(), now);
-    return mapper.toUserResponse(user);
+    return mapper.toUserResponse(user, roleCodesOf(userId));
   }
 
   /**
@@ -183,13 +188,33 @@ public class UserService {
         .orElseThrow(() ->
             new ScopeViolationException("El usuario no existe o no pertenece a tu institucion."));
 
-    boolean privileged = userRepository.findRolesByUserId(userId).stream()
-        .map(RoleEntity::getCode)
-        .anyMatch(code -> SUPER_ADMIN_ROLE.equals(code) || ADMIN_INSTITUTION_ROLE.equals(code));
+    boolean privileged = roleCodesOf(userId).stream()
+        .anyMatch(
+            code -> RoleCodes.SUPER_ADMIN.equals(code) || RoleCodes.ADMIN_INSTITUTION.equals(code));
     if (privileged) {
       throw new ScopeViolationException("No tienes permiso para administrar a otro administrador.");
     }
     return user;
+  }
+
+  /** Codigos de rol vigentes de un usuario. */
+  private List<String> roleCodesOf(UUID userId) {
+    return authorizationRepository.findRolesByUserId(userId).stream()
+        .map(RoleEntity::getCode)
+        .toList();
+  }
+
+  /** Codigos de rol de varios usuarios en una sola consulta (evita N+1). */
+  private Map<UUID, List<String>> roleCodesByUser(List<UserEntity> users) {
+    if (users.isEmpty()) {
+      return Map.of();
+    }
+    List<UUID> userIds = users.stream().map(UserEntity::getId).toList();
+    return authorizationRepository.findRoleCodesByUserIds(userIds).stream()
+        .collect(Collectors.groupingBy(
+            UserAuthorizationRepository.UserRoleCode::getUserId,
+            Collectors.mapping(
+                UserAuthorizationRepository.UserRoleCode::getCode, Collectors.toList())));
   }
 
   /**
@@ -213,7 +238,7 @@ public class UserService {
     List<RoleEntity> roles = new ArrayList<>(roleCodes.size());
     for (String code : roleCodes) {
       String normalized = code.trim().toUpperCase();
-      if (SUPER_ADMIN_ROLE.equals(normalized)) {
+      if (RoleCodes.SUPER_ADMIN.equals(normalized)) {
         throw new IllegalArgumentException(
             "El rol SUPER_ADMIN no se puede asignar desde la aplicacion.");
       }

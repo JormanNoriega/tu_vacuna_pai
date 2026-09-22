@@ -14,6 +14,7 @@ import com.pai.api.catalog.repository.InstitutionVaccineOptionRepository;
 import com.pai.api.catalog.repository.InstitutionVaccineRepository;
 import com.pai.api.catalog.repository.VaccineOptionRepository;
 import com.pai.api.catalog.repository.VaccineRepository;
+import com.pai.api.catalog.service.CatalogMapper;
 import com.pai.api.catalog.service.EffectiveCatalogService;
 import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.service.AuthorizedUser;
@@ -50,7 +51,8 @@ class EffectiveCatalogServiceTest {
         vaccines,
         vaccineOptions,
         identity,
-        new DataScope());
+        new DataScope(),
+        new CatalogMapper());
   }
 
   private InstitutionEntity institution() {

@@ -1,9 +1,11 @@
 package com.pai.api.shared.application;
 
 import com.pai.api.audit.AuditAction;
-import com.pai.api.audit.service.AuditService;
-import com.pai.api.synchronization.service.ProcessedOperationsService;
+import com.pai.api.audit.AuditRecord;
+import com.pai.api.audit.AuditResourceType;
+import com.pai.api.audit.service.AuditRecorder;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import org.springframework.stereotype.Component;
 
@@ -19,11 +21,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class IdempotencyCoordinator {
 
-  private final AuditService audit;
-  private final ProcessedOperationsService processedOperations;
+  private final AuditRecorder audit;
+  private final ProcessedOperationsPort processedOperations;
 
-  public IdempotencyCoordinator(
-      AuditService audit, ProcessedOperationsService processedOperations) {
+  public IdempotencyCoordinator(AuditRecorder audit, ProcessedOperationsPort processedOperations) {
     this.audit = audit;
     this.processedOperations = processedOperations;
   }
@@ -39,7 +40,7 @@ public class IdempotencyCoordinator {
    * siquiera el actor: el replay no ejecuta absolutamente nada.
    */
   public record AuditContext(
-      UUID actorId, UUID institutionId, AuditAction action, String resourceType) {}
+      UUID actorId, UUID institutionId, AuditAction action, AuditResourceType resourceType) {}
 
   /**
    * Ejecuta una escritura idempotente. Si {@code operationId} ya fue
@@ -59,14 +60,14 @@ public class IdempotencyCoordinator {
     }
     WriteResult<T> result = body.get();
     AuditContext auditContext = context.get();
-    audit.record(
+    audit.record(new AuditRecord(
         auditContext.actorId(),
         auditContext.institutionId(),
         auditContext.action(),
         auditContext.resourceType(),
         result.aggregateId(),
         parseOperationId(operationId),
-        result.response());
+        result.response()));
     processedOperations.record(
         operationId,
         commandType,
@@ -79,17 +80,36 @@ public class IdempotencyCoordinator {
 
   /**
    * Ejecuta una escritura sin idempotencia (actualizaciones de recursos ya
-   * existentes) y registra auditoria. {@code clientOperationId} es nulo.
+   * existentes) y registra auditoria con el propio response como payload.
+   * {@code clientOperationId} es nulo.
    */
   public <T> T executeAudited(
       UUID actorId,
       UUID institutionId,
       AuditAction action,
-      String resourceType,
+      AuditResourceType resourceType,
       UUID aggregateId,
       Supplier<T> body) {
+    return executeAudited(
+        actorId, institutionId, action, resourceType, aggregateId, response -> response, body);
+  }
+
+  /**
+   * Variante con payload de auditoria propio (p. ej. cancelaciones, donde el
+   * payload es {@code {resource, reason}} en lugar del response). El
+   * {@code payload} se evalua despues del cuerpo para capturar el estado final.
+   */
+  public <T> T executeAudited(
+      UUID actorId,
+      UUID institutionId,
+      AuditAction action,
+      AuditResourceType resourceType,
+      UUID aggregateId,
+      Function<T, Object> payload,
+      Supplier<T> body) {
     T response = body.get();
-    audit.record(actorId, institutionId, action, resourceType, aggregateId, null, response);
+    audit.record(new AuditRecord(
+        actorId, institutionId, action, resourceType, aggregateId, null, payload.apply(response)));
     return response;
   }
 
