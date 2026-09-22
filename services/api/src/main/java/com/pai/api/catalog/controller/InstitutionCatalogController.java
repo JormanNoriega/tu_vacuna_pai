@@ -1,8 +1,9 @@
 package com.pai.api.catalog.controller;
 
 import com.pai.api.catalog.dto.*;
+import com.pai.api.catalog.service.InstitutionVaccineOptionService;
 import com.pai.api.catalog.service.InstitutionVaccineService;
-import com.pai.api.identity.service.AuthorizedUser;
+import com.pai.api.shared.security.ActorResolver;
 import jakarta.validation.Valid;
 import java.util.*;
 import org.springframework.http.*;
@@ -14,32 +15,31 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/institutions/{institutionId}/vaccines")
 public class InstitutionCatalogController {
   private final InstitutionVaccineService service;
+  private final InstitutionVaccineOptionService options;
 
-  public InstitutionCatalogController(InstitutionVaccineService s) {
+  public InstitutionCatalogController(
+      InstitutionVaccineService s, InstitutionVaccineOptionService options) {
     service = s;
-  }
-
-  private UUID actor(Authentication a) {
-    return ((AuthorizedUser) a.getPrincipal()).getId();
+    this.options = options;
   }
 
   @GetMapping
   @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_READ')")
   public List<InstitutionVaccineResponse> list(Authentication a, @PathVariable UUID institutionId) {
-    return service.list(actor(a), institutionId);
+    return service.list(ActorResolver.actorId(a), institutionId);
   }
 
   @GetMapping("/available")
   @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_READ')")
   public List<VaccineResponse> available(Authentication a, @PathVariable UUID institutionId) {
-    return service.available(actor(a), institutionId);
+    return service.available(ActorResolver.actorId(a), institutionId);
   }
 
   @PostMapping("/{vaccineId}/enable")
   @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_WRITE')")
   public ResponseEntity<Void> enable(
       Authentication a, @PathVariable UUID institutionId, @PathVariable UUID vaccineId) {
-    service.enable(actor(a), institutionId, vaccineId);
+    service.enable(ActorResolver.actorId(a), institutionId, vaccineId);
     return ResponseEntity.noContent().build();
   }
 
@@ -47,7 +47,7 @@ public class InstitutionCatalogController {
   @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_WRITE')")
   public ResponseEntity<Void> disable(
       Authentication a, @PathVariable UUID institutionId, @PathVariable UUID vaccineId) {
-    service.disable(actor(a), institutionId, vaccineId);
+    service.disable(ActorResolver.actorId(a), institutionId, vaccineId);
     return ResponseEntity.noContent().build();
   }
 
@@ -57,14 +57,14 @@ public class InstitutionCatalogController {
       Authentication a,
       @PathVariable UUID institutionId,
       @Valid @RequestBody CloneCatalogRequest r) {
-    return service.clone(actor(a), institutionId, r.includeDefaultConfig());
+    return service.clone(ActorResolver.actorId(a), institutionId, r.includeDefaultConfig());
   }
 
   @GetMapping("/{vaccineId}/options")
   @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_READ')")
   public List<OptionResponse> options(
       Authentication a, @PathVariable UUID institutionId, @PathVariable UUID vaccineId) {
-    return service.options(actor(a), institutionId, vaccineId);
+    return options.options(ActorResolver.actorId(a), institutionId, vaccineId);
   }
 
   @PostMapping("/{vaccineId}/options")
@@ -75,7 +75,7 @@ public class InstitutionCatalogController {
       @PathVariable UUID vaccineId,
       @Valid @RequestBody OptionRequest r) {
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(service.createOption(actor(a), institutionId, vaccineId, r));
+        .body(options.createOption(ActorResolver.actorId(a), institutionId, vaccineId, r));
   }
 
   @PutMapping("/{vaccineId}/options/{optionId}")
@@ -86,7 +86,7 @@ public class InstitutionCatalogController {
       @PathVariable UUID vaccineId,
       @PathVariable UUID optionId,
       @Valid @RequestBody OptionRequest r) {
-    return service.updateOption(actor(a), institutionId, vaccineId, optionId, r);
+    return options.updateOption(ActorResolver.actorId(a), institutionId, vaccineId, optionId, r);
   }
 
   @DeleteMapping("/{vaccineId}/options/{optionId}")
@@ -97,7 +97,7 @@ public class InstitutionCatalogController {
       @PathVariable UUID vaccineId,
       @PathVariable UUID optionId,
       @RequestParam long version) {
-    service.deleteOption(actor(a), institutionId, vaccineId, optionId, version);
+    options.deleteOption(ActorResolver.actorId(a), institutionId, vaccineId, optionId, version);
     return ResponseEntity.noContent().build();
   }
 
@@ -105,13 +105,13 @@ public class InstitutionCatalogController {
   @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_READ')")
   public List<OptionResponse> suggested(
       Authentication a, @PathVariable UUID institutionId, @PathVariable UUID vaccineId) {
-    return service.suggested(actor(a), institutionId, vaccineId);
+    return options.suggested(ActorResolver.actorId(a), institutionId, vaccineId);
   }
 
   @PostMapping("/{vaccineId}/import-suggested-options")
   @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_CONFIG_WRITE')")
   public List<OptionResponse> importSuggested(
       Authentication a, @PathVariable UUID institutionId, @PathVariable UUID vaccineId) {
-    return service.importSuggested(actor(a), institutionId, vaccineId);
+    return options.importSuggested(ActorResolver.actorId(a), institutionId, vaccineId);
   }
 }

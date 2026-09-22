@@ -50,8 +50,7 @@ public class SyncPullService {
 
   public SyncPullResponse pull(UUID actorId, String since, Integer limit) {
     AuthorizedUser actor = identity.resolve(actorId);
-    UUID institutionId =
-        dataScope.resolveInstitutionId(actor, actor.getInstitution().getId());
+    UUID institutionId = dataScope.institutionOf(actor);
     long sequence = parseSequence(since);
 
     List<ProcessedOperationEntity> rows =

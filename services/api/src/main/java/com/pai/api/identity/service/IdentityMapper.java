@@ -2,32 +2,23 @@ package com.pai.api.identity.service;
 
 import com.pai.api.identity.dto.UserResponse;
 import com.pai.api.identity.entity.ProvisioningOperationEntity;
-import com.pai.api.identity.entity.RoleEntity;
 import com.pai.api.identity.entity.UserEntity;
-import com.pai.api.identity.repository.UserRepository;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
 /**
  * Mapeo centralizado entidad {@literal ->} {@link UserResponse} del modulo de
- * identidad. Antes se construia en {@link UserService} (dos variantes),
- * {@link UserProvisioningService#replayResult} y {@link UserMirrorWriter}
- * (DRY/SRP).
+ * identidad (SRP). Es un mapper puro: no consulta la base de datos; los roles
+ * se reciben ya resueltos por el servicio (que puede resolverlos en bloque).
  */
 @Component
 public class IdentityMapper {
 
-  private final UserRepository userRepository;
-
-  public IdentityMapper(UserRepository userRepository) {
-    this.userRepository = userRepository;
-  }
-
   /**
-   * Mapea un usuario con su estado persistido y sus roles vigentes.
+   * Mapea un usuario con su estado persistido y los roles indicados.
    */
-  public UserResponse toUserResponse(UserEntity user) {
-    return toUserResponse(user, user.getStatus().name());
+  public UserResponse toUserResponse(UserEntity user, List<String> roleCodes) {
+    return toUserResponse(user, user.getStatus().name(), roleCodes);
   }
 
   /**
@@ -35,15 +26,13 @@ public class IdentityMapper {
    * cambio en memoria sin persistirse aun (o via actualizacion scopeada),
    * para que la respuesta refleje el estado recien aplicado.
    */
-  public UserResponse toUserResponse(UserEntity user, String status) {
+  public UserResponse toUserResponse(UserEntity user, String status, List<String> roleCodes) {
     return new UserResponse(
         user.getId(),
         user.getEmail(),
         user.getFullName(),
         user.getInstitutionId(),
-        userRepository.findRolesByUserId(user.getId()).stream()
-            .map(RoleEntity::getCode)
-            .toList(),
+        roleCodes,
         status,
         user.getDocumentType(),
         user.getDocumentNumber(),

@@ -1,6 +1,7 @@
 package com.pai.api.patients.service;
 
 import com.pai.api.patients.dto.PatientResponse;
+import com.pai.api.patients.dto.PatientSummaryResponse;
 import com.pai.api.patients.entity.PatientAddressEntity;
 import com.pai.api.patients.entity.PatientAffiliationEntity;
 import com.pai.api.patients.entity.PatientContactEntity;
@@ -23,6 +24,29 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class PatientMapper {
+
+  /** Vista ligera para listados (sin sub-entidades). */
+  public PatientSummaryResponse toSummary(PatientEntity patient) {
+    return new PatientSummaryResponse(
+        patient.getId(),
+        patient.getInstitutionId(),
+        patient.getDocumentType(),
+        patient.getDocumentNumber(),
+        patient.getFirstName(),
+        patient.getSecondName(),
+        patient.getLastName(),
+        patient.getSecondLastName(),
+        patient.getBirthDate(),
+        patient.getSex().name(),
+        patient.getBirthCountryId(),
+        patient.getBirthPlace(),
+        patient.getMigrationStatus(),
+        patient.getGestationalAgeAtBirth(),
+        patient.getVaccinationCardType(),
+        patient.isAuthorizeCalls(),
+        patient.isAuthorizeEmail(),
+        patient.getStatus().name());
+  }
 
   public PatientResponse toResponse(
       PatientEntity patient,

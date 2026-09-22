@@ -1,13 +1,14 @@
 package com.pai.api.patients.controller;
 
-import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.patients.dto.CreatePatientRequest;
 import com.pai.api.patients.dto.PatientResponse;
+import com.pai.api.patients.dto.PatientSummaryResponse;
 import com.pai.api.patients.dto.UpdatePatientContactRequest;
 import com.pai.api.patients.dto.UpdatePatientDemographicsRequest;
 import com.pai.api.patients.dto.UpdatePatientIdentityRequest;
 import com.pai.api.patients.dto.UpdatePatientMedicalHistoriesRequest;
 import com.pai.api.patients.service.PatientService;
+import com.pai.api.shared.security.ActorResolver;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -46,7 +47,7 @@ public class PatientController {
       Authentication authentication,
       @RequestHeader(value = "Idempotency-Key", required = false) String operationId,
       @Valid @RequestBody CreatePatientRequest request) {
-    UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
+    UUID actorId = ActorResolver.actorId(authentication);
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(service.create(actorId, operationId, request));
   }
@@ -54,17 +55,17 @@ public class PatientController {
   @GetMapping("/{id}")
   @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_READ')")
   public ResponseEntity<PatientResponse> get(Authentication authentication, @PathVariable UUID id) {
-    UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
+    UUID actorId = ActorResolver.actorId(authentication);
     return ResponseEntity.ok(service.get(actorId, id));
   }
 
   @GetMapping
   @PreAuthorize("@authorization.hasPermission(authentication, 'PATIENT_READ')")
-  public ResponseEntity<List<PatientResponse>> search(
+  public ResponseEntity<List<PatientSummaryResponse>> search(
       Authentication authentication,
       @RequestParam(required = false) String documentType,
       @RequestParam String documentNumber) {
-    UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
+    UUID actorId = ActorResolver.actorId(authentication);
     return ResponseEntity.ok(service.search(actorId, documentType, documentNumber));
   }
 
@@ -74,7 +75,7 @@ public class PatientController {
       Authentication authentication,
       @PathVariable UUID id,
       @Valid @RequestBody UpdatePatientContactRequest request) {
-    UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
+    UUID actorId = ActorResolver.actorId(authentication);
     return ResponseEntity.ok(service.updateContact(actorId, id, request));
   }
 
@@ -84,7 +85,7 @@ public class PatientController {
       Authentication authentication,
       @PathVariable UUID id,
       @Valid @RequestBody UpdatePatientIdentityRequest request) {
-    UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
+    UUID actorId = ActorResolver.actorId(authentication);
     return ResponseEntity.ok(service.updateIdentity(actorId, id, request));
   }
 
@@ -94,7 +95,7 @@ public class PatientController {
       Authentication authentication,
       @PathVariable UUID id,
       @Valid @RequestBody UpdatePatientDemographicsRequest request) {
-    UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
+    UUID actorId = ActorResolver.actorId(authentication);
     return ResponseEntity.ok(service.updateDemographics(actorId, id, request));
   }
 
@@ -104,7 +105,7 @@ public class PatientController {
       Authentication authentication,
       @PathVariable UUID id,
       @Valid @RequestBody UpdatePatientMedicalHistoriesRequest request) {
-    UUID actorId = ((AuthorizedUser) authentication.getPrincipal()).getId();
+    UUID actorId = ActorResolver.actorId(authentication);
     return ResponseEntity.ok(service.updateMedicalHistories(actorId, id, request));
   }
 }

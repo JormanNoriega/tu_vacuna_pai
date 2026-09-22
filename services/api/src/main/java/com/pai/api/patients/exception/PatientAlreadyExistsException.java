@@ -1,6 +1,8 @@
 package com.pai.api.patients.exception;
 
+import com.pai.api.shared.exceptions.DomainRuntimeException;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 
 /**
  * El paciente ya existe en la institucion para el tipo y numero de documento
@@ -11,7 +13,7 @@ import java.util.UUID;
  * <p>Transporta el id del paciente existente para que el motor de sincronizacion
  * pueda abrir un {@code PatientMergeRequest} (D11).
  */
-public class PatientAlreadyExistsException extends RuntimeException {
+public class PatientAlreadyExistsException extends DomainRuntimeException {
 
   private final UUID existingPatientId;
 
@@ -26,5 +28,15 @@ public class PatientAlreadyExistsException extends RuntimeException {
 
   public UUID getExistingPatientId() {
     return existingPatientId;
+  }
+
+  @Override
+  public String errorCode() {
+    return "PATIENT_ALREADY_EXISTS";
+  }
+
+  @Override
+  public HttpStatus status() {
+    return HttpStatus.CONFLICT;
   }
 }

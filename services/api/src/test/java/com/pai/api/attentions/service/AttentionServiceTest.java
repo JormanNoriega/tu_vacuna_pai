@@ -3,6 +3,7 @@ package com.pai.api.attentions.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -23,13 +24,12 @@ import com.pai.api.attentions.repository.AppliedDoseRepository;
 import com.pai.api.attentions.repository.AttentionRepository;
 import com.pai.api.attentions.service.VaccineCatalogPolicy.DoseSelection;
 import com.pai.api.audit.AuditAction;
+import com.pai.api.audit.AuditResourceType;
 import com.pai.api.audit.service.AuditService;
 import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.DataScope;
 import com.pai.api.identity.service.IdentityService;
-import com.pai.api.patients.entity.PatientEntity;
-import com.pai.api.patients.repository.PatientRepository;
 import com.pai.api.shared.application.IdempotencyCoordinator;
 import com.pai.api.synchronization.service.ProcessedOperationsService;
 import java.time.Instant;
@@ -50,7 +50,7 @@ class AttentionServiceTest {
 
   private AttentionRepository attentions;
   private AppliedDoseRepository doses;
-  private PatientRepository patients;
+  private PatientScopePolicy patientScope;
   private VaccineCatalogPolicy catalogPolicy;
   private IdentityService identity;
   private DataScope dataScope;
@@ -62,7 +62,7 @@ class AttentionServiceTest {
   void setUp() {
     attentions = mock(AttentionRepository.class);
     doses = mock(AppliedDoseRepository.class);
-    patients = mock(PatientRepository.class);
+    patientScope = mock(PatientScopePolicy.class);
     catalogPolicy = mock(VaccineCatalogPolicy.class);
     identity = mock(IdentityService.class);
     dataScope = new DataScope();
@@ -73,14 +73,13 @@ class AttentionServiceTest {
     service = new AttentionService(
         attentions,
         doses,
-        patients,
+        patientScope,
         catalogPolicy,
         identity,
         dataScope,
-        audit,
         coordinator,
         mapper,
-        new ObjectMapper());
+        new DoseCommandPayloadFactory(new ObjectMapper()));
   }
 
   private InstitutionEntity institution() {
@@ -177,8 +176,7 @@ class AttentionServiceTest {
     when(processedOperations.find(OPERATION_ID, AttentionResponse.class))
         .thenReturn(Optional.empty());
     when(identity.resolve(ACTOR_ID)).thenReturn(actor());
-    when(patients.findByIdAndInstitutionId(patientId, INSTITUTION_ID))
-        .thenReturn(Optional.of(mock(PatientEntity.class)));
+    when(patientScope.existsInInstitution(patientId, INSTITUTION_ID)).thenReturn(true);
     when(attentions.maxConsecutive(INSTITUTION_ID)).thenReturn(4L);
     when(attentions.save(any(AttentionEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -193,14 +191,11 @@ class AttentionServiceTest {
     assertThat(response.institutionId()).isEqualTo(INSTITUTION_ID);
     assertThat(response.professionalId()).isEqualTo(ACTOR_ID);
     verify(audit)
-        .record(
-            eq(ACTOR_ID),
-            eq(INSTITUTION_ID),
-            eq(AuditAction.ATTENTION_CREATED),
-            eq("ATTENTION"),
-            any(),
-            any(),
-            any());
+        .record(argThat(record -> record.actorId().equals(ACTOR_ID)
+            && record.institutionId().equals(INSTITUTION_ID)
+            && record.action() == AuditAction.ATTENTION_CREATED
+            && record.resourceType() == AuditResourceType.ATTENTION
+            && record.clientOperationId().equals(UUID.fromString(OPERATION_ID))));
     verify(processedOperations)
         .record(eq(OPERATION_ID), eq("CREATE_ATTENTION"), any(), any(), any(), any());
   }
@@ -304,14 +299,10 @@ class AttentionServiceTest {
     verify(doses).save(captor.capture());
     assertThat(captor.getValue().getApplicationDate()).isNotNull();
     verify(audit)
-        .record(
-            eq(ACTOR_ID),
-            eq(INSTITUTION_ID),
-            eq(AuditAction.DOSE_REGISTERED),
-            eq("APPLIED_DOSE"),
-            any(),
-            any(),
-            any());
+        .record(argThat(record -> record.actorId().equals(ACTOR_ID)
+            && record.institutionId().equals(INSTITUTION_ID)
+            && record.action() == AuditAction.DOSE_REGISTERED
+            && record.resourceType() == AuditResourceType.APPLIED_DOSE));
   }
 
   @Test
@@ -338,12 +329,15 @@ class AttentionServiceTest {
     when(attentions.findByInstitutionIdAndPatientIdOrderByAttentionDateDesc(
             INSTITUTION_ID, PATIENT_ID))
         .thenReturn(List.of(first));
-    when(doses.findByAttentionIdOrderByCreatedAtAsc(first.getId())).thenReturn(List.of());
+    when(doses.findByAttentionIdInOrderByCreatedAtAsc(List.of(first.getId())))
+        .thenReturn(List.of());
 
     List<AttentionResponse> result = service.listByPatient(ACTOR_ID, PATIENT_ID);
 
     assertThat(result).hasSize(1);
     assertThat(result.get(0).id()).isEqualTo(first.getId());
+    verify(doses).findByAttentionIdInOrderByCreatedAtAsc(List.of(first.getId()));
+    verify(doses, never()).findByAttentionIdOrderByCreatedAtAsc(any());
   }
 
   @Test
@@ -360,13 +354,9 @@ class AttentionServiceTest {
 
     assertThat(response.status()).isEqualTo("COMPLETED");
     verify(audit)
-        .record(
-            eq(ACTOR_ID),
-            eq(INSTITUTION_ID),
-            eq(AuditAction.ATTENTION_COMPLETED),
-            eq("ATTENTION"),
-            any(),
-            any(),
-            any());
+        .record(argThat(record -> record.actorId().equals(ACTOR_ID)
+            && record.institutionId().equals(INSTITUTION_ID)
+            && record.action() == AuditAction.ATTENTION_COMPLETED
+            && record.resourceType() == AuditResourceType.ATTENTION));
   }
 }

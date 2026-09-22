@@ -5,7 +5,8 @@ import java.util.*;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
-public interface VaccineOptionRepository extends JpaRepository<VaccineOptionEntity, UUID> {
+public interface VaccineOptionRepository
+    extends JpaRepository<VaccineOptionEntity, UUID>, CatalogOptionRepository<VaccineOptionEntity> {
   List<VaccineOptionEntity> findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(UUID id);
 
   List<VaccineOptionEntity>

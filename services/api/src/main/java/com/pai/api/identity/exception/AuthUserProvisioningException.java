@@ -1,0 +1,12 @@
+package com.pai.api.identity.exception;
+
+/**
+ * Rechazo definitivo de la creacion del auth.user (4xx distinto de 409): nada
+ * se creo y la operacion se marca {@code REJECTED}.
+ */
+public class AuthUserProvisioningException extends RuntimeException {
+
+  public AuthUserProvisioningException(String message, Throwable cause) {
+    super(message, cause);
+  }
+}

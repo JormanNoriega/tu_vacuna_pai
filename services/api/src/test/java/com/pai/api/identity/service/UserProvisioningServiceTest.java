@@ -14,18 +14,18 @@ import static org.mockito.Mockito.when;
 import com.pai.api.identity.dto.CreateInstitutionAdminRequest;
 import com.pai.api.identity.dto.CreateVaccinatorRequest;
 import com.pai.api.identity.dto.UserResponse;
-import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.entity.ProvisioningOperationEntity;
 import com.pai.api.identity.entity.ProvisioningOperationStatus;
+import com.pai.api.identity.exception.EmailAlreadyExistsException;
+import com.pai.api.identity.exception.InstitutionNotFoundException;
+import com.pai.api.identity.exception.UncertainProvisioningException;
 import com.pai.api.identity.repository.InstitutionRepository;
 import com.pai.api.identity.repository.ProfessionRepository;
 import com.pai.api.identity.repository.ProvisioningOperationRepository;
-import com.pai.api.identity.repository.UserRepository;
 import com.pai.api.identity.service.AuthUserLookupService.AuthUserRecord;
-import com.pai.api.shared.exceptions.EmailAlreadyExistsException;
-import com.pai.api.shared.exceptions.InstitutionNotFoundException;
+import com.pai.api.identity.support.IdentityTestFixtures;
+import com.pai.api.identity.support.ProvisioningOperations;
 import com.pai.api.shared.exceptions.PermissionDeniedException;
-import com.pai.api.shared.exceptions.UncertainProvisioningException;
 import com.pai.api.shared.security.PermissionGuard;
 import java.time.Instant;
 import java.util.List;
@@ -66,12 +66,12 @@ class UserProvisioningServiceTest {
     service = new UserProvisioningService(
         guard,
         institutionRepository,
-        professionRepository,
         authUserClient,
-        operationRepository,
         authUserLookup,
         mirrorWriter,
-        new IdentityMapper(mock(UserRepository.class)));
+        new IdentityMapper(),
+        new ProvisioningStateMachine(operationRepository),
+        new VaccinatorProfileFactory(professionRepository));
     when(professionRepository.existsByCode(anyString())).thenReturn(true);
     when(operationRepository.save(any(ProvisioningOperationEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -81,37 +81,12 @@ class UserProvisioningServiceTest {
         .thenReturn(1);
   }
 
-  private InstitutionEntity institution() {
-    return new InstitutionEntity(
-        INSTITUTION_ID,
-        "HOSP-A",
-        "Hospital A",
-        InstitutionEntity.Status.ACTIVE,
-        (short) 72,
-        Instant.now(),
-        Instant.now());
-  }
-
   private AuthorizedUser adminInstitutionActor() {
-    return new AuthorizedUser(
-        ACTOR_ID,
-        "admin@hosp.a",
-        "Admin Hospital A",
-        institution(),
-        List.of("ADMIN_INSTITUTION"),
-        List.of("USER_MANAGE"),
-        Instant.now());
+    return IdentityTestFixtures.adminInstitution(ACTOR_ID, INSTITUTION_ID);
   }
 
   private AuthorizedUser superAdminActor() {
-    return new AuthorizedUser(
-        ACTOR_ID,
-        "super@admin.test",
-        "Super Admin",
-        institution(),
-        List.of("SUPER_ADMIN"),
-        List.of("INSTITUTION_WRITE", "USER_MANAGE"),
-        Instant.now());
+    return IdentityTestFixtures.superAdmin(ACTOR_ID, INSTITUTION_ID);
   }
 
   private CreateVaccinatorRequest vaccinatorRequest() {
@@ -137,20 +112,8 @@ class UserProvisioningServiceTest {
 
   private ProvisioningOperationEntity operation(
       ProvisioningOperationStatus status, UUID authUserId) {
-    Instant now = Instant.now();
-    return new ProvisioningOperationEntity(
-        OPERATION_ID,
-        authUserId,
-        "vac@hosp.a",
-        "Vaca Uno",
-        INSTITUTION_ID,
-        "VACCINATOR",
-        ACTOR_ID,
-        status,
-        (short) 1,
-        null,
-        now,
-        now);
+    return ProvisioningOperations.operation(
+        OPERATION_ID, authUserId, ACTOR_ID, INSTITUTION_ID, status);
   }
 
   private UserResponse vaccinatorResponse() {
@@ -158,10 +121,8 @@ class UserProvisioningServiceTest {
         AUTH_USER_ID, "vac@hosp.a", "Vaca Uno", INSTITUTION_ID, List.of("VACCINATOR"), "ACTIVE");
   }
 
-  @Test
-  void createVaccinator_createsAuthUserMirrorAndRole() {
-    when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
-    when(operationRepository.findById(OPERATION_ID)).thenReturn(Optional.empty());
+  /** Stub: la Edge Function crea el auth.user del vacunador. */
+  private void givenAuthUserCreated() {
     when(authUserClient.createAuthUser(
             eq(ACCESS_TOKEN),
             eq(OPERATION_ID),
@@ -170,8 +131,20 @@ class UserProvisioningServiceTest {
             eq("Vaca Uno"),
             any()))
         .thenReturn(AUTH_USER_ID);
+  }
+
+  /** Stub: la fase espejo responde con el vacunador creado. */
+  private void givenVaccinatorMirrorWritten() {
     when(mirrorWriter.writeMirrorAndRoles(any(), eq("VACCINATOR")))
         .thenReturn(vaccinatorResponse());
+  }
+
+  @Test
+  void createVaccinator_createsAuthUserMirrorAndRole() {
+    when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
+    when(operationRepository.findById(OPERATION_ID)).thenReturn(Optional.empty());
+    givenAuthUserCreated();
+    givenVaccinatorMirrorWritten();
 
     UserResponse result = service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest());
 
@@ -194,16 +167,8 @@ class UserProvisioningServiceTest {
   void createVaccinator_usesActorInstitutionAsScope() {
     when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
     when(operationRepository.findById(OPERATION_ID)).thenReturn(Optional.empty());
-    when(authUserClient.createAuthUser(
-            eq(ACCESS_TOKEN),
-            eq(OPERATION_ID),
-            eq("vac@hosp.a"),
-            eq("TempPass123!"),
-            eq("Vaca Uno"),
-            any()))
-        .thenReturn(AUTH_USER_ID);
-    when(mirrorWriter.writeMirrorAndRoles(any(), eq("VACCINATOR")))
-        .thenReturn(vaccinatorResponse());
+    givenAuthUserCreated();
+    givenVaccinatorMirrorWritten();
 
     service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest());
 
@@ -223,7 +188,7 @@ class UserProvisioningServiceTest {
         ACTOR_ID,
         "admin@hosp.a",
         "Admin Hospital A",
-        institution(),
+        IdentityTestFixtures.institution(INSTITUTION_ID),
         List.of("ADMIN_INSTITUTION"),
         List.of("ATTENTION_CREATE"),
         Instant.now());
@@ -279,8 +244,7 @@ class UserProvisioningServiceTest {
     // Supabase si creo el usuario (con metadata) pero la respuesta se perdio.
     when(authUserLookup.findByOperation(OPERATION_ID))
         .thenReturn(Optional.of(new AuthUserRecord(AUTH_USER_ID, "vac@hosp.a")));
-    when(mirrorWriter.writeMirrorAndRoles(any(), eq("VACCINATOR")))
-        .thenReturn(vaccinatorResponse());
+    givenVaccinatorMirrorWritten();
 
     UserResponse result = service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest());
 
@@ -336,14 +300,7 @@ class UserProvisioningServiceTest {
   void createVaccinator_mirrorFailureCompensatesAfterRollback() {
     when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
     when(operationRepository.findById(OPERATION_ID)).thenReturn(Optional.empty());
-    when(authUserClient.createAuthUser(
-            eq(ACCESS_TOKEN),
-            eq(OPERATION_ID),
-            eq("vac@hosp.a"),
-            eq("TempPass123!"),
-            eq("Vaca Uno"),
-            any()))
-        .thenReturn(AUTH_USER_ID);
+    givenAuthUserCreated();
     RuntimeException original = new RuntimeException("DB failure");
     when(mirrorWriter.writeMirrorAndRoles(any(), eq("VACCINATOR"))).thenThrow(original);
 
@@ -374,14 +331,7 @@ class UserProvisioningServiceTest {
   void createVaccinator_compensationFailureMarksCompensationFailed() {
     when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
     when(operationRepository.findById(OPERATION_ID)).thenReturn(Optional.empty());
-    when(authUserClient.createAuthUser(
-            eq(ACCESS_TOKEN),
-            eq(OPERATION_ID),
-            eq("vac@hosp.a"),
-            eq("TempPass123!"),
-            eq("Vaca Uno"),
-            any()))
-        .thenReturn(AUTH_USER_ID);
+    givenAuthUserCreated();
     RuntimeException original = new RuntimeException("DB failure");
     when(mirrorWriter.writeMirrorAndRoles(any(), eq("VACCINATOR"))).thenThrow(original);
     doThrow(new RuntimeException("Compensation failure"))
@@ -436,8 +386,7 @@ class UserProvisioningServiceTest {
         .thenReturn(Optional.of(operation(ProvisioningOperationStatus.UNCERTAIN, null)));
     when(authUserLookup.findByOperation(OPERATION_ID))
         .thenReturn(Optional.of(new AuthUserRecord(AUTH_USER_ID, "vac@hosp.a")));
-    when(mirrorWriter.writeMirrorAndRoles(any(), eq("VACCINATOR")))
-        .thenReturn(vaccinatorResponse());
+    givenVaccinatorMirrorWritten();
 
     UserResponse result = service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest());
 
@@ -471,7 +420,15 @@ class UserProvisioningServiceTest {
         (short) 1,
         null,
         Instant.now(),
-        Instant.now());
+        Instant.now(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
     when(operationRepository.findById(OPERATION_ID)).thenReturn(Optional.of(other));
 
     assertThatThrownBy(() -> service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest()))
@@ -485,16 +442,8 @@ class UserProvisioningServiceTest {
     when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
     when(operationRepository.findById(OPERATION_ID))
         .thenReturn(Optional.of(operation(ProvisioningOperationStatus.COMPENSATED, AUTH_USER_ID)));
-    when(authUserClient.createAuthUser(
-            eq(ACCESS_TOKEN),
-            eq(OPERATION_ID),
-            eq("vac@hosp.a"),
-            eq("TempPass123!"),
-            eq("Vaca Uno"),
-            any()))
-        .thenReturn(AUTH_USER_ID);
-    when(mirrorWriter.writeMirrorAndRoles(any(), eq("VACCINATOR")))
-        .thenReturn(vaccinatorResponse());
+    givenAuthUserCreated();
+    givenVaccinatorMirrorWritten();
 
     service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest());
 
@@ -516,7 +465,8 @@ class UserProvisioningServiceTest {
   @Test
   void createInstitutionAdmin_createsAuthUserMirrorAndRole() {
     when(identityService.resolve(ACTOR_ID)).thenReturn(superAdminActor());
-    when(institutionRepository.findById(INSTITUTION_ID)).thenReturn(Optional.of(institution()));
+    when(institutionRepository.findById(INSTITUTION_ID))
+        .thenReturn(Optional.of(IdentityTestFixtures.institution(INSTITUTION_ID)));
     when(operationRepository.findById(OPERATION_ID)).thenReturn(Optional.empty());
     when(authUserClient.createAuthUser(
             eq(ACCESS_TOKEN),
@@ -570,16 +520,8 @@ class UserProvisioningServiceTest {
   void createVaccinator_normalizesDocumentBeforePersisting() {
     when(identityService.resolve(ACTOR_ID)).thenReturn(adminInstitutionActor());
     when(operationRepository.findById(OPERATION_ID)).thenReturn(Optional.empty());
-    when(authUserClient.createAuthUser(
-            eq(ACCESS_TOKEN),
-            eq(OPERATION_ID),
-            eq("vac@hosp.a"),
-            eq("TempPass123!"),
-            eq("Vaca Uno"),
-            any()))
-        .thenReturn(AUTH_USER_ID);
-    when(mirrorWriter.writeMirrorAndRoles(any(), eq("VACCINATOR")))
-        .thenReturn(vaccinatorResponse());
+    givenAuthUserCreated();
+    givenVaccinatorMirrorWritten();
 
     service.createVaccinator(ACTOR_ID, ACCESS_TOKEN, vaccinatorRequest());
 

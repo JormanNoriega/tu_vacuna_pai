@@ -14,12 +14,12 @@ import com.pai.api.identity.entity.ProvisioningOperationStatus;
 import com.pai.api.identity.entity.RoleEntity;
 import com.pai.api.identity.entity.UserEntity;
 import com.pai.api.identity.entity.UserRoleEntity;
+import com.pai.api.identity.exception.RoleNotFoundException;
 import com.pai.api.identity.repository.ProvisioningOperationRepository;
 import com.pai.api.identity.repository.RoleRepository;
 import com.pai.api.identity.repository.UserRepository;
 import com.pai.api.identity.repository.UserRoleRepository;
-import com.pai.api.shared.exceptions.RoleNotFoundException;
-import java.time.Instant;
+import com.pai.api.identity.support.ProvisioningOperations;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -51,26 +51,14 @@ class UserMirrorWriterTest {
         roleRepository,
         userRoleRepository,
         operationRepository,
-        new IdentityMapper(userRepository));
+        new IdentityMapper());
     when(userRepository.save(any(UserEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
   }
 
   private ProvisioningOperationEntity operation(ProvisioningOperationStatus status) {
-    Instant now = Instant.now();
-    return new ProvisioningOperationEntity(
-        OPERATION_ID,
-        AUTH_USER_ID,
-        "vac@hosp.a",
-        "Vaca Uno",
-        INSTITUTION_ID,
-        "VACCINATOR",
-        UUID.randomUUID(),
-        status,
-        (short) 1,
-        null,
-        now,
-        now);
+    return ProvisioningOperations.operation(
+        OPERATION_ID, AUTH_USER_ID, UUID.randomUUID(), INSTITUTION_ID, status);
   }
 
   private RoleEntity vaccinatorRole() {

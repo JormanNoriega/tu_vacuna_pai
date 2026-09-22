@@ -15,23 +15,22 @@ import com.pai.api.attentions.exception.InvalidClinicalStateException;
 import com.pai.api.attentions.repository.AppliedDoseRepository;
 import com.pai.api.attentions.repository.AttentionRepository;
 import com.pai.api.audit.AuditAction;
-import com.pai.api.audit.service.AuditService;
+import com.pai.api.audit.AuditResourceType;
 import com.pai.api.catalog.exception.OptimisticCatalogException;
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.DataScope;
 import com.pai.api.identity.service.IdentityService;
 import com.pai.api.patients.exception.PatientNotFoundException;
-import com.pai.api.patients.repository.PatientRepository;
 import com.pai.api.shared.application.IdempotencyCoordinator;
 import com.pai.api.shared.util.Strings;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * Gestion clinica de atenciones y dosis aplicadas.
@@ -63,41 +62,35 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class AttentionService {
 
-  private static final String RESOURCE_TYPE_ATTENTION = "ATTENTION";
-  private static final String RESOURCE_TYPE_DOSE = "APPLIED_DOSE";
-
   private final AttentionRepository attentions;
   private final AppliedDoseRepository doses;
-  private final PatientRepository patients;
+  private final PatientScopePolicy patientScope;
   private final VaccineCatalogPolicy catalogPolicy;
   private final IdentityService identity;
   private final DataScope dataScope;
-  private final AuditService audit;
   private final IdempotencyCoordinator coordinator;
   private final AttentionMapper mapper;
-  private final ObjectMapper objectMapper;
+  private final DoseCommandPayloadFactory dosePayloadFactory;
 
   public AttentionService(
       AttentionRepository attentions,
       AppliedDoseRepository doses,
-      PatientRepository patients,
+      PatientScopePolicy patientScope,
       VaccineCatalogPolicy catalogPolicy,
       IdentityService identity,
       DataScope dataScope,
-      AuditService audit,
       IdempotencyCoordinator coordinator,
       AttentionMapper mapper,
-      ObjectMapper objectMapper) {
+      DoseCommandPayloadFactory dosePayloadFactory) {
     this.attentions = attentions;
     this.doses = doses;
-    this.patients = patients;
+    this.patientScope = patientScope;
     this.catalogPolicy = catalogPolicy;
     this.identity = identity;
     this.dataScope = dataScope;
-    this.audit = audit;
     this.coordinator = coordinator;
     this.mapper = mapper;
-    this.objectMapper = objectMapper;
+    this.dosePayloadFactory = dosePayloadFactory;
   }
 
   @Transactional
@@ -118,7 +111,7 @@ public class AttentionService {
         operationId,
         "CREATE_ATTENTION",
         AttentionResponse.class,
-        () -> auditContext(actorId, AuditAction.ATTENTION_CREATED, RESOURCE_TYPE_ATTENTION),
+        () -> auditContext(actorId, AuditAction.ATTENTION_CREATED, AuditResourceType.ATTENTION),
         () -> request,
         () -> {
           AuthorizedUser actor = identity.resolve(actorId);
@@ -158,10 +151,13 @@ public class AttentionService {
   public List<AttentionResponse> listByPatient(UUID actorId, UUID patientId) {
     AuthorizedUser actor = identity.resolve(actorId);
     UUID institutionId = institution(actor);
-    return attentions
-        .findByInstitutionIdAndPatientIdOrderByAttentionDateDesc(institutionId, patientId)
-        .stream()
-        .map(this::response)
+    List<AttentionEntity> found =
+        attentions.findByInstitutionIdAndPatientIdOrderByAttentionDateDesc(
+            institutionId, patientId);
+    Map<UUID, List<AppliedDoseResponse>> dosesByAttention = doseResponsesByAttention(found);
+    return found.stream()
+        .map(attention -> mapper.toResponse(
+            attention, dosesByAttention.getOrDefault(attention.getId(), List.of())))
         .toList();
   }
 
@@ -179,7 +175,7 @@ public class AttentionService {
         actor.getId(),
         attention.getInstitutionId(),
         AuditAction.ATTENTION_UPDATED,
-        RESOURCE_TYPE_ATTENTION,
+        AuditResourceType.ATTENTION,
         attentionId,
         () -> {
           Instant now = Instant.now();
@@ -213,7 +209,7 @@ public class AttentionService {
         operationId,
         "COMPLETE_ATTENTION",
         AttentionResponse.class,
-        () -> auditContext(actorId, AuditAction.ATTENTION_COMPLETED, RESOURCE_TYPE_ATTENTION),
+        () -> auditContext(actorId, AuditAction.ATTENTION_COMPLETED, AuditResourceType.ATTENTION),
         Map::of,
         () -> {
           AuthorizedUser actor = identity.resolve(actorId);
@@ -236,16 +232,14 @@ public class AttentionService {
     attention.cancel(Instant.now());
     attentions.save(attention);
 
-    AttentionResponse response = response(attention);
-    audit.record(
+    return coordinator.executeAudited(
         actor.getId(),
         attention.getInstitutionId(),
         AuditAction.ATTENTION_CANCELLED,
-        RESOURCE_TYPE_ATTENTION,
+        AuditResourceType.ATTENTION,
         attentionId,
-        null,
-        new Cancellation(response, request.reason()));
-    return response;
+        response -> new Cancellation(response, request.reason()),
+        () -> response(attention));
   }
 
   @Transactional
@@ -270,8 +264,8 @@ public class AttentionService {
         operationId,
         "REGISTER_APPLIED_DOSE",
         AppliedDoseResponse.class,
-        () -> auditContext(actorId, AuditAction.DOSE_REGISTERED, RESOURCE_TYPE_DOSE),
-        () -> doseCommandPayload(attentionId, request),
+        () -> auditContext(actorId, AuditAction.DOSE_REGISTERED, AuditResourceType.APPLIED_DOSE),
+        () -> dosePayloadFactory.forDose(attentionId, request),
         () -> {
           AuthorizedUser actor = identity.resolve(actorId);
           AttentionEntity attention = requireScoped(actor, attentionId);
@@ -348,16 +342,14 @@ public class AttentionService {
     dose.cancel(request.reason(), actor.getId(), Instant.now());
     doses.save(dose);
 
-    AppliedDoseResponse response = mapper.toDoseResponse(dose);
-    audit.record(
+    return coordinator.executeAudited(
         actor.getId(),
         attention.getInstitutionId(),
         AuditAction.DOSE_CANCELLED,
-        RESOURCE_TYPE_DOSE,
+        AuditResourceType.APPLIED_DOSE,
         doseId,
-        null,
-        new Cancellation(response, request.reason()));
-    return response;
+        response -> new Cancellation(response, request.reason()),
+        () -> mapper.toDoseResponse(dose));
   }
 
   // ---------- helpers ----------
@@ -365,27 +357,18 @@ public class AttentionService {
   private record Cancellation(Object resource, String reason) {}
 
   private IdempotencyCoordinator.AuditContext auditContext(
-      UUID actorId, AuditAction action, String resourceType) {
+      UUID actorId, AuditAction action, AuditResourceType resourceType) {
     AuthorizedUser actor = identity.resolve(actorId);
     return new IdempotencyCoordinator.AuditContext(
         actor.getId(), institution(actor), action, resourceType);
   }
 
-  /** El payload del comando conserva attentionId (no forma parte del DTO REST). */
-  @SuppressWarnings("unchecked")
-  private Map<String, Object> doseCommandPayload(UUID attentionId, RegisterDoseRequest request) {
-    Map<String, Object> payload =
-        new LinkedHashMap<>(objectMapper.convertValue(request, Map.class));
-    payload.put("attentionId", attentionId);
-    return payload;
-  }
-
   private UUID institution(AuthorizedUser actor) {
-    return dataScope.resolveInstitutionId(actor, actor.getInstitution().getId());
+    return dataScope.institutionOf(actor);
   }
 
   private void requirePatientScoped(UUID institutionId, UUID patientId) {
-    if (patients.findByIdAndInstitutionId(patientId, institutionId).isEmpty()) {
+    if (!patientScope.existsInInstitution(patientId, institutionId)) {
       throw new PatientNotFoundException("El paciente no existe o no pertenece a tu institucion.");
     }
   }
@@ -411,5 +394,24 @@ public class AttentionService {
             .map(mapper::toDoseResponse)
             .toList();
     return mapper.toResponse(attention, doseResponses);
+  }
+
+  /**
+   * Dosis de todas las atenciones en una sola consulta, agrupadas por atencion.
+   * Evita el N+1 de {@link #response(AttentionEntity)} al listar.
+   */
+  private Map<UUID, List<AppliedDoseResponse>> doseResponsesByAttention(
+      List<AttentionEntity> found) {
+    if (found.isEmpty()) {
+      return Map.of();
+    }
+    List<UUID> attentionIds = found.stream().map(AttentionEntity::getId).toList();
+    Map<UUID, List<AppliedDoseResponse>> grouped = new LinkedHashMap<>();
+    for (AppliedDoseEntity dose : doses.findByAttentionIdInOrderByCreatedAtAsc(attentionIds)) {
+      grouped
+          .computeIfAbsent(dose.getAttentionId(), key -> new ArrayList<>())
+          .add(mapper.toDoseResponse(dose));
+    }
+    return grouped;
   }
 }

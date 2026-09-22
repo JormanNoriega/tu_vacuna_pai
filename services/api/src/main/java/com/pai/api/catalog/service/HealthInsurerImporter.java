@@ -1,9 +1,8 @@
 package com.pai.api.catalog.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pai.api.catalog.entity.HealthInsurerEntity;
 import com.pai.api.catalog.repository.HealthInsurerRepository;
+import com.pai.api.shared.json.JsonSerializer;
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.UUID;
@@ -14,6 +13,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
 
 /**
  * Siembra el catalogo de aseguradoras (EPS) desde
@@ -32,10 +32,11 @@ public class HealthInsurerImporter implements ApplicationRunner {
   private static final Logger log = LoggerFactory.getLogger(HealthInsurerImporter.class);
 
   private final HealthInsurerRepository repository;
-  private final ObjectMapper mapper = new ObjectMapper();
+  private final JsonSerializer json;
 
-  public HealthInsurerImporter(HealthInsurerRepository repository) {
+  public HealthInsurerImporter(HealthInsurerRepository repository, JsonSerializer json) {
     this.repository = repository;
+    this.json = json;
   }
 
   @Override
@@ -47,15 +48,15 @@ public class HealthInsurerImporter implements ApplicationRunner {
     int unchanged = 0;
 
     try (InputStream input = new ClassPathResource(RESOURCE).getInputStream()) {
-      for (JsonNode node : mapper.readTree(input)) {
-        String nit = node.path("nit").asText();
+      for (JsonNode node : json.readTree(input)) {
+        String nit = node.path("nit").asString();
         if (nit.isBlank()) {
           continue;
         }
-        String name = node.path("name").asText();
+        String name = node.path("name").asString();
         String code = textOrNull(node, "code");
         String mobilityCode = textOrNull(node, "mobilityCode");
-        String regime = node.path("regime").asText();
+        String regime = node.path("regime").asString();
 
         var existing = repository.findByNit(nit);
         if (existing.isEmpty()) {
@@ -84,7 +85,7 @@ public class HealthInsurerImporter implements ApplicationRunner {
     if (value.isMissingNode() || value.isNull()) {
       return null;
     }
-    String text = value.asText();
+    String text = value.asString();
     return text.isBlank() ? null : text;
   }
 }

@@ -1,7 +1,8 @@
 package com.pai.api.catalog.service;
 
-import com.pai.api.attentions.exception.InvalidClinicalStateException;
+import com.pai.api.attentions.exception.InvalidCatalogSelectionException;
 import com.pai.api.attentions.service.VaccineCatalogPolicy;
+import com.pai.api.catalog.CatalogFieldType;
 import com.pai.api.catalog.entity.InstitutionVaccineEntity;
 import com.pai.api.catalog.entity.InstitutionVaccineOptionEntity;
 import com.pai.api.catalog.entity.VaccineEntity;
@@ -26,11 +27,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class CatalogSelectionService implements VaccineCatalogPolicy {
 
-  private static final String FIELD_LABORATORY = "laboratory";
-  private static final String FIELD_SYRINGE = "syringe";
-  private static final String FIELD_DROPPER = "dropper";
-  private static final String FIELD_OBSERVATION = "observation";
-
   private final VaccineRepository vaccines;
   private final VaccineOptionRepository vaccineOptions;
   private final InstitutionVaccineRepository institutionVaccines;
@@ -52,23 +48,32 @@ public class CatalogSelectionService implements VaccineCatalogPolicy {
     VaccineEntity vaccine = requireEnabledVaccine(request.institutionId(), request.vaccineId());
 
     VaccineOptionEntity doseOption = requireGlobalOption(
-        request.doseOptionId(), vaccine.getId(), "dose", "La dosis seleccionada no es valida.");
+        request.doseOptionId(),
+        vaccine.getId(),
+        CatalogFieldType.DOSE,
+        "La dosis seleccionada no es valida.");
     VaccineOptionEntity pneumo = request.pneumococcalTypeOptionId() == null
         ? null
         : requireGlobalOption(
             request.pneumococcalTypeOptionId(),
             vaccine.getId(),
-            "pneumococcalType",
+            CatalogFieldType.PNEUMOCOCCAL_TYPE,
             "El tipo de neumococo seleccionado no es valido.");
 
     InstitutionVaccineOptionEntity laboratory = requireInstitutionalOption(
-        request.institutionId(), vaccine.getId(), request.laboratoryId(), FIELD_LABORATORY);
+        request.institutionId(),
+        vaccine.getId(),
+        request.laboratoryId(),
+        CatalogFieldType.LABORATORY);
     InstitutionVaccineOptionEntity syringe = requireInstitutionalOption(
-        request.institutionId(), vaccine.getId(), request.syringeId(), FIELD_SYRINGE);
+        request.institutionId(), vaccine.getId(), request.syringeId(), CatalogFieldType.SYRINGE);
     InstitutionVaccineOptionEntity dropper = requireInstitutionalOption(
-        request.institutionId(), vaccine.getId(), request.dropperId(), FIELD_DROPPER);
+        request.institutionId(), vaccine.getId(), request.dropperId(), CatalogFieldType.DROPPER);
     InstitutionVaccineOptionEntity observation = requireInstitutionalOption(
-        request.institutionId(), vaccine.getId(), request.observationId(), FIELD_OBSERVATION);
+        request.institutionId(),
+        vaccine.getId(),
+        request.observationId(),
+        CatalogFieldType.OBSERVATION);
 
     return new DoseSelection(
         vaccine.getId(),
@@ -95,31 +100,31 @@ public class CatalogSelectionService implements VaccineCatalogPolicy {
         .findById(vaccineId)
         .orElseThrow(() -> new IllegalArgumentException("La vacuna no existe."));
     if (!vaccine.isActive()) {
-      throw new InvalidClinicalStateException("La vacuna esta inactiva.");
+      throw new InvalidCatalogSelectionException("La vacuna esta inactiva.");
     }
     boolean enabled = institutionVaccines
         .findByInstitutionIdAndVaccineId(institutionId, vaccineId)
         .filter(InstitutionVaccineEntity::isEnabled)
         .isPresent();
     if (!enabled) {
-      throw new InvalidClinicalStateException("La vacuna no esta habilitada en tu institucion.");
+      throw new InvalidCatalogSelectionException("La vacuna no esta habilitada en tu institucion.");
     }
     return vaccine;
   }
 
   private VaccineOptionEntity requireGlobalOption(
-      UUID optionId, UUID vaccineId, String fieldType, String message) {
+      UUID optionId, UUID vaccineId, CatalogFieldType fieldType, String message) {
     VaccineOptionEntity option = vaccineOptions
         .findByIdAndVaccineId(optionId, vaccineId)
         .orElseThrow(() -> new IllegalArgumentException(message));
-    if (!option.isActive() || !fieldType.equals(option.getFieldType())) {
+    if (!option.isActive() || !fieldType.matches(option.getFieldType())) {
       throw new IllegalArgumentException(message);
     }
     return option;
   }
 
   private InstitutionVaccineOptionEntity requireInstitutionalOption(
-      UUID institutionId, UUID vaccineId, UUID optionId, String fieldType) {
+      UUID institutionId, UUID vaccineId, UUID optionId, CatalogFieldType fieldType) {
     if (optionId == null) {
       return null;
     }
@@ -127,7 +132,7 @@ public class CatalogSelectionService implements VaccineCatalogPolicy {
         .findByIdAndInstitutionIdAndVaccineId(optionId, institutionId, vaccineId)
         .orElseThrow(
             () -> new IllegalArgumentException("La opcion operativa seleccionada no es valida."));
-    if (!option.isActive() || !fieldType.equals(option.getFieldType())) {
+    if (!option.isActive() || !fieldType.matches(option.getFieldType())) {
       throw new IllegalArgumentException("La opcion operativa seleccionada no es valida.");
     }
     return option;

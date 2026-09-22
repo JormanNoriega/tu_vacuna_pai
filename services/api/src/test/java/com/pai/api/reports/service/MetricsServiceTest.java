@@ -3,10 +3,6 @@ package com.pai.api.reports.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import com.pai.api.attentions.entity.AppliedDoseEntity;
-import com.pai.api.attentions.entity.AttentionEntity;
-import com.pai.api.attentions.repository.AppliedDoseRepository;
-import com.pai.api.attentions.repository.AttentionRepository;
 import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.DataScope;
@@ -28,10 +24,7 @@ class MetricsServiceTest {
   private static final UUID ACTOR_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
   @Mock
-  private AttentionRepository attentions;
-
-  @Mock
-  private AppliedDoseRepository doses;
+  private ClinicalMetricsQuery metrics;
 
   @Mock
   private DataScope dataScope;
@@ -40,18 +33,15 @@ class MetricsServiceTest {
 
   @BeforeEach
   void setUp() {
-    service = new MetricsService(attentions, doses, dataScope);
+    service = new MetricsService(metrics, dataScope);
   }
 
   @Test
   void resume_pacientes_y_dosis_no_anuladas_de_la_institucion() {
     AuthorizedUser actor = actor();
-    when(dataScope.resolveInstitutionId(actor, INSTITUTION_ID)).thenReturn(INSTITUTION_ID);
-    when(attentions.countDistinctPatientsByInstitutionId(
-            INSTITUTION_ID, AttentionEntity.Status.CANCELLED))
-        .thenReturn(12L);
-    when(doses.countByInstitutionId(INSTITUTION_ID, AppliedDoseEntity.Status.CANCELLED))
-        .thenReturn(34L);
+    when(dataScope.institutionOf(actor)).thenReturn(INSTITUTION_ID);
+    when(metrics.patientsAttended(INSTITUTION_ID)).thenReturn(12L);
+    when(metrics.dosesApplied(INSTITUTION_ID)).thenReturn(34L);
 
     MetricsSummaryResponse summary = service.summary(actor);
 

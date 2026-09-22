@@ -2,7 +2,7 @@ package com.pai.api.catalog.controller;
 
 import com.pai.api.catalog.dto.*;
 import com.pai.api.catalog.service.*;
-import com.pai.api.identity.service.AuthorizedUser;
+import com.pai.api.shared.security.ActorResolver;
 import jakarta.validation.Valid;
 import java.util.*;
 import org.springframework.http.*;
@@ -24,35 +24,30 @@ public class CatalogController {
     this.insurers = insurers;
   }
 
-  private UUID actor(Authentication a) {
-    return ((AuthorizedUser) a.getPrincipal()).getId();
-  }
-
   @GetMapping("/insurers")
-  @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_GLOBAL_READ') or"
-      + " @authorization.hasPermission(authentication, 'CATALOG_CONFIG_READ')")
+  @PreAuthorize(CatalogPermissions.READ)
   public List<HealthInsurerResponse> insurers(@RequestParam(required = false) String regime) {
     return insurers.list(regime);
   }
 
   @GetMapping("/effective")
-  @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_GLOBAL_READ') or"
-      + " @authorization.hasPermission(authentication, 'CATALOG_CONFIG_READ')")
+  @PreAuthorize(CatalogPermissions.READ)
   public EffectiveCatalogResponse effective(Authentication a) {
-    return effective.list(actor(a));
+    return effective.list(ActorResolver.actorId(a));
   }
 
   @GetMapping("/vaccines")
   @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_GLOBAL_READ')")
   public List<VaccineResponse> list(Authentication a) {
-    return service.list(actor(a));
+    return service.list(ActorResolver.actorId(a));
   }
 
   @PostMapping("/vaccines")
   @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_GLOBAL_WRITE')")
   public ResponseEntity<VaccineResponse> create(
       Authentication a, @Valid @RequestBody VaccineRequest r) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(service.create(actor(a), r));
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(service.create(ActorResolver.actorId(a), r));
   }
 
   @PutMapping("/vaccines/{id}")
@@ -62,28 +57,29 @@ public class CatalogController {
       @PathVariable UUID id,
       @RequestParam long version,
       @Valid @RequestBody VaccineRequest r) {
-    return service.update(actor(a), id, r, version);
+    return service.update(ActorResolver.actorId(a), id, r, version);
   }
 
   @DeleteMapping("/vaccines/{id}")
   @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_GLOBAL_WRITE')")
   public ResponseEntity<Void> delete(
       Authentication a, @PathVariable UUID id, @RequestParam long version) {
-    service.delete(actor(a), id, version);
+    service.delete(ActorResolver.actorId(a), id, version);
     return ResponseEntity.noContent().build();
   }
 
   @GetMapping("/vaccines/{id}/options")
   @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_GLOBAL_READ')")
   public List<OptionResponse> options(Authentication a, @PathVariable UUID id) {
-    return service.globalOptions(actor(a), id);
+    return service.globalOptions(ActorResolver.actorId(a), id);
   }
 
   @PostMapping("/vaccines/{id}/options")
   @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_GLOBAL_WRITE')")
   public ResponseEntity<OptionResponse> option(
       Authentication a, @PathVariable UUID id, @Valid @RequestBody OptionRequest r) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(service.createOption(actor(a), id, r));
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(service.createOption(ActorResolver.actorId(a), id, r));
   }
 
   @PutMapping("/vaccines/{vaccineId}/options/{id}")
@@ -93,7 +89,7 @@ public class CatalogController {
       @PathVariable UUID vaccineId,
       @PathVariable UUID id,
       @Valid @RequestBody OptionRequest r) {
-    return service.updateOption(actor(a), vaccineId, id, r);
+    return service.updateOption(ActorResolver.actorId(a), vaccineId, id, r);
   }
 
   @DeleteMapping("/vaccines/{vaccineId}/options/{id}")
@@ -103,21 +99,22 @@ public class CatalogController {
       @PathVariable UUID vaccineId,
       @PathVariable UUID id,
       @RequestParam long version) {
-    service.deleteOption(actor(a), vaccineId, id, version);
+    service.deleteOption(ActorResolver.actorId(a), vaccineId, id, version);
     return ResponseEntity.noContent().build();
   }
 
   @GetMapping("/vaccines/{id}/templates")
   @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_GLOBAL_READ')")
   public List<OptionResponse> templates(Authentication a, @PathVariable UUID id) {
-    return service.templates(actor(a), id);
+    return service.templates(ActorResolver.actorId(a), id);
   }
 
   @PostMapping("/vaccines/{id}/templates")
   @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_GLOBAL_WRITE')")
   public ResponseEntity<OptionResponse> template(
       Authentication a, @PathVariable UUID id, @Valid @RequestBody OptionRequest r) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(service.createTemplate(actor(a), id, r));
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(service.createTemplate(ActorResolver.actorId(a), id, r));
   }
 
   @PutMapping("/vaccines/{vaccineId}/templates/{id}")
@@ -127,17 +124,7 @@ public class CatalogController {
       @PathVariable UUID vaccineId,
       @PathVariable UUID id,
       @Valid @RequestBody OptionRequest r) {
-    return service.updateTemplate(actor(a), vaccineId, id, r);
-  }
-
-  @PatchMapping("/vaccines/{vaccineId}/templates/{id}")
-  @PreAuthorize("@authorization.hasPermission(authentication, 'CATALOG_GLOBAL_WRITE')")
-  public OptionResponse patchTemplate(
-      Authentication a,
-      @PathVariable UUID vaccineId,
-      @PathVariable UUID id,
-      @Valid @RequestBody OptionRequest r) {
-    return service.updateTemplate(actor(a), vaccineId, id, r);
+    return service.updateTemplate(ActorResolver.actorId(a), vaccineId, id, r);
   }
 
   @DeleteMapping("/vaccines/{vaccineId}/templates/{id}")
@@ -147,7 +134,7 @@ public class CatalogController {
       @PathVariable UUID vaccineId,
       @PathVariable UUID id,
       @RequestParam long version) {
-    service.deleteTemplate(actor(a), vaccineId, id, version);
+    service.deleteTemplate(ActorResolver.actorId(a), vaccineId, id, version);
     return ResponseEntity.noContent().build();
   }
 }

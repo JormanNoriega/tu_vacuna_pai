@@ -11,12 +11,12 @@ import com.pai.api.identity.dto.UpdateInstitutionStatusRequest;
 import com.pai.api.identity.dto.UpdateUserRolesRequest;
 import com.pai.api.identity.dto.UpdateUserStatusRequest;
 import com.pai.api.identity.dto.UserResponse;
-import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.IdentityPermissions;
 import com.pai.api.identity.service.InstitutionService;
 import com.pai.api.identity.service.ProvisioningReconciliationService;
 import com.pai.api.identity.service.UserProvisioningService;
 import com.pai.api.identity.service.UserService;
+import com.pai.api.shared.security.ActorResolver;
 import jakarta.validation.Valid;
 import java.util.HashSet;
 import java.util.List;
@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -72,9 +73,8 @@ public class AdminController {
   @PreAuthorize(WRITE_ONLY)
   public ResponseEntity<InstitutionResponse> createInstitution(
       Authentication authentication, @Valid @RequestBody CreateInstitutionRequest request) {
-    AuthorizedUser actor = (AuthorizedUser) authentication.getPrincipal();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(institutionService.create(actor.getId(), request));
+        .body(institutionService.create(ActorResolver.actorId(authentication), request));
   }
 
   @GetMapping("/institutions")
@@ -100,27 +100,27 @@ public class AdminController {
   @PostMapping("/users/institution-admins")
   @PreAuthorize(WRITE_ONLY)
   public ResponseEntity<UserResponse> createInstitutionAdmin(
-      Authentication authentication, @Valid @RequestBody CreateInstitutionAdminRequest request) {
-    AuthorizedUser actor = (AuthorizedUser) authentication.getPrincipal();
-    String accessToken = actor.getAccessToken();
-    if (accessToken == null) {
-      throw new IllegalStateException("No se pudo recuperar el access token.");
-    }
+      Authentication authentication,
+      @RequestHeader("Authorization") String authorization,
+      @Valid @RequestBody CreateInstitutionAdminRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(userProvisioningService.createInstitutionAdmin(actor.getId(), accessToken, request));
+        .body(userProvisioningService.createInstitutionAdmin(
+            ActorResolver.actorId(authentication),
+            ActorResolver.bearerToken(authorization),
+            request));
   }
 
   @PostMapping("/users/vaccinators")
   @PreAuthorize(MANAGE_ONLY)
   public ResponseEntity<UserResponse> createVaccinator(
-      Authentication authentication, @Valid @RequestBody CreateVaccinatorRequest request) {
-    AuthorizedUser actor = (AuthorizedUser) authentication.getPrincipal();
-    String accessToken = actor.getAccessToken();
-    if (accessToken == null) {
-      throw new IllegalStateException("No se pudo recuperar el access token.");
-    }
+      Authentication authentication,
+      @RequestHeader("Authorization") String authorization,
+      @Valid @RequestBody CreateVaccinatorRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(userProvisioningService.createVaccinator(actor.getId(), accessToken, request));
+        .body(userProvisioningService.createVaccinator(
+            ActorResolver.actorId(authentication),
+            ActorResolver.bearerToken(authorization),
+            request));
   }
 
   @GetMapping("/users")
@@ -129,9 +129,9 @@ public class AdminController {
       Authentication authentication,
       @RequestParam UUID institutionId,
       @RequestParam(required = false) List<String> roles) {
-    AuthorizedUser actor = (AuthorizedUser) authentication.getPrincipal();
     Set<String> roleSet = (roles == null || roles.isEmpty()) ? null : new HashSet<>(roles);
-    return ResponseEntity.ok(userService.listByInstitution(actor.getId(), institutionId, roleSet));
+    return ResponseEntity.ok(userService.listByInstitution(
+        ActorResolver.actorId(authentication), institutionId, roleSet));
   }
 
   @PutMapping("/users/{id}/status")
@@ -140,8 +140,8 @@ public class AdminController {
       Authentication authentication,
       @PathVariable UUID id,
       @Valid @RequestBody UpdateUserStatusRequest request) {
-    AuthorizedUser actor = (AuthorizedUser) authentication.getPrincipal();
-    return ResponseEntity.ok(userService.updateStatus(actor.getId(), id, request.status()));
+    return ResponseEntity.ok(
+        userService.updateStatus(ActorResolver.actorId(authentication), id, request.status()));
   }
 
   @PutMapping("/users/{id}/roles")
@@ -150,8 +150,8 @@ public class AdminController {
       Authentication authentication,
       @PathVariable UUID id,
       @Valid @RequestBody UpdateUserRolesRequest request) {
-    AuthorizedUser actor = (AuthorizedUser) authentication.getPrincipal();
-    return ResponseEntity.ok(userService.updateRoles(actor.getId(), id, request.roles()));
+    return ResponseEntity.ok(
+        userService.updateRoles(ActorResolver.actorId(authentication), id, request.roles()));
   }
 
   @PostMapping("/admin/users/reconcile")

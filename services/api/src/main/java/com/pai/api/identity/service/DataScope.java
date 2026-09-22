@@ -55,6 +55,15 @@ public class DataScope {
   }
 
   /**
+   * Resuelve la institucion propia del actor (su institucion) aplicando el
+   * alcance. Atajo de {@link #resolveInstitutionId(AuthorizedUser, UUID)} para
+   * el caso comun en que el recurso vive en la institucion del actor.
+   */
+  public UUID institutionOf(AuthorizedUser actor) {
+    return resolveInstitutionId(actor, actor.getInstitution().getId());
+  }
+
+  /**
    * Valida que un recurso ya cargado pertenezca al alcance del actor.
    * Para actores {@code unrestricted} la validacion no aplica.
    */

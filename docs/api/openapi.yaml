@@ -25,6 +25,14 @@ paths:
       summary: Crear paciente (transporta CREATE_PATIENT)
       security:
         - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: operation_id generado por el movil (idempotencia D3)
+          schema:
+            type: string
+            format: uuid
       requestBody:
         required: true
         content:
@@ -32,8 +40,8 @@ paths:
             schema:
               $ref: '#/components/schemas/CreatePatientRequest'
       responses:
-        '200':
-          description: Paciente creado o ya existente (idempotente por operationId)
+        '201':
+          description: Paciente creado o ya existente (idempotente por Idempotency-Key)
           content:
             application/json:
               schema:
@@ -44,31 +52,29 @@ paths:
           $ref: '#/components/responses/Forbidden'
     get:
       tags: [Patients]
-      summary: Listar pacientes del scope del actor
+      summary: Buscar pacientes por documento en el scope del actor
       security:
         - bearerAuth: []
       parameters:
-        - name: query
+        - name: documentType
           in: query
+          required: false
           schema:
             type: string
-        - name: page
+        - name: documentNumber
           in: query
+          required: true
           schema:
-            type: integer
-        - name: size
-          in: query
-          schema:
-            type: integer
+            type: string
       responses:
         '200':
-          description: Lista de pacientes
+          description: Lista ligera de pacientes (sin sub-entidades)
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Patient'
+                  $ref: '#/components/schemas/PatientSummary'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -99,6 +105,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /patients/{id}/contact:
     put:
       tags: [Patients]
       summary: Actualizar contacto del paciente (transporta UPDATE_PATIENT_CONTACT)
@@ -124,8 +131,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Patient'
-        '409':
-          $ref: '#/components/responses/Conflict'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -166,36 +171,10 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-  /patients/{id}/attentions:
-    get:
+  /patients/{id}/demographics:
+    put:
       tags: [Patients]
-      summary: Historial de atenciones de un paciente
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Lista de atenciones
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Attention'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-  /patients/{id}/merge:
-    post:
-      tags: [Patients]
-      summary: Solicitar fusión de identidad duplicada (DUPLICATE_BUSINESS_IDENTITY)
+      summary: Actualizar demografia del paciente (1:1)
       security:
         - bearerAuth: []
       parameters:
@@ -210,18 +189,52 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatientMergeRequest'
+              $ref: '#/components/schemas/UpdatePatientDemographicsRequest'
       responses:
-        '201':
-          description: Solicitud de fusión creada
+        '200':
+          description: Paciente actualizado
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PatientMergeRequest'
+                $ref: '#/components/schemas/Patient'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /patients/{id}/medical-histories:
+    put:
+      tags: [Patients]
+      summary: Reemplazar antecedentes medicos del paciente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePatientMedicalHistoriesRequest'
+      responses:
+        '200':
+          description: Paciente actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   # -------------------------------------------------------------- Attentions
   /attentions:
     post:
@@ -543,76 +556,936 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-  # --------------------------------------------------------------- Conflicts
-  /conflicts:
+  # ------------------------------------------------------------------ Identity
+  /me:
     get:
-      tags: [Conflicts]
-      summary: Listar conflictos/solicitudes de fusión pendientes (ADMIN_INSTITUTION)
+      tags: [Identity]
+      summary: Perfil autorizado del usuario autenticado
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: Lista de conflictos pendientes
+          description: Perfil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  # ------------------------------------------------------------------- Reports
+  /metrics/summary:
+    get:
+      tags: [Reports]
+      summary: Metricas del home (pacientes atendidos y dosis aplicadas)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Resumen de metricas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  # ------------------------------------------------------------------ Catalogs
+  /catalogs/effective:
+    get:
+      tags: [Catalogs]
+      summary: Catalogo efectivo de la institucion del actor
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Catalogo efectivo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EffectiveCatalog'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /catalogs/reference:
+    get:
+      tags: [Catalogs]
+      summary: Catalogos de referencia (listas cerradas del legacy)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Catalogos de referencia
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/PatientMergeRequest'
+                  $ref: '#/components/schemas/ReferenceCatalog'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-  /conflicts/{id}/resolve:
-    put:
-      tags: [Conflicts]
-      summary: Resolver una solicitud de fusión (APPROVED/REJECTED)
+  /catalogs/geo/countries:
+    get:
+      tags: [Catalogs]
+      summary: Paises (DIVIPOLA)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de paises
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GeoUnit'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /catalogs/geo/departments:
+    get:
+      tags: [Catalogs]
+      summary: Departamentos (DIVIPOLA)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de departamentos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GeoUnit'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /catalogs/geo/municipalities:
+    get:
+      tags: [Catalogs]
+      summary: Municipios de un departamento (DIVIPOLA)
       security:
         - bearerAuth: []
       parameters:
-        - name: id
-          in: path
+        - name: departmentId
+          in: query
           required: true
           schema:
             type: string
             format: uuid
+      responses:
+        '200':
+          description: Lista de municipios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GeoMunicipality'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /catalogs/geo/full:
+    get:
+      tags: [Catalogs]
+      summary: Catalogo geografico completo (departamentos con municipios) para precarga offline
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Departamentos con sus municipios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GeoFullDepartment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /catalogs/vaccines:
+    get:
+      tags: [Catalogs]
+      summary: Catalogo global de vacunas activas
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de vacunas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Vaccine'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Catalogs]
+      summary: Crear vacuna (CATALOG_GLOBAL_WRITE)
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ResolveMergeRequest'
+              $ref: '#/components/schemas/VaccineRequest'
       responses:
-        '200':
-          description: Solicitud resuelta
+        '201':
+          description: Vacuna creada
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PatientMergeRequest'
+                $ref: '#/components/schemas/Vaccine'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-  /conflicts/{id}/details:
-    get:
-      tags: [Conflicts]
-      summary: Detalle de una solicitud de fusión
+  /catalogs/vaccines/{id}:
+    put:
+      tags: [Catalogs]
+      summary: Actualizar vacuna (optimista por version)
       security:
         - bearerAuth: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: version, in: query, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaccineRequest'
       responses:
         '200':
-          description: Detalle de la solicitud
+          description: Vacuna actualizada
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PatientMergeRequest'
+                $ref: '#/components/schemas/Vaccine'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      tags: [Catalogs]
+      summary: Desactivar vacuna (optimista por version)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: version, in: query, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '204':
+          description: Vacuna desactivada
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /catalogs/vaccines/{id}/options:
+    get:
+      tags: [Catalogs]
+      summary: Opciones globales de una vacuna
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Opciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Option'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Catalogs]
+      summary: Crear opcion global
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OptionRequest'
+      responses:
+        '201':
+          description: Opcion creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Option'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /catalogs/vaccines/{vaccineId}/options/{id}:
+    put:
+      tags: [Catalogs]
+      summary: Actualizar opcion global
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: vaccineId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OptionRequest'
+      responses:
+        '200':
+          description: Opcion actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Option'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      tags: [Catalogs]
+      summary: Desactivar opcion global
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: vaccineId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: version, in: query, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '204':
+          description: Opcion desactivada
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /catalogs/vaccines/{id}/templates:
+    get:
+      tags: [Catalogs]
+      summary: Templates de una vacuna
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Option'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Catalogs]
+      summary: Crear template
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OptionRequest'
+      responses:
+        '201':
+          description: Template creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Option'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /catalogs/vaccines/{vaccineId}/templates/{id}:
+    put:
+      tags: [Catalogs]
+      summary: Actualizar template
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: vaccineId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OptionRequest'
+      responses:
+        '200':
+          description: Template actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Option'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      tags: [Catalogs]
+      summary: Desactivar template
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: vaccineId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: version, in: query, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '204':
+          description: Template desactivado
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  # ------------------------------------------------------------- Instituciones
+  /institutions:
+    get:
+      tags: [Institutions]
+      summary: Listar instituciones (INSTITUTION_WRITE)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Instituciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Institution'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Institutions]
+      summary: Crear institucion (INSTITUTION_WRITE)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInstitutionRequest'
+      responses:
+        '201':
+          description: Institucion creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Institution'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /institutions/{id}/status:
+    put:
+      tags: [Institutions]
+      summary: Activar/desactivar institucion
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusRequest'
+      responses:
+        '200':
+          description: Institucion actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Institution'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /institutions/{id}/config:
+    put:
+      tags: [Institutions]
+      summary: Actualizar la ventana offline de la institucion
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateInstitutionConfigRequest'
+      responses:
+        '200':
+          description: Institucion actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Institution'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  # ------------------------------------------------ Catalogo de una institucion
+  /institutions/{institutionId}/vaccines:
+    get:
+      tags: [InstitutionCatalog]
+      summary: Vacunas de la institucion (relaciones)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: institutionId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Relaciones vacuna-institucion
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InstitutionVaccine'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /institutions/{institutionId}/vaccines/available:
+    get:
+      tags: [InstitutionCatalog]
+      summary: Vacunas activas aun no habilitadas en la institucion
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: institutionId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Vacunas disponibles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Vaccine'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /institutions/{institutionId}/vaccines/{vaccineId}/enable:
+    post:
+      tags: [InstitutionCatalog]
+      summary: Habilitar una vacuna en la institucion
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: institutionId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: vaccineId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204':
+          description: Vacuna habilitada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /institutions/{institutionId}/vaccines/{vaccineId}/disable:
+    post:
+      tags: [InstitutionCatalog]
+      summary: Deshabilitar una vacuna en la institucion
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: institutionId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: vaccineId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204':
+          description: Vacuna deshabilitada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /institutions/{institutionId}/vaccines/clone:
+    post:
+      tags: [InstitutionCatalog]
+      summary: Clonar el catalogo global en la institucion (copy-once)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: institutionId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloneCatalogRequest'
+      responses:
+        '200':
+          description: Resultado del clonado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloneCatalogResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /institutions/{institutionId}/vaccines/{vaccineId}/options:
+    get:
+      tags: [InstitutionCatalog]
+      summary: Opciones operativas de la institucion
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: institutionId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: vaccineId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Opciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Option'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [InstitutionCatalog]
+      summary: Crear opcion operativa local
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: institutionId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: vaccineId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OptionRequest'
+      responses:
+        '201':
+          description: Opcion creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Option'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /institutions/{institutionId}/vaccines/{vaccineId}/options/{optionId}:
+    put:
+      tags: [InstitutionCatalog]
+      summary: Actualizar opcion operativa local
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: institutionId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: vaccineId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: optionId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OptionRequest'
+      responses:
+        '200':
+          description: Opcion actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Option'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      tags: [InstitutionCatalog]
+      summary: Desactivar opcion operativa local
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: institutionId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: vaccineId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: optionId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: version, in: query, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '204':
+          description: Opcion desactivada
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /institutions/{institutionId}/vaccines/{vaccineId}/suggested-options:
+    get:
+      tags: [InstitutionCatalog]
+      summary: Opciones sugeridas (templates globales aun no locales)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: institutionId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: vaccineId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Opciones sugeridas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Option'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /institutions/{institutionId}/vaccines/{vaccineId}/import-suggested-options:
+    post:
+      tags: [InstitutionCatalog]
+      summary: Importar las opciones sugeridas como locales
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: institutionId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: vaccineId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Opciones importadas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Option'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  # ------------------------------------------------------------------- Usuarios
+  /users:
+    get:
+      tags: [Users]
+      summary: Listar usuarios de una institucion (scope del actor)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: institutionId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: roles
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string }
+      responses:
+        '200':
+          description: Usuarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /users/{id}/status:
+    put:
+      tags: [Users]
+      summary: Activar/desactivar usuario
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusRequest'
+      responses:
+        '200':
+          description: Usuario actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /users/{id}/roles:
+    put:
+      tags: [Users]
+      summary: Reemplazar los roles de un usuario
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRolesRequest'
+      responses:
+        '200':
+          description: Usuario actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /users/institution-admins:
+    post:
+      tags: [Users]
+      summary: Crear ADMIN_INSTITUTION (INSTITUTION_WRITE)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInstitutionAdminRequest'
+      responses:
+        '201':
+          description: Usuario creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /users/vaccinators:
+    post:
+      tags: [Users]
+      summary: Crear VACCINATOR en la institucion del actor (USER_MANAGE)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVaccinatorRequest'
+      responses:
+        '201':
+          description: Usuario creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/users/reconcile:
+    post:
+      tags: [Users]
+      summary: Reconciliar huerfanos de aprovisionamiento (INSTITUTION_WRITE)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Resultado por huerfano
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReconciliationResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/users/operations:
+    get:
+      tags: [Users]
+      summary: Auditoria de operaciones de aprovisionamiento
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Operaciones (mas recientes primero)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProvisioningOperation'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -666,80 +1539,522 @@ components:
         name: { type: string }
         code: { type: string, nullable: true }
         regime: { type: string, enum: [CONTRIBUTIVO, SUBSIDIADO, AMBOS] }
+    MeResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        fullName: { type: string }
+        institution:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            code: { type: string }
+            name: { type: string }
+        roles:
+          type: array
+          items: { type: string }
+        permissions:
+          type: array
+          items: { type: string }
+        offlineWindowHours: { type: integer }
+        lastOnlineValidation: { type: string, format: date-time }
+    MetricsSummary:
+      type: object
+      properties:
+        patientsAttended: { type: integer, format: int64 }
+        dosesApplied: { type: integer, format: int64 }
+    Vaccine:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        code: { type: string }
+        category: { type: string }
+        maxDoses: { type: integer }
+        minAgeMonths: { type: integer, nullable: true }
+        maxAgeMonths: { type: integer, nullable: true }
+        hasLaboratory: { type: boolean }
+        hasLot: { type: boolean }
+        hasSyringe: { type: boolean }
+        hasSyringeLot: { type: boolean }
+        hasDiluent: { type: boolean }
+        hasDropper: { type: boolean }
+        hasPneumococcalType: { type: boolean }
+        hasVialCount: { type: boolean }
+        hasObservation: { type: boolean }
+        active: { type: boolean }
+        version: { type: integer }
+    EffectiveCatalog:
+      type: object
+      properties:
+        vaccines:
+          type: array
+          items:
+            type: object
+            properties:
+              vaccineId: { type: string, format: uuid }
+              name: { type: string }
+              code: { type: string }
+              doses:
+                type: array
+                items: { $ref: '#/components/schemas/CatalogOptionItem' }
+              pneumococcalTypes:
+                type: array
+                items: { $ref: '#/components/schemas/CatalogOptionItem' }
+              operationalOptions:
+                type: array
+                items: { $ref: '#/components/schemas/CatalogOptionItem' }
+    CatalogOptionItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fieldType: { type: string }
+        value: { type: string }
+        displayName: { type: string }
+        sortOrder: { type: integer }
+        isDefault: { type: boolean }
+    ReferenceCatalog:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+        options:
+          type: array
+          items:
+            type: object
+            properties:
+              code: { type: string }
+              label: { type: string }
+              sortOrder: { type: integer }
+    GeoUnit:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+    GeoMunicipality:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        departmentId: { type: string, format: uuid }
+    GeoFullDepartment:
+      type: object
+      description: Departamento con sus municipios (precarga offline).
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        municipalities:
+          type: array
+          items:
+            $ref: '#/components/schemas/GeoMunicipality'
+    VaccineRequest:
+      type: object
+      required: [name, code, category, maxDoses]
+      properties:
+        name: { type: string }
+        code: { type: string }
+        category: { type: string }
+        maxDoses: { type: integer, minimum: 1 }
+        minAgeMonths: { type: integer, nullable: true }
+        maxAgeMonths: { type: integer, nullable: true }
+        hasLaboratory: { type: boolean }
+        hasLot: { type: boolean }
+        hasSyringe: { type: boolean }
+        hasSyringeLot: { type: boolean }
+        hasDiluent: { type: boolean }
+        hasDropper: { type: boolean }
+        hasPneumococcalType: { type: boolean }
+        hasVialCount: { type: boolean }
+        hasObservation: { type: boolean }
+    Option:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        vaccineId: { type: string, format: uuid }
+        institutionId: { type: string, format: uuid, nullable: true }
+        fieldType: { type: string }
+        value: { type: string }
+        displayName: { type: string }
+        sortOrder: { type: integer }
+        isDefault: { type: boolean }
+        isActive: { type: boolean }
+        sourceTemplateId: { type: string, format: uuid, nullable: true }
+        version: { type: integer, format: int64 }
+    OptionRequest:
+      type: object
+      required: [fieldType, value, displayName]
+      properties:
+        fieldType: { type: string }
+        value: { type: string }
+        displayName: { type: string }
+        sortOrder: { type: integer }
+        isDefault: { type: boolean }
+        isActive: { type: boolean }
+        version: { type: integer, format: int64 }
+    InstitutionVaccine:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        institutionId: { type: string, format: uuid }
+        vaccineId: { type: string, format: uuid }
+        name: { type: string }
+        code: { type: string }
+        category: { type: string }
+        enabled: { type: boolean }
+        version: { type: integer, format: int64 }
+    CloneCatalogRequest:
+      type: object
+      properties:
+        includeDefaultConfig: { type: boolean }
+    CloneCatalogResponse:
+      type: object
+      properties:
+        vaccinesEnabled: { type: integer }
+        optionsCopied: { type: integer }
+        vaccinesTotal: { type: integer }
+    Institution:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        offlineWindowHours: { type: integer }
+    CreateInstitutionRequest:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string, maxLength: 32 }
+        name: { type: string, maxLength: 200 }
+        offlineWindowHours: { type: integer, minimum: 1, maximum: 168, nullable: true }
+    UpdateInstitutionConfigRequest:
+      type: object
+      required: [offlineWindowHours]
+      properties:
+        offlineWindowHours: { type: integer, minimum: 1, maximum: 168 }
+    StatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        fullName: { type: string }
+        institutionId: { type: string, format: uuid }
+        roles:
+          type: array
+          items: { type: string }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        documentType: { type: string, nullable: true }
+        documentNumber: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        birthDate: { type: string, format: date, nullable: true }
+        gender: { type: string, nullable: true }
+        professionCode: { type: string, nullable: true }
+        professionalRegistrationNumber: { type: string, nullable: true }
+        professionalRegistrationType: { type: string, nullable: true }
+    CreateInstitutionAdminRequest:
+      type: object
+      required: [email, fullName, institutionId, temporaryPassword, operationId]
+      properties:
+        email: { type: string }
+        fullName: { type: string }
+        institutionId: { type: string, format: uuid }
+        temporaryPassword: { type: string, minLength: 8, maxLength: 128 }
+        operationId: { type: string, format: uuid }
+    CreateVaccinatorRequest:
+      type: object
+      required:
+        [email, fullName, temporaryPassword, operationId, documentType, documentNumber, professionCode]
+      properties:
+        email: { type: string }
+        fullName: { type: string }
+        temporaryPassword: { type: string, minLength: 8, maxLength: 128 }
+        operationId: { type: string, format: uuid }
+        documentType: { type: string, enum: [CC, TI, CE, PASAPORTE] }
+        documentNumber: { type: string, maxLength: 40 }
+        phone: { type: string, nullable: true }
+        birthDate: { type: string, format: date, nullable: true }
+        gender: { type: string, enum: [FEMALE, MALE, OTHER], nullable: true }
+        professionCode: { type: string, maxLength: 50 }
+        professionalRegistrationNumber: { type: string, nullable: true }
+        professionalRegistrationType: { type: string, nullable: true }
+    UpdateUserRolesRequest:
+      type: object
+      required: [roles]
+      properties:
+        roles:
+          type: array
+          minItems: 1
+          items: { type: string }
+    ReconciliationResult:
+      type: object
+      properties:
+        operationId: { type: string, format: uuid }
+        authUserId: { type: string, format: uuid }
+        email: { type: string }
+        outcome:
+          type: string
+          enum:
+            [RECONCILED, ALREADY_RECONCILED, SKIPPED_WITHOUT_OPERATION, SKIPPED_EMAIL_MISMATCH, FAILED]
+        detail: { type: string }
+    ProvisioningOperation:
+      type: object
+      properties:
+        operationId: { type: string, format: uuid }
+        authUserId: { type: string, format: uuid, nullable: true }
+        email: { type: string }
+        fullName: { type: string }
+        institutionId: { type: string, format: uuid }
+        role: { type: string }
+        actorId: { type: string, format: uuid }
+        status: { type: string }
+        attempts: { type: integer }
+        error: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     # ---- Pacientes
     CreatePatientRequest:
       type: object
-      required: [operationId, firstName, lastName, documentType, documentNumber]
+      required: [documentType, documentNumber, firstName, lastName, birthDate, sex]
       properties:
-        operationId:
-          type: string
-          format: uuid
-        firstName: { type: string }
-        lastName: { type: string }
-        documentType: { type: string }
-        documentNumber: { type: string }
-        birthDate: { type: string, format: date, nullable: true }
-        gender: { type: string, nullable: true }
-        phone: { type: string, nullable: true }
-        email: { type: string, nullable: true }
-        addressLine: { type: string, nullable: true }
-        addressCity: { type: string, nullable: true }
-        addressDepartment: { type: string, nullable: true }
-        addressMunicipality: { type: string, nullable: true }
-        healthInsurerId: { type: string, format: uuid, nullable: true }
+        documentType: { type: string, maxLength: 20 }
+        documentNumber: { type: string, maxLength: 40 }
+        firstName: { type: string, maxLength: 120 }
+        secondName: { type: string, maxLength: 120, nullable: true }
+        lastName: { type: string, maxLength: 120 }
+        secondLastName: { type: string, maxLength: 120, nullable: true }
+        birthDate: { type: string, format: date }
+        sex: { type: string, enum: [MALE, FEMALE, INDETERMINATE] }
+        birthCountryId: { type: string, format: uuid, nullable: true }
+        birthPlace: { type: string, maxLength: 200, nullable: true }
+        migrationStatus: { type: string, maxLength: 20, nullable: true }
+        gestationalAgeAtBirth: { type: integer, nullable: true }
+        vaccinationCardType: { type: string, maxLength: 40, nullable: true }
+        authorizeCalls: { type: boolean, nullable: true }
+        authorizeEmail: { type: boolean, nullable: true }
+        demographics:
+          allOf: [{ $ref: '#/components/schemas/Demographic' }]
+          nullable: true
+        contacts:
+          type: array
+          nullable: true
+          items: { $ref: '#/components/schemas/Contact' }
+        addresses:
+          type: array
+          nullable: true
+          items: { $ref: '#/components/schemas/Address' }
         guardians:
           type: array
-          items:
-            $ref: '#/components/schemas/Guardian'
+          nullable: true
+          items: { $ref: '#/components/schemas/Guardian' }
+        medicalHistories:
+          type: array
+          nullable: true
+          items: { $ref: '#/components/schemas/MedicalHistory' }
+        affiliation:
+          allOf: [{ $ref: '#/components/schemas/Affiliation' }]
+          nullable: true
+        specialConditions:
+          allOf: [{ $ref: '#/components/schemas/SpecialConditions' }]
+          nullable: true
+        userCondition:
+          allOf: [{ $ref: '#/components/schemas/UserCondition' }]
+          nullable: true
     UpdatePatientContactRequest:
       type: object
-      required: [operationId, version]
       properties:
-        operationId: { type: string, format: uuid }
-        version: { type: integer }
-        phone: { type: string, nullable: true }
-        email: { type: string, nullable: true }
-        addressLine: { type: string, nullable: true }
-        addressCity: { type: string, nullable: true }
-        addressDepartment: { type: string, nullable: true }
-        addressMunicipality: { type: string, nullable: true }
-        guardians:
+        contacts:
           type: array
-          items:
-            $ref: '#/components/schemas/Guardian'
+          items: { $ref: '#/components/schemas/Contact' }
+        addresses:
+          type: array
+          items: { $ref: '#/components/schemas/Address' }
     UpdatePatientIdentityRequest:
       type: object
-      required: [operationId, version, justification]
+      required: [firstName, lastName, birthDate, sex, justification]
       properties:
-        operationId: { type: string, format: uuid }
-        version: { type: integer }
-        firstName: { type: string }
-        lastName: { type: string }
-        birthDate: { type: string, format: date, nullable: true }
-        justification: { type: string }
-    Guardian:
+        firstName: { type: string, maxLength: 120 }
+        lastName: { type: string, maxLength: 120 }
+        birthDate: { type: string, format: date }
+        sex: { type: string, enum: [MALE, FEMALE, INDETERMINATE] }
+        justification: { type: string, minLength: 5, maxLength: 500 }
+    UpdatePatientDemographicsRequest:
       type: object
       properties:
-        id: { type: string, format: uuid, nullable: true }
-        fullName: { type: string }
-        relationship: { type: string }
-        phone: { type: string, nullable: true }
+        gender: { type: string, maxLength: 20, nullable: true }
+        ethnicity: { type: string, maxLength: 80, nullable: true }
+        educationLevel: { type: string, maxLength: 120, nullable: true }
+    UpdatePatientMedicalHistoriesRequest:
+      type: object
+      properties:
+        medicalHistories:
+          type: array
+          items: { $ref: '#/components/schemas/MedicalHistory' }
     Patient:
       type: object
+      description: Paciente autorizado con su agregado completo.
       properties:
         id: { type: string, format: uuid }
         institutionId: { type: string, format: uuid }
         documentType: { type: string }
         documentNumber: { type: string }
         firstName: { type: string }
+        secondName: { type: string, nullable: true }
         lastName: { type: string }
-        birthDate: { type: string, format: date, nullable: true }
-        gender: { type: string, nullable: true }
-        phone: { type: string, nullable: true }
-        email: { type: string, nullable: true }
-        status: { type: string }
+        secondLastName: { type: string, nullable: true }
+        birthDate: { type: string, format: date }
+        sex: { type: string, enum: [MALE, FEMALE, INDETERMINATE] }
+        birthCountryId: { type: string, format: uuid, nullable: true }
+        birthPlace: { type: string, nullable: true }
+        migrationStatus: { type: string, nullable: true }
+        gestationalAgeAtBirth: { type: integer, nullable: true }
+        vaccinationCardType: { type: string, nullable: true }
+        authorizeCalls: { type: boolean }
+        authorizeEmail: { type: boolean }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
         version: { type: integer }
+        createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        demographics:
+          allOf: [{ $ref: '#/components/schemas/Demographic' }]
+          nullable: true
+        contacts:
+          type: array
+          items: { $ref: '#/components/schemas/Contact' }
+        addresses:
+          type: array
+          items: { $ref: '#/components/schemas/Address' }
+        guardians:
+          type: array
+          items: { $ref: '#/components/schemas/Guardian' }
+        medicalHistories:
+          type: array
+          items: { $ref: '#/components/schemas/MedicalHistory' }
+        affiliation:
+          allOf: [{ $ref: '#/components/schemas/Affiliation' }]
+          nullable: true
+        specialConditions:
+          allOf: [{ $ref: '#/components/schemas/SpecialConditions' }]
+          nullable: true
+        userCondition:
+          allOf: [{ $ref: '#/components/schemas/UserCondition' }]
+          nullable: true
+    Demographic:
+      type: object
+      properties:
+        gender: { type: string, nullable: true }
+        ethnicity: { type: string, nullable: true }
+        sexualOrientation: { type: string, nullable: true }
+        educationLevel: { type: string, nullable: true }
+    Contact:
+      type: object
+      required: [type, value]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [PHONE, EMAIL, OTHER] }
+        value: { type: string, maxLength: 120 }
+        phoneKind: { type: string, nullable: true }
+        primary: { type: boolean }
+    Address:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        street: { type: string, nullable: true }
+        municipalityId: { type: string, format: uuid, nullable: true }
+        departmentId: { type: string, format: uuid, nullable: true }
+        countryId: { type: string, format: uuid, nullable: true }
+        locality: { type: string, nullable: true }
+        area: { type: string, nullable: true }
+        primary: { type: boolean }
+    Guardian:
+      type: object
+      required: [relationship, fullName]
+      properties:
+        id: { type: string, format: uuid }
+        relationship: { type: string, enum: [MOTHER, FATHER, CAREGIVER, OTHER] }
+        fullName: { type: string, maxLength: 120 }
+        secondName: { type: string, nullable: true }
+        secondLastName: { type: string, nullable: true }
+        documentType: { type: string, nullable: true }
+        documentNumber: { type: string, nullable: true }
+        phone: { type: string, maxLength: 10, nullable: true }
+        landline: { type: string, maxLength: 10, nullable: true }
+        cellphone: { type: string, maxLength: 10, nullable: true }
+        email: { type: string, nullable: true }
+        affiliationRegime: { type: string, nullable: true }
+        insurer: { type: string, nullable: true }
+        insurerCode: { type: string, nullable: true }
+        ethnicity: { type: string, nullable: true }
+        displaced: { type: boolean, nullable: true }
+    MedicalHistory:
+      type: object
+      required: [condition]
+      properties:
+        id: { type: string, format: uuid }
+        condition: { type: string, maxLength: 200 }
+        diagnosedAt: { type: string, format: date, nullable: true }
+        notes: { type: string, nullable: true }
+        hasContraindication: { type: boolean }
+        contraindicationDetails: { type: string, nullable: true }
+        hasPreviousReaction: { type: boolean }
+        reactionDetails: { type: string, nullable: true }
+        historyType: { type: string, nullable: true }
+        specialObservations: { type: string, nullable: true }
+    Affiliation:
+      type: object
+      required: [affiliationRegime, insurer]
+      properties:
+        affiliationRegime: { type: string, maxLength: 40 }
+        insurer: { type: string, maxLength: 120 }
+        insurerCode: { type: string, maxLength: 40, nullable: true }
+    SpecialConditions:
+      type: object
+      properties:
+        displaced: { type: boolean }
+        disabled: { type: boolean }
+        deceased: { type: boolean }
+        armedConflictVictim: { type: boolean }
+        currentlyStudying: { type: boolean, nullable: true }
+    UserCondition:
+      type: object
+      properties:
+        userCondition: { type: string, nullable: true }
+        lastMenstrualDate: { type: string, format: date, nullable: true }
+        gestationWeeks: { type: integer, nullable: true }
+        probableDeliveryDate: { type: string, format: date, nullable: true }
+        previousPregnancies: { type: integer, nullable: true }
+        hasGivenBirth: { type: boolean, nullable: true }
+        birthPlaceDelivery: { type: string, nullable: true }
+    PatientSummary:
+      type: object
+      description: Vista ligera para busquedas (identidad, sin sub-entidades).
+      properties:
+        id: { type: string, format: uuid }
+        institutionId: { type: string, format: uuid }
+        documentType: { type: string }
+        documentNumber: { type: string }
+        firstName: { type: string }
+        secondName: { type: string, nullable: true }
+        lastName: { type: string }
+        secondLastName: { type: string, nullable: true }
+        birthDate: { type: string, format: date, nullable: true }
+        sex: { type: string }
+        birthCountryId: { type: string, format: uuid, nullable: true }
+        birthPlace: { type: string, nullable: true }
+        migrationStatus: { type: string, nullable: true }
+        gestationalAgeAtBirth: { type: integer, nullable: true }
+        vaccinationCardType: { type: string, nullable: true }
+        authorizeCalls: { type: boolean }
+        authorizeEmail: { type: boolean }
+        status: { type: string }
     # ---- Atenciones
     CreateAttentionRequest:
       type: object
@@ -890,23 +2205,3 @@ components:
         nextCursor:
           type: string
           example: "42|2026-09-07T10:00:00Z"
-    # ---- Conflictos / fusiones
-    PatientMergeRequest:
-      type: object
-      properties:
-        id: { type: string, format: uuid }
-        sourcePatientId: { type: string, format: uuid }
-        targetPatientId: { type: string, format: uuid }
-        status:
-          type: string
-          enum: [PENDING, APPROVED, REJECTED]
-        reason: { type: string, nullable: true }
-        createdAt: { type: string, format: date-time }
-    ResolveMergeRequest:
-      type: object
-      required: [decision, note]
-      properties:
-        decision:
-          type: string
-          enum: [APPROVED, REJECTED]
-        note: { type: string }

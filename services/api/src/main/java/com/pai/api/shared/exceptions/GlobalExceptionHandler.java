@@ -1,117 +1,33 @@
 package com.pai.api.shared.exceptions;
 
-import com.pai.api.attentions.exception.AttentionNotFoundException;
-import com.pai.api.attentions.exception.DoseNotFoundException;
-import com.pai.api.attentions.exception.InvalidClinicalStateException;
-import com.pai.api.catalog.exception.OptimisticCatalogException;
-import com.pai.api.patients.exception.PatientAlreadyExistsException;
-import com.pai.api.patients.exception.PatientNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/**
+ * Traduce excepciones a respuestas de error uniformes.
+ *
+ * <p>Las excepciones de dominio se resuelven de forma polimorfica via
+ * {@link DomainException} (OCP): agregar una excepcion de dominio no toca este
+ * handler. Las de framework ({@code IllegalArgumentException},
+ * {@code MethodArgumentNotValidException}) conservan su status especifico; el
+ * resto las maneja Spring por defecto.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-  @ExceptionHandler(UserNotFoundException.class)
-  public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException ex) {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(new ErrorResponse("USER_NOT_FOUND", ex.getMessage()));
-  }
-
-  @ExceptionHandler(UserNotActiveException.class)
-  public ResponseEntity<ErrorResponse> handleUserNotActive(UserNotActiveException ex) {
-    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-        .body(new ErrorResponse("USER_NOT_ACTIVE", ex.getMessage()));
-  }
-
-  @ExceptionHandler(InstitutionNotFoundException.class)
-  public ResponseEntity<ErrorResponse> handleInstitutionNotFound(InstitutionNotFoundException ex) {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(new ErrorResponse("INSTITUTION_NOT_FOUND", ex.getMessage()));
-  }
-
-  @ExceptionHandler(RoleNotFoundException.class)
-  public ResponseEntity<ErrorResponse> handleRoleNotFound(RoleNotFoundException ex) {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(new ErrorResponse("ROLE_NOT_FOUND", ex.getMessage()));
-  }
-
-  @ExceptionHandler(InstitutionCodeAlreadyExistsException.class)
-  public ResponseEntity<ErrorResponse> handleInstitutionCodeExists(
-      InstitutionCodeAlreadyExistsException ex) {
-    return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(new ErrorResponse("INSTITUTION_CODE_ALREADY_EXISTS", ex.getMessage()));
-  }
-
-  @ExceptionHandler(EmailAlreadyExistsException.class)
-  public ResponseEntity<ErrorResponse> handleEmailExists(EmailAlreadyExistsException ex) {
-    return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(new ErrorResponse("EMAIL_ALREADY_EXISTS", ex.getMessage()));
-  }
-
-  @ExceptionHandler(ProvisioningPendingException.class)
-  public ResponseEntity<ErrorResponse> handleProvisioningPending(ProvisioningPendingException ex) {
-    return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(new ErrorResponse("OPERATION_IN_PROGRESS", ex.getMessage()));
-  }
-
-  @ExceptionHandler(ScopeViolationException.class)
-  public ResponseEntity<ErrorResponse> handleScopeViolation(ScopeViolationException ex) {
-    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-        .body(new ErrorResponse("SCOPE_VIOLATION", ex.getMessage()));
-  }
-
-  @ExceptionHandler(PermissionDeniedException.class)
-  public ResponseEntity<ErrorResponse> handlePermissionDenied(PermissionDeniedException ex) {
-    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-        .body(new ErrorResponse("PERMISSION_DENIED", ex.getMessage()));
+  @ExceptionHandler(DomainRuntimeException.class)
+  public ResponseEntity<ErrorResponse> handleDomain(DomainRuntimeException ex) {
+    return ResponseEntity.status(ex.status())
+        .body(new ErrorResponse(ex.errorCode(), ex.getMessage()));
   }
 
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .body(new ErrorResponse("BAD_REQUEST", ex.getMessage()));
-  }
-
-  @ExceptionHandler(OptimisticCatalogException.class)
-  public ResponseEntity<ErrorResponse> handleOptimisticCatalog(OptimisticCatalogException ex) {
-    return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(new ErrorResponse("OPTIMISTIC_LOCK_CONFLICT", ex.getMessage()));
-  }
-
-  @ExceptionHandler(PatientAlreadyExistsException.class)
-  public ResponseEntity<ErrorResponse> handlePatientAlreadyExists(
-      PatientAlreadyExistsException ex) {
-    return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(new ErrorResponse("PATIENT_ALREADY_EXISTS", ex.getMessage()));
-  }
-
-  @ExceptionHandler(PatientNotFoundException.class)
-  public ResponseEntity<ErrorResponse> handlePatientNotFound(PatientNotFoundException ex) {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(new ErrorResponse("PATIENT_NOT_FOUND", ex.getMessage()));
-  }
-
-  @ExceptionHandler(AttentionNotFoundException.class)
-  public ResponseEntity<ErrorResponse> handleAttentionNotFound(AttentionNotFoundException ex) {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(new ErrorResponse("ATTENTION_NOT_FOUND", ex.getMessage()));
-  }
-
-  @ExceptionHandler(DoseNotFoundException.class)
-  public ResponseEntity<ErrorResponse> handleDoseNotFound(DoseNotFoundException ex) {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(new ErrorResponse("DOSE_NOT_FOUND", ex.getMessage()));
-  }
-
-  @ExceptionHandler(InvalidClinicalStateException.class)
-  public ResponseEntity<ErrorResponse> handleInvalidClinicalState(
-      InvalidClinicalStateException ex) {
-    return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(new ErrorResponse("INVALID_STATE", ex.getMessage()));
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -123,6 +39,4 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .body(new ErrorResponse("VALIDATION_ERROR", message));
   }
-
-  public record ErrorResponse(String error, String message) {}
 }

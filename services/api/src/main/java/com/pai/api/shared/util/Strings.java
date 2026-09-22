@@ -1,6 +1,7 @@
 package com.pai.api.shared.util;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Utilidades de normalizacion de texto y colecciones compartidas por los
@@ -28,5 +29,10 @@ public final class Strings {
   /** Devuelve una lista vacia inmutable si el argumento es {@code null}. */
   public static <T> List<T> safe(List<T> list) {
     return list == null ? List.of() : list;
+  }
+
+  /** Devuelve un mapa vacio inmutable si el argumento es {@code null}. */
+  public static <K, V> Map<K, V> safe(Map<K, V> map) {
+    return map == null ? Map.of() : map;
   }
 }

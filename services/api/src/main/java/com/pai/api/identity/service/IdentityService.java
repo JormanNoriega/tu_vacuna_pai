@@ -5,10 +5,11 @@ import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.entity.PermissionEntity;
 import com.pai.api.identity.entity.RoleEntity;
 import com.pai.api.identity.entity.UserEntity;
+import com.pai.api.identity.exception.UserNotActiveException;
+import com.pai.api.identity.exception.UserNotFoundException;
 import com.pai.api.identity.repository.InstitutionRepository;
+import com.pai.api.identity.repository.UserAuthorizationRepository;
 import com.pai.api.identity.repository.UserRepository;
-import com.pai.api.shared.exceptions.UserNotActiveException;
-import com.pai.api.shared.exceptions.UserNotFoundException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -28,11 +29,15 @@ public class IdentityService {
 
   private final UserRepository userRepository;
   private final InstitutionRepository institutionRepository;
+  private final UserAuthorizationRepository authorizationRepository;
 
   public IdentityService(
-      UserRepository userRepository, InstitutionRepository institutionRepository) {
+      UserRepository userRepository,
+      InstitutionRepository institutionRepository,
+      UserAuthorizationRepository authorizationRepository) {
     this.userRepository = userRepository;
     this.institutionRepository = institutionRepository;
+    this.authorizationRepository = authorizationRepository;
   }
 
   /**
@@ -62,11 +67,11 @@ public class IdentityService {
       throw new UserNotActiveException("La institucion del usuario esta inactiva.");
     }
 
-    List<String> roles = userRepository.findRolesByUserId(userId).stream()
+    List<String> roles = authorizationRepository.findRolesByUserId(userId).stream()
         .map(RoleEntity::getCode)
         .toList();
 
-    List<String> permissions = userRepository.findPermissionsByUserId(userId).stream()
+    List<String> permissions = authorizationRepository.findPermissionsByUserId(userId).stream()
         .map(PermissionEntity::getCode)
         .toList();
 

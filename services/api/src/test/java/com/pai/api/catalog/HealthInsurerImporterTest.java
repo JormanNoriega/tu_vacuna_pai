@@ -11,11 +11,13 @@ import static org.mockito.Mockito.when;
 import com.pai.api.catalog.entity.HealthInsurerEntity;
 import com.pai.api.catalog.repository.HealthInsurerRepository;
 import com.pai.api.catalog.service.HealthInsurerImporter;
+import com.pai.api.shared.json.JsonSerializer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
 
 class HealthInsurerImporterTest {
 
@@ -34,7 +36,7 @@ class HealthInsurerImporterTest {
       store.put(entity.getNit(), entity);
       return entity;
     });
-    importer = new HealthInsurerImporter(repository);
+    importer = new HealthInsurerImporter(repository, new JsonSerializer(new ObjectMapper()));
   }
 
   @Test
