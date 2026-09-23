@@ -11,6 +11,10 @@ import 'package:tu_vacuna_pai/core/storage/app_database.dart';
 /// (`hooks.user_defines.sqlite3.source = sqlite3mc` en pubspec.yaml). Sobre un
 /// build sin cifrado, `PRAGMA key` era un no-op y estas aserciones fallarian,
 /// por lo que actuan como guarda de regresion.
+///
+/// El ultimo test identifica explicitamente el motor: SQLite plano desconoce
+/// `PRAGMA cipher` y `PRAGMA kdf_iter` (responden sin filas), mientras que
+/// SQLite3MultipleCiphers expone el esquema activo y la derivacion de clave.
 void main() {
   // Clave de 32 bytes en hexadecimal, como la genera AppDatabase.
   const key =
@@ -85,5 +89,34 @@ void main() {
     expect(rows, hasLength(1));
     expect(rows.first.values.first, secret);
     ok.close();
+  });
+
+  test('el binario nativo es SQLite3MultipleCiphers (pragmas de cifrado)', () {
+    final raw = sqlite3.open(dbPath());
+    raw.execute("PRAGMA key = '$key'");
+    raw.execute('PRAGMA cipher_memory_security = OFF');
+
+    // Identificacion del motor: SQLite plano desconoce estos pragmas y
+    // responde sin filas; SQLite3MultipleCiphers expone el esquema activo y
+    // las rondas de derivacion de clave.
+    final cipherRows = raw.select('PRAGMA cipher;');
+    final kdfRows = raw.select('PRAGMA kdf_iter;');
+
+    // Los pragmas de sqlite3mc devuelven TEXT aunque el valor sea numerico.
+    final cipher =
+        cipherRows.isEmpty ? null : cipherRows.first.values.first?.toString();
+    final kdfRaw =
+        kdfRows.isEmpty ? null : kdfRows.first.values.first?.toString();
+    final kdfIter = kdfRaw == null ? null : int.tryParse(kdfRaw);
+
+    stderr.writeln('PRAGMA cipher   = $cipher');
+    stderr.writeln('PRAGMA kdf_iter = $kdfIter');
+
+    expect(cipher?.toLowerCase(), 'chacha20');
+    // Default de SQLite3MultipleCiphers para chacha20: PBKDF2-HMAC-SHA512 con
+    // 64007 rondas. Si cambia, es una decision deliberada de configuracion.
+    expect(kdfIter, 64007);
+
+    raw.close();
   });
 }
