@@ -1,5 +1,7 @@
 package com.pai.api.attentions.dto;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
@@ -41,6 +43,8 @@ public record RegisterDoseRequest(
     @Size(max = 120, message = "El diluyente no puede superar 120 caracteres.")
     String diluent,
 
+    @Min(value = 0, message = "La cantidad de frascos no puede ser negativa.")
+    @Max(value = 999, message = "La cantidad de frascos no puede superar 999.")
     Integer vialCount,
 
     @Size(max = 500, message = "La observacion no puede superar 500 caracteres.")

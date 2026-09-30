@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../../core/utils/field_input.dart';
 import '../auth_controller.dart';
 
 class LoginPage extends StatefulWidget {
@@ -70,6 +71,9 @@ class _LoginPageState extends State<LoginPage> {
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
                             autofillHints: const [AutofillHints.username],
+                            inputFormatters: maxLengthFormatters(
+                              FieldLimits.staffEmail,
+                            ),
                             decoration: const InputDecoration(
                               labelText: 'Correo institucional',
                               prefixIcon: Icon(Icons.alternate_email_rounded),
@@ -84,6 +88,9 @@ class _LoginPageState extends State<LoginPage> {
                             controller: _passwordController,
                             obscureText: _obscurePassword,
                             autofillHints: const [AutofillHints.password],
+                            inputFormatters: maxLengthFormatters(
+                              FieldLimits.password,
+                            ),
                             decoration: InputDecoration(
                               labelText: 'Contrasena',
                               prefixIcon: const Icon(

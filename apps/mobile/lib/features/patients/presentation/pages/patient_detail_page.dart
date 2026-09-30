@@ -1373,7 +1373,9 @@ class _HistoriesDialogState extends State<_HistoriesDialog> {
                     const SizedBox(height: 8),
                     TextField(
                       controller: _edits[i].type,
-                      inputFormatters: maxLengthFormatters(FieldLimits.name),
+                      inputFormatters: maxLengthFormatters(
+                        FieldLimits.historyType,
+                      ),
                       decoration: const InputDecoration(labelText: 'Tipo'),
                     ),
                     const SizedBox(height: 8),

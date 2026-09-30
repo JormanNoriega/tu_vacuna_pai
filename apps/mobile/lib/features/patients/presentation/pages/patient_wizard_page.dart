@@ -6,6 +6,8 @@ import '../../../../app/widgets/clinical_components.dart';
 import '../../../../core/auth/offline_access.dart';
 import '../../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../../core/utils/document_input.dart';
+import '../../../../core/utils/document_normalizer.dart';
+import '../../../../core/utils/document_rules.dart';
 import '../../../../core/utils/field_input.dart';
 import '../../../attentions/presentation/attention_controller.dart';
 import '../../../catalogs/domain/entities/catalog_entities.dart';
@@ -411,11 +413,13 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
 
   Future<void> _next() async {
     if (_step == 0) {
-      // Duplicado primero: si el documento ya existe, se resuelve antes de
-      // exigir el resto del paso 1.
-      if (await _blockIfDuplicate()) return;
+      // Duplicado primero para el paso 1: si el documento ya existe, se
+      // resuelve antes de exigir el resto del paso. Solo se busca cuando el
+      // documento ya cumple el formato de su tipo (evita consultar con un
+      // documento invalido); si no cumple, cae a la validacion del paso.
+      if (_isDocumentFormatValid() && await _blockIfDuplicate()) return;
     }
-    // Valida el paso actual antes de avanzar.
+    // Valida el paso actual antes de avanzar (incluye el formato del documento).
     if (!(_formKeys[_step].currentState?.validate() ?? false)) {
       return;
     }
@@ -427,6 +431,17 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
       return;
     }
     await _save();
+  }
+
+  /// El documento del paso 1 cumple el formato de su tipo (si hay tipo y valor).
+  bool _isDocumentFormatValid() {
+    final type = _documentType;
+    final value = _documentNumber.text.trim();
+    if (type == null || value.isEmpty) return false;
+    return DocumentNormalizer.isValidForType(
+      DocumentNormalizer.normalize(value),
+      type,
+    );
   }
 
   /// Verifica si el documento del paso 1 ya esta registrado. Si existe, ofrece
@@ -950,7 +965,10 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         items: _documentTypeItems(),
         validator: (value) =>
             value == null ? 'Selecciona el tipo de documento.' : null,
-        onChanged: (value) => setState(() => _documentType = value),
+        onChanged: (value) => setState(() {
+          if (value != _documentType) _documentNumber.clear();
+          _documentType = value;
+        }),
       ),
       const SizedBox(height: 16),
       TextFormField(
@@ -962,9 +980,16 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         validator: (value) {
           final v = value?.trim() ?? '';
           if (v.isEmpty) return 'Ingresa el documento.';
-          final min = _documentType == 'CC' ? 6 : 4;
-          if (v.length < min) {
-            return 'Ingresa al menos $min caracteres.';
+          if (_documentType == null) return 'Selecciona el tipo de documento.';
+          final rule = documentRuleFor(_documentType);
+          if (rule == null) return 'Tipo de documento invalido.';
+          if (!DocumentNormalizer.isValidForType(
+            DocumentNormalizer.normalize(v),
+            _documentType,
+          )) {
+            final caracteres = rule.digitsOnly ? 'digitos' : 'digitos o letras';
+            return 'Documento invalido: ${rule.minLength}-${rule.maxLength} '
+                'caracteres ($caracteres).';
           }
           return null;
         },
@@ -1407,7 +1432,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
                 const SizedBox(height: 8),
                 TextField(
                   controller: _histories[i].type,
-                  inputFormatters: maxLengthFormatters(FieldLimits.name),
+                  inputFormatters: maxLengthFormatters(FieldLimits.historyType),
                   decoration: const InputDecoration(labelText: 'Tipo'),
                 ),
                 const SizedBox(height: 8),
@@ -1557,8 +1582,10 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         isExpanded: true,
         decoration: const InputDecoration(labelText: 'Tipo de identificacion'),
         items: _documentTypeItems(),
-        onChanged: (value) =>
-            setState(() => _guardianDocumentType = value ?? 'CC'),
+        onChanged: (value) => setState(() {
+          if (value != _guardianDocumentType) _guardianDocument.clear();
+          _guardianDocumentType = value ?? 'CC';
+        }),
       ),
       const SizedBox(height: 16),
       TextFormField(

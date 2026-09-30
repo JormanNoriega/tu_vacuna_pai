@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/auth/offline_access.dart';
 import '../../../../core/presentation/widgets/app_snackbar.dart';
+import '../../../../core/utils/field_input.dart';
 import '../../domain/entities/catalog_entities.dart';
 import '../catalog_controller.dart';
 
@@ -98,6 +99,7 @@ class _VaccineFormPageState extends State<VaccineFormPage> {
           _section('Informacion basica', 'Datos generales de la vacuna', [
             TextFormField(
               controller: name,
+              inputFormatters: maxLengthFormatters(FieldLimits.vaccineName),
               decoration: const InputDecoration(
                 labelText: 'Nombre de la vacuna',
               ),
@@ -107,6 +109,7 @@ class _VaccineFormPageState extends State<VaccineFormPage> {
             TextFormField(
               controller: code,
               enabled: widget.vaccine == null,
+              inputFormatters: maxLengthFormatters(FieldLimits.vaccineCode),
               decoration: const InputDecoration(labelText: 'Codigo unico'),
               validator: _required,
             ),
@@ -130,7 +133,8 @@ class _VaccineFormPageState extends State<VaccineFormPage> {
                 labelText: 'Numero maximo de dosis',
               ),
               keyboardType: TextInputType.number,
-              validator: _required,
+              inputFormatters: digitsOnlyFormatters(max: 3),
+              validator: _dosesValidator,
             ),
           ]),
           const SizedBox(height: 16),
@@ -142,6 +146,8 @@ class _VaccineFormPageState extends State<VaccineFormPage> {
                     controller: min,
                     decoration: const InputDecoration(labelText: 'Edad minima'),
                     keyboardType: TextInputType.number,
+                    inputFormatters: digitsOnlyFormatters(max: 3),
+                    validator: _ageValidator,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -150,6 +156,8 @@ class _VaccineFormPageState extends State<VaccineFormPage> {
                     controller: max,
                     decoration: const InputDecoration(labelText: 'Edad maxima'),
                     keyboardType: TextInputType.number,
+                    inputFormatters: digitsOnlyFormatters(max: 3),
+                    validator: _maxAgeValidator,
                   ),
                 ),
               ],
@@ -210,6 +218,41 @@ class _VaccineFormPageState extends State<VaccineFormPage> {
   );
   String? _required(String? v) =>
       v == null || v.trim().isEmpty ? 'Campo requerido' : null;
+
+  String? _dosesValidator(String? v) {
+    final value = int.tryParse(v?.trim() ?? '');
+    if (value == null ||
+        value < FieldLimits.maxDosesMin ||
+        value > FieldLimits.maxDosesMax) {
+      return 'Usa un valor entre ${FieldLimits.maxDosesMin} y '
+          '${FieldLimits.maxDosesMax}.';
+    }
+    return null;
+  }
+
+  String? _ageValidator(String? v) {
+    final raw = v?.trim() ?? '';
+    if (raw.isEmpty) return null;
+    final value = int.tryParse(raw);
+    if (value == null ||
+        value < FieldLimits.ageMonthsMin ||
+        value > FieldLimits.ageMonthsMax) {
+      return 'Usa un valor entre ${FieldLimits.ageMonthsMin} y '
+          '${FieldLimits.ageMonthsMax} meses.';
+    }
+    return null;
+  }
+
+  String? _maxAgeValidator(String? v) {
+    final error = _ageValidator(v);
+    if (error != null) return error;
+    final minValue = int.tryParse(min.text.trim());
+    final maxValue = int.tryParse(v?.trim() ?? '');
+    if (minValue != null && maxValue != null && minValue > maxValue) {
+      return 'La edad minima no puede superar la edad maxima.';
+    }
+    return null;
+  }
 
   String _normalizeCategory(String? value) {
     final normalized = value?.trim().toLowerCase();
@@ -478,6 +521,7 @@ class _OptionDialogState extends State<_OptionDialog> {
       content: TextField(
         controller: _controller,
         autofocus: widget.autofocus,
+        inputFormatters: maxLengthFormatters(FieldLimits.optionValue),
         decoration: const InputDecoration(labelText: 'Nombre o valor'),
       ),
       actions: [
