@@ -118,8 +118,10 @@ class _HistorialPageState extends State<HistorialPage> {
                       labelText: 'Tipo de documento',
                     ),
                     items: _documentTypeItems(),
-                    onChanged: (value) =>
-                        setState(() => _docType = value ?? 'CC'),
+                    onChanged: (value) => setState(() {
+                      if (value != _docType) _number.clear();
+                      _docType = value ?? 'CC';
+                    }),
                   ),
                   const SizedBox(height: 12),
                   TextField(

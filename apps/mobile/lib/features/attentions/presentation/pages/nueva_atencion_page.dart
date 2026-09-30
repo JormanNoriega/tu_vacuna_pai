@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../app/widgets/clinical_components.dart';
 import '../../../../core/auth/offline_access.dart';
 import '../../../../core/presentation/offline_messages.dart';
 import '../../../../core/presentation/widgets/app_snackbar.dart';
+import '../../../../core/presentation/widgets/loading_button.dart';
 import '../../../../core/utils/document_input.dart';
 import '../../../../core/utils/field_input.dart';
 import '../../../auth/domain/entities/auth_user.dart';
@@ -59,6 +59,8 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
   EffectiveOption? _observation;
   DateTime? _attentionDate;
   bool _submittingDose = false;
+  bool _finishing = false;
+  bool _cancelling = false;
   final _doseFormKey = GlobalKey<FormState>();
 
   @override
@@ -266,11 +268,13 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
   Future<void> _cancelAttention() async {
     final reason = await _promptReason('Anular atencion');
     if (reason == null || !mounted) return;
+    setState(() => _cancelling = true);
     final ok = await widget.controller.cancelAttentionFlow(
       offline: widget.offline,
       reason: reason,
     );
     if (!mounted) return;
+    setState(() => _cancelling = false);
     if (ok) {
       AppSnackbar.success(context, 'Atencion anulada.');
       _resetFlow();
@@ -300,8 +304,10 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
       AppSnackbar.error(context, 'No se pudo guardar el cierre del registro.');
       return;
     }
+    setState(() => _finishing = true);
     final ok = await widget.controller.finishAttention(offline: widget.offline);
     if (!mounted) return;
+    setState(() => _finishing = false);
     if (ok) {
       AppSnackbar.success(
         context,
@@ -411,8 +417,10 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Tipo de documento'),
               items: _documentTypeItems(),
-              onChanged: (value) =>
-                  setState(() => _searchDocType = value ?? 'CC'),
+              onChanged: (value) => setState(() {
+                if (value != _searchDocType) _searchNumber.clear();
+                _searchDocType = value ?? 'CC';
+              }),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -647,6 +655,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
                       TextField(
                         controller: _vialCount,
                         keyboardType: TextInputType.number,
+                        inputFormatters: digitsOnlyFormatters(max: 3),
                         decoration: const InputDecoration(
                           labelText: 'Cantidad de frascos',
                         ),
@@ -663,10 +672,12 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: _submittingDose ? null : _addDose,
-                      icon: const Icon(Icons.vaccines_rounded, size: 20),
-                      label: const Text('Registrar dosis'),
+                    LoadingButton(
+                      onPressed: _addDose,
+                      loading: _submittingDose,
+                      icon: Icons.vaccines_rounded,
+                      label: 'Registrar dosis',
+                      loadingLabel: 'Registrando dosis...',
                     ),
                   ],
                 ],
@@ -702,16 +713,21 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
           const SizedBox(height: 16),
           _closingSection(),
           const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: controller.isLoading ? null : _finish,
-            icon: const Icon(Icons.done_all_rounded),
-            label: const Text('Completar atencion'),
+          LoadingButton(
+            onPressed: _finish,
+            loading: _finishing,
+            icon: Icons.done_all_rounded,
+            label: 'Completar atención',
+            loadingLabel: 'Completando atención...',
           ),
           const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: controller.isLoading ? null : _cancelAttention,
-            icon: const Icon(Icons.cancel_outlined),
-            label: const Text('Anular atencion'),
+          LoadingButton(
+            onPressed: _cancelAttention,
+            loading: _cancelling,
+            icon: Icons.cancel_outlined,
+            style: LoadingButtonStyle.outlined,
+            label: 'Anular atención',
+            loadingLabel: 'Anulando atención...',
           ),
         ],
         const SizedBox(height: 8),
@@ -749,7 +765,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
           TextField(
             controller: _paiwebReason,
             maxLines: 2,
-            inputFormatters: [LengthLimitingTextInputFormatter(500)],
+            inputFormatters: maxLengthFormatters(FieldLimits.reason),
             decoration: const InputDecoration(
               labelText: 'Motivo de no ingreso',
               helperText: 'Minimo 5 caracteres.',
@@ -1067,7 +1083,7 @@ class _ReasonDialogState extends State<_ReasonDialog> {
         controller: _controller,
         autofocus: true,
         maxLines: 3,
-        inputFormatters: [LengthLimitingTextInputFormatter(500)],
+        inputFormatters: maxLengthFormatters(FieldLimits.reason),
         decoration: const InputDecoration(
           labelText: 'Motivo',
           helperText: 'Minimo 5 caracteres.',

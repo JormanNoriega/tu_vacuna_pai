@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/auth/offline_access.dart';
 import '../../../../core/presentation/widgets/app_snackbar.dart';
+import '../../../../core/utils/field_input.dart';
 import '../../domain/entities/clone_catalog_result.dart';
 import '../../domain/entities/institution.dart';
 import '../admin_controller.dart';
@@ -594,6 +595,7 @@ class _EditConfigDialogState extends State<_EditConfigDialog> {
             controller: _hoursController,
             enabled: !_saving,
             keyboardType: TextInputType.number,
+            inputFormatters: digitsOnlyFormatters(max: 3),
             decoration: const InputDecoration(
               hintText: '72',
               helperText: 'Entre 1 y 168 horas. Rige el trabajo sin conexion.',

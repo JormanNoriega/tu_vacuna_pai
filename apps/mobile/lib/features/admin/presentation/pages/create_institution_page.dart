@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/auth/offline_access.dart';
+import '../../../../core/utils/field_input.dart';
 import '../admin_controller.dart';
 
 /// Formulario para crear una institucion (SUPER_ADMIN).
@@ -88,6 +89,9 @@ class _CreateInstitutionPageState extends State<CreateInstitutionPage> {
                       TextFormField(
                         controller: _codeController,
                         textCapitalization: TextCapitalization.characters,
+                        inputFormatters: maxLengthFormatters(
+                          FieldLimits.institutionCode,
+                        ),
                         decoration: const InputDecoration(
                           labelText: 'Codigo',
                           hintText: 'HOSP-A',
@@ -106,6 +110,9 @@ class _CreateInstitutionPageState extends State<CreateInstitutionPage> {
                       TextFormField(
                         controller: _nameController,
                         textCapitalization: TextCapitalization.words,
+                        inputFormatters: maxLengthFormatters(
+                          FieldLimits.institutionName,
+                        ),
                         decoration: const InputDecoration(
                           labelText: 'Nombre',
                           hintText: 'Hospital de la Comunidad',
@@ -124,6 +131,7 @@ class _CreateInstitutionPageState extends State<CreateInstitutionPage> {
                       TextFormField(
                         controller: _offlineController,
                         keyboardType: TextInputType.number,
+                        inputFormatters: digitsOnlyFormatters(max: 3),
                         decoration: const InputDecoration(
                           labelText: 'Ventana offline (horas)',
                           helperText: 'Entre 1 y 168 horas. Valor inicial: 72.',

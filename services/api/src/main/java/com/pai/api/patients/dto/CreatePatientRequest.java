@@ -3,6 +3,7 @@ package com.pai.api.patients.dto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.List;
@@ -18,9 +19,13 @@ import java.util.UUID;
  */
 public record CreatePatientRequest(
     @NotBlank(message = "El tipo de documento es obligatorio.")
+    @Pattern(
+        regexp = "CC|TI|RC|CN|CE|PA|PPT|PE|SC|CD|DE|AS|MS",
+        message = "Tipo de documento invalido.")
     String documentType,
 
     @NotBlank(message = "El numero de documento es obligatorio.")
+    @Size(max = 20, message = "El documento no puede superar 20 caracteres.")
     String documentNumber,
 
     @NotBlank(message = "El nombre es obligatorio.")
