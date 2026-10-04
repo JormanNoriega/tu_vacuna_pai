@@ -1,0 +1,37 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Antes" id="builder-antes">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="svc" value="AttentionService" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="150" width="330" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-m" value="+ registerDose(...): AppliedDoseResponse" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="svc">
+          <mxGeometry height="54" width="330" y="26" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ent" value="AppliedDoseEntity" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="560" y="30" width="400" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="ent-f1" value="- id: UUID" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="ent"><mxGeometry height="26" width="400" y="26" as="geometry" /></mxCell>
+        <mxCell id="ent-f2" value="- attentionId: UUID" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="ent"><mxGeometry height="26" width="400" y="52" as="geometry" /></mxCell>
+        <mxCell id="ent-f3" value="- vaccineId / doseOptionId: UUID" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="ent"><mxGeometry height="26" width="400" y="78" as="geometry" /></mxCell>
+        <mxCell id="ent-f4" value="- vaccineNameSnapshot / vaccineCodeSnapshot: String" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="ent"><mxGeometry height="26" width="400" y="104" as="geometry" /></mxCell>
+        <mxCell id="ent-f5" value="- doseLabelSnapshot / doseValueSnapshot: String" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="ent"><mxGeometry height="26" width="400" y="130" as="geometry" /></mxCell>
+        <mxCell id="ent-f6" value="- applicationDate / createdAt / cancelledAt: Instant" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="ent"><mxGeometry height="26" width="400" y="156" as="geometry" /></mxCell>
+        <mxCell id="ent-f7" value="- status: Status (REGISTERED/CANCELLED)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="ent"><mxGeometry height="26" width="400" y="182" as="geometry" /></mxCell>
+        <mxCell id="ent-sep" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" vertex="1" parent="ent"><mxGeometry height="8" width="400" y="208" as="geometry" /></mxCell>
+        <mxCell id="ent-c1" value="+ AppliedDoseEntity(23 argumentos posicionales)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontStyle=1;" vertex="1" parent="ent"><mxGeometry height="38" width="400" y="216" as="geometry" /></mxCell>
+        <mxCell id="ent-c2" value="+ applyOperationalFields(...): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="ent"><mxGeometry height="38" width="400" y="254" as="geometry" /></mxCell>
+        <mxCell id="ent-c3" value="+ cancel(reason, actorId, now): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="ent"><mxGeometry height="38" width="400" y="292" as="geometry" /></mxCell>
+
+        <mxCell id="e1" value="new AppliedDoseEntity(&#10;23 argumentos posicionales)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="svc" target="ent"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" value="applyOperationalFields(...)&#10;inicializacion en dos fases" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;exitX=1;exitY=0.5;entryX=1;entryY=0.7;" edge="1" parent="1" source="svc" target="ent"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="note" value="SIN BUILDER&#10;&#10;Constructor telescopico de 23 argumentos posicionales (mismos tipos: riesgo de desalineacion).&#10;applyOperationalFields() completa el objeto en una segunda fase.&#10;Sin validacion centralizada de invariantes." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;size=18;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="40" y="420" width="620" height="140" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

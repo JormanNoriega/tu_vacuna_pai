@@ -123,54 +123,173 @@ public class AppliedDoseEntity {
 
   protected AppliedDoseEntity() {}
 
-  public AppliedDoseEntity(
-      UUID id,
-      UUID attentionId,
-      UUID vaccineId,
-      UUID lotId,
-      String lotNumber,
-      Instant applicationDate,
-      UUID doseOptionId,
-      UUID pneumococcalTypeOptionId,
-      String vaccineNameSnapshot,
-      String vaccineCodeSnapshot,
-      String doseLabelSnapshot,
-      String doseValueSnapshot,
-      String pneumococcalTypeSnapshot,
-      long catalogVersion,
-      UUID selectedLaboratoryId,
-      String selectedLaboratorySnapshot,
-      UUID selectedSyringeId,
-      String selectedSyringeSnapshot,
-      UUID selectedDropperId,
-      String selectedDropperSnapshot,
-      UUID selectedObservationId,
-      String selectedObservationSnapshot,
-      Instant now) {
-    this.id = id;
-    this.attentionId = attentionId;
-    this.vaccineId = vaccineId;
-    this.lotId = lotId;
-    this.lotNumber = lotNumber;
-    this.applicationDate = applicationDate;
-    this.doseOptionId = doseOptionId;
-    this.pneumococcalTypeOptionId = pneumococcalTypeOptionId;
-    this.vaccineNameSnapshot = vaccineNameSnapshot;
-    this.vaccineCodeSnapshot = vaccineCodeSnapshot;
-    this.doseLabelSnapshot = doseLabelSnapshot;
-    this.doseValueSnapshot = doseValueSnapshot;
-    this.pneumococcalTypeSnapshot = pneumococcalTypeSnapshot;
-    this.catalogVersion = catalogVersion;
-    this.selectedLaboratoryId = selectedLaboratoryId;
-    this.selectedLaboratorySnapshot = selectedLaboratorySnapshot;
-    this.selectedSyringeId = selectedSyringeId;
-    this.selectedSyringeSnapshot = selectedSyringeSnapshot;
-    this.selectedDropperId = selectedDropperId;
-    this.selectedDropperSnapshot = selectedDropperSnapshot;
-    this.selectedObservationId = selectedObservationId;
-    this.selectedObservationSnapshot = selectedObservationSnapshot;
-    this.status = Status.REGISTERED;
-    this.createdAt = now;
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /**
+   * Construction por pasos de una dosis nueva. Centraliza los valores por
+   * defecto (id autogenerado, estado {@code REGISTERED}, {@code createdAt}) y
+   * valida los campos requeridos del agregado, reemplazando el constructor
+   * telescopico de 23 argumentos y la inicializacion en dos fases
+   * ({@code applyOperationalFields}). La entidad no depende de tipos de la capa
+   * de servicio: el Builder recibe datos primitivos del dominio.
+   */
+  public static final class Builder {
+    private UUID id;
+    private UUID attentionId;
+    private Instant applicationDate;
+    private UUID vaccineId;
+    private String vaccineNameSnapshot;
+    private String vaccineCodeSnapshot;
+    private long catalogVersion;
+    private UUID doseOptionId;
+    private String doseLabelSnapshot;
+    private String doseValueSnapshot;
+    private UUID pneumococcalTypeOptionId;
+    private String pneumococcalTypeSnapshot;
+    private UUID lotId;
+    private String lotNumber;
+    private UUID selectedLaboratoryId;
+    private String selectedLaboratorySnapshot;
+    private UUID selectedSyringeId;
+    private String selectedSyringeSnapshot;
+    private UUID selectedDropperId;
+    private String selectedDropperSnapshot;
+    private UUID selectedObservationId;
+    private String selectedObservationSnapshot;
+    private String syringeLot;
+    private String diluent;
+    private Integer vialCount;
+    private String customObservation;
+
+    private Builder() {}
+
+    public Builder id(UUID id) {
+      this.id = id;
+      return this;
+    }
+
+    public Builder attentionId(UUID attentionId) {
+      this.attentionId = attentionId;
+      return this;
+    }
+
+    public Builder applicationDate(Instant applicationDate) {
+      this.applicationDate = applicationDate;
+      return this;
+    }
+
+    public Builder lot(UUID lotId, String lotNumber) {
+      this.lotId = lotId;
+      this.lotNumber = lotNumber;
+      return this;
+    }
+
+    public Builder vaccine(UUID vaccineId, String name, String code, long catalogVersion) {
+      this.vaccineId = vaccineId;
+      this.vaccineNameSnapshot = name;
+      this.vaccineCodeSnapshot = code;
+      this.catalogVersion = catalogVersion;
+      return this;
+    }
+
+    public Builder dose(UUID doseOptionId, String label, String value) {
+      this.doseOptionId = doseOptionId;
+      this.doseLabelSnapshot = label;
+      this.doseValueSnapshot = value;
+      return this;
+    }
+
+    public Builder pneumococcal(UUID optionId, String snapshot) {
+      this.pneumococcalTypeOptionId = optionId;
+      this.pneumococcalTypeSnapshot = snapshot;
+      return this;
+    }
+
+    public Builder laboratory(UUID id, String snapshot) {
+      this.selectedLaboratoryId = id;
+      this.selectedLaboratorySnapshot = snapshot;
+      return this;
+    }
+
+    public Builder syringe(UUID id, String snapshot) {
+      this.selectedSyringeId = id;
+      this.selectedSyringeSnapshot = snapshot;
+      return this;
+    }
+
+    public Builder dropper(UUID id, String snapshot) {
+      this.selectedDropperId = id;
+      this.selectedDropperSnapshot = snapshot;
+      return this;
+    }
+
+    public Builder observation(UUID id, String snapshot) {
+      this.selectedObservationId = id;
+      this.selectedObservationSnapshot = snapshot;
+      return this;
+    }
+
+    /** Campos operativos opcionales capturados por el wizard (Paso 3). */
+    public Builder operational(
+        String syringeLot, String diluent, Integer vialCount, String customObservation) {
+      this.syringeLot = syringeLot;
+      this.diluent = diluent;
+      this.vialCount = vialCount;
+      this.customObservation = customObservation;
+      return this;
+    }
+
+    public AppliedDoseEntity build() {
+      if (attentionId == null) {
+        throw new IllegalStateException("attentionId es obligatorio.");
+      }
+      if (vaccineId == null) {
+        throw new IllegalStateException("vaccineId es obligatorio.");
+      }
+      if (vaccineNameSnapshot == null) {
+        throw new IllegalStateException("vaccineNameSnapshot es obligatorio.");
+      }
+      if (vaccineCodeSnapshot == null) {
+        throw new IllegalStateException("vaccineCodeSnapshot es obligatorio.");
+      }
+      if (doseLabelSnapshot == null) {
+        throw new IllegalStateException("doseLabelSnapshot es obligatorio.");
+      }
+
+      Instant now = Instant.now();
+      AppliedDoseEntity dose = new AppliedDoseEntity();
+      dose.id = id != null ? id : UUID.randomUUID();
+      dose.attentionId = attentionId;
+      dose.vaccineId = vaccineId;
+      dose.applicationDate = applicationDate != null ? applicationDate : now;
+      dose.vaccineNameSnapshot = vaccineNameSnapshot;
+      dose.vaccineCodeSnapshot = vaccineCodeSnapshot;
+      dose.catalogVersion = catalogVersion;
+      dose.doseOptionId = doseOptionId;
+      dose.doseLabelSnapshot = doseLabelSnapshot;
+      dose.doseValueSnapshot = doseValueSnapshot;
+      dose.pneumococcalTypeOptionId = pneumococcalTypeOptionId;
+      dose.pneumococcalTypeSnapshot = pneumococcalTypeSnapshot;
+      dose.lotId = lotId;
+      dose.lotNumber = lotNumber;
+      dose.selectedLaboratoryId = selectedLaboratoryId;
+      dose.selectedLaboratorySnapshot = selectedLaboratorySnapshot;
+      dose.selectedSyringeId = selectedSyringeId;
+      dose.selectedSyringeSnapshot = selectedSyringeSnapshot;
+      dose.selectedDropperId = selectedDropperId;
+      dose.selectedDropperSnapshot = selectedDropperSnapshot;
+      dose.selectedObservationId = selectedObservationId;
+      dose.selectedObservationSnapshot = selectedObservationSnapshot;
+      dose.syringeLot = syringeLot;
+      dose.diluent = diluent;
+      dose.vialCount = vialCount;
+      dose.customObservation = customObservation;
+      dose.status = Status.REGISTERED;
+      dose.createdAt = now;
+      return dose;
+    }
   }
 
   public void cancel(String reason, UUID actorId, Instant now) {
@@ -178,15 +297,6 @@ public class AppliedDoseEntity {
     this.cancelledReason = reason;
     this.cancelledBy = actorId;
     this.cancelledAt = now;
-  }
-
-  /** Campos operativos opcionales capturados por el wizard (Paso 3). */
-  public void applyOperationalFields(
-      String syringeLot, String diluent, Integer vialCount, String customObservation) {
-    this.syringeLot = syringeLot;
-    this.diluent = diluent;
-    this.vialCount = vialCount;
-    this.customObservation = customObservation;
   }
 
   public String getSyringeLot() {

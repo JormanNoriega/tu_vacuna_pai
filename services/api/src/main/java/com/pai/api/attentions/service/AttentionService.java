@@ -286,39 +286,30 @@ public class AttentionService {
                   request.selectedDropperId(),
                   request.selectedObservationId()));
 
-          Instant now = Instant.now();
-          Instant applicationDate =
-              request.applicationDate() != null ? request.applicationDate() : now;
-
-          AppliedDoseEntity dose = new AppliedDoseEntity(
-              doseId != null ? doseId : UUID.randomUUID(),
-              attentionId,
-              selection.vaccineId(),
-              request.lotId(),
-              Strings.blankToNull(request.lotNumber()),
-              applicationDate,
-              selection.doseOptionId(),
-              selection.pneumococcalTypeOptionId(),
-              selection.vaccineName(),
-              selection.vaccineCode(),
-              selection.doseLabel(),
-              selection.doseValue(),
-              selection.pneumococcalTypeSnapshot(),
-              selection.catalogVersion(),
-              selection.laboratoryId(),
-              selection.laboratorySnapshot(),
-              selection.syringeId(),
-              selection.syringeSnapshot(),
-              selection.dropperId(),
-              selection.dropperSnapshot(),
-              selection.observationId(),
-              selection.observationSnapshot(),
-              now);
-          dose.applyOperationalFields(
-              Strings.blankToNull(request.syringeLot()),
-              Strings.blankToNull(request.diluent()),
-              request.vialCount(),
-              Strings.blankToNull(request.customObservation()));
+          AppliedDoseEntity dose =
+              AppliedDoseEntity.builder()
+                  .id(doseId)
+                  .attentionId(attentionId)
+                  .applicationDate(request.applicationDate())
+                  .lot(request.lotId(), Strings.blankToNull(request.lotNumber()))
+                  .vaccine(
+                      selection.vaccineId(),
+                      selection.vaccineName(),
+                      selection.vaccineCode(),
+                      selection.catalogVersion())
+                  .dose(selection.doseOptionId(), selection.doseLabel(), selection.doseValue())
+                  .pneumococcal(
+                      selection.pneumococcalTypeOptionId(), selection.pneumococcalTypeSnapshot())
+                  .laboratory(selection.laboratoryId(), selection.laboratorySnapshot())
+                  .syringe(selection.syringeId(), selection.syringeSnapshot())
+                  .dropper(selection.dropperId(), selection.dropperSnapshot())
+                  .observation(selection.observationId(), selection.observationSnapshot())
+                  .operational(
+                      Strings.blankToNull(request.syringeLot()),
+                      Strings.blankToNull(request.diluent()),
+                      request.vialCount(),
+                      Strings.blankToNull(request.customObservation()))
+                  .build();
           doses.save(dose);
           return new IdempotencyCoordinator.WriteResult<>(
               dose.getId(), mapper.toDoseResponse(dose));

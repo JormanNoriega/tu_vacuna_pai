@@ -123,30 +123,12 @@ class AttentionServiceTest {
   }
 
   private AppliedDoseEntity dose(UUID attentionId) {
-    return new AppliedDoseEntity(
-        UUID.randomUUID(),
-        attentionId,
-        UUID.randomUUID(),
-        null,
-        null,
-        Instant.now(),
-        null,
-        null,
-        "Influenza",
-        "INF",
-        "Primera dosis",
-        "1",
-        null,
-        3L,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        Instant.now());
+    return AppliedDoseEntity.builder()
+        .attentionId(attentionId)
+        .applicationDate(Instant.now())
+        .vaccine(UUID.randomUUID(), "Influenza", "INF", 3L)
+        .dose(null, "Primera dosis", "1")
+        .build();
   }
 
   private DoseSelection selection(UUID vaccineId, UUID doseOptionId) {
