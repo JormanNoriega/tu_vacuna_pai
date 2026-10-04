@@ -1,0 +1,47 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Factory Method - como esta hoy" id="factory-method">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="640" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="push" value="SyncPushService" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="40" y="20" width="300" height="120" as="geometry" /></mxCell>
+        <mxCell id="push-a" value="- handlers: Map&lt;String, SyncCommandHandler&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="push"><mxGeometry height="40" width="300" y="26" as="geometry" /></mxCell>
+        <mxCell id="push-sep" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" vertex="1" parent="push"><mxGeometry height="8" width="300" y="66" as="geometry" /></mxCell>
+        <mxCell id="push-m" value="+ push(actorId, request): SyncPushResponse" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="push"><mxGeometry height="38" width="300" y="74" as="geometry" /></mxCell>
+
+        <mxCell id="iface" value="&#171;interface&#187;&#10;SyncCommandHandler" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=40;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="430" y="20" width="300" height="150" as="geometry" /></mxCell>
+        <mxCell id="if1" value="+ commandType(): String" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="iface"><mxGeometry height="26" width="300" y="40" as="geometry" /></mxCell>
+        <mxCell id="if2" value="+ permission(): String" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="iface"><mxGeometry height="26" width="300" y="66" as="geometry" /></mxCell>
+        <mxCell id="if3" value="+ handle(actorId, op): Object" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="iface"><mxGeometry height="26" width="300" y="92" as="geometry" /></mxCell>
+
+        <mxCell id="h1" value="CreatePatientCommandHandler" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="840" y="10" width="300" height="40" as="geometry" /></mxCell>
+        <mxCell id="h2" value="CreateAttentionCommandHandler" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="840" y="60" width="300" height="40" as="geometry" /></mxCell>
+        <mxCell id="h3" value="RegisterDoseCommandHandler" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="840" y="110" width="300" height="40" as="geometry" /></mxCell>
+        <mxCell id="h4" value="CompleteAttentionCommandHandler" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="840" y="160" width="300" height="40" as="geometry" /></mxCell>
+
+        <mxCell id="e-uses" value="handlers.get(commandType)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="push" target="iface"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-h1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="h1" target="iface"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-h2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="h2" target="iface"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-h3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="h3" target="iface"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-h4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="h4" target="iface"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="vs" value="VaccineService" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="40" y="380" width="300" height="110" as="geometry" /></mxCell>
+        <mxCell id="vs-m1" value="- optionKind(): OptionKind" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="vs"><mxGeometry height="30" width="300" y="26" as="geometry" /></mxCell>
+        <mxCell id="vs-m2" value="- templateKind(): OptionKind" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="vs"><mxGeometry height="30" width="300" y="56" as="geometry" /></mxCell>
+
+        <mxCell id="ef" value="&#171;interface&#187;&#10;EntityFactory&lt;E&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=40;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="430" y="380" width="300" height="90" as="geometry" /></mxCell>
+        <mxCell id="ef-m" value="+ create(vaccineId, request, actorId): E" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="ef"><mxGeometry height="40" width="300" y="40" as="geometry" /></mxCell>
+
+        <mxCell id="prod1" value="VaccineOptionEntity" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1"><mxGeometry x="840" y="370" width="300" height="40" as="geometry" /></mxCell>
+        <mxCell id="prod2" value="VaccineOptionTemplateEntity" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1"><mxGeometry x="840" y="430" width="300" height="40" as="geometry" /></mxCell>
+
+        <mxCell id="e-vs-ef" value="fabricas concretas" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="vs" target="ef"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-ef-p1" value="&#171;create&#187;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="ef" target="prod1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-ef-p2" value="&#171;create&#187;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="ef" target="prod2"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="note" value="FACTORY METHOD — COMO ESTA HOY&#10;&#10;A. /sync/push: SyncPushService selecciona el handler por commandType (Map), no con un switch.&#10;B. Catalogo: VaccineService usa EntityFactory&lt;E&gt; para crear la opcion o el template.&#10;Ya estaba aplicado; lo reconocimos al estudiar las clases. Agregar un comando/tipo = una clase nueva." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;size=18;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="40" y="530" width="900" height="90" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
