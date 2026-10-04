@@ -1,0 +1,56 @@
+%% ============================================================
+%% Patrones creacionales — diagrama de flujo de aplicacion
+%% Verifica como interactuan los patrones en los 3 casos reales
+%% ============================================================
+flowchart TD
+    subgraph P_FACTORY["FACTORY METHOD — /sync/push"]
+        A1[POST /sync/push] --> A2[SyncPushService.push]
+        A2 --> A3[SyncCommandHandlerFactory.handlerFor type]
+        A3 --> A4{commandType}
+        A4 -->|CREATE_PATIENT| H1[CreatePatientHandler]
+        A4 -->|CREATE_ATTENTION| H2[CreateAttentionHandler]
+        A4 -->|REGISTER_APPLIED_DOSE| H3[RegisterDoseHandler]
+        A4 -->|COMPLETE_ATTENTION| H4[CompleteAttentionHandler]
+        H1 --> S1[PatientService]
+        H2 --> S2[AttentionService]
+        H3 --> S2
+        H4 --> S2
+        S1 --> G1[IdentityService]
+        S1 --> G2[IdempotencyCoordinator]
+    end
+
+    subgraph P_BUILDER["BUILDER — respuesta y snapshot"]
+        S1 --> B1[PatientMapper.toResponse]
+        B1 --> B2[PatientResponseBuilder.build]
+        B2 --> R1[PatientResponse]
+        S2 --> B3[CatalogSelectionService.resolve]
+        B3 --> B4[DoseSelectionBuilder.build]
+        B4 --> R2[DoseSelection]
+    end
+
+    subgraph P_PROTOTYPE["PROTOTYPE — clonar catalogo"]
+        C1[POST /institutions/id/vaccines/clone] --> C2[InstitutionVaccineService.clone]
+        C2 --> C3[doClone / enable]
+        C3 --> C4[CatalogOptionPrototype.copyToInstitution]
+        C4 --> C5[InstitutionVaccineOptionEntity copia]
+    end
+
+    subgraph P_ABSTRACT["ABSTRACT FACTORY — opciones por fieldType"]
+        B3 --> F1[CatalogOptionFactory]
+        F1 --> F2[GlobalCatalogOptionFactory]
+        F1 --> F3[InstitutionalCatalogOptionFactory]
+        F2 --> F4[CatalogOptionProduct familia global]
+        F3 --> F5[CatalogOptionProduct familia institucional]
+    end
+
+    subgraph P_SINGLETON["SINGLETON — contenedor Spring"]
+        IoC[SpringIoC] -.->|1 instancia| S1
+        IoC -.->|1 instancia| S2
+        IoC -.-> B1
+    end
+
+    R1 --> DB[(PostgreSQL)]
+    R2 --> DB
+    C5 --> DB
+    F4 --> DB
+    F5 --> DB
