@@ -4,7 +4,6 @@ import com.pai.api.catalog.dto.CloneCatalogResponse;
 import com.pai.api.catalog.dto.InstitutionVaccineResponse;
 import com.pai.api.catalog.dto.VaccineResponse;
 import com.pai.api.catalog.entity.InstitutionVaccineEntity;
-import com.pai.api.catalog.entity.InstitutionVaccineOptionEntity;
 import com.pai.api.catalog.entity.VaccineEntity;
 import com.pai.api.catalog.entity.VaccineOptionTemplateEntity;
 import com.pai.api.catalog.repository.InstitutionVaccineOptionRepository;
@@ -15,7 +14,6 @@ import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.DataScope;
 import com.pai.api.identity.service.InstitutionCatalogSeeder;
 import com.pai.api.shared.security.PermissionGuard;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -103,18 +101,7 @@ public class InstitutionVaccineService implements InstitutionCatalogSeeder {
     if (inserted > 0) {
       for (VaccineOptionTemplateEntity template :
           templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(vaccineId)) {
-        local.save(new InstitutionVaccineOptionEntity(
-            UUID.randomUUID(),
-            institutionId,
-            vaccineId,
-            template.getFieldType(),
-            template.getValue(),
-            template.getDisplayName(),
-            template.getSortOrder(),
-            false,
-            template.getId(),
-            actor.getId(),
-            Instant.now()));
+        local.save(template.copyToInstitution(institutionId, actor.getId()));
       }
       return;
     }
@@ -183,18 +170,7 @@ public class InstitutionVaccineService implements InstitutionCatalogSeeder {
         for (VaccineOptionTemplateEntity template :
             templates.findByVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(
                 vaccine.getId())) {
-          local.save(new InstitutionVaccineOptionEntity(
-              UUID.randomUUID(),
-              institutionId,
-              vaccine.getId(),
-              template.getFieldType(),
-              template.getValue(),
-              template.getDisplayName(),
-              template.getSortOrder(),
-              false,
-              template.getId(),
-              actorId,
-              Instant.now()));
+          local.save(template.copyToInstitution(institutionId, actorId));
           optionsCopied++;
         }
       }
