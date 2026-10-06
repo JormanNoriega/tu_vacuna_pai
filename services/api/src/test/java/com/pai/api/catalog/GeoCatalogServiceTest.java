@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.pai.api.catalog.dto.GeoDepartmentResponse;
+import com.pai.api.catalog.dto.GeoFullDepartmentResponse;
 import com.pai.api.catalog.dto.GeoMunicipalityResponse;
 import com.pai.api.catalog.entity.GeoCountryEntity;
 import com.pai.api.catalog.entity.GeoDepartmentEntity;
@@ -81,5 +82,49 @@ class GeoCatalogServiceTest {
   void municipalities_rejectsMissingDepartment() {
     assertThatThrownBy(() -> service.municipalities(null))
         .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void full_groupsMunicipalitiesUnderTheirDepartment() {
+    UUID departmentId = UUID.randomUUID();
+    UUID otherDepartmentId = UUID.randomUUID();
+    when(departments.findAllByOrderByNameAsc())
+        .thenReturn(List.of(
+            new GeoDepartmentEntity(departmentId, UUID.randomUUID(), "05", "Antioquia"),
+            new GeoDepartmentEntity(otherDepartmentId, UUID.randomUUID(), "08", "Atlantico")));
+    when(municipalities.findAllByOrderByNameAsc())
+        .thenReturn(List.of(
+            new GeoMunicipalityEntity(UUID.randomUUID(), departmentId, "05001", "Medellin"),
+            new GeoMunicipalityEntity(
+                UUID.randomUUID(), otherDepartmentId, "08001", "Barranquilla")));
+
+    List<GeoFullDepartmentResponse> result = service.full();
+
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0).name()).isEqualTo("Antioquia");
+    assertThat(result.get(0).municipalities())
+        .singleElement()
+        .extracting(GeoMunicipalityResponse::name)
+        .isEqualTo("Medellin");
+    assertThat(result.get(1).municipalities())
+        .singleElement()
+        .extracting(GeoMunicipalityResponse::name)
+        .isEqualTo("Barranquilla");
+  }
+
+  @Test
+  void full_returnsDepartmentWithoutMunicipalities() {
+    UUID departmentId = UUID.randomUUID();
+    when(departments.findAllByOrderByNameAsc())
+        .thenReturn(
+            List.of(new GeoDepartmentEntity(departmentId, UUID.randomUUID(), "05", "Antioquia")));
+    when(municipalities.findAllByOrderByNameAsc()).thenReturn(List.of());
+
+    List<GeoFullDepartmentResponse> result = service.full();
+
+    assertThat(result)
+        .singleElement()
+        .extracting(GeoFullDepartmentResponse::municipalities)
+        .isEqualTo(List.of());
   }
 }

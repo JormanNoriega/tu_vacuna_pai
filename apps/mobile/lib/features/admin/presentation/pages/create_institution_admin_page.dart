@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/auth/offline_access.dart';
+import '../../../../core/presentation/widgets/app_snackbar.dart';
+import '../../../../core/utils/field_input.dart';
 import '../admin_controller.dart';
 
 /// Formulario para crear un ADMIN_INSTITUTION para una institucion existente.
@@ -51,9 +53,7 @@ class _CreateInstitutionAdminPageState
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     if (_selectedInstitutionId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Primero crea una institucion.')),
-      );
+      AppSnackbar.warning(context, 'Primero crea una institucion.');
       return;
     }
     if (!(_formKey.currentState?.validate() ?? false)) return;
@@ -136,6 +136,9 @@ class _CreateInstitutionAdminPageState
                         TextFormField(
                           controller: _nameController,
                           textCapitalization: TextCapitalization.words,
+                          inputFormatters: maxLengthFormatters(
+                            FieldLimits.fullName,
+                          ),
                           decoration: const InputDecoration(
                             labelText: 'Nombre completo',
                             prefixIcon: Icon(Icons.person_outline_rounded),
@@ -150,6 +153,9 @@ class _CreateInstitutionAdminPageState
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
+                          inputFormatters: maxLengthFormatters(
+                            FieldLimits.staffEmail,
+                          ),
                           decoration: const InputDecoration(
                             labelText: 'Correo',
                             prefixIcon: Icon(Icons.alternate_email_rounded),
@@ -163,6 +169,9 @@ class _CreateInstitutionAdminPageState
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
+                          inputFormatters: maxLengthFormatters(
+                            FieldLimits.password,
+                          ),
                           decoration: InputDecoration(
                             labelText: 'Contrasena temporal',
                             helperText: 'Minimo 8 caracteres. Se la compartes al nuevo administrador.',

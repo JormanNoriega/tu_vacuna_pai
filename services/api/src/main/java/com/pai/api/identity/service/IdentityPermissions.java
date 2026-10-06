@@ -8,11 +8,11 @@ package com.pai.api.identity.service;
  */
 public final class IdentityPermissions {
 
-    private IdentityPermissions() {}
+  private IdentityPermissions() {}
 
-    /** Permiso de gestion global de instituciones y usuarios. */
-    public static final String INSTITUTION_WRITE = "INSTITUTION_WRITE";
+  /** Permiso de gestion global de instituciones y usuarios. */
+  public static final String INSTITUTION_WRITE = "INSTITUTION_WRITE";
 
-    /** Permiso de gestion de usuarios de la propia institucion. */
-    public static final String USER_MANAGE = "USER_MANAGE";
+  /** Permiso de gestion de usuarios de la propia institucion. */
+  public static final String USER_MANAGE = "USER_MANAGE";
 }

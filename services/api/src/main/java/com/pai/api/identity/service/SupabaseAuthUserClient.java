@@ -1,8 +1,8 @@
 package com.pai.api.identity.service;
 
-import com.pai.api.shared.exceptions.AuthUserProvisioningException;
-import com.pai.api.shared.exceptions.EmailAlreadyExistsException;
-import com.pai.api.shared.exceptions.UncertainProvisioningException;
+import com.pai.api.identity.exception.AuthUserProvisioningException;
+import com.pai.api.identity.exception.EmailAlreadyExistsException;
+import com.pai.api.identity.exception.UncertainProvisioningException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -27,9 +27,7 @@ public class SupabaseAuthUserClient implements AuthUserProvisioningClient {
   private final String baseUrl;
 
   public SupabaseAuthUserClient(
-      @Value("${app.auth-functions-url:https://jfxkrznzhfvecaaixkjv.supabase.co/functions/v1}")
-          String baseUrl,
-      RestClient.Builder restClientBuilder) {
+      @Value("${app.auth-functions-url}") String baseUrl, RestClient.Builder restClientBuilder) {
     this.baseUrl = baseUrl;
     this.restClient = restClientBuilder.build();
   }

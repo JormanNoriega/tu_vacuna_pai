@@ -1,37 +1,41 @@
 package com.pai.api.synchronization.service;
 
-import com.pai.api.attentions.dto.CreateAttentionRequest;
-import com.pai.api.attentions.dto.RegisterDoseRequest;
 import com.pai.api.attentions.exception.AttentionNotFoundException;
+import com.pai.api.attentions.exception.InvalidCatalogSelectionException;
 import com.pai.api.attentions.exception.InvalidClinicalStateException;
-import com.pai.api.attentions.service.AttentionService;
+import com.pai.api.identity.exception.UserNotActiveException;
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.IdentityService;
-import com.pai.api.patients.dto.CreatePatientRequest;
 import com.pai.api.patients.exception.PatientAlreadyExistsException;
 import com.pai.api.patients.exception.PatientNotFoundException;
 import com.pai.api.patients.service.PatientMergeRequestService;
-import com.pai.api.patients.service.PatientService;
+import com.pai.api.shared.application.ProcessedOperationsPort;
 import com.pai.api.shared.exceptions.PermissionDeniedException;
 import com.pai.api.shared.exceptions.ScopeViolationException;
-import com.pai.api.shared.exceptions.UserNotActiveException;
+import com.pai.api.shared.util.Strings;
 import com.pai.api.synchronization.dto.RejectedOperation;
 import com.pai.api.synchronization.dto.SyncOperation;
 import com.pai.api.synchronization.dto.SyncPushRequest;
 import com.pai.api.synchronization.dto.SyncPushResponse;
+import com.pai.api.synchronization.service.command.SyncCommandHandler;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * Procesa un batch de {@code /sync/push}. Es un **despachador delgado**: no
- * reimplementa reglas de dominio, delega en {@link PatientService} y
- * {@link AttentionService}, los mismos servicios del transporte REST directo
- * (misma idempotencia, misma auditoria).
+ * reimplementa reglas de dominio; delega en un {@link SyncCommandHandler} por
+ * comando (Strategy), que a su vez invoca el mismo servicio de dominio del
+ * transporte REST directo (misma idempotencia, misma auditoria).
+ *
+ * <p>Agregar un comando nuevo es una clase nueva (OCP); este orquestador solo
+ * mantiene lo transversal al batch: dependencias, resultados por operacion y la
+ * clasificacion de excepciones de dominio en motivos de rechazo.
  *
  * <p>La atomicidad es por operacion (no por batch): cada comando se aplica en la
  * transaccion propia del servicio de dominio. No se anota {@code @Transactional}
@@ -39,14 +43,6 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Service
 public class SyncPushService {
-
-  private static final String CREATE_PATIENT = "CREATE_PATIENT";
-  private static final String CREATE_ATTENTION = "CREATE_ATTENTION";
-  private static final String REGISTER_APPLIED_DOSE = "REGISTER_APPLIED_DOSE";
-  private static final String COMPLETE_ATTENTION = "COMPLETE_ATTENTION";
-
-  private static final String PERMISSION_PATIENT_WRITE = "PATIENT_WRITE";
-  private static final String PERMISSION_ATTENTION_CREATE = "ATTENTION_CREATE";
 
   private static final String REASON_DEPENDENCY_NOT_FOUND = "DEPENDENCY_NOT_FOUND";
   private static final String REASON_DEPENDENCY_FAILED = "DEPENDENCY_FAILED";
@@ -56,26 +52,22 @@ public class SyncPushService {
   private static final String REASON_INVALID_STATE = "INVALID_STATE";
   private static final String REASON_INVALID_PAYLOAD = "INVALID_PAYLOAD";
 
-  private final PatientService patients;
-  private final AttentionService attentions;
-  private final PatientMergeRequestService mergeRequests;
   private final IdentityService identity;
-  private final ProcessedOperationsService processedOperations;
-  private final ObjectMapper mapper;
+  private final PatientMergeRequestService mergeRequests;
+  private final ProcessedOperationsPort processedOperations;
+  private final Map<String, SyncCommandHandler> handlers;
 
   public SyncPushService(
-      PatientService patients,
-      AttentionService attentions,
-      PatientMergeRequestService mergeRequests,
       IdentityService identity,
-      ProcessedOperationsService processedOperations,
-      ObjectMapper mapper) {
-    this.patients = patients;
-    this.attentions = attentions;
-    this.mergeRequests = mergeRequests;
+      PatientMergeRequestService mergeRequests,
+      ProcessedOperationsPort processedOperations,
+      List<SyncCommandHandler> commandHandlers) {
     this.identity = identity;
+    this.mergeRequests = mergeRequests;
     this.processedOperations = processedOperations;
-    this.mapper = mapper;
+    this.handlers = commandHandlers.stream()
+        .collect(
+            Collectors.toUnmodifiableMap(SyncCommandHandler::commandType, Function.identity()));
   }
 
   public SyncPushResponse push(UUID actorId, SyncPushRequest request) {
@@ -85,7 +77,7 @@ public class SyncPushService {
     // Resultado por operationId dentro del batch: true aceptada, false rechazada.
     Map<UUID, Boolean> outcomes = new HashMap<>();
 
-    for (SyncOperation operation : safe(request.operations())) {
+    for (SyncOperation operation : Strings.safe(request.operations())) {
       UUID operationId = operation.operationId();
 
       String dependencyReason = dependencyRejection(operation, outcomes);
@@ -100,8 +92,19 @@ public class SyncPushService {
         continue;
       }
 
-      String permission = permissionFor(operation.commandType());
-      if (permission != null && !actor.getPermissions().contains(permission)) {
+      SyncCommandHandler handler = handlers.get(operation.commandType());
+      if (handler == null) {
+        reject(
+            rejected,
+            outcomes,
+            operationId,
+            REASON_INVALID_PAYLOAD,
+            "Comando no soportado: " + operation.commandType());
+        continue;
+      }
+
+      String permission = handler.permission();
+      if (permission != null && !actor.hasPermission(permission)) {
         reject(
             rejected,
             outcomes,
@@ -112,7 +115,7 @@ public class SyncPushService {
       }
 
       try {
-        dispatch(actorId, operation);
+        handler.apply(actorId, operationId.toString(), operation);
         accepted.add(operationId);
         outcomes.put(operationId, true);
       } catch (PatientAlreadyExistsException ex) {
@@ -120,7 +123,7 @@ public class SyncPushService {
         reject(rejected, outcomes, operationId, REASON_DUPLICATE, ex.getMessage());
       } catch (PatientNotFoundException | AttentionNotFoundException ex) {
         reject(rejected, outcomes, operationId, REASON_DEPENDENCY_NOT_FOUND, ex.getMessage());
-      } catch (InvalidClinicalStateException ex) {
+      } catch (InvalidClinicalStateException | InvalidCatalogSelectionException ex) {
         reject(rejected, outcomes, operationId, REASON_INVALID_STATE, ex.getMessage());
       } catch (PermissionDeniedException | ScopeViolationException ex) {
         reject(rejected, outcomes, operationId, REASON_PERMISSION_DENIED, ex.getMessage());
@@ -134,41 +137,13 @@ public class SyncPushService {
     return new SyncPushResponse(accepted, rejected);
   }
 
-  private void dispatch(UUID actorId, SyncOperation operation) {
-    String operationId = operation.operationId().toString();
-    switch (operation.commandType()) {
-      case CREATE_PATIENT ->
-        patients.create(
-            actorId,
-            operationId,
-            operation.aggregateId(),
-            convert(operation, CreatePatientRequest.class));
-      case CREATE_ATTENTION ->
-        attentions.create(
-            actorId,
-            operationId,
-            operation.aggregateId(),
-            convert(operation, CreateAttentionRequest.class));
-      case REGISTER_APPLIED_DOSE ->
-        attentions.registerDose(
-            actorId,
-            operationId,
-            attentionId(operation),
-            operation.aggregateId(),
-            convertDose(operation));
-      case COMPLETE_ATTENTION -> attentions.complete(actorId, operationId, operation.aggregateId());
-      default ->
-        throw new IllegalArgumentException("Comando no soportado: " + operation.commandType());
-    }
-  }
-
   /**
    * Indica por que se rechaza la operacion por dependencias: {@code null} si
    * todas estan satisfechas, {@code DEPENDENCY_FAILED} si una fallo en el batch
    * o {@code DEPENDENCY_NOT_FOUND} si no existe ni en el batch ni en el log.
    */
   private String dependencyRejection(SyncOperation operation, Map<UUID, Boolean> outcomes) {
-    for (UUID dependency : safe(operation.dependencies())) {
+    for (UUID dependency : Strings.safe(operation.dependencies())) {
       Boolean outcome = outcomes.get(dependency);
       if (outcome != null && !outcome) {
         return REASON_DEPENDENCY_FAILED;
@@ -180,38 +155,6 @@ public class SyncPushService {
     return null;
   }
 
-  private <T> T convert(SyncOperation operation, Class<T> type) {
-    return mapper.convertValue(safe(operation.payload()), type);
-  }
-
-  private RegisterDoseRequest convertDose(SyncOperation operation) {
-    Map<String, Object> payload = new HashMap<>(safe(operation.payload()));
-    // attentionId viaja en el payload del comando; no es parte del DTO REST.
-    payload.remove("attentionId");
-    return mapper.convertValue(payload, RegisterDoseRequest.class);
-  }
-
-  private UUID attentionId(SyncOperation operation) {
-    Object value = safe(operation.payload()).get("attentionId");
-    if (value == null) {
-      throw new IllegalArgumentException("El payload de la dosis requiere attentionId.");
-    }
-    try {
-      return UUID.fromString(value.toString());
-    } catch (IllegalArgumentException ex) {
-      throw new IllegalArgumentException("attentionId invalido.");
-    }
-  }
-
-  private String permissionFor(String commandType) {
-    return switch (commandType) {
-      case CREATE_PATIENT -> PERMISSION_PATIENT_WRITE;
-      case CREATE_ATTENTION, REGISTER_APPLIED_DOSE, COMPLETE_ATTENTION ->
-        PERMISSION_ATTENTION_CREATE;
-      default -> null;
-    };
-  }
-
   private void reject(
       List<RejectedOperation> rejected,
       Map<UUID, Boolean> outcomes,
@@ -220,13 +163,5 @@ public class SyncPushService {
       String error) {
     rejected.add(new RejectedOperation(operationId, reason, error));
     outcomes.put(operationId, false);
-  }
-
-  private static <T> List<T> safe(List<T> list) {
-    return list == null ? List.of() : list;
-  }
-
-  private static Map<String, Object> safe(Map<String, Object> map) {
-    return map == null ? Map.of() : map;
   }
 }

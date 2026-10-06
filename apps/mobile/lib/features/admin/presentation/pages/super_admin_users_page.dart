@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/auth/offline_access.dart';
+import '../../../../core/presentation/widgets/app_snackbar.dart';
 import '../../domain/entities/institution.dart';
 import '../../domain/entities/institution_admin.dart';
 import '../admin_controller.dart';
@@ -43,9 +44,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
       ),
     );
     if (created == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Usuario admin creado correctamente.')),
-      );
+      AppSnackbar.success(context, 'Usuario admin creado correctamente.');
       widget.controller.loadAdmins();
     }
   }

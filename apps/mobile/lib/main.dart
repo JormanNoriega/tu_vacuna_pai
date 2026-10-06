@@ -28,6 +28,7 @@ import 'features/users/data/users_repository_impl.dart';
 import 'features/users/domain/use_cases/create_vaccinator.dart';
 import 'features/users/domain/use_cases/list_users.dart';
 import 'features/users/presentation/users_controller.dart';
+import 'features/catalogs/application/catalog_warmup.dart';
 import 'features/catalogs/data/catalog_repository_impl.dart';
 import 'features/catalogs/domain/use_cases/catalog_use_cases.dart';
 import 'features/catalogs/presentation/catalog_controller.dart';
@@ -40,6 +41,9 @@ import 'features/attentions/data/attentions_repository_impl.dart';
 import 'features/attentions/domain/use_cases/attentions_use_cases.dart';
 import 'features/attentions/presentation/attention_controller.dart';
 import 'features/attentions/presentation/history_controller.dart';
+import 'features/dashboard/data/metrics_repository_impl.dart';
+import 'features/dashboard/domain/use_cases/get_metrics_summary.dart';
+import 'features/dashboard/presentation/metrics_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -112,6 +116,10 @@ Future<void> main() async {
     toggle: ToggleInstitutionVaccine(catalogRepository),
     listAvailableVaccines: ListAvailableInstitutionVaccines(catalogRepository),
   );
+  final catalogWarmup = CatalogWarmup(
+    sessionManager: sessionManager,
+    repository: catalogRepository,
+  );
 
   final patientsRepository = PatientsRepositoryImpl(apiClient);
   final attentionsRepository = AttentionsRepositoryImpl(apiClient);
@@ -150,6 +158,16 @@ Future<void> main() async {
     listMunicipalities: ListMunicipalities(catalogRepository),
     listPatientAttentions: ListPatientAttentions(attentionsRepository),
   );
+  final metricsController = MetricsController(
+    sessionManager: sessionManager,
+    getSummary: GetMetricsSummary(
+      MetricsRepositoryImpl(
+        api: apiClient,
+        database: appDatabase,
+        outbox: syncOutbox,
+      ),
+    ),
+  );
 
   runApp(
     TuVacunaApp(
@@ -157,12 +175,14 @@ Future<void> main() async {
       adminController: adminController,
       usersController: usersController,
       catalogController: catalogController,
+      catalogWarmup: catalogWarmup,
       attentionController: attentionController,
       historyController: historyController,
       patientDetailController: patientDetailController,
       networkInfo: networkInfo,
       syncStatusController: syncStatusController,
       clinicalOfflineRepository: clinicalOfflineRepository,
+      metricsController: metricsController,
     ),
   );
 

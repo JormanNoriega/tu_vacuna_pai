@@ -11,7 +11,8 @@
 Una sola sesión de nueva atención:
 
 1. Buscar paciente por documento (o registrar uno nuevo).
-2. Wizard de paciente (8 pasos; solo el paso 1 es obligatorio).
+2. Wizard de paciente (8 pasos; se valida el paso actual al avanzar; los campos
+   obligatorios siguen el formato PAI).
 3. Aplicar la vacuna (catálogo efectivo) y registrar dosis.
 4. Cierre del registro (esquema completo + PAIWEB) y completar la atención.
 
@@ -87,11 +88,39 @@ Los dropdowns se alimentan de `GET /catalogs/reference` (hoja `Validador`),
 
 ## Reglas de validacion
 
-- Paso 1: nº documento, primer nombre, primer apellido y fecha de nacimiento.
-- Condicionales: menor de 18 -> madre o cuidador; gestante -> fecha de ultima
-  menstruacion; parto -> lugar de atencion; PAIWEB "No" -> motivo (min. 5).
+- Se valida **el paso actual** al pulsar "Siguiente"; el paso 8 se valida al
+  "Guardar paciente". Los mensajes de campo obligatorio salen inline.
+- **Paso 1**: tipo de documento, numero de documento, primer nombre, primer
+  apellido, fecha de nacimiento y sexo. El segundo nombre y segundo apellido son
+  opcionales.
+- **Menor de 18 anios** -> madre/cuidador obligatorio (tambien se valida en el
+  backend, en `PatientService`).
+- **Menor de 1 anio** -> edad gestacional al nacer obligatoria.
+- **Contraindicacion/reaccion "Si"** -> el detalle "Cual" es obligatorio.
+- **PAIWEB "No"** -> motivo (min. 5) al cerrar la atencion.
 - Campos por flag de la vacuna en la dosis.
 - Derivados auto: edad; semanas/fecha probable de parto (backend).
+
+## Obligatoriedad por paso (formato PAI)
+
+| Paso | Obligatorios |
+| --- | --- |
+| 1. Datos basicos | tipo doc, nº doc, primer nombre, primer apellido, fecha de nacimiento, sexo (2º nombre/apellido opcionales) |
+| 2. Complementarios | etnia, pais de nacimiento, tipo de carnet; edad gestacional solo si es menor de 1 anio |
+| 3. Afiliacion | regimen, aseguradora/EPS |
+| 4. Residencia y contacto | departamento, municipio, area, direccion, autoriza llamadas, autoriza correo (telefono fijo, celular, comuna y correo opcionales) |
+| 5. Condiciones especiales | los 5 Si/No |
+| 6. Antecedentes | contraindicacion (Si/No) y reaccion previa (Si/No); el "Cual" si la respuesta es Si |
+| 7. Condicion de la usuaria | opcional (solo visible para mujer >= 9 anios) |
+| 8. Madre / cuidador | obligatorio si es menor de 18: documento, nombre y apellido; si el parentesco es Madre, ademas regimen, etnia y desplazado |
+
+> Telefonos: **solo digitos, maximo 10** (indicativo + numero, Colombia). Se
+> valida en la UI (formatters) y en el backend (contactos de tipo `PHONE` y
+> `GuardianDto`).
+
+> Backend reforzado: `CreatePatientRequest` exige afiliacion (regimen +
+> aseguradora), las 5 condiciones especiales y la respuesta de
+> contraindicacion/reaccion; `PatientService` exige tutor para menores de 18.
 
 ## Cambios de backend asociados
 

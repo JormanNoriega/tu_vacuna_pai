@@ -8,8 +8,8 @@ import java.util.UUID;
 /**
  * Comando de dominio transportado por {@code /sync/push} o entregado por
  * {@code /sync/pull}. El transporte concreto esta en
- * {@code docs/api/openapi.yaml} (schemas 781-838); la semantica en
- * {@code docs/synchronization/sync-contract.md}.
+ * {@code docs/api/openapi.yaml} (schemas {@code SyncOperation} y afines); la
+ * semantica en {@code docs/synchronization/sync-contract.md}.
  *
  * <p>{@code payload} es el cuerpo especifico del comando y se mapea al DTO del
  * servicio de dominio correspondiente. {@code dependencies} son los

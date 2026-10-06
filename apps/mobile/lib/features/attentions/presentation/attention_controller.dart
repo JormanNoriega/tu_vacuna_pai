@@ -244,6 +244,7 @@ class AttentionController extends AsyncController {
             patientId: patient.id,
             observations: observations,
             attentionDate: attentionDate,
+            summary: 'Atencion - ${patient.fullName}',
           );
           _attention = attention;
         }
@@ -319,6 +320,16 @@ class AttentionController extends AsyncController {
   }) async {
     final attention = _attention;
     if (attention == null) return null;
+
+    // Offline: el detalle de cierre (esquema completo / ingreso PAIWEB) aun no
+    // forma parte del contrato de sincronizacion; se conserva el estado local y
+    // el cierre se completa en el dispositivo. La paridad de estos campos es
+    // una fase aparte. Evita intentar la API (que fallaria sin conexion y
+    // dejaria un mensaje incoherente sobre el estado local ya guardado).
+    if (_isOffline(offline)) {
+      return attention;
+    }
+
     Attention? updated;
     await execute((token) async {
       updated = await updateAttention(

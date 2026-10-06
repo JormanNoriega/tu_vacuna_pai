@@ -37,6 +37,19 @@ class ApiClient {
     }
   }
 
+  /// Resumen de metricas del home (pacientes atendidos y dosis aplicadas),
+  /// acotado a la institucion del actor.
+  Future<Map<String, dynamic>> fetchMetricsSummary(String accessToken) async {
+    final uri = Uri.parse('$baseUrl/metrics/summary');
+    final response = await _send(
+      _http.get(uri, headers: _jsonHeaders(accessToken)),
+    );
+    return _decodeObject(
+      response,
+      fallback: 'Error al consultar las metricas.',
+    );
+  }
+
   /// Obtiene el perfil autorizado del usuario autenticado.
   Future<MeResponse> fetchMe(String accessToken) async {
     final uri = Uri.parse('$baseUrl/me');
@@ -811,6 +824,18 @@ class ApiClient {
       fallback: 'Error al consultar los municipios.',
     );
   }
+
+  /// Catalogo geografico completo (departamentos con sus municipios).
+  Future<List<Map<String, dynamic>>> getFullGeo(String token) async =>
+      _decodeList(
+        await _send(
+          _http.get(
+            Uri.parse('$baseUrl/catalogs/geo/full'),
+            headers: _jsonHeaders(token),
+          ),
+        ),
+        fallback: 'Error al consultar el catalogo geografico.',
+      );
 
   // ---------- Catalogos de referencia ----------
 

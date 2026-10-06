@@ -1,12 +1,13 @@
 package com.pai.api.synchronization.service;
 
+import com.pai.api.shared.application.ProcessedOperationsPort;
+import com.pai.api.shared.json.JsonSerializer;
 import com.pai.api.synchronization.entity.ProcessedOperationEntity;
 import com.pai.api.synchronization.repository.ProcessedOperationRepository;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * Idempotencia de comandos clinicos (D3). Permite que un reenvio con el mismo
@@ -15,33 +16,38 @@ import tools.jackson.databind.ObjectMapper;
  * <p>La tabla {@code processed_operations} es compartida por los REST directos
  * y por {@code /sync/push}, y es tambien la fuente del pull: guarda la
  * institucion y el {@code payload} original de cada operacion terminada.
+ *
+ * <p>La serializacion JSON se delega en {@link JsonSerializer} (DRY): este
+ * servicio solo orquesta la idempotencia.
  */
 @Service
-public class ProcessedOperationsService {
-
-  private static final ObjectMapper MAPPER = new ObjectMapper();
+public class ProcessedOperationsService implements ProcessedOperationsPort {
 
   private final ProcessedOperationRepository repository;
+  private final JsonSerializer json;
 
-  public ProcessedOperationsService(ProcessedOperationRepository repository) {
+  public ProcessedOperationsService(ProcessedOperationRepository repository, JsonSerializer json) {
     this.repository = repository;
+    this.json = json;
   }
 
   /**
    * Devuelve la respuesta original de una operacion ya procesada, si existe.
    * Un {@code operationId} nulo/vacio o no UUID se trata como operacion nueva.
    */
+  @Override
   public <T> Optional<T> find(String operationId, Class<T> type) {
     UUID id = parse(operationId);
     if (id == null) {
       return Optional.empty();
     }
-    return repository.findById(id).map(entity -> deserialize(entity, type));
+    return repository.findById(id).map(entity -> json.read(entity.getResponsePayload(), type));
   }
 
   /**
    * Indica si el {@code operation_id} ya fue procesado con exito (idempotencia).
    */
+  @Override
   public boolean exists(String operationId) {
     UUID id = parse(operationId);
     return id != null && repository.existsById(id);
@@ -52,6 +58,7 @@ public class ProcessedOperationsService {
    * el payload original del request. No hace nada si el {@code operationId} es
    * nulo, vacio o no UUID (camino sin idempotencia).
    */
+  @Override
   public void record(
       String operationId,
       String commandType,
@@ -68,8 +75,8 @@ public class ProcessedOperationsService {
         commandType,
         aggregateId,
         institutionId,
-        serialize(payload, "{}"),
-        serialize(response, "{}"),
+        json.writeOrEmpty(payload),
+        json.writeOrEmpty(response),
         Instant.now()));
   }
 
@@ -81,25 +88,6 @@ public class ProcessedOperationsService {
       return UUID.fromString(operationId.trim());
     } catch (IllegalArgumentException ex) {
       return null;
-    }
-  }
-
-  private String serialize(Object value, String fallback) {
-    if (value == null) {
-      return fallback;
-    }
-    try {
-      return MAPPER.writeValueAsString(value);
-    } catch (Exception ex) {
-      return fallback;
-    }
-  }
-
-  private <T> T deserialize(ProcessedOperationEntity entity, Class<T> type) {
-    try {
-      return MAPPER.readValue(entity.getResponsePayload(), type);
-    } catch (Exception ex) {
-      throw new IllegalStateException("No se pudo reconstruir la respuesta idempotente.", ex);
     }
   }
 }

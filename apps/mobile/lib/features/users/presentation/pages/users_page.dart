@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/auth/offline_access.dart';
+import '../../../../core/presentation/widgets/app_snackbar.dart';
 import '../../domain/entities/vaccinator.dart';
 import '../users_controller.dart';
 import 'create_vaccinator_page.dart';
@@ -44,9 +45,7 @@ class _UsersPageState extends State<UsersPage> {
       ),
     );
     if (created == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vacunador creado correctamente.')),
-      );
+      AppSnackbar.success(context, 'Vacunador creado correctamente.');
     }
   }
 
@@ -70,12 +69,9 @@ class _UsersPageState extends State<UsersPage> {
       ),
     );
     if (saved == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Usuario actualizado correctamente.')),
-      );
+      AppSnackbar.success(context, 'Usuario actualizado correctamente.');
     } else if (saved == false && mounted && widget.controller.error != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(widget.controller.error!)));
+      AppSnackbar.error(context, widget.controller.error!);
     }
   }
 

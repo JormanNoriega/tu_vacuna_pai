@@ -1,10 +1,13 @@
 package com.pai.api.attentions.repository;
 
 import com.pai.api.attentions.entity.AppliedDoseEntity;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * Acceso a {@link AppliedDoseEntity}. Las dosis son append-only: no se exponen
@@ -14,5 +17,23 @@ public interface AppliedDoseRepository extends JpaRepository<AppliedDoseEntity, 
 
   List<AppliedDoseEntity> findByAttentionIdOrderByCreatedAtAsc(UUID attentionId);
 
+  /**
+   * Dosis de varias atenciones en una sola consulta. Evita el N+1 al listar las
+   * atenciones de un paciente: el servicio agrupa por atencion en memoria.
+   */
+  List<AppliedDoseEntity> findByAttentionIdInOrderByCreatedAtAsc(Collection<UUID> attentionIds);
+
   Optional<AppliedDoseEntity> findByIdAndAttentionId(UUID id, UUID attentionId);
+
+  /**
+   * Dosis no anuladas de la institucion (via la atencion a la que pertenecen).
+   * Alimenta la metrica del home (acumulado historico).
+   */
+  @Query("""
+      SELECT COUNT(d) FROM AppliedDoseEntity d, AttentionEntity a
+      WHERE a.id = d.attentionId AND a.institutionId = :institutionId AND d.status <> :excluded
+      """)
+  long countByInstitutionId(
+      @Param("institutionId") UUID institutionId,
+      @Param("excluded") AppliedDoseEntity.Status excluded);
 }

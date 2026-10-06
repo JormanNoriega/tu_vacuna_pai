@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'sync_engine.dart';
+import 'sync_operation.dart';
 import 'sync_outbox.dart';
 
 /// Proyeccion observable del estado de sincronizacion para la UI.
@@ -26,6 +27,9 @@ class SyncStatusController extends ChangeNotifier {
     _pendingCount = await outbox.pendingCount();
     notifyListeners();
   }
+
+  /// Comprobantes aun por subir (para la bandeja de pendientes).
+  Future<List<OutboxEntry>> pendingEntries() => outbox.pendingEntries();
 
   Future<SyncOutcome> syncNow() async {
     _syncing = true;

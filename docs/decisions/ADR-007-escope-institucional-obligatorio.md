@@ -91,5 +91,5 @@ dominio (ADR-002).
 
 - Cada entidad institucional nueva debe declarar sus métodos scopeados; no hay
   filtro automático de Hibernate.
-- Queries "globales" legítimas (`existsByEmail`, `findByEmail`) deben seguir
-  expuestas sin scope, con su unicidad global intacta.
+- Queries "globales" legitimas (p. ej. unicidad de correo por email), si se
+  exponen, deben ir sin scope y con su unicidad global intacta.

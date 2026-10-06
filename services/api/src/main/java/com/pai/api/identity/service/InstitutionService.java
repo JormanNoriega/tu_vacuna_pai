@@ -1,12 +1,11 @@
 package com.pai.api.identity.service;
 
-import com.pai.api.catalog.service.InstitutionVaccineService;
 import com.pai.api.identity.dto.CreateInstitutionRequest;
 import com.pai.api.identity.dto.InstitutionResponse;
 import com.pai.api.identity.entity.InstitutionEntity;
+import com.pai.api.identity.exception.InstitutionCodeAlreadyExistsException;
+import com.pai.api.identity.exception.InstitutionNotFoundException;
 import com.pai.api.identity.repository.InstitutionRepository;
-import com.pai.api.shared.exceptions.InstitutionCodeAlreadyExistsException;
-import com.pai.api.shared.exceptions.InstitutionNotFoundException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -17,82 +16,94 @@ import org.springframework.transaction.annotation.Transactional;
  * Gestion de instituciones. Escrituras exclusivas de {@code SUPER_ADMIN}
  * (permiso {@code INSTITUTION_WRITE}); la autorizacion se valida en el
  * controller con {@code @PreAuthorize}.
+ *
+ * <p>El sembrado del catalogo global al crear una institucion se delega en el
+ * puerto {@link InstitutionCatalogSeeder} (DIP): {@code identity} no conoce los
+ * servicios del modulo {@code catalog}.
  */
 @Service
 public class InstitutionService {
 
-    private final InstitutionRepository institutionRepository;
-    private final InstitutionVaccineService institutionVaccineService;
+  private final InstitutionRepository institutionRepository;
+  private final InstitutionCatalogSeeder catalogSeeder;
 
-    public InstitutionService(
-            InstitutionRepository institutionRepository, InstitutionVaccineService institutionVaccineService) {
-        this.institutionRepository = institutionRepository;
-        this.institutionVaccineService = institutionVaccineService;
+  public InstitutionService(
+      InstitutionRepository institutionRepository, InstitutionCatalogSeeder catalogSeeder) {
+    this.institutionRepository = institutionRepository;
+    this.catalogSeeder = catalogSeeder;
+  }
+
+  @Transactional
+  public InstitutionResponse create(UUID actorId, CreateInstitutionRequest request) {
+    String code = request.code().trim().toUpperCase();
+    String name = request.name().trim();
+    short offlineWindowHours =
+        request.offlineWindowHours() == null ? (short) 72 : request.offlineWindowHours();
+
+    institutionRepository.findByCode(code).ifPresent(existing -> {
+      throw new InstitutionCodeAlreadyExistsException(
+          "Ya existe una institucion con el codigo " + code + ".");
+    });
+
+    Instant now = Instant.now();
+    InstitutionEntity entity = new InstitutionEntity(
+        UUID.randomUUID(),
+        code,
+        name,
+        InstitutionEntity.Status.ACTIVE,
+        offlineWindowHours,
+        now,
+        now);
+
+    InstitutionEntity saved = institutionRepository.save(entity);
+    // Toda institucion nueva arranca con el catalogo global activo habilitado
+    // (con su configuracion por defecto). Luego la institucion deshabilita lo
+    // que no use; el re-clone respeta esas deshabilitaciones.
+    catalogSeeder.seed(saved.getId(), actorId);
+    return toResponse(saved);
+  }
+
+  @Transactional(readOnly = true)
+  public List<InstitutionResponse> list() {
+    return institutionRepository.findAllByOrderByNameAsc().stream()
+        .map(this::toResponse)
+        .toList();
+  }
+
+  @Transactional
+  public InstitutionResponse updateStatus(UUID id, String status) {
+    InstitutionEntity entity = institutionRepository
+        .findById(id)
+        .orElseThrow(() -> new InstitutionNotFoundException("La institucion no existe."));
+
+    InstitutionEntity.Status parsed = IdentityRules.parseInstitutionStatus(status);
+
+    entity.setStatus(parsed);
+    entity.setUpdatedAt(Instant.now());
+    return toResponse(institutionRepository.save(entity));
+  }
+
+  @Transactional
+  public InstitutionResponse updateConfig(UUID id, short offlineWindowHours) {
+    if (offlineWindowHours < 1 || offlineWindowHours > 168) {
+      throw new IllegalArgumentException("La ventana offline debe estar entre 1 y 168 horas.");
     }
 
-    @Transactional
-    public InstitutionResponse create(UUID actorId, CreateInstitutionRequest request) {
-        String code = request.code().trim().toUpperCase();
-        String name = request.name().trim();
-        short offlineWindowHours = request.offlineWindowHours() == null ? (short) 72 : request.offlineWindowHours();
+    InstitutionEntity entity = institutionRepository
+        .findById(id)
+        .orElseThrow(() -> new InstitutionNotFoundException("La institucion no existe."));
 
-        institutionRepository.findByCode(code).ifPresent(existing -> {
-            throw new InstitutionCodeAlreadyExistsException("Ya existe una institucion con el codigo " + code + ".");
-        });
+    entity.setOfflineWindowHours(offlineWindowHours);
+    entity.setUpdatedAt(Instant.now());
+    return toResponse(institutionRepository.save(entity));
+  }
 
-        Instant now = Instant.now();
-        InstitutionEntity entity = new InstitutionEntity(
-                UUID.randomUUID(), code, name, InstitutionEntity.Status.ACTIVE, offlineWindowHours, now, now);
-
-        InstitutionEntity saved = institutionRepository.save(entity);
-        // Toda institucion nueva arranca con el catalogo global activo habilitado
-        // (con su configuracion por defecto). Luego la institucion deshabilita lo
-        // que no use; el re-clone respeta esas deshabilitaciones.
-        institutionVaccineService.seedInstitution(saved.getId(), actorId);
-        return toResponse(saved);
-    }
-
-    @Transactional(readOnly = true)
-    public List<InstitutionResponse> list() {
-        return institutionRepository.findAllByOrderByNameAsc().stream()
-                .map(this::toResponse)
-                .toList();
-    }
-
-    @Transactional
-    public InstitutionResponse updateStatus(UUID id, String status) {
-        InstitutionEntity entity = institutionRepository
-                .findById(id)
-                .orElseThrow(() -> new InstitutionNotFoundException("La institucion no existe."));
-
-        InstitutionEntity.Status parsed = IdentityRules.parseInstitutionStatus(status);
-
-        entity.setStatus(parsed);
-        entity.setUpdatedAt(Instant.now());
-        return toResponse(institutionRepository.save(entity));
-    }
-
-    @Transactional
-    public InstitutionResponse updateConfig(UUID id, short offlineWindowHours) {
-        if (offlineWindowHours < 1 || offlineWindowHours > 168) {
-            throw new IllegalArgumentException("La ventana offline debe estar entre 1 y 168 horas.");
-        }
-
-        InstitutionEntity entity = institutionRepository
-                .findById(id)
-                .orElseThrow(() -> new InstitutionNotFoundException("La institucion no existe."));
-
-        entity.setOfflineWindowHours(offlineWindowHours);
-        entity.setUpdatedAt(Instant.now());
-        return toResponse(institutionRepository.save(entity));
-    }
-
-    private InstitutionResponse toResponse(InstitutionEntity entity) {
-        return new InstitutionResponse(
-                entity.getId(),
-                entity.getCode(),
-                entity.getName(),
-                entity.getStatus().name(),
-                entity.getOfflineWindowHours());
-    }
+  private InstitutionResponse toResponse(InstitutionEntity entity) {
+    return new InstitutionResponse(
+        entity.getId(),
+        entity.getCode(),
+        entity.getName(),
+        entity.getStatus().name(),
+        entity.getOfflineWindowHours());
+  }
 }

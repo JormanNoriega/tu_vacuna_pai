@@ -1,0 +1,30 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Singleton - como esta hoy" id="singleton">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="560" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="app" value="ApplicationContext&#10;(contenedor IoC de Spring)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="230" width="280" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s1" value="CatalogSelectionService&#10;&#171;@Service&#187;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="520" y="30" width="300" height="50" as="geometry" /></mxCell>
+        <mxCell id="s2" value="PatientMapper&#10;&#171;@Component&#187;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="520" y="100" width="300" height="50" as="geometry" /></mxCell>
+        <mxCell id="s3" value="CatalogMapper&#10;&#171;@Component&#187;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="520" y="170" width="300" height="50" as="geometry" /></mxCell>
+        <mxCell id="s4" value="SyncPushService&#10;&#171;@Service&#187;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="520" y="240" width="300" height="50" as="geometry" /></mxCell>
+        <mxCell id="s5" value="VaccineService&#10;&#171;@Service&#187;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="520" y="310" width="300" height="50" as="geometry" /></mxCell>
+        <mxCell id="s6" value="PermissionGuard&#10;&#171;@Component&#187;   ·   IdempotencyCoordinator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="520" y="380" width="300" height="50" as="geometry" /></mxCell>
+
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="app" target="s1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="app" target="s2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="app" target="s3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" value="1 instancia" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="app" target="s4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="app" target="s5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="app" target="s6"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="note" value="SINGLETON — COMO ESTA HOY&#10;&#10;No escribimos static getInstance(): lo provee el contenedor IoC de Spring.&#10;Cada @Service/@Component/@Repository es una unica instancia compartida&#10;e inyectada por constructor. Ya estaba aplicado; lo reconocimos al estudiar las clases." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;size=18;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="40" y="380" width="430" height="140" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

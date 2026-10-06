@@ -1,13 +1,12 @@
 package com.pai.api.catalog.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pai.api.catalog.entity.GeoCountryEntity;
 import com.pai.api.catalog.entity.GeoDepartmentEntity;
 import com.pai.api.catalog.entity.GeoMunicipalityEntity;
 import com.pai.api.catalog.repository.GeoCountryRepository;
 import com.pai.api.catalog.repository.GeoDepartmentRepository;
 import com.pai.api.catalog.repository.GeoMunicipalityRepository;
+import com.pai.api.shared.json.JsonSerializer;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,6 +20,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
 
 /**
  * Siembra el catalogo geografico desde {@code catalog/divipola.json}
@@ -40,15 +40,17 @@ public class GeoCatalogImporter implements ApplicationRunner {
   private final GeoCountryRepository countries;
   private final GeoDepartmentRepository departments;
   private final GeoMunicipalityRepository municipalities;
-  private final ObjectMapper mapper = new ObjectMapper();
+  private final JsonSerializer json;
 
   public GeoCatalogImporter(
       GeoCountryRepository countries,
       GeoDepartmentRepository departments,
-      GeoMunicipalityRepository municipalities) {
+      GeoMunicipalityRepository municipalities,
+      JsonSerializer json) {
     this.countries = countries;
     this.departments = departments;
     this.municipalities = municipalities;
+    this.json = json;
   }
 
   @Override
@@ -76,15 +78,15 @@ public class GeoCatalogImporter implements ApplicationRunner {
     List<GeoMunicipalityEntity> newMunicipalities = new ArrayList<>();
 
     try (InputStream input = new ClassPathResource("catalog/divipola.json").getInputStream()) {
-      for (JsonNode departmentNode : mapper.readTree(input)) {
-        String departmentCode = departmentNode.path("code").asText();
+      for (JsonNode departmentNode : json.readTree(input)) {
+        String departmentCode = departmentNode.path("code").asString();
         GeoDepartmentEntity department = existingDepartments.get(departmentCode);
         if (department == null) {
           department = new GeoDepartmentEntity(
               UUID.randomUUID(),
               country.getId(),
               departmentCode,
-              departmentNode.path("name").asText());
+              departmentNode.path("name").asString());
           newDepartments.add(department);
           existingDepartments.put(departmentCode, department);
         }
@@ -92,8 +94,8 @@ public class GeoCatalogImporter implements ApplicationRunner {
           newMunicipalities.add(new GeoMunicipalityEntity(
               UUID.randomUUID(),
               department.getId(),
-              municipalityNode.path("code").asText(),
-              municipalityNode.path("name").asText()));
+              municipalityNode.path("code").asString(),
+              municipalityNode.path("name").asString()));
         }
       }
     }

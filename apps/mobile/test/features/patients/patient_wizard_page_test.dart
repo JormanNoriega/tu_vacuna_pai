@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tu_vacuna_pai/core/auth/offline_access.dart';
+import 'package:tu_vacuna_pai/core/utils/document_rules.dart';
 import 'package:tu_vacuna_pai/features/attentions/domain/repositories/attentions_repository.dart';
 import 'package:tu_vacuna_pai/features/attentions/domain/use_cases/attentions_use_cases.dart';
 import 'package:tu_vacuna_pai/features/attentions/presentation/attention_controller.dart';
@@ -123,6 +124,11 @@ void main() {
       ]),
     );
 
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('CC - Cedula de Ciudadania').last);
+    await tester.pumpAndSettle();
+
     await tester.enterText(find.byType(TextFormField).at(0), '1003239695');
     await tester.enterText(find.byType(TextFormField).at(1), 'Ana');
     await tester.enterText(find.byType(TextFormField).at(2), 'Diaz');
@@ -138,7 +144,96 @@ void main() {
 
     expect(find.byType(PatientWizardPage), findsNothing);
   });
+
+  testWidgets('el paso 1 exige tipo de documento, sexo y fecha de nacimiento', (
+    tester,
+  ) async {
+    await openWizard(tester);
+
+    await tester.tap(find.text('Siguiente'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Selecciona el tipo de documento.'), findsOneWidget);
+  });
+
+  testWidgets('limita el numero de documento al tope del tipo (CC=10)', (
+    tester,
+  ) async {
+    await openWizard(tester);
+
+    // Selecciona CC (primer dropdown) para fijar la regla.
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('CC - Cedula de Ciudadania').last);
+    await tester.pumpAndSettle();
+
+    final documentField = find.byType(TextFormField).at(0);
+    await tester.enterText(documentField, '9' * 30);
+    await tester.pump();
+
+    final editable = tester.widget<EditableText>(
+      find.descendant(of: documentField, matching: find.byType(EditableText)),
+    );
+    expect(editable.controller.text.length, documentRuleFor('CC')!.maxLength);
+  });
+
+  testWidgets('rechaza documento invalido para CC antes de buscar duplicado', (
+    tester,
+  ) async {
+    await openWizard(tester);
+
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('CC - Cedula de Ciudadania').last);
+    await tester.pumpAndSettle();
+
+    // CC con letras -> invalido por la regla numerica.
+    final documentField = find.byType(TextFormField).at(0);
+    await tester.enterText(documentField, '12345');
+    await tester.pump();
+    await tester.enterText(find.byType(TextFormField).at(1), 'Ana');
+    await tester.enterText(find.byType(TextFormField).at(2), 'Diaz');
+    await tester.pump();
+
+    await tester.tap(find.text('Siguiente'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Documento invalido'), findsOneWidget);
+    expect(find.text('Paciente ya registrado'), findsNothing);
+  });
+
+  testWidgets('limpia el numero al cambiar de tipo de documento', (
+    tester,
+  ) async {
+    await openWizard(tester);
+
+    // TI permite 11; se llena con 11 caracteres.
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('TI - Tarjeta de Identidad').last);
+    await tester.pumpAndSettle();
+
+    final documentField = find.byType(TextFormField).at(0);
+    await tester.enterText(documentField, '12345678901');
+    await tester.pump();
+    expect(textOf(tester, documentField), '12345678901');
+
+    // Cambiar a CC (max 10) debe limpiar el valor previo.
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('CC - Cedula de Ciudadania').last);
+    await tester.pumpAndSettle();
+
+    expect(textOf(tester, documentField), isEmpty);
+  });
 }
+
+String textOf(WidgetTester tester, Finder field) => tester
+    .widget<EditableText>(
+      find.descendant(of: field, matching: find.byType(EditableText)),
+    )
+    .controller
+    .text;
 
 class _FakePatientsRepository extends _UnusedPatientsRepository {
   _FakePatientsRepository(this.patients);

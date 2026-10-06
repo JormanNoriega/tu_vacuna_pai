@@ -8,13 +8,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.pai.api.catalog.service.InstitutionVaccineService;
 import com.pai.api.identity.dto.CreateInstitutionRequest;
 import com.pai.api.identity.dto.InstitutionResponse;
 import com.pai.api.identity.entity.InstitutionEntity;
+import com.pai.api.identity.exception.InstitutionCodeAlreadyExistsException;
+import com.pai.api.identity.exception.InstitutionNotFoundException;
 import com.pai.api.identity.repository.InstitutionRepository;
-import com.pai.api.shared.exceptions.InstitutionCodeAlreadyExistsException;
-import com.pai.api.shared.exceptions.InstitutionNotFoundException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -27,14 +26,14 @@ class InstitutionServiceTest {
   private static final UUID ACTOR_ID = UUID.randomUUID();
 
   private InstitutionRepository institutionRepository;
-  private InstitutionVaccineService institutionVaccineService;
+  private InstitutionCatalogSeeder catalogSeeder;
   private InstitutionService service;
 
   @BeforeEach
   void setUp() {
     institutionRepository = mock(InstitutionRepository.class);
-    institutionVaccineService = mock(InstitutionVaccineService.class);
-    service = new InstitutionService(institutionRepository, institutionVaccineService);
+    catalogSeeder = mock(InstitutionCatalogSeeder.class);
+    service = new InstitutionService(institutionRepository, catalogSeeder);
   }
 
   @Test
@@ -62,7 +61,7 @@ class InstitutionServiceTest {
     InstitutionResponse result =
         service.create(ACTOR_ID, new CreateInstitutionRequest("HOSP-A", "Hospital A", null));
 
-    verify(institutionVaccineService).seedInstitution(result.id(), ACTOR_ID);
+    verify(catalogSeeder).seed(result.id(), ACTOR_ID);
   }
 
   @Test

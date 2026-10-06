@@ -30,6 +30,7 @@ class SyncOperation {
     required this.aggregateId,
     required this.payload,
     this.dependencies = const [],
+    this.summary,
   });
 
   /// Clave de idempotencia (UUID v4, unica global).
@@ -44,6 +45,10 @@ class SyncOperation {
 
   /// `operation_id` de operaciones que deben procesarse antes.
   final List<String> dependencies;
+
+  /// Etiqueta legible del comprobante para la bandeja de pendientes. Es metadata
+  /// local: NO se incluye en [toJson] ni viaja al servidor.
+  final String? summary;
 
   Map<String, dynamic> toJson() => {
     'operationId': operationId,
@@ -70,9 +75,13 @@ class OutboxEntry {
     required this.operation,
     required this.status,
     required this.retryCount,
+    this.createdAt,
   });
 
   final SyncOperation operation;
   final SyncOutboxStatus status;
   final int retryCount;
+
+  /// Momento en que se encolo el comprobante (para la bandeja de pendientes).
+  final DateTime? createdAt;
 }

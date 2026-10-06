@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/auth/offline_access.dart';
 import '../../../../core/utils/document_normalizer.dart';
+import '../../../../core/utils/field_input.dart';
 import '../users_controller.dart';
 
 /// Formulario para crear un VACCINATOR en la institucion del admin autenticado.
@@ -195,6 +196,9 @@ class _CreateVaccinatorPageState extends State<CreateVaccinatorPage> {
                         TextFormField(
                           controller: _nameController,
                           textCapitalization: TextCapitalization.words,
+                          inputFormatters: maxLengthFormatters(
+                            FieldLimits.fullName,
+                          ),
                           decoration: const InputDecoration(
                             labelText: 'Nombre completo',
                             prefixIcon: Icon(Icons.person_outline_rounded),
@@ -209,6 +213,9 @@ class _CreateVaccinatorPageState extends State<CreateVaccinatorPage> {
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
+                          inputFormatters: maxLengthFormatters(
+                            FieldLimits.staffEmail,
+                          ),
                           decoration: const InputDecoration(
                             labelText: 'Correo',
                             prefixIcon: Icon(Icons.alternate_email_rounded),
@@ -232,8 +239,12 @@ class _CreateVaccinatorPageState extends State<CreateVaccinatorPage> {
                                 child: Text(_documentTypeLabel(type)),
                               ),
                           ],
-                          onChanged: (value) =>
-                              setState(() => _documentType = value),
+                          onChanged: (value) => setState(() {
+                            if (value != _documentType) {
+                              _documentNumberController.clear();
+                            }
+                            _documentType = value;
+                          }),
                           validator: (value) => value == null
                               ? 'Selecciona el tipo de documento.'
                               : null,
@@ -243,6 +254,9 @@ class _CreateVaccinatorPageState extends State<CreateVaccinatorPage> {
                           controller: _documentNumberController,
                           keyboardType: TextInputType.text,
                           textCapitalization: TextCapitalization.characters,
+                          inputFormatters: maxLengthFormatters(
+                            FieldLimits.staffDocument,
+                          ),
                           decoration: const InputDecoration(
                             labelText: 'Numero de documento',
                             helperText:
@@ -271,6 +285,9 @@ class _CreateVaccinatorPageState extends State<CreateVaccinatorPage> {
                         TextFormField(
                           controller: _phoneController,
                           keyboardType: TextInputType.phone,
+                          inputFormatters: maxLengthFormatters(
+                            FieldLimits.staffPhone,
+                          ),
                           decoration: const InputDecoration(
                             labelText: 'Telefono (opcional)',
                             prefixIcon: Icon(Icons.phone_outlined),
@@ -339,6 +356,9 @@ class _CreateVaccinatorPageState extends State<CreateVaccinatorPage> {
                           TextFormField(
                             controller: _registrationNumberController,
                             textCapitalization: TextCapitalization.characters,
+                            inputFormatters: maxLengthFormatters(
+                              FieldLimits.registrationNumber,
+                            ),
                             decoration: InputDecoration(
                               labelText: 'Registro profesional',
                               helperText:
@@ -360,6 +380,9 @@ class _CreateVaccinatorPageState extends State<CreateVaccinatorPage> {
                           TextFormField(
                             controller: _registrationTypeController,
                             textCapitalization: TextCapitalization.words,
+                            inputFormatters: maxLengthFormatters(
+                              FieldLimits.registrationType,
+                            ),
                             decoration: const InputDecoration(
                               labelText: 'Tipo de registro (opcional)',
                               helperText: 'Ej: Registro ministerial, tarjeta profesional.',
@@ -371,6 +394,9 @@ class _CreateVaccinatorPageState extends State<CreateVaccinatorPage> {
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
+                          inputFormatters: maxLengthFormatters(
+                            FieldLimits.password,
+                          ),
                           decoration: InputDecoration(
                             labelText: 'Contrasena temporal',
                             helperText: 'Minimo 8 caracteres. Se la compartes al nuevo vacunador.',

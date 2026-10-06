@@ -1,59 +1,34 @@
 package com.pai.api.audit.service;
 
-import com.pai.api.audit.AuditAction;
-import com.pai.api.audit.entity.AuditEventEntity;
+import com.pai.api.audit.AuditRecord;
 import com.pai.api.audit.repository.AuditEventRepository;
-import java.time.Instant;
-import java.util.UUID;
+import com.pai.api.shared.json.JsonSerializer;
 import org.springframework.stereotype.Service;
-import tools.jackson.databind.ObjectMapper;
 
 /**
- * Registro de auditoria de operaciones sensibles. Se invoca dentro de la misma
- * transaccion que la operacion de negocio, de modo que un fallo de la operacion
- * revierte tambien su evento.
+ * Implementacion de {@link AuditRecorder}: persiste el evento de auditoria en la
+ * misma transaccion que la operacion de negocio, de modo que un fallo de la
+ * operacion revierte tambien su evento.
+ *
+ * <p>El payload se serializa con {@link JsonSerializer#writeOrEmpty(Object)}:
+ * un fallo de serializacion no aborta la operacion de negocio.
  */
 @Service
-public class AuditService {
-
-  private static final ObjectMapper MAPPER = new ObjectMapper();
+public class AuditService implements AuditRecorder {
 
   private final AuditEventRepository repository;
+  private final AuditEventMapper mapper;
+  private final JsonSerializer json;
 
-  public AuditService(AuditEventRepository repository) {
+  public AuditService(
+      AuditEventRepository repository, AuditEventMapper mapper, JsonSerializer json) {
     this.repository = repository;
+    this.mapper = mapper;
+    this.json = json;
   }
 
-  /**
-   * Registra un evento de auditoria. {@code payload} es cualquier valor
-   * serializable a JSON (DTO, mapa o record).
-   */
-  public void record(
-      UUID actorId,
-      UUID institutionId,
-      AuditAction action,
-      String resourceType,
-      UUID resourceId,
-      UUID clientOperationId,
-      Object payload) {
-    repository.save(new AuditEventEntity(
-        UUID.randomUUID(),
-        actorId,
-        institutionId,
-        action.name(),
-        resourceType,
-        resourceId,
-        clientOperationId,
-        toJson(payload),
-        Instant.now()));
-  }
-
-  private String toJson(Object payload) {
-    try {
-      return MAPPER.writeValueAsString(payload);
-    } catch (Exception ex) {
-      // No debe romper la operacion de negocio por un fallo de auditoria.
-      return "{}";
-    }
+  @Override
+  public void record(AuditRecord record) {
+    repository.save(mapper.toEntity(record, json.writeOrEmpty(record.payload())));
   }
 }

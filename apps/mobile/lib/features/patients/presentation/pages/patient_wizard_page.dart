@@ -4,7 +4,10 @@ import 'package:flutter/services.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../app/widgets/clinical_components.dart';
 import '../../../../core/auth/offline_access.dart';
+import '../../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../../core/utils/document_input.dart';
+import '../../../../core/utils/document_normalizer.dart';
+import '../../../../core/utils/document_rules.dart';
 import '../../../../core/utils/field_input.dart';
 import '../../../attentions/presentation/attention_controller.dart';
 import '../../../catalogs/domain/entities/catalog_entities.dart';
@@ -40,8 +43,8 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
   ];
 
   static const _stepHints = [
-    'Obligatorios: tipo y numero de documento, nombres, apellidos, fecha de '
-        'nacimiento y sexo.',
+    'Obligatorios: tipo y numero de documento, primer nombre, primer apellido, '
+        'fecha de nacimiento y sexo.',
     'Genero, orientacion sexual, etnia, tipo de carnet, pais de nacimiento y '
         'estatus migratorio.',
     'Regimen de afiliacion y aseguradora/EPS del paciente.',
@@ -55,7 +58,12 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
     'Datos de la madre o del cuidador responsable (para menores de edad).',
   ];
 
-  final _identityFormKey = GlobalKey<FormState>();
+  /// Una clave de formulario por paso: `_next` valida el paso actual antes de
+  /// avanzar (el paso 1 deja de ser el unico con validacion).
+  late final List<GlobalKey<FormState>> _formKeys = List.generate(
+    _steps.length,
+    (_) => GlobalKey<FormState>(),
+  );
 
   // Identidad
   final _documentNumber = TextEditingController();
@@ -98,8 +106,8 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
 
   final List<_HistoryDraft> _histories = [];
 
-  String _documentType = 'CC';
-  String _sex = 'MALE';
+  String? _documentType;
+  String? _sex;
   String? _gender;
   String? _sexualOrientation;
   String? _ethnicity;
@@ -123,8 +131,8 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
   bool? _armedConflictVictim;
   bool? _currentlyStudying;
 
-  bool _hasContraindication = false;
-  bool _hasPreviousReaction = false;
+  bool? _hasContraindication;
+  bool? _hasPreviousReaction;
 
   String? _userCondition;
   DateTime? _lastMenstrual;
@@ -132,6 +140,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
   String _guardianRelationship = 'CAREGIVER';
   String _guardianDocumentType = 'CC';
   String? _guardianAffiliationRegime;
+  String? _guardianEthnicity;
   HealthInsurer? _guardianInsurer;
   bool? _guardianDisplaced;
 
@@ -257,6 +266,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
     required ValueChanged<String?> onChanged,
     List<ReferenceOption> fallback = const [],
     String? helper,
+    String? Function(String?)? validator,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 16),
     child: DropdownButtonFormField<String?>(
@@ -269,6 +279,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         onClear: value == null ? null : () => onChanged(null),
       ),
       items: _refItemsN(code, fallback: fallback),
+      validator: validator,
       onChanged: onChanged,
     ),
   );
@@ -299,6 +310,36 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
     }
     return age;
   }
+
+  /// Menor de edad: exige madre/cuidador.
+  bool get _isMinor {
+    final age = _ageYears;
+    return age != null && age < 18;
+  }
+
+  /// Menor de 1 anio: exige la edad gestacional al nacer.
+  bool get _isInfant {
+    final age = _ageYears;
+    return age != null && age < 1;
+  }
+
+  /// Requerido solo si el paciente es menor (campos base del tutor).
+  String? _reqIfMinor(String? value) =>
+      _isMinor && (value == null || value.trim().isEmpty) ? 'Requerido' : null;
+
+  /// Requerido solo si es menor y el tutor es la madre (campos extra del
+  /// formato PAI para "Datos de la Madre").
+  String? _reqIfMinorMother(String? value) =>
+      _isMinor &&
+          _guardianRelationship == 'MOTHER' &&
+          (value == null || value.trim().isEmpty)
+      ? 'Requerido'
+      : null;
+
+  String? _reqIfMinorMotherBool(bool? value) =>
+      _isMinor && _guardianRelationship == 'MOTHER' && value == null
+      ? 'Requerido'
+      : null;
 
   /// Pais por defecto (Colombia) tomado del catalogo. Se usa para el pais de
   /// residencia (fijo) y como respaldo del pais de nacimiento.
@@ -372,11 +413,15 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
 
   Future<void> _next() async {
     if (_step == 0) {
-      if (!(_identityFormKey.currentState?.validate() ?? false)) {
-        return;
-      }
-      // Valida que el documento no este ya registrado antes de continuar.
-      if (await _blockIfDuplicate()) return;
+      // Duplicado primero para el paso 1: si el documento ya existe, se
+      // resuelve antes de exigir el resto del paso. Solo se busca cuando el
+      // documento ya cumple el formato de su tipo (evita consultar con un
+      // documento invalido); si no cumple, cae a la validacion del paso.
+      if (_isDocumentFormatValid() && await _blockIfDuplicate()) return;
+    }
+    // Valida el paso actual antes de avanzar (incluye el formato del documento).
+    if (!(_formKeys[_step].currentState?.validate() ?? false)) {
+      return;
     }
     if (_step < _steps.length - 1) {
       setState(() => _step++);
@@ -386,6 +431,17 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
       return;
     }
     await _save();
+  }
+
+  /// El documento del paso 1 cumple el formato de su tipo (si hay tipo y valor).
+  bool _isDocumentFormatValid() {
+    final type = _documentType;
+    final value = _documentNumber.text.trim();
+    if (type == null || value.isEmpty) return false;
+    return DocumentNormalizer.isValidForType(
+      DocumentNormalizer.normalize(value),
+      type,
+    );
   }
 
   /// Verifica si el documento del paso 1 ya esta registrado. Si existe, ofrece
@@ -398,7 +454,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
       final number = _documentNumber.text.trim();
       await widget.controller.findPatients(
         offline: widget.offline,
-        documentType: _documentType,
+        documentType: _documentType ?? 'CC',
         documentNumber: number,
       );
       if (!mounted) return true;
@@ -512,9 +568,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
   Future<void> _save() async {
     if (_birth == null) {
       setState(() => _step = 0);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona la fecha de nacimiento.')),
-      );
+      AppSnackbar.warning(context, 'Selecciona la fecha de nacimiento.');
       return;
     }
     setState(() => _saving = true);
@@ -571,6 +625,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
           affiliationRegime: _guardianAffiliationRegime,
           insurer: _guardianInsurer?.name,
           insurerCode: _guardianInsurer?.nit,
+          ethnicity: _guardianEthnicity,
           displaced: _guardianDisplaced,
         ),
     ];
@@ -662,13 +717,13 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
               ? null
               : history.type.text.trim(),
           hasContraindication: isFirstRow ? _hasContraindication : null,
-          contraindicationDetails: isFirstRow && _hasContraindication
+          contraindicationDetails: isFirstRow && (_hasContraindication ?? false)
               ? (contraindicationDetails.isEmpty
                     ? null
                     : contraindicationDetails)
               : null,
           hasPreviousReaction: isFirstRow ? _hasPreviousReaction : null,
-          reactionDetails: isFirstRow && _hasPreviousReaction
+          reactionDetails: isFirstRow && (_hasPreviousReaction ?? false)
               ? (reactionDetails.isEmpty ? null : reactionDetails)
               : null,
         ),
@@ -677,17 +732,20 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
     }
     // Si no hubo filas de antecedentes pero si contraindicacion/reaccion, se
     // crea una fila que las transporte (el backend exige `condition`).
-    if (!flagsAssigned && (_hasContraindication || _hasPreviousReaction)) {
+    if (!flagsAssigned &&
+        (_hasContraindication != null || _hasPreviousReaction != null)) {
       histories.add(
         NewPatientMedicalHistory(
           condition: 'Antecedentes de vacunacion',
           hasContraindication: _hasContraindication,
           contraindicationDetails:
-              _hasContraindication && contraindicationDetails.isNotEmpty
+              (_hasContraindication ?? false) &&
+                  contraindicationDetails.isNotEmpty
               ? contraindicationDetails
               : null,
           hasPreviousReaction: _hasPreviousReaction,
-          reactionDetails: _hasPreviousReaction && reactionDetails.isNotEmpty
+          reactionDetails:
+              (_hasPreviousReaction ?? false) && reactionDetails.isNotEmpty
               ? reactionDetails
               : null,
         ),
@@ -695,7 +753,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
     }
 
     final input = NewPatientInput(
-      documentType: _documentType,
+      documentType: _documentType!,
       documentNumber: _documentNumber.text.trim(),
       firstName: _firstName.text.trim(),
       secondName: _secondName.text.trim().isEmpty
@@ -706,7 +764,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
           ? null
           : _secondLastName.text.trim(),
       birthDate: _format(_birth!),
-      sex: _sex,
+      sex: _sex!,
       birthCountryId: _birthCountryId ?? _defaultCountryId,
       birthPlace: _birthPlace.text.trim().isEmpty
           ? null
@@ -831,10 +889,9 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
           SectionHeading(
             index: (_step + 1).toString().padLeft(2, '0'),
             title: _steps[_step],
-            subtitle: _step == 0 ? 'Solo esta seccion es obligatoria' : null,
           ),
           const SizedBox(height: 18),
-          body,
+          Form(key: _formKeys[_step], child: body),
         ],
       ),
     );
@@ -854,15 +911,17 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
     bool readOnly = false,
     VoidCallback? onTap,
     TextCapitalization textCapitalization = TextCapitalization.none,
+    String? Function(String?)? validator,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 16),
-    child: TextField(
+    child: TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       inputFormatters: formatters,
       readOnly: readOnly,
       onTap: onTap,
       textCapitalization: textCapitalization,
+      validator: validator,
       decoration: InputDecoration(
         labelText: label,
         helperText: helper,
@@ -874,8 +933,9 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
   Widget _yesNoDropdown(
     bool? value,
     String label,
-    ValueChanged<bool?> onChanged,
-  ) => Padding(
+    ValueChanged<bool?> onChanged, {
+    String? Function(bool?)? validator,
+  }) => Padding(
     padding: const EdgeInsets.only(bottom: 16),
     child: DropdownButtonFormField<bool?>(
       initialValue: value,
@@ -889,102 +949,112 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         DropdownMenuItem(value: true, child: Text('Si')),
         DropdownMenuItem(value: false, child: Text('No')),
       ],
+      validator: validator,
       onChanged: onChanged,
     ),
   );
 
-  Widget _identityStep() => Form(
-    key: _identityFormKey,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        DropdownButtonFormField<String>(
-          initialValue: _documentType,
-          isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Tipo de documento'),
-          items: _documentTypeItems(),
-          onChanged: (value) => setState(() => _documentType = value ?? 'CC'),
+  Widget _identityStep() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      DropdownButtonFormField<String>(
+        initialValue: _documentType,
+        isExpanded: true,
+        hint: const Text('Selecciona'),
+        decoration: const InputDecoration(labelText: 'Tipo de documento'),
+        items: _documentTypeItems(),
+        validator: (value) =>
+            value == null ? 'Selecciona el tipo de documento.' : null,
+        onChanged: (value) => setState(() {
+          if (value != _documentType) _documentNumber.clear();
+          _documentType = value;
+        }),
+      ),
+      const SizedBox(height: 16),
+      TextFormField(
+        controller: _documentNumber,
+        keyboardType: documentKeyboardType(_documentType ?? 'CC'),
+        inputFormatters: documentInputFormatters(_documentType ?? 'CC'),
+        onChanged: (_) => setState(() {}),
+        decoration: const InputDecoration(labelText: 'Numero de documento'),
+        validator: (value) {
+          final v = value?.trim() ?? '';
+          if (v.isEmpty) return 'Ingresa el documento.';
+          if (_documentType == null) return 'Selecciona el tipo de documento.';
+          final rule = documentRuleFor(_documentType);
+          if (rule == null) return 'Tipo de documento invalido.';
+          if (!DocumentNormalizer.isValidForType(
+            DocumentNormalizer.normalize(v),
+            _documentType,
+          )) {
+            final caracteres = rule.digitsOnly ? 'digitos' : 'digitos o letras';
+            return 'Documento invalido: ${rule.minLength}-${rule.maxLength} '
+                'caracteres ($caracteres).';
+          }
+          return null;
+        },
+      ),
+      const SizedBox(height: 16),
+      TextFormField(
+        controller: _firstName,
+        textCapitalization: TextCapitalization.words,
+        inputFormatters: maxLengthFormatters(FieldLimits.name),
+        onChanged: (_) => setState(() {}),
+        decoration: const InputDecoration(labelText: 'Primer nombre'),
+        validator: (value) =>
+            (value == null || value.trim().isEmpty) ? 'Requerido' : null,
+      ),
+      const SizedBox(height: 16),
+      TextField(
+        controller: _secondName,
+        textCapitalization: TextCapitalization.words,
+        inputFormatters: maxLengthFormatters(FieldLimits.name),
+        onChanged: (_) => setState(() {}),
+        decoration: const InputDecoration(labelText: 'Segundo nombre'),
+      ),
+      const SizedBox(height: 16),
+      TextFormField(
+        controller: _lastName,
+        textCapitalization: TextCapitalization.words,
+        inputFormatters: maxLengthFormatters(FieldLimits.name),
+        onChanged: (_) => setState(() {}),
+        decoration: const InputDecoration(labelText: 'Primer apellido'),
+        validator: (value) =>
+            (value == null || value.trim().isEmpty) ? 'Requerido' : null,
+      ),
+      const SizedBox(height: 16),
+      TextField(
+        controller: _secondLastName,
+        textCapitalization: TextCapitalization.words,
+        inputFormatters: maxLengthFormatters(FieldLimits.name),
+        onChanged: (_) => setState(() {}),
+        decoration: const InputDecoration(labelText: 'Segundo apellido'),
+      ),
+      const SizedBox(height: 16),
+      TextFormField(
+        controller: _birthDate,
+        readOnly: true,
+        onTap: _pickBirthDate,
+        decoration: const InputDecoration(
+          labelText: 'Fecha de nacimiento',
+          suffixIcon: Icon(Icons.calendar_today_outlined),
         ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _documentNumber,
-          keyboardType: documentKeyboardType(_documentType),
-          inputFormatters: documentInputFormatters(_documentType),
-          onChanged: (_) => setState(() {}),
-          decoration: InputDecoration(
-            labelText: 'Numero de documento',
-            helperText: (_documentType == 'CC' || _documentType == 'TI')
-                ? 'Solo numeros, maximo 10.'
-                : 'Letras y numeros, maximo 10.',
-          ),
-          validator: (value) {
-            final v = value?.trim() ?? '';
-            if (v.isEmpty) return 'Ingresa el documento.';
-            final min = _documentType == 'CC' ? 6 : 4;
-            if (v.length < min) {
-              return 'Ingresa al menos $min caracteres.';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _firstName,
-          textCapitalization: TextCapitalization.words,
-          inputFormatters: maxLengthFormatters(FieldLimits.name),
-          onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(labelText: 'Primer nombre'),
-          validator: (value) =>
-              (value == null || value.trim().isEmpty) ? 'Requerido' : null,
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _secondName,
-          textCapitalization: TextCapitalization.words,
-          inputFormatters: maxLengthFormatters(FieldLimits.name),
-          onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(labelText: 'Segundo nombre'),
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _lastName,
-          textCapitalization: TextCapitalization.words,
-          inputFormatters: maxLengthFormatters(FieldLimits.name),
-          onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(labelText: 'Primer apellido'),
-          validator: (value) =>
-              (value == null || value.trim().isEmpty) ? 'Requerido' : null,
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _secondLastName,
-          textCapitalization: TextCapitalization.words,
-          inputFormatters: maxLengthFormatters(FieldLimits.name),
-          onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(labelText: 'Segundo apellido'),
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _birthDate,
-          readOnly: true,
-          onTap: _pickBirthDate,
-          decoration: const InputDecoration(
-            labelText: 'Fecha de nacimiento',
-            suffixIcon: Icon(Icons.calendar_today_outlined),
-          ),
-        ),
-        const SizedBox(height: 16),
-        DropdownButtonFormField<String>(
-          initialValue: _sex,
-          isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Sexo'),
-          items: _refItems('sex', fallback: _sexFallback),
-          onChanged: (value) => setState(() => _sex = value ?? 'MALE'),
-        ),
-        const SizedBox(height: 8),
-        _identityPreview(),
-      ],
-    ),
+        validator: (value) =>
+            _birth == null ? 'Selecciona la fecha de nacimiento.' : null,
+      ),
+      const SizedBox(height: 16),
+      DropdownButtonFormField<String>(
+        initialValue: _sex,
+        isExpanded: true,
+        hint: const Text('Selecciona'),
+        decoration: const InputDecoration(labelText: 'Sexo'),
+        items: _refItems('sex', fallback: _sexFallback),
+        validator: (value) => value == null ? 'Selecciona el sexo.' : null,
+        onChanged: (value) => setState(() => _sex = value),
+      ),
+      const SizedBox(height: 8),
+      _identityPreview(),
+    ],
   );
 
   /// Vista previa en vivo del registro: ayuda al vacunador a verificar que el
@@ -1006,7 +1076,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: IdentityStrip(
-        documentType: _documentType,
+        documentType: _documentType ?? '',
         documentNumber: _documentNumber.text.trim().isEmpty
             ? 'sin documento'
             : _documentNumber.text.trim(),
@@ -1034,12 +1104,14 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         code: 'ethnicity',
         label: 'Pertenencia etnica',
         value: _ethnicity,
+        validator: (value) => value == null ? 'Requerido' : null,
         onChanged: (value) => setState(() => _ethnicity = value),
       ),
       _refDropdown(
         code: 'carnet_type',
         label: 'Tipo de carnet',
         value: _carnetType,
+        validator: (value) => value == null ? 'Requerido' : null,
         onChanged: (value) => setState(() => _carnetType = value),
       ),
       Padding(
@@ -1058,6 +1130,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
             for (final GeoCountry country in widget.controller.countries)
               DropdownMenuItem(value: country.id, child: Text(country.name)),
           ],
+          validator: (value) => value == null ? 'Requerido' : null,
           onChanged: (value) => setState(() => _birthCountryId = value),
         ),
       ),
@@ -1091,6 +1164,11 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         _gestationalAge,
         'Edad gestacional al nacer (semanas)',
         keyboardType: TextInputType.number,
+        helper: _isInfant ? 'Obligatoria en menores de 1 anio.' : null,
+        validator: (value) =>
+            _isInfant && (value == null || value.trim().isEmpty)
+            ? 'Requerido'
+            : null,
       ),
       _textField(
         _educationLevel,
@@ -1109,6 +1187,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
           code: 'affiliation_regime',
           label: 'Regimen de afiliacion',
           value: _affiliationRegime,
+          validator: (value) => value == null ? 'Requerido' : null,
           onChanged: (value) => setState(() {
             _affiliationRegime = value;
             _selectedInsurer = null;
@@ -1137,6 +1216,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
               for (final insurer in options)
                 DropdownMenuItem(value: insurer, child: Text(insurer.name)),
             ],
+            validator: (value) => value == null ? 'Requerido' : null,
             onChanged: options.isEmpty
                 ? null
                 : (value) => setState(() {
@@ -1177,6 +1257,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
                 child: Text(department.name),
               ),
           ],
+          validator: (value) => value == null ? 'Requerido' : null,
           onChanged: (value) {
             setState(() {
               _departmentId = value;
@@ -1206,6 +1287,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
                 child: Text(municipality.name),
               ),
           ],
+          validator: (value) => value == null ? 'Requerido' : null,
           onChanged: (value) => setState(() => _municipalityId = value),
         ),
       ),
@@ -1213,6 +1295,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         code: 'area',
         label: 'Area',
         value: _area,
+        validator: (value) => value == null ? 'Requerido' : null,
         onChanged: (value) => setState(() => _area = value),
       ),
       const SizedBox(height: 16),
@@ -1225,6 +1308,8 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         _street,
         'Direccion con nomenclatura',
         formatters: maxLengthFormatters(FieldLimits.street),
+        validator: (value) =>
+            (value == null || value.trim().isEmpty) ? 'Requerido' : null,
       ),
       _textField(
         _landline,
@@ -1266,26 +1351,31 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         _displaced,
         '¿Desplazado?',
         (value) => setState(() => _displaced = value),
+        validator: (value) => value == null ? 'Requerido' : null,
       ),
       _yesNoDropdown(
         _disabled,
         '¿Discapacitado?',
         (value) => setState(() => _disabled = value),
+        validator: (value) => value == null ? 'Requerido' : null,
       ),
       _yesNoDropdown(
         _deceased,
         '¿Fallecido?',
         (value) => setState(() => _deceased = value),
+        validator: (value) => value == null ? 'Requerido' : null,
       ),
       _yesNoDropdown(
         _armedConflictVictim,
         '¿Victima del conflicto armado?',
         (value) => setState(() => _armedConflictVictim = value),
+        validator: (value) => value == null ? 'Requerido' : null,
       ),
       _yesNoDropdown(
         _currentlyStudying,
         '¿Estudia actualmente?',
         (value) => setState(() => _currentlyStudying = value),
+        validator: (value) => value == null ? 'Requerido' : null,
       ),
     ],
   );
@@ -1293,33 +1383,33 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
   Widget _historyStep() => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      SwitchListTile(
-        contentPadding: EdgeInsets.zero,
-        title: const Text(
-          '¿Sufre o ha sufrido alguna enfermedad que contraindique la vacunacion?',
-        ),
-        value: _hasContraindication,
-        onChanged: (value) => setState(() => _hasContraindication = value),
+      _yesNoDropdown(
+        _hasContraindication,
+        '¿Sufre o ha sufrido alguna enfermedad que contraindique la vacunacion?',
+        (value) => setState(() => _hasContraindication = value),
+        validator: (value) => value == null ? 'Requerido' : null,
       ),
-      if (_hasContraindication)
+      if (_hasContraindication == true)
         _textField(
           _contraindicationDetails,
           '¿Cual?',
           formatters: maxLengthFormatters(FieldLimits.name),
+          validator: (value) =>
+              (value == null || value.trim().isEmpty) ? 'Requerido' : null,
         ),
-      SwitchListTile(
-        contentPadding: EdgeInsets.zero,
-        title: const Text(
-          '¿Ha presentado reaccion moderada o severa a biologico anteriores?',
-        ),
-        value: _hasPreviousReaction,
-        onChanged: (value) => setState(() => _hasPreviousReaction = value),
+      _yesNoDropdown(
+        _hasPreviousReaction,
+        '¿Ha presentado reaccion moderada o severa a biologico anteriores?',
+        (value) => setState(() => _hasPreviousReaction = value),
+        validator: (value) => value == null ? 'Requerido' : null,
       ),
-      if (_hasPreviousReaction)
+      if (_hasPreviousReaction == true)
         _textField(
           _reactionDetails,
           '¿Cual?',
           formatters: maxLengthFormatters(FieldLimits.name),
+          validator: (value) =>
+              (value == null || value.trim().isEmpty) ? 'Requerido' : null,
         ),
       const SizedBox(height: 8),
       _sectionTitle('Historico de antecedentes'),
@@ -1342,7 +1432,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
                 const SizedBox(height: 8),
                 TextField(
                   controller: _histories[i].type,
-                  inputFormatters: maxLengthFormatters(FieldLimits.name),
+                  inputFormatters: maxLengthFormatters(FieldLimits.historyType),
                   decoration: const InputDecoration(labelText: 'Tipo'),
                 ),
                 const SizedBox(height: 8),
@@ -1459,6 +1549,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         'Primer nombre',
         textCapitalization: TextCapitalization.words,
         formatters: maxLengthFormatters(FieldLimits.name),
+        validator: _reqIfMinor,
       ),
       _textField(
         _guardianSecondName,
@@ -1471,6 +1562,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         'Primer apellido',
         textCapitalization: TextCapitalization.words,
         formatters: maxLengthFormatters(FieldLimits.name),
+        validator: _reqIfMinor,
       ),
       _textField(
         _guardianSecondLastName,
@@ -1478,20 +1570,30 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         textCapitalization: TextCapitalization.words,
         formatters: maxLengthFormatters(FieldLimits.name),
       ),
+      _refDropdown(
+        code: 'ethnicity',
+        label: 'Pertenencia etnica',
+        value: _guardianEthnicity,
+        validator: _reqIfMinorMother,
+        onChanged: (value) => setState(() => _guardianEthnicity = value),
+      ),
       DropdownButtonFormField<String>(
         initialValue: _guardianDocumentType,
         isExpanded: true,
         decoration: const InputDecoration(labelText: 'Tipo de identificacion'),
         items: _documentTypeItems(),
-        onChanged: (value) =>
-            setState(() => _guardianDocumentType = value ?? 'CC'),
+        onChanged: (value) => setState(() {
+          if (value != _guardianDocumentType) _guardianDocument.clear();
+          _guardianDocumentType = value ?? 'CC';
+        }),
       ),
       const SizedBox(height: 16),
-      TextField(
+      TextFormField(
         controller: _guardianDocument,
         keyboardType: documentKeyboardType(_guardianDocumentType),
         inputFormatters: documentInputFormatters(_guardianDocumentType),
         decoration: const InputDecoration(labelText: 'Numero de documento'),
+        validator: _reqIfMinor,
       ),
       const SizedBox(height: 16),
       _textField(
@@ -1516,6 +1618,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         code: 'affiliation_regime',
         label: 'Regimen de afiliacion',
         value: _guardianAffiliationRegime,
+        validator: _reqIfMinorMother,
         onChanged: (value) => setState(() {
           _guardianAffiliationRegime = value;
           _guardianInsurer = null;
@@ -1559,6 +1662,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
         _guardianDisplaced,
         '¿Desplazado?',
         (value) => setState(() => _guardianDisplaced = value),
+        validator: _reqIfMinorMotherBool,
       ),
     ],
   );

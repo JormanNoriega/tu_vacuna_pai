@@ -15,6 +15,7 @@ import com.pai.api.identity.entity.ProvisioningOperationEntity;
 import com.pai.api.identity.entity.ProvisioningOperationStatus;
 import com.pai.api.identity.repository.ProvisioningOperationRepository;
 import com.pai.api.identity.service.AuthUserLookupService.OrphanRecord;
+import com.pai.api.identity.support.ProvisioningOperations;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -49,20 +50,8 @@ class ProvisioningReconciliationServiceTest {
   }
 
   private ProvisioningOperationEntity operation(ProvisioningOperationStatus status) {
-    Instant now = Instant.now();
-    return new ProvisioningOperationEntity(
-        OPERATION_ID,
-        AUTH_USER_ID,
-        "vac@hosp.a",
-        "Vaca Uno",
-        INSTITUTION_ID,
-        "VACCINATOR",
-        UUID.randomUUID(),
-        status,
-        (short) 1,
-        null,
-        now,
-        now);
+    return ProvisioningOperations.operation(
+        OPERATION_ID, AUTH_USER_ID, UUID.randomUUID(), INSTITUTION_ID, status);
   }
 
   @Test
@@ -108,7 +97,15 @@ class ProvisioningReconciliationServiceTest {
             (short) 1,
             null,
             Instant.now(),
-            Instant.now())));
+            Instant.now(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null)));
 
     List<ReconciliationResultResponse> results = service.reconcile();
 
@@ -134,7 +131,15 @@ class ProvisioningReconciliationServiceTest {
             (short) 1,
             null,
             Instant.now(),
-            Instant.now())));
+            Instant.now(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null)));
 
     List<ReconciliationResultResponse> results = service.reconcile();
 

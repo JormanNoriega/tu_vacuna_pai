@@ -17,48 +17,49 @@ import org.springframework.stereotype.Component;
 @Component
 public class AttentionMapper {
 
-    public AttentionResponse toResponse(AttentionEntity attention, List<AppliedDoseResponse> doseResponses) {
-        return new AttentionResponse(
-                attention.getId(),
-                attention.getPatientId(),
-                attention.getProfessionalId(),
-                attention.getInstitutionId(),
-                attention.getAttentionDate(),
-                attention.getConsecutive(),
-                attention.getStatus().name(),
-                attention.getObservations(),
-                attention.isCompleteScheme(),
-                attention.isPaiwebRegistered(),
-                attention.getPaiwebNotRegisteredReason(),
-                attention.getVersion(),
-                attention.getCreatedAt(),
-                attention.getUpdatedAt(),
-                doseResponses);
-    }
+  public AttentionResponse toResponse(
+      AttentionEntity attention, List<AppliedDoseResponse> doseResponses) {
+    return new AttentionResponse(
+        attention.getId(),
+        attention.getPatientId(),
+        attention.getProfessionalId(),
+        attention.getInstitutionId(),
+        attention.getAttentionDate(),
+        attention.getConsecutive(),
+        attention.getStatus().name(),
+        attention.getObservations(),
+        attention.isCompleteScheme(),
+        attention.isPaiwebRegistered(),
+        attention.getPaiwebNotRegisteredReason(),
+        attention.getVersion(),
+        attention.getCreatedAt(),
+        attention.getUpdatedAt(),
+        doseResponses);
+  }
 
-    public AppliedDoseResponse toDoseResponse(AppliedDoseEntity dose) {
-        return new AppliedDoseResponse(
-                dose.getId(),
-                dose.getAttentionId(),
-                dose.getVaccineId(),
-                dose.getVaccineNameSnapshot(),
-                dose.getVaccineCodeSnapshot(),
-                dose.getDoseOptionId(),
-                dose.getDoseLabelSnapshot(),
-                dose.getDoseValueSnapshot(),
-                dose.getPneumococcalTypeOptionId(),
-                dose.getPneumococcalTypeSnapshot(),
-                dose.getLotId(),
-                dose.getLotNumber(),
-                dose.getApplicationDate(),
-                dose.getCatalogVersion(),
-                dose.getSelectedLaboratorySnapshot(),
-                dose.getSelectedSyringeSnapshot(),
-                dose.getSelectedDropperSnapshot(),
-                dose.getSelectedObservationSnapshot(),
-                dose.getStatus().name(),
-                dose.getCancelledReason(),
-                dose.getCancelledAt(),
-                dose.getCreatedAt());
-    }
+  public AppliedDoseResponse toDoseResponse(AppliedDoseEntity dose) {
+    return new AppliedDoseResponse(
+        dose.getId(),
+        dose.getAttentionId(),
+        dose.getVaccineId(),
+        dose.getVaccineNameSnapshot(),
+        dose.getVaccineCodeSnapshot(),
+        dose.getDoseOptionId(),
+        dose.getDoseLabelSnapshot(),
+        dose.getDoseValueSnapshot(),
+        dose.getPneumococcalTypeOptionId(),
+        dose.getPneumococcalTypeSnapshot(),
+        dose.getLotId(),
+        dose.getLotNumber(),
+        dose.getApplicationDate(),
+        dose.getCatalogVersion(),
+        dose.getSelectedLaboratorySnapshot(),
+        dose.getSelectedSyringeSnapshot(),
+        dose.getSelectedDropperSnapshot(),
+        dose.getSelectedObservationSnapshot(),
+        dose.getStatus().name(),
+        dose.getCancelledReason(),
+        dose.getCancelledAt(),
+        dose.getCreatedAt());
+  }
 }

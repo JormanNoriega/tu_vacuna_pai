@@ -6,7 +6,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "vaccine_options", schema = "app")
-public class VaccineOptionEntity {
+public class VaccineOptionEntity implements CatalogOption {
   @Id
   private UUID id;
 

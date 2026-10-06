@@ -1,6 +1,7 @@
 package com.pai.api.attentions.repository;
 
 import com.pai.api.attentions.entity.AttentionEntity;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,6 +22,13 @@ public interface AttentionRepository extends JpaRepository<AttentionEntity, UUID
       UUID institutionId, UUID patientId);
 
   /**
+   * Atenciones de la institucion dentro de un rango de fechas. Alimenta el
+   * reporte "Registro Diario" (orden cronologico).
+   */
+  List<AttentionEntity> findByInstitutionIdAndAttentionDateBetweenOrderByAttentionDateAsc(
+      UUID institutionId, Instant from, Instant to);
+
+  /**
    * Ultimo consecutivo de la institucion. El servicio le suma uno para el
    * siguiente. Es una aproximacion sin bloqueo; la unicidad real se refuerza
    * con la clave de negocio de la atencion.
@@ -30,4 +38,16 @@ public interface AttentionRepository extends JpaRepository<AttentionEntity, UUID
       WHERE a.institutionId = :institutionId
       """)
   long maxConsecutive(@Param("institutionId") UUID institutionId);
+
+  /**
+   * Pacientes distintos con al menos una atencion no anulada en la institucion.
+   * Alimenta la metrica del home (acumulado historico).
+   */
+  @Query("""
+      SELECT COUNT(DISTINCT a.patientId) FROM AttentionEntity a
+      WHERE a.institutionId = :institutionId AND a.status <> :excluded
+      """)
+  long countDistinctPatientsByInstitutionId(
+      @Param("institutionId") UUID institutionId,
+      @Param("excluded") AttentionEntity.Status excluded);
 }

@@ -141,27 +141,16 @@ public class PatientEntity {
   }
 
   /** Perfil ampliado de Fase 2 capturado por el wizard (Paso 1/2). */
-  public void applyExtendedProfile(
-      String secondName,
-      String secondLastName,
-      UUID birthCountryId,
-      String birthPlace,
-      String migrationStatus,
-      Integer gestationalAgeAtBirth,
-      String vaccinationCardType,
-      boolean authorizeCalls,
-      boolean authorizeEmail,
-      Instant now) {
-    this.secondName = secondName;
-    this.secondName = secondName;
-    this.secondLastName = secondLastName;
-    this.birthCountryId = birthCountryId;
-    this.birthPlace = birthPlace;
-    this.migrationStatus = migrationStatus;
-    this.gestationalAgeAtBirth = gestationalAgeAtBirth;
-    this.vaccinationCardType = vaccinationCardType;
-    this.authorizeCalls = authorizeCalls;
-    this.authorizeEmail = authorizeEmail;
+  public void applyExtendedProfile(PatientExtendedProfile profile, Instant now) {
+    this.secondName = profile.secondName();
+    this.secondLastName = profile.secondLastName();
+    this.birthCountryId = profile.birthCountryId();
+    this.birthPlace = profile.birthPlace();
+    this.migrationStatus = profile.migrationStatus();
+    this.gestationalAgeAtBirth = profile.gestationalAgeAtBirth();
+    this.vaccinationCardType = profile.vaccinationCardType();
+    this.authorizeCalls = profile.authorizeCalls();
+    this.authorizeEmail = profile.authorizeEmail();
     this.updatedAt = now;
   }
 

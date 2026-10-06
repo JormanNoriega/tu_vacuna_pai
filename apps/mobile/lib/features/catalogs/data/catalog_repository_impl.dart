@@ -97,6 +97,28 @@ class CatalogRepositoryImpl implements CatalogRepository {
   }
 
   @override
+  Future<List<GeoDepartment>> listFullGeo(String token) async {
+    final raw = await api.getFullGeo(token);
+    final departments = <Map<String, dynamic>>[];
+    for (final item in raw) {
+      departments.add({
+        'id': item['id'],
+        'code': item['code'],
+        'name': item['name'],
+      });
+      final municipalities =
+          (item['municipalities'] as List<dynamic>? ?? const [])
+              .cast<Map<String, dynamic>>();
+      await _cacheJsonList(
+        _municipalitiesKey(item['id'].toString()),
+        municipalities,
+      );
+    }
+    await _cacheJsonList(_departmentsKey, departments);
+    return departments.map(GeoDepartment.fromJson).toList();
+  }
+
+  @override
   Future<List<GeoMunicipality>> listMunicipalities(
     String token,
     String departmentId,

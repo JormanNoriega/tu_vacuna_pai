@@ -19,10 +19,17 @@ import com.pai.api.identity.service.IdentityService;
 import com.pai.api.patients.exception.PatientAlreadyExistsException;
 import com.pai.api.patients.service.PatientMergeRequestService;
 import com.pai.api.patients.service.PatientService;
+import com.pai.api.shared.json.JsonSerializer;
 import com.pai.api.synchronization.dto.RejectedOperation;
 import com.pai.api.synchronization.dto.SyncOperation;
 import com.pai.api.synchronization.dto.SyncPushRequest;
 import com.pai.api.synchronization.dto.SyncPushResponse;
+import com.pai.api.synchronization.service.command.CompleteAttentionCommandHandler;
+import com.pai.api.synchronization.service.command.CreateAttentionCommandHandler;
+import com.pai.api.synchronization.service.command.CreatePatientCommandHandler;
+import com.pai.api.synchronization.service.command.RegisterDoseCommandHandler;
+import com.pai.api.synchronization.service.command.SyncCommandHandler;
+import com.pai.api.synchronization.service.command.SyncPayloadConverter;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -51,8 +58,13 @@ class SyncPushServiceTest {
     mergeRequests = mock(PatientMergeRequestService.class);
     identity = mock(IdentityService.class);
     processedOperations = mock(ProcessedOperationsService.class);
-    service = new SyncPushService(
-        patients, attentions, mergeRequests, identity, processedOperations, new ObjectMapper());
+    SyncPayloadConverter payload = new SyncPayloadConverter(new JsonSerializer(new ObjectMapper()));
+    List<SyncCommandHandler> handlers = List.of(
+        new CreatePatientCommandHandler(patients, payload),
+        new CreateAttentionCommandHandler(attentions, payload),
+        new RegisterDoseCommandHandler(attentions, payload),
+        new CompleteAttentionCommandHandler(attentions));
+    service = new SyncPushService(identity, mergeRequests, processedOperations, handlers);
   }
 
   private InstitutionEntity institution() {

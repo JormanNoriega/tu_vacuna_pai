@@ -1,7 +1,9 @@
 package com.pai.api.catalog.controller;
 
 import com.pai.api.catalog.dto.GeoDepartmentResponse;
+import com.pai.api.catalog.dto.GeoFullDepartmentResponse;
 import com.pai.api.catalog.dto.GeoMunicipalityResponse;
+import com.pai.api.catalog.service.CatalogPermissions;
 import com.pai.api.catalog.service.GeoCatalogService;
 import java.util.List;
 import java.util.UUID;
@@ -19,10 +21,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/catalogs/geo")
 public class GeoCatalogController {
 
-  private static final String READ = "@authorization.hasPermission(authentication, "
-      + "'CATALOG_GLOBAL_READ') or @authorization.hasPermission(authentication, "
-      + "'CATALOG_CONFIG_READ')";
-
   private final GeoCatalogService service;
 
   public GeoCatalogController(GeoCatalogService service) {
@@ -30,20 +28,27 @@ public class GeoCatalogController {
   }
 
   @GetMapping("/countries")
-  @PreAuthorize(READ)
+  @PreAuthorize(CatalogPermissions.READ)
   public List<GeoDepartmentResponse> countries() {
     return service.countries();
   }
 
   @GetMapping("/departments")
-  @PreAuthorize(READ)
+  @PreAuthorize(CatalogPermissions.READ)
   public List<GeoDepartmentResponse> departments() {
     return service.departments();
   }
 
   @GetMapping("/municipalities")
-  @PreAuthorize(READ)
+  @PreAuthorize(CatalogPermissions.READ)
   public List<GeoMunicipalityResponse> municipalities(@RequestParam UUID departmentId) {
     return service.municipalities(departmentId);
+  }
+
+  /** Catalogo completo (departamentos con municipios) para la precarga offline. */
+  @GetMapping("/full")
+  @PreAuthorize(CatalogPermissions.READ)
+  public List<GeoFullDepartmentResponse> full() {
+    return service.full();
   }
 }

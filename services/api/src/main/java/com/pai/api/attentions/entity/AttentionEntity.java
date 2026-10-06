@@ -99,7 +99,7 @@ public class AttentionEntity {
   }
 
   public boolean acceptsDoses() {
-    return status == Status.DRAFT || status == Status.IN_PROGRESS;
+    return isEditable();
   }
 
   public void updateDetails(Instant attentionDate, String observations, Instant now) {
@@ -121,11 +121,6 @@ public class AttentionEntity {
       this.paiwebRegistered = paiwebRegistered;
     }
     this.paiwebNotRegisteredReason = this.paiwebRegistered ? null : paiwebNotRegisteredReason;
-    this.updatedAt = now;
-  }
-
-  public void markInProgress(Instant now) {
-    this.status = Status.IN_PROGRESS;
     this.updatedAt = now;
   }
 
