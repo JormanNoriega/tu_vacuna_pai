@@ -1,0 +1,181 @@
+%% ============================================================
+%% Patrones creacionales aplicados al backend Spring — tu_vacuna_pai
+%% Diagrama estructural completo (clases reales + propuestas)
+%% Patrones: Singleton, Factory Method, Builder, Prototype, Abstract Factory
+%% ============================================================
+classDiagram
+    direction LR
+
+    %% ---------- SINGLETON (contenedor IoC de Spring) ----------
+    class SpringIoC {
+        <<contenedor>>
+        +getBean(type)
+    }
+
+    %% ---------- FACTORY METHOD ----------
+    class SyncPushService {
+        <<singleton>>
+        +push(actorId, request)
+    }
+    class SyncCommandHandler {
+        <<interface>>
+        +supports(commandType) boolean
+        +permission() String
+        +handle(actorId, op) void
+    }
+    class CreatePatientHandler
+    class CreateAttentionHandler
+    class RegisterDoseHandler
+    class CompleteAttentionHandler
+    class SyncCommandHandlerFactory {
+        -Map~String,SyncCommandHandler~ registry
+        +handlerFor(commandType) SyncCommandHandler
+    }
+
+    %% ---------- BUILDER ----------
+    class PatientMapper {
+        <<singleton>>
+        +toResponse() PatientResponse
+    }
+    class PatientResponse
+    class PatientResponseBuilder {
+        +id(String) Builder
+        +demographic(DemographicDto) Builder
+        +contacts(List) Builder
+        +addresses(List) Builder
+        +guardians(List) Builder
+        +build() PatientResponse
+    }
+    class DoseSelection {
+        +UUID vaccineId
+        +String vaccineName
+        +UUID doseOptionId
+        +String laboratorySnapshot
+    }
+    class DoseSelectionBuilder {
+        +vaccineId(UUID) Builder
+        +doseOptionId(UUID) Builder
+        +laboratorySnapshot(String) Builder
+        +build() DoseSelection
+    }
+    class CatalogMapper {
+        <<singleton>>
+    }
+
+    %% ---------- PROTOTYPE ----------
+    class CatalogOptionPrototype {
+        <<interface>>
+        +copyToInstitution(institutionId, actorId) InstitutionVaccineOptionEntity
+    }
+    class VaccineOptionTemplateEntity
+    class InstitutionVaccineOptionEntity
+    class InstitutionVaccineService {
+        <<singleton>>
+        +enable(actor, institution, vaccine)
+        +doClone(institution, actor, includeDefaults)
+    }
+
+    %% ---------- ABSTRACT FACTORY ----------
+    class CatalogOptionFactory {
+        <<interface>>
+        +createGlobalVariants(vaccineId) List
+        +createTemplateVariants(vaccineId) List
+        +createInstitutionalVariants(institutionId, vaccineId) List
+    }
+    class GlobalCatalogOptionFactory
+    class InstitutionalCatalogOptionFactory
+    class CatalogOptionProduct {
+        <<interface>>
+        +fieldType() String
+        +value() String
+    }
+    class DoseOption
+    class PneumococcalTypeOption
+    class LaboratoryOption
+    class SyringeOption
+    class DropperOption
+    class ObservationOption
+
+    %% ---------- DOMINIO REAL ----------
+    class VaccineCatalogPolicy {
+        <<interface>>
+        +resolve(request) DoseSelection
+    }
+    class CatalogSelectionService {
+        <<singleton>>
+    }
+    class PatientService {
+        <<singleton>>
+    }
+    class AttentionService {
+        <<singleton>>
+    }
+    class EffectiveCatalogService {
+        <<singleton>>
+    }
+    class IdentityService
+    class DataScope
+    class PatientEntity
+    class PermissionGuard
+    class IdempotencyCoordinator
+
+    %% ================= SINGLETON =================
+    SpringIoC ..> SyncPushService : 1 instancia
+    SpringIoC ..> PatientMapper : 1 instancia
+    SpringIoC ..> CatalogMapper : 1 instancia
+    SpringIoC ..> InstitutionVaccineService : 1 instancia
+    SpringIoC ..> CatalogSelectionService : 1 instancia
+    SpringIoC ..> PatientService : 1 instancia
+    SpringIoC ..> AttentionService : 1 instancia
+
+    %% ================= FACTORY METHOD =================
+    SyncPushService --> SyncCommandHandlerFactory : usa
+    SyncCommandHandlerFactory --> SyncCommandHandler : crea/selecciona
+    SyncCommandHandler <|.. CreatePatientHandler
+    SyncCommandHandler <|.. CreateAttentionHandler
+    SyncCommandHandler <|.. RegisterDoseHandler
+    SyncCommandHandler <|.. CompleteAttentionHandler
+    CreatePatientHandler ..> PatientService : delega
+    CreateAttentionHandler ..> AttentionService : delega
+    RegisterDoseHandler ..> AttentionService : delega
+    CompleteAttentionHandler ..> AttentionService : delega
+    PatientService ..> IdentityService : resuelve actor
+    PatientService ..> DataScope : scope institucional
+    PatientService ..> IdempotencyCoordinator : coordina
+
+    %% ================= BUILDER =================
+    PatientMapper --> PatientResponseBuilder : construye
+    PatientResponseBuilder --> PatientResponse : build()
+    PatientMapper ..> PatientEntity : lee
+    CatalogSelectionService --> DoseSelectionBuilder : construye
+    DoseSelectionBuilder --> DoseSelection : build()
+    CatalogSelectionService ..|> VaccineCatalogPolicy : implementa
+    EffectiveCatalogService ..> IdentityService : resuelve actor
+    EffectiveCatalogService ..> DataScope : scope institucional
+
+    %% ================= PROTOTYPE =================
+    CatalogOptionPrototype <|.. VaccineOptionTemplateEntity : copy()
+    VaccineOptionTemplateEntity ..> InstitutionVaccineOptionEntity : clona hacia
+    InstitutionVaccineService --> CatalogOptionPrototype : usa para clonar
+    InstitutionVaccineService ..> InstitutionVaccineOptionEntity : persiste copia
+
+    %% ================= ABSTRACT FACTORY =================
+    CatalogOptionFactory <|.. GlobalCatalogOptionFactory
+    CatalogOptionFactory <|.. InstitutionalCatalogOptionFactory
+    GlobalCatalogOptionFactory --> CatalogOptionProduct : crea familia global
+    InstitutionalCatalogOptionFactory --> CatalogOptionProduct : crea familia institucional
+    CatalogOptionProduct <|.. DoseOption
+    CatalogOptionProduct <|.. PneumococcalTypeOption
+    CatalogOptionProduct <|.. LaboratoryOption
+    CatalogOptionProduct <|.. SyringeOption
+    CatalogOptionProduct <|.. DropperOption
+    CatalogOptionProduct <|.. ObservationOption
+    CatalogSelectionService ..> CatalogOptionFactory : valida por fieldType
+    EffectiveCatalogService ..> CatalogOptionFactory : clasifica por fieldType
+
+    note for SpringIoC "SINGLETON: ya provisto por Spring; los @Service/@Component son singleton por defecto. No requiere codigo nuevo."
+    note for SyncCommandHandler "FACTORY METHOD: sustituye los switch de SyncPushService.dispatch y permissionFor. Alta prioridad."
+    note for PatientResponseBuilder "BUILDER: reemplaza los constructores posicionales (28 args y sub-DTOs de hasta 15 campos) en PatientResponse."
+    note for DoseSelectionBuilder "BUILDER: reemplaza el record de 17 componentes de DoseSelection."
+    note for CatalogOptionPrototype "PROTOTYPE: elimina la copia campo a campo duplicada en enable() y doClone()."
+    note for CatalogOptionFactory "ABSTRACT FACTORY: familia de opciones por fieldType (dose, pneumococcalType, laboratory, syringe, dropper, observation)."
