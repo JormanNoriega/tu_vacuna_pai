@@ -6,7 +6,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "vaccine_option_templates", schema = "app")
-public class VaccineOptionTemplateEntity implements CatalogOption {
+public class VaccineOptionTemplateEntity implements CatalogOption, InstitutionOptionPrototype {
   @Id
   private UUID id;
 
@@ -73,6 +73,27 @@ public class VaccineOptionTemplateEntity implements CatalogOption {
     updatedBy = actor;
     createdAt = now;
     updatedAt = now;
+  }
+
+  /**
+   * Prototype: clona este template como opcion operativa de la institucion.
+   * Cambia solo id (nuevo), institucion y actor; el resto de atributos se copian
+   * y {@code sourceTemplateId} deja explicito el prototipo de origen.
+   */
+  @Override
+  public InstitutionVaccineOptionEntity copyToInstitution(UUID institutionId, UUID actorId) {
+    return new InstitutionVaccineOptionEntity(
+        UUID.randomUUID(),
+        institutionId,
+        vaccineId,
+        fieldType,
+        value,
+        displayName,
+        sortOrder,
+        false,
+        id,
+        actorId,
+        Instant.now());
   }
 
   public UUID getId() {

@@ -1,46 +1,87 @@
 <mxfile host="app.diagrams.net">
   <diagram name="Despues" id="builder-despues">
-    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+    <mxGraphModel dx="1882" dy="1045" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-
-        <mxCell id="svc" value="AttentionService" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
-          <mxGeometry x="40" y="200" width="330" height="80" as="geometry" />
+        <mxCell id="svc" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="AttentionService" vertex="1">
+          <mxGeometry height="80" width="260" x="110" y="200" as="geometry" />
         </mxCell>
-        <mxCell id="svc-m" value="+ registerDose(...): AppliedDoseResponse" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="svc"><mxGeometry height="54" width="330" y="26" as="geometry" /></mxCell>
-
-        <mxCell id="bld" value="AppliedDoseEntity.Builder&#10;(clase anidada estatica)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=40;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
-          <mxGeometry x="520" y="30" width="360" height="420" as="geometry" />
+        <mxCell id="svc-m" parent="svc" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ registerDose(...): AppliedDoseResponse" vertex="1">
+          <mxGeometry height="54" width="260" y="26" as="geometry" />
         </mxCell>
-        <mxCell id="bld-m1" value="+ id(id: UUID): Builder" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="bld"><mxGeometry height="26" width="360" y="40" as="geometry" /></mxCell>
-        <mxCell id="bld-m2" value="+ attentionId(attentionId: UUID): Builder" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="bld"><mxGeometry height="26" width="360" y="66" as="geometry" /></mxCell>
-        <mxCell id="bld-m3" value="+ vaccine(vaccineId, name, code, catalogVersion): Builder" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="bld"><mxGeometry height="26" width="360" y="92" as="geometry" /></mxCell>
-        <mxCell id="bld-m4" value="+ dose(doseOptionId, label, value): Builder" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="bld"><mxGeometry height="26" width="360" y="118" as="geometry" /></mxCell>
-        <mxCell id="bld-m5" value="+ pneumococcal(optionId, snapshot): Builder" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="bld"><mxGeometry height="26" width="360" y="144" as="geometry" /></mxCell>
-        <mxCell id="bld-m6" value="+ laboratory(id, snapshot): Builder" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="bld"><mxGeometry height="26" width="360" y="170" as="geometry" /></mxCell>
-        <mxCell id="bld-m7" value="+ syringe(id, snapshot): Builder" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="bld"><mxGeometry height="26" width="360" y="196" as="geometry" /></mxCell>
-        <mxCell id="bld-m8" value="+ dropper(id, snapshot): Builder" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="bld"><mxGeometry height="26" width="360" y="222" as="geometry" /></mxCell>
-        <mxCell id="bld-m9" value="+ observation(id, snapshot): Builder" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="bld"><mxGeometry height="26" width="360" y="248" as="geometry" /></mxCell>
-        <mxCell id="bld-m10" value="+ operational(syringeLot, diluent, vialCount, observation): Builder" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="bld"><mxGeometry height="40" width="360" y="274" as="geometry" /></mxCell>
-        <mxCell id="bld-sep" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" vertex="1" parent="bld"><mxGeometry height="8" width="360" y="314" as="geometry" /></mxCell>
-        <mxCell id="bld-build" value="+ build(): AppliedDoseEntity" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontStyle=1;" vertex="1" parent="bld"><mxGeometry height="38" width="360" y="322" as="geometry" /></mxCell>
-
-        <mxCell id="ent" value="AppliedDoseEntity" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
-          <mxGeometry x="980" y="140" width="360" height="200" as="geometry" />
+        <mxCell id="bld" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=40;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="AppliedDoseEntity.Builder&#xa;(clase anidada estatica)" vertex="1">
+          <mxGeometry height="360" width="360" x="540" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="ent-f1" value="- id / attentionId / vaccineId: UUID" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="ent"><mxGeometry height="26" width="360" y="26" as="geometry" /></mxCell>
-        <mxCell id="ent-f2" value="- snapshots / operationales ..." style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="ent"><mxGeometry height="26" width="360" y="52" as="geometry" /></mxCell>
-        <mxCell id="ent-f3" value="- status: Status = REGISTERED&#10;- createdAt: Instant" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="ent"><mxGeometry height="40" width="360" y="78" as="geometry" /></mxCell>
-        <mxCell id="ent-sep" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" vertex="1" parent="ent"><mxGeometry height="8" width="360" y="118" as="geometry" /></mxCell>
-        <mxCell id="ent-b" value="+ builder(): Builder&#10;(estatico)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontStyle=1;" vertex="1" parent="ent"><mxGeometry height="40" width="360" y="126" as="geometry" /></mxCell>
-        <mxCell id="ent-c" value="+ cancel(reason, actorId, now): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="ent"><mxGeometry height="34" width="360" y="166" as="geometry" /></mxCell>
-
-        <mxCell id="e1" value="builder()" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="svc" target="bld"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e2" value="build()" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="bld" target="ent"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e3" value="&lt;&lt;create&gt;&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="bld" target="ent"><mxGeometry relative="1" as="geometry" /></mxCell>
-
-        <mxCell id="note" value="BUILDER&#10;&#10;Producto: AppliedDoseEntity.&#10;Builder: AppliedDoseEntity.Builder (clase anidada estatica, pasos .vaccine/.dose/... y build()).&#10;build() centraliza valores por defecto (id, status REGISTERED, createdAt) y valida los campos requeridos.&#10;Sin Builder interface ni Director: hay un unico producto/representacion." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;size=18;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="40" y="470" width="700" height="150" as="geometry" /></mxCell>
+        <mxCell id="bld-m1" parent="bld" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ id(id: UUID): Builder" vertex="1">
+          <mxGeometry height="26" width="360" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="bld-m2" parent="bld" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ attentionId(attentionId: UUID): Builder" vertex="1">
+          <mxGeometry height="26" width="360" y="66" as="geometry" />
+        </mxCell>
+        <mxCell id="bld-m3" parent="bld" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ vaccine(vaccineId, name, code, catalogVersion): Builder" vertex="1">
+          <mxGeometry height="26" width="360" y="92" as="geometry" />
+        </mxCell>
+        <mxCell id="bld-m4" parent="bld" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ dose(doseOptionId, label, value): Builder" vertex="1">
+          <mxGeometry height="26" width="360" y="118" as="geometry" />
+        </mxCell>
+        <mxCell id="bld-m5" parent="bld" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ pneumococcal(optionId, snapshot): Builder" vertex="1">
+          <mxGeometry height="26" width="360" y="144" as="geometry" />
+        </mxCell>
+        <mxCell id="bld-m6" parent="bld" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ laboratory(id, snapshot): Builder" vertex="1">
+          <mxGeometry height="26" width="360" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="bld-m7" parent="bld" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ syringe(id, snapshot): Builder" vertex="1">
+          <mxGeometry height="26" width="360" y="196" as="geometry" />
+        </mxCell>
+        <mxCell id="bld-m8" parent="bld" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ dropper(id, snapshot): Builder" vertex="1">
+          <mxGeometry height="26" width="360" y="222" as="geometry" />
+        </mxCell>
+        <mxCell id="bld-m9" parent="bld" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ observation(id, snapshot): Builder" vertex="1">
+          <mxGeometry height="26" width="360" y="248" as="geometry" />
+        </mxCell>
+        <mxCell id="bld-m10" parent="bld" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ operational(syringeLot, diluent, vialCount, observation): Builder" vertex="1">
+          <mxGeometry height="40" width="360" y="274" as="geometry" />
+        </mxCell>
+        <mxCell id="bld-sep" parent="bld" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="360" y="314" as="geometry" />
+        </mxCell>
+        <mxCell id="bld-build" parent="bld" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontStyle=1;" value="+ build(): AppliedDoseEntity" vertex="1">
+          <mxGeometry height="38" width="360" y="322" as="geometry" />
+        </mxCell>
+        <mxCell id="ent" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="AppliedDoseEntity" vertex="1">
+          <mxGeometry height="200" width="270" x="1140" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="ent-f1" parent="ent" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="- id / attentionId / vaccineId: UUID" vertex="1">
+          <mxGeometry height="26" width="270" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="ent-f2" parent="ent" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="- snapshots / operationales ..." vertex="1">
+          <mxGeometry height="26" width="270" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="ent-f3" parent="ent" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="- status: Status = REGISTERED&#xa;- createdAt: Instant" vertex="1">
+          <mxGeometry height="40" width="270" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="ent-sep" parent="ent" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="270" y="118" as="geometry" />
+        </mxCell>
+        <mxCell id="ent-b" parent="ent" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontStyle=1;" value="+ builder(): Builder&#xa;(estatico)" vertex="1">
+          <mxGeometry height="40" width="270" y="126" as="geometry" />
+        </mxCell>
+        <mxCell id="ent-c" parent="ent" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ cancel(reason, actorId, now): void" vertex="1">
+          <mxGeometry height="34" width="270" y="166" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="svc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" target="bld" value="builder()">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="bld" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" target="ent" value="build()">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="bld" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;dashPattern=8 8;" target="ent" value="&lt;&lt;create&gt;&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="note" parent="1" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;size=18;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=17;" value="BUILDER&#xa;&#xa;Producto: AppliedDoseEntity.&#xa;Builder: AppliedDoseEntity.Builder (clase anidada estatica, pasos .vaccine/.dose/... y build()).&#xa;build() centraliza valores por defecto (id, status REGISTERED, createdAt) y valida los campos requeridos.&#xa;Sin Builder interface ni Director: hay un unico producto/representacion." vertex="1">
+          <mxGeometry height="200" width="750" x="110" y="420" as="geometry" />
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
