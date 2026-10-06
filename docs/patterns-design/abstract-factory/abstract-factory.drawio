@@ -1,0 +1,55 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Abstract Factory - como esta hoy" id="abstract-factory">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1650" pageHeight="620" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="provider" value="ReportFactoryProvider&#10;(selecciona la fabrica por ReportFormat)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="40" y="40" width="300" height="60" as="geometry" /></mxCell>
+
+        <mxCell id="client" value="RegistroDiarioExportService" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="40" y="270" width="300" height="90" as="geometry" /></mxCell>
+        <mxCell id="client-m" value="+ export(actor, from, to, format)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="client"><mxGeometry height="54" width="300" y="26" as="geometry" /></mxCell>
+
+        <mxCell id="iface" value="&#171;interface&#187;&#10;PaiReportFactory  (AbstractFactory)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=40;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="430" y="30" width="340" height="160" as="geometry" /></mxCell>
+        <mxCell id="if-m1" value="+ headerBuilder(): ReportHeaderBuilder" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="iface"><mxGeometry height="34" width="340" y="40" as="geometry" /></mxCell>
+        <mxCell id="if-m2" value="+ rowWriter(): ReportRowWriter" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="iface"><mxGeometry height="34" width="340" y="74" as="geometry" /></mxCell>
+        <mxCell id="if-m3" value="+ exporter(): ReportExporter" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow:hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="iface"><mxGeometry height="34" width="340" y="108" as="geometry" /></mxCell>
+
+        <mxCell id="xlsxFac" value="XlsxPaiReportFactory" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="430" y="250" width="340" height="45" as="geometry" /></mxCell>
+        <mxCell id="csvFac" value="CsvPaiReportFactory" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="430" y="315" width="340" height="45" as="geometry" /></mxCell>
+
+        <mxCell id="ap1" value="&#171;interface&#187;&#10;ReportHeaderBuilder" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="880" y="20" width="270" height="50" as="geometry" /></mxCell>
+        <mxCell id="ap2" value="&#171;interface&#187;&#10;ReportRowWriter" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="880" y="110" width="270" height="50" as="geometry" /></mxCell>
+        <mxCell id="ap3" value="&#171;interface&#187;&#10;ReportExporter" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="880" y="200" width="270" height="50" as="geometry" /></mxCell>
+
+        <mxCell id="xH" value="XlsxReportHeaderBuilder" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1230" y="20" width="300" height="40" as="geometry" /></mxCell>
+        <mxCell id="xR" value="XlsxReportRowWriter" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1230" y="70" width="300" height="40" as="geometry" /></mxCell>
+        <mxCell id="xE" value="XlsxReportExporter" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1230" y="120" width="300" height="40" as="geometry" /></mxCell>
+        <mxCell id="cH" value="CsvReportHeaderBuilder" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1230" y="200" width="300" height="40" as="geometry" /></mxCell>
+        <mxCell id="cR" value="CsvReportRowWriter" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1230" y="250" width="300" height="40" as="geometry" /></mxCell>
+        <mxCell id="cE" value="CsvReportExporter" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1230" y="300" width="300" height="40" as="geometry" /></mxCell>
+
+        <mxCell id="e-client-provider" value="create(format)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" edge="1" parent="1" source="client" target="provider"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-client-iface" value="usa" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="client" target="iface"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-provider-xlsx" value="new" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="provider" target="xlsxFac"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-provider-csv" value="new" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="provider" target="csvFac"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e-xlsx-impl" value="implementa" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="xlsxFac" target="iface"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-csv-impl" value="implementa" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="csvFac" target="iface"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e-create1" value="&#171;create&#187;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="iface" target="ap1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-create2" value="&#171;create&#187;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="iface" target="ap2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-create3" value="&#171;create&#187;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="iface" target="ap3"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e-xH" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="xH" target="ap1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-xR" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="xR" target="ap2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-xE" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="xE" target="ap3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-cH" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="cH" target="ap1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-cR" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="cR" target="ap2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-cE" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=0;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="cE" target="ap3"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="note" value="ABSTRACT FACTORY — COMO ESTA HOY&#10;&#10;AbstractFactory: PaiReportFactory. ConcreteFactory: XlsxPaiReportFactory, CsvPaiReportFactory.&#10;AbstractProducts: ReportHeaderBuilder, ReportRowWriter, ReportExporter.&#10;ConcreteProducts: Xlsx* / Csv* (comparten su sink: XlsxReportSurface / StringBuilder).&#10;Cliente: RegistroDiarioExportService usa solo la fabrica abstracta y los productos abstractos.&#10;Cada metodo de la AbstractFactory es un Factory Method (ver factory-method.md).&#10;Agregar un formato = una ConcreteFactory nueva, sin tocar al cliente (OCP)." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;size=18;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="40" y="410" width="1130" height="180" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

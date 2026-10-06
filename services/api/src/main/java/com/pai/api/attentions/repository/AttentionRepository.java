@@ -1,6 +1,7 @@
 package com.pai.api.attentions.repository;
 
 import com.pai.api.attentions.entity.AttentionEntity;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,6 +20,13 @@ public interface AttentionRepository extends JpaRepository<AttentionEntity, UUID
 
   List<AttentionEntity> findByInstitutionIdAndPatientIdOrderByAttentionDateDesc(
       UUID institutionId, UUID patientId);
+
+  /**
+   * Atenciones de la institucion dentro de un rango de fechas. Alimenta el
+   * reporte "Registro Diario" (orden cronologico).
+   */
+  List<AttentionEntity> findByInstitutionIdAndAttentionDateBetweenOrderByAttentionDateAsc(
+      UUID institutionId, Instant from, Instant to);
 
   /**
    * Ultimo consecutivo de la institucion. El servicio le suma uno para el

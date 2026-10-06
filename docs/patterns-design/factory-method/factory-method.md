@@ -8,8 +8,9 @@ las clases concretas.
 
 ## 2. Donde esta en nuestro codigo
 
-El backend ya tiene **dos** aplicaciones del patron (no las escribimos nosotros:
-las reconocimos al estudiar las clases).
+El backend ya tiene **tres** aplicaciones del patron: dos que **reconocimos**
+estudiando las clases (A y B) y una que **escribimos** como parte de la
+exportacion del Registro Diario PAI (C).
 
 ### A. Despacho de comandos de sincronizacion
 - Interfaz: `synchronization/service/command/SyncCommandHandler` (`commandType()`,
@@ -26,6 +27,18 @@ las reconocimos al estudiar las clases).
   (`E create(vaccineId, request, actorId)`).
 - `optionKind()` (`:179`) y `templateKind()` (`:201`) implementan esa fabrica:
   crean `VaccineOptionEntity` o `VaccineOptionTemplateEntity` segun el "kind".
+
+### C. Creacion de la familia de salida del reporte (XLSX)
+- Interfaz (creador abstracto): `reports/export/PaiReportFactory`
+  (`headerBuilder()`, `rowWriter()`, `exporter()`).
+- Fabrica concreta (creador): `reports/export/xlsx/XlsxPaiReportFactory` — cada
+  metodo crea un producto concreto.
+- Productos: `XlsxReportHeaderBuilder`, `XlsxReportRowWriter`,
+  `XlsxReportExporter`.
+- Cliente: `reports/service/RegistroDiarioExportService`.
+- **Relacion con Abstract Factory**: esta misma fabrica es la `ConcreteFactory`
+  de la familia XLSX. Cada metodo de la `AbstractFactory` es un **Factory
+  Method**. Ver [`../abstract-factory/abstract-factory.md`](../abstract-factory/abstract-factory.md).
 
 ## 3. Aclaracion importante
 
@@ -181,13 +194,68 @@ public OptionResponse createTemplate(UUID actor, UUID vaccine, OptionRequest r) 
 }
 ```
 
+### C. Fabrica concreta del reporte (XLSX)
+
+El creador abstracto (la `AbstractFactory` del reporte):
+
+```java
+// reports/export/PaiReportFactory.java
+public interface PaiReportFactory {
+
+  ReportHeaderBuilder headerBuilder();
+
+  ReportRowWriter rowWriter();
+
+  ReportExporter exporter();
+}
+```
+
+La fabrica concreta: cada metodo es un **Factory Method** que decide la clase
+concreta del producto (aqui, las versiones XLSX):
+
+```java
+// reports/export/xlsx/XlsxPaiReportFactory.java
+public final class XlsxPaiReportFactory implements PaiReportFactory {
+
+  private final XlsxReportSurface surface = new XlsxReportSurface(); // buffer POI compartido
+
+  @Override
+  public ReportHeaderBuilder headerBuilder() {
+    return new XlsxReportHeaderBuilder(surface);
+  }
+
+  @Override
+  public ReportRowWriter rowWriter() {
+    return new XlsxReportRowWriter(surface);
+  }
+
+  @Override
+  public ReportExporter exporter() {
+    return new XlsxReportExporter(surface);
+  }
+}
+```
+
+El cliente crea y usa los productos **a traves de la abstraccion** (no conoce
+`Xlsx*` ni `Csv*`):
+
+```java
+// reports/service/RegistroDiarioExportService.java
+PaiReportFactory factory = factoryProvider.create(format);
+factory.headerBuilder().writeHeader(columnTitles);
+factory.rowWriter().writeRow(cellsOf(row));
+byte[] content = factory.exporter().export();
+```
+
 ## 5. Como nos ayuda
 
-- **OCP**: agregar un comando o un tipo de opcion nuevo es **una clase nueva**;
-  no se toca el despachador (`SyncPushService`) ni el algoritmo del catalogo.
+- **OCP**: agregar un comando, un tipo de opcion o un **formato de reporte**
+  nuevo es **una clase nueva**; no se toca el despachador (`SyncPushService`),
+  ni el algoritmo del catalogo, ni el cliente del reporte.
 - **Desacopla** al llamador de las clases concretas: solo conoce la interfaz.
-- **Testeable**: cada handler se prueba por separado; el despacho se prueba con
-  `SyncPushServiceTest`.
+- **Testeable**: cada handler/fabrica se prueba por separado; el despacho se
+  prueba con `SyncPushServiceTest` y las familias con `XlsxReportExporterTest` /
+  `CsvReportExporterTest`.
 
 ## 6. Pros y contras
 
