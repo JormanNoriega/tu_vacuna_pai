@@ -5,13 +5,13 @@ Servicio REST backend de Tu Vacuna PAI. Monolito modular con arquitectura hexago
 ## Requisitos
 
 - **JDK 21+** (proyecto configurado para `java.version=21`). En esta máquina usar JDK 26:
-  `C:\Program Files\Java\jdk-26.0.1`
-- El `JAVA_HOME` global apunta a un JDK 11 (`C:\java`); por eso en cada comando se setea explícitamente.
+  `C:\Program Files\Java\jdk-26.0.2.1`
+- El `JAVA_HOME` global apunta a un JDK 11 (`C:\java`); `JAVA_HOME` y las variables de la BD
+  ya están configuradas a nivel de usuario, por lo que `.\mvnw.cmd` funciona en terminales nuevos.
 
 ## Compilar
 
 ```powershell
-$env:JAVA_HOME = "C:\Program Files\Java\jdk-26.0.1"
 & .\mvnw.cmd compile
 ```
 

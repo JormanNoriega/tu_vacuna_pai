@@ -152,15 +152,18 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
   @override
   void initState() {
     super.initState();
-    widget.controller.loadReferenceCatalogs();
-    widget.controller.loadInsurers();
-    // Colombia viene preseleccionada como pais de nacimiento (editable). Hoy el
-    // catalogo solo tiene Colombia; al sembrar mas paises el campo se amplia.
-    widget.controller.loadCountries().then((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_birthCountryId == null && widget.controller.countries.isNotEmpty) {
-        setState(() => _birthCountryId = widget.controller.countries.first.id);
-      }
+      widget.controller.loadReferenceCatalogs();
+      widget.controller.loadInsurers();
+      // Colombia viene preseleccionada como pais de nacimiento (editable). Hoy el
+      // catalogo solo tiene Colombia; al sembrar mas paises el campo se amplia.
+      widget.controller.loadCountries().then((_) {
+        if (!mounted) return;
+        if (_birthCountryId == null && widget.controller.countries.isNotEmpty) {
+          setState(() => _birthCountryId = widget.controller.countries.first.id);
+        }
+      });
     });
   }
 

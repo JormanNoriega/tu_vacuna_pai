@@ -51,17 +51,20 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
   @override
   void initState() {
     super.initState();
-    widget.controller.load(widget.patientId).then((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final profile = widget.controller.profile;
-      final departmentId = (profile != null && profile.addresses.isNotEmpty)
-          ? profile.addresses.first.departmentId
-          : null;
-      widget.controller.loadCountries();
-      widget.controller.loadDepartments();
-      if (departmentId != null) {
-        widget.controller.loadMunicipalities(departmentId);
-      }
+      widget.controller.load(widget.patientId).then((_) {
+        if (!mounted) return;
+        final profile = widget.controller.profile;
+        final departmentId = (profile != null && profile.addresses.isNotEmpty)
+            ? profile.addresses.first.departmentId
+            : null;
+        widget.controller.loadCountries();
+        widget.controller.loadDepartments();
+        if (departmentId != null) {
+          widget.controller.loadMunicipalities(departmentId);
+        }
+      });
     });
   }
 
