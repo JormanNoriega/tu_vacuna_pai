@@ -136,6 +136,7 @@ public class AttentionService {
               request.paiwebRegistered(),
               Strings.blankToNull(request.paiwebNotRegisteredReason()),
               now);
+          attention.setLocation(request.latitude(), request.longitude());
           attentions.save(attention);
           return new IdempotencyCoordinator.WriteResult<>(attention.getId(), response(attention));
         });

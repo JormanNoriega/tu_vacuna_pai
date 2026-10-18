@@ -218,6 +218,8 @@ class AttentionsLocal extends Table {
   IntColumn get completedAt => integer().nullable()();
   TextColumn get observations => text().nullable()();
   TextColumn get cancelReason => text().nullable()();
+  RealColumn get latitude => real().nullable()();
+  RealColumn get longitude => real().nullable()();
   IntColumn get version => integer()();
 
   TextColumn get syncState => text()();
@@ -347,7 +349,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -385,6 +387,11 @@ class AppDatabase extends _$AppDatabase {
       if (from < 6) {
         // V6: etiqueta legible del comprobante en la bandeja de pendientes.
         await m.addColumn(syncOutbox, syncOutbox.summary);
+      }
+      if (from < 7) {
+        // V7: coordenadas geograficas opcionales de la atencion (latitud y longitud).
+        await m.addColumn(attentionsLocal, attentionsLocal.latitude);
+        await m.addColumn(attentionsLocal, attentionsLocal.longitude);
       }
     },
   );

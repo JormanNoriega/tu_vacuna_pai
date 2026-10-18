@@ -1504,7 +1504,7 @@ class _HistoriesDialogState extends State<_HistoriesDialog> {
       firstDate: DateTime(1900),
       lastDate: now,
     );
-    if (picked == null) return;
+    if (!mounted || picked == null) return;
     setState(() {
       _edits[index].diagnosedAt = picked;
       _edits[index].dateText.text = PatientDetailPage._formatDate(picked);

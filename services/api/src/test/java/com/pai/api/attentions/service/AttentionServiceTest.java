@@ -166,12 +166,14 @@ class AttentionServiceTest {
     AttentionResponse response = service.create(
         ACTOR_ID,
         OPERATION_ID,
-        new CreateAttentionRequest(patientId, null, "Control", null, null, null));
+        new CreateAttentionRequest(patientId, null, "Control", null, null, null, 4.60971, -74.08175));
 
     assertThat(response.status()).isEqualTo("DRAFT");
     assertThat(response.consecutive()).isEqualTo(5L);
     assertThat(response.institutionId()).isEqualTo(INSTITUTION_ID);
     assertThat(response.professionalId()).isEqualTo(ACTOR_ID);
+    assertThat(response.latitude()).isEqualTo(4.60971);
+    assertThat(response.longitude()).isEqualTo(-74.08175);
     verify(audit)
         .record(argThat(record -> record.actorId().equals(ACTOR_ID)
             && record.institutionId().equals(INSTITUTION_ID)

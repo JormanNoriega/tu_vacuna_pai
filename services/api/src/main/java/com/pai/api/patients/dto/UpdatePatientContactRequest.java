@@ -12,7 +12,7 @@ import java.util.UUID;
  * endpoint de identidad, que exige justificacion.
  */
 public record UpdatePatientContactRequest(
-    @Valid List<ContactDto> contacts, @Valid List<AddressDto> addresses) {
+    List<@Valid ContactDto> contacts, List<@Valid AddressDto> addresses) {
 
   public record ContactDto(
       @NotBlank(message = "El tipo de contacto es obligatorio.")

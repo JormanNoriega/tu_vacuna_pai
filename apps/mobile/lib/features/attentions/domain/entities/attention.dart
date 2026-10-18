@@ -63,6 +63,8 @@ class Attention {
     this.attentionDate,
     this.consecutive,
     this.observations,
+    this.latitude,
+    this.longitude,
     this.completeScheme = false,
     this.paiwebRegistered = false,
     this.paiwebNotRegisteredReason,
@@ -77,6 +79,8 @@ class Attention {
   final DateTime? attentionDate;
   final int? consecutive;
   final String? observations;
+  final double? latitude;
+  final double? longitude;
   final bool completeScheme;
   final bool paiwebRegistered;
   final String? paiwebNotRegisteredReason;
@@ -105,6 +109,8 @@ class Attention {
         : DateTime.tryParse(json['attentionDate'] as String),
     consecutive: (json['consecutive'] as num?)?.toInt(),
     observations: json['observations'] as String?,
+    latitude: (json['latitude'] as num?)?.toDouble(),
+    longitude: (json['longitude'] as num?)?.toDouble(),
     completeScheme: json['completeScheme'] as bool? ?? false,
     paiwebRegistered: json['paiwebRegistered'] as bool? ?? false,
     paiwebNotRegisteredReason: json['paiwebNotRegisteredReason'] as String?,

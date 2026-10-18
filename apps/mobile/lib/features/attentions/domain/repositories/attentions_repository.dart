@@ -9,6 +9,8 @@ abstract interface class AttentionsRepository {
     required String patientId,
     String? observations,
     String? attentionDate,
+    double? latitude,
+    double? longitude,
     bool? completeScheme,
     bool? paiwebRegistered,
     String? paiwebNotRegisteredReason,

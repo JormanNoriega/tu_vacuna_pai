@@ -31,6 +31,8 @@ public class AttentionMapper {
         attention.isCompleteScheme(),
         attention.isPaiwebRegistered(),
         attention.getPaiwebNotRegisteredReason(),
+        attention.getLatitude(),
+        attention.getLongitude(),
         attention.getVersion(),
         attention.getCreatedAt(),
         attention.getUpdatedAt(),

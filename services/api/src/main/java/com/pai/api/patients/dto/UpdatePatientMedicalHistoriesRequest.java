@@ -8,7 +8,7 @@ import java.util.List;
 
 /** Reemplaza los antecedentes medicos del paciente. */
 public record UpdatePatientMedicalHistoriesRequest(
-    @Valid List<MedicalHistoryDto> medicalHistories) {
+    List<@Valid MedicalHistoryDto> medicalHistories) {
 
   public record MedicalHistoryDto(
       @NotBlank(message = "El antecedente es obligatorio.")
