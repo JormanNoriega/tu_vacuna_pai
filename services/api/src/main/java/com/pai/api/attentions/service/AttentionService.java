@@ -121,7 +121,7 @@ public class AttentionService {
           Instant attentionDate = request.attentionDate() != null ? request.attentionDate() : now;
           long consecutive = attentions.maxConsecutive(institutionId) + 1;
 
-          AttentionEntity attention = attentions.save(new AttentionEntity(
+          AttentionEntity attention = new AttentionEntity(
               attentionId != null ? attentionId : UUID.randomUUID(),
               request.patientId(),
               actor.getId(),
@@ -129,14 +129,15 @@ public class AttentionService {
               attentionDate,
               consecutive,
               coordinator.parseOperationId(operationId),
-              now));
+              now);
           attention.updateDetails(attentionDate, Strings.blankToNull(request.observations()), now);
           attention.applyRegistrationDetails(
               request.completeScheme(),
               request.paiwebRegistered(),
               Strings.blankToNull(request.paiwebNotRegisteredReason()),
               now);
-          attentions.save(attention);
+          attention.setLocation(request.latitude(), request.longitude());
+          attention = attentions.save(attention);
           return new IdempotencyCoordinator.WriteResult<>(attention.getId(), response(attention));
         });
   }
@@ -188,8 +189,8 @@ public class AttentionService {
               request.paiwebRegistered(),
               Strings.blankToNull(request.paiwebNotRegisteredReason()),
               now);
-          attentions.save(attention);
-          return response(attention);
+          AttentionEntity saved = attentions.saveAndFlush(attention);
+          return response(saved);
         });
   }
 
@@ -396,7 +397,7 @@ public class AttentionService {
     if (found.isEmpty()) {
       return Map.of();
     }
-    List<UUID> attentionIds = found.stream().map(AttentionEntity::getId).toList();
+    List<UUID> attentionIds = found.stream().map(attention -> attention.getId()).toList();
     Map<UUID, List<AppliedDoseResponse>> grouped = new LinkedHashMap<>();
     for (AppliedDoseEntity dose : doses.findByAttentionIdInOrderByCreatedAtAsc(attentionIds)) {
       grouped

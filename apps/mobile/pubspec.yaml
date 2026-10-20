@@ -48,6 +48,7 @@ dependencies:
   drift: ^2.34.3
   drift_flutter: ^0.3.1
   connectivity_plus: ^7.0.0
+  geolocator: ^13.0.2
 
 dev_dependencies:
   flutter_test:

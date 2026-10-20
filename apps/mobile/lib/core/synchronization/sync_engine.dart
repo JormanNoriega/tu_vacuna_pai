@@ -309,6 +309,8 @@ class SyncEngine {
           ),
         );
       case SyncCommandType.createAttention:
+        final lat = (payload['latitude'] as num?)?.toDouble();
+        final lng = (payload['longitude'] as num?)?.toDouble();
         await _db.upsertAttentionLocal(
           AttentionsLocalCompanion.insert(
             id: operation.aggregateId,
@@ -317,6 +319,8 @@ class SyncEngine {
             status: 'DRAFT',
             attentionDate: Value(_epoch(payload['attentionDate'])),
             observations: Value(_nullable(payload['observations'])),
+            latitude: Value(lat),
+            longitude: Value(lng),
             version: 0,
             syncState: SyncAggregateState.synced.value,
             updatedAt: _epochNow(),

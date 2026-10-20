@@ -329,7 +329,9 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: subtitle == null
+              ? CrossAxisAlignment.center
+              : CrossAxisAlignment.start,
           children: [
             Expanded(
               child: SectionHeading(
@@ -340,13 +342,22 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
             ),
             if (onEdit != null)
               TextButton.icon(
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  minimumSize: Size.zero,
+                ),
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_outlined, size: 16),
                 label: const Text('Editar'),
               ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         child,
       ],
     ),
@@ -1507,7 +1518,7 @@ class _HistoriesDialogState extends State<_HistoriesDialog> {
       firstDate: DateTime(1900),
       lastDate: now,
     );
-    if (picked == null) return;
+    if (!mounted || picked == null) return;
     setState(() {
       _edits[index].diagnosedAt = picked;
       _edits[index].dateText.text = PatientDetailPage._formatDate(picked);

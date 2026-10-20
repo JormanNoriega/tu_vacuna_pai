@@ -2,7 +2,6 @@ package com.pai.api.catalog.service;
 
 import com.pai.api.catalog.CatalogFieldType;
 import com.pai.api.catalog.dto.EffectiveCatalogResponse;
-import com.pai.api.catalog.entity.InstitutionVaccineEntity;
 import com.pai.api.catalog.entity.InstitutionVaccineOptionEntity;
 import com.pai.api.catalog.entity.VaccineEntity;
 import com.pai.api.catalog.entity.VaccineOptionEntity;
@@ -68,8 +67,8 @@ public class EffectiveCatalogService {
 
     // Relaciones habilitadas de la institucion (1 query).
     List<UUID> enabledVaccineIds = institutionVaccines.findByInstitutionId(institutionId).stream()
-        .filter(InstitutionVaccineEntity::isEnabled)
-        .map(InstitutionVaccineEntity::getVaccineId)
+        .filter(iv -> iv.isEnabled())
+        .map(iv -> iv.getVaccineId())
         .distinct()
         .toList();
     if (enabledVaccineIds.isEmpty()) {
@@ -78,8 +77,8 @@ public class EffectiveCatalogService {
 
     // Vacunas activas en bloque (1 query): evita el N+1 de findById por relacion.
     Map<UUID, VaccineEntity> vaccinesById = vaccines.findAllById(enabledVaccineIds).stream()
-        .filter(VaccineEntity::isActive)
-        .collect(Collectors.toMap(VaccineEntity::getId, vaccine -> vaccine));
+        .filter(v -> v.isActive())
+        .collect(Collectors.toMap(v -> v.getId(), vaccine -> vaccine));
     if (vaccinesById.isEmpty()) {
       return new EffectiveCatalogResponse(List.of());
     }

@@ -46,7 +46,7 @@ public class RegistroDiarioQueryService implements RegistroDiarioQuery {
 
     Map<UUID, AttentionEntity> attentionById =
         attentionList.stream()
-            .collect(Collectors.toMap(AttentionEntity::getId, attention -> attention));
+            .collect(Collectors.toMap(attention -> attention.getId(), attention -> attention));
 
     List<AppliedDoseEntity> doseList =
         doses.findByAttentionIdInOrderByCreatedAtAsc(new ArrayList<>(attentionById.keySet()));

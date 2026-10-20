@@ -3,7 +3,6 @@ package com.pai.api.catalog.service;
 import com.pai.api.attentions.exception.InvalidCatalogSelectionException;
 import com.pai.api.attentions.service.VaccineCatalogPolicy;
 import com.pai.api.catalog.CatalogFieldType;
-import com.pai.api.catalog.entity.InstitutionVaccineEntity;
 import com.pai.api.catalog.entity.InstitutionVaccineOptionEntity;
 import com.pai.api.catalog.entity.VaccineEntity;
 import com.pai.api.catalog.entity.VaccineOptionEntity;
@@ -104,7 +103,7 @@ public class CatalogSelectionService implements VaccineCatalogPolicy {
     }
     boolean enabled = institutionVaccines
         .findByInstitutionIdAndVaccineId(institutionId, vaccineId)
-        .filter(InstitutionVaccineEntity::isEnabled)
+        .filter(iv -> iv.isEnabled())
         .isPresent();
     if (!enabled) {
       throw new InvalidCatalogSelectionException("La vacuna no esta habilitada en tu institucion.");

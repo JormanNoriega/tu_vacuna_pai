@@ -381,7 +381,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
       lastDate: now,
       helpText: 'Fecha de nacimiento',
     );
-    if (picked == null) return;
+    if (!mounted || picked == null) return;
     setState(() {
       _birth = picked;
       _birthDate.text = _format(picked);
@@ -400,7 +400,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
       firstDate: DateTime(1900),
       lastDate: now,
     );
-    if (picked == null) return;
+    if (!mounted || picked == null) return;
     setState(() {
       onPicked(picked);
       target.text = _format(picked);
@@ -1678,7 +1678,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
       firstDate: DateTime(1900),
       lastDate: now,
     );
-    if (picked == null) return;
+    if (!mounted || picked == null) return;
     setState(() {
       _histories[index].diagnosedAt = picked;
       _histories[index].dateText.text = _format(picked);
