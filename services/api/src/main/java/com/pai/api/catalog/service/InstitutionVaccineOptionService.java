@@ -201,7 +201,7 @@ public class InstitutionVaccineOptionService {
         .findByInstitutionIdAndVaccineIdAndActiveTrueOrderBySortOrderAscDisplayNameAsc(
             institutionId, vaccineId)
         .stream()
-        .map(InstitutionVaccineOptionEntity::getValueNormalized)
+        .map(option -> option.getValueNormalized())
         .toList());
   }
 

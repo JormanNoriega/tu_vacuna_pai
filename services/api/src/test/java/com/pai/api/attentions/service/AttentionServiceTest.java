@@ -26,6 +26,7 @@ import com.pai.api.attentions.service.VaccineCatalogPolicy.DoseSelection;
 import com.pai.api.audit.AuditAction;
 import com.pai.api.audit.AuditResourceType;
 import com.pai.api.audit.service.AuditService;
+import com.pai.api.catalog.exception.OptimisticCatalogException;
 import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.DataScope;
@@ -185,6 +186,43 @@ class AttentionServiceTest {
   }
 
   @Test
+  void update_savesAndAuditsWhenVersionMatches() {
+    AttentionEntity draft = attention(AttentionEntity.Status.DRAFT);
+    when(identity.resolve(ACTOR_ID)).thenReturn(actor());
+    when(attentions.findByIdAndInstitutionId(draft.getId(), INSTITUTION_ID))
+        .thenReturn(Optional.of(draft));
+    when(attentions.saveAndFlush(any(AttentionEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(doses.findByAttentionIdOrderByCreatedAtAsc(draft.getId())).thenReturn(List.of());
+
+    AttentionResponse response = service.update(
+        ACTOR_ID,
+        draft.getId(),
+        new UpdateAttentionRequest(null, "cambio", true, true, null, draft.getVersion()));
+
+    assertThat(response.completeScheme()).isTrue();
+    assertThat(response.paiwebRegistered()).isTrue();
+    verify(attentions).saveAndFlush(draft);
+    verify(audit).record(argThat(record -> record.action() == AuditAction.ATTENTION_UPDATED));
+  }
+
+  @Test
+  void update_rejectsVersionMismatch() {
+    AttentionEntity draft = attention(AttentionEntity.Status.DRAFT);
+    when(identity.resolve(ACTOR_ID)).thenReturn(actor());
+    when(attentions.findByIdAndInstitutionId(draft.getId(), INSTITUTION_ID))
+        .thenReturn(Optional.of(draft));
+
+    assertThatThrownBy(() -> service.update(
+            ACTOR_ID,
+            draft.getId(),
+            new UpdateAttentionRequest(null, "cambio", null, null, null, draft.getVersion() + 1)))
+        .isInstanceOf(OptimisticCatalogException.class);
+    verify(attentions, never()).save(any());
+    verify(attentions, never()).saveAndFlush(any());
+  }
+
+  @Test
   void update_rejectsCompletedAttention() {
     AttentionEntity completed = attention(AttentionEntity.Status.COMPLETED);
     when(identity.resolve(ACTOR_ID)).thenReturn(actor());
@@ -197,6 +235,7 @@ class AttentionServiceTest {
             new UpdateAttentionRequest(null, "cambio", null, null, null, 0L)))
         .isInstanceOf(InvalidClinicalStateException.class);
     verify(attentions, never()).save(any());
+    verify(attentions, never()).saveAndFlush(any());
   }
 
   @Test

@@ -19,19 +19,19 @@ public final class CatalogRules {
   }
 
   public static void requireGlobalOptionType(String type) {
-    if (!is(type, CatalogFieldType::isGlobal)) {
+    if (!is(type, field -> field.isGlobal())) {
       throw new IllegalArgumentException("Tipo de opcion global invalido.");
     }
   }
 
   public static void requireTemplateType(String type) {
-    if (!is(type, CatalogFieldType::isOperational)) {
+    if (!is(type, field -> field.isOperational())) {
       throw new IllegalArgumentException("Tipo de template invalido.");
     }
   }
 
   public static void requireLocalOptionType(String type) {
-    if (!is(type, CatalogFieldType::isOperational)) {
+    if (!is(type, field -> field.isOperational())) {
       throw new IllegalArgumentException("Tipo de opcion local invalido.");
     }
   }

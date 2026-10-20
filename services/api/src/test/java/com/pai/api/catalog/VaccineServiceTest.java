@@ -20,6 +20,8 @@ import com.pai.api.catalog.repository.VaccineOptionRepository;
 import com.pai.api.catalog.repository.VaccineOptionTemplateRepository;
 import com.pai.api.catalog.repository.VaccineRepository;
 import com.pai.api.catalog.service.CatalogMapper;
+import com.pai.api.catalog.service.DefaultVaccineService;
+import com.pai.api.catalog.service.VaccineSecurityProxy;
 import com.pai.api.catalog.service.VaccineService;
 import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.service.AuthorizedUser;
@@ -48,7 +50,9 @@ class VaccineServiceTest {
     options = mock(VaccineOptionRepository.class);
     templates = mock(VaccineOptionTemplateRepository.class);
     guard = mock(PermissionGuard.class);
-    service = new VaccineService(vaccines, options, templates, guard, new CatalogMapper());
+    DefaultVaccineService realService =
+        new DefaultVaccineService(vaccines, options, templates, new CatalogMapper());
+    service = new VaccineSecurityProxy(realService, guard);
     when(guard.require(any(), any())).thenReturn(actor());
     when(vaccines.existsById(VACCINE_ID)).thenReturn(true);
   }

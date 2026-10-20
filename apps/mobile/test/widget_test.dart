@@ -146,6 +146,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // En el inicio, el administrador ve la accion frecuente de exportar datos.
+    expect(find.text('Exportar datos'), findsOneWidget);
+
     // Navegar a la pestaña Administracion muestra la gestion de usuarios.
     await tester.tap(
       find.descendant(
@@ -193,9 +196,10 @@ void main() {
     expect(find.byKey(const Key('dashboard-nav-bar')), findsOneWidget);
     expect(find.text('Nueva atencion'), findsWidgets);
     expect(find.text('Historial'), findsOneWidget);
-    // No ve administracion de usuarios ni inventario.
+    // No ve administracion de usuarios, inventario ni exportar datos.
     expect(find.text('Administracion'), findsNothing);
     expect(find.text('Inventario'), findsNothing);
+    expect(find.text('Exportar datos'), findsNothing);
   });
 
   testWidgets('ADMIN_INSTITUTION edita el estado y los roles de un vacunador', (
