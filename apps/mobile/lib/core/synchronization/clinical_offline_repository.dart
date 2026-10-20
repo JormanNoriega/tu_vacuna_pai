@@ -82,6 +82,8 @@ class ClinicalOfflineRepository {
     required String patientId,
     String? attentionDate,
     String? observations,
+    double? latitude,
+    double? longitude,
     String? summary,
     List<String> dependencies = const [],
   }) async {
@@ -94,6 +96,8 @@ class ClinicalOfflineRepository {
         patientId: patientId,
         attentionDate: attentionDate,
         observations: observations,
+        latitude: latitude,
+        longitude: longitude,
       ),
       summary: summary ?? 'Atencion',
       dependencies: dependencies,
@@ -108,6 +112,8 @@ class ClinicalOfflineRepository {
           status: 'DRAFT',
           attentionDate: Value(_epoch(attentionDate)),
           observations: Value(observations),
+          latitude: Value(latitude),
+          longitude: Value(longitude),
           version: 0,
           syncState: SyncAggregateState.pendingSync.value,
           updatedAt: _epochNow(),
@@ -246,6 +252,8 @@ class ClinicalOfflineRepository {
     required String patientId,
     String? attentionDate,
     String? observations,
+    double? latitude,
+    double? longitude,
     String? summary,
     List<String> dependencies = const [],
   }) async {
@@ -254,6 +262,8 @@ class ClinicalOfflineRepository {
       patientId: patientId,
       attentionDate: attentionDate,
       observations: observations,
+      latitude: latitude,
+      longitude: longitude,
       summary: summary,
       dependencies: dependencies,
     );
@@ -336,6 +346,8 @@ class ClinicalOfflineRepository {
     doses: doses,
     attentionDate: _fromEpoch(row.attentionDate),
     observations: row.observations,
+    latitude: row.latitude,
+    longitude: row.longitude,
   );
 
   AppliedDose _toDose(AppliedDosesLocalData row) => AppliedDose(

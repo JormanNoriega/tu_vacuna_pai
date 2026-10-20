@@ -3,7 +3,6 @@ package com.pai.api.catalog.service;
 import com.pai.api.catalog.dto.GeoDepartmentResponse;
 import com.pai.api.catalog.dto.GeoFullDepartmentResponse;
 import com.pai.api.catalog.dto.GeoMunicipalityResponse;
-import com.pai.api.catalog.entity.GeoMunicipalityEntity;
 import com.pai.api.catalog.repository.GeoCountryRepository;
 import com.pai.api.catalog.repository.GeoDepartmentRepository;
 import com.pai.api.catalog.repository.GeoMunicipalityRepository;
@@ -70,7 +69,7 @@ public class GeoCatalogService {
     Map<UUID, List<GeoMunicipalityResponse>> byDepartment =
         municipalities.findAllByOrderByNameAsc().stream()
             .collect(Collectors.groupingBy(
-                GeoMunicipalityEntity::getDepartmentId,
+                m -> m.getDepartmentId(),
                 Collectors.mapping(
                     municipality -> new GeoMunicipalityResponse(
                         municipality.getId(),

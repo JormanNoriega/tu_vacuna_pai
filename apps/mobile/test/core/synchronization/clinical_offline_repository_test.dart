@@ -132,4 +132,25 @@ void main() {
     expect(completed.doses.single.id, dose.id);
     expect(await outbox.pendingCount(), 4);
   });
+
+  test('persiste coordenadas geograficas en atencion local y payload del outbox', () async {
+    final attention = await clinical.createAttentionLocal(
+      patientId: 'pat-1',
+      latitude: 4.7110,
+      longitude: -74.0721,
+    );
+    expect(attention.latitude, 4.7110);
+    expect(attention.longitude, -74.0721);
+
+    final localRow = await db.attentionLocalById(attention.id);
+    expect(localRow!.latitude, 4.7110);
+    expect(localRow.longitude, -74.0721);
+
+    final outboxEntries = await outbox.pendingOperations();
+    final createAttentionOp = outboxEntries.firstWhere(
+      (entry) => entry.operation.aggregateId == attention.id,
+    );
+    expect(createAttentionOp.operation.payload['latitude'], 4.7110);
+    expect(createAttentionOp.operation.payload['longitude'], -74.0721);
+  });
 }

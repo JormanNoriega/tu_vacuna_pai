@@ -17,6 +17,8 @@ public record AttentionResponse(
     boolean completeScheme,
     boolean paiwebRegistered,
     String paiwebNotRegisteredReason,
+    Double latitude,
+    Double longitude,
     long version,
     Instant createdAt,
     Instant updatedAt,

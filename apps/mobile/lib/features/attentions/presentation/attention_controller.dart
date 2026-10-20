@@ -216,6 +216,8 @@ class AttentionController extends AsyncController {
     required String doseOptionId,
     String? observations,
     String? attentionDate,
+    double? latitude,
+    double? longitude,
     String? pneumococcalTypeOptionId,
     String? lotNumber,
     String? applicationDate,
@@ -244,6 +246,8 @@ class AttentionController extends AsyncController {
             patientId: patient.id,
             observations: observations,
             attentionDate: attentionDate,
+            latitude: latitude,
+            longitude: longitude,
             summary: 'Atencion - ${patient.fullName}',
           );
           _attention = attention;
@@ -280,6 +284,8 @@ class AttentionController extends AsyncController {
         patientId: patient.id,
         observations: observations,
         attentionDate: attentionDate,
+        latitude: latitude,
+        longitude: longitude,
         operationId: uuidV4(),
       );
       final attention = _attention!;

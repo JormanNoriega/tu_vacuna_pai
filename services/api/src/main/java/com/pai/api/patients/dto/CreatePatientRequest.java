@@ -66,13 +66,13 @@ public record CreatePatientRequest(
 
     @Valid DemographicDto demographics,
 
-    @Valid List<ContactDto> contacts,
+    List<@Valid ContactDto> contacts,
 
-    @Valid List<AddressDto> addresses,
+    List<@Valid AddressDto> addresses,
 
-    @Valid List<GuardianDto> guardians,
+    List<@Valid GuardianDto> guardians,
 
-    @Valid List<MedicalHistoryDto> medicalHistories,
+    List<@Valid MedicalHistoryDto> medicalHistories,
 
     @Valid AffiliationDto affiliation,
 

@@ -152,15 +152,18 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
   @override
   void initState() {
     super.initState();
-    widget.controller.loadReferenceCatalogs();
-    widget.controller.loadInsurers();
-    // Colombia viene preseleccionada como pais de nacimiento (editable). Hoy el
-    // catalogo solo tiene Colombia; al sembrar mas paises el campo se amplia.
-    widget.controller.loadCountries().then((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_birthCountryId == null && widget.controller.countries.isNotEmpty) {
-        setState(() => _birthCountryId = widget.controller.countries.first.id);
-      }
+      widget.controller.loadReferenceCatalogs();
+      widget.controller.loadInsurers();
+      // Colombia viene preseleccionada como pais de nacimiento (editable). Hoy el
+      // catalogo solo tiene Colombia; al sembrar mas paises el campo se amplia.
+      widget.controller.loadCountries().then((_) {
+        if (!mounted) return;
+        if (_birthCountryId == null && widget.controller.countries.isNotEmpty) {
+          setState(() => _birthCountryId = widget.controller.countries.first.id);
+        }
+      });
     });
   }
 
@@ -378,7 +381,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
       lastDate: now,
       helpText: 'Fecha de nacimiento',
     );
-    if (picked == null) return;
+    if (!mounted || picked == null) return;
     setState(() {
       _birth = picked;
       _birthDate.text = _format(picked);
@@ -397,7 +400,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
       firstDate: DateTime(1900),
       lastDate: now,
     );
-    if (picked == null) return;
+    if (!mounted || picked == null) return;
     setState(() {
       onPicked(picked);
       target.text = _format(picked);
@@ -1675,7 +1678,7 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
       firstDate: DateTime(1900),
       lastDate: now,
     );
-    if (picked == null) return;
+    if (!mounted || picked == null) return;
     setState(() {
       _histories[index].diagnosedAt = picked;
       _histories[index].dateText.text = _format(picked);

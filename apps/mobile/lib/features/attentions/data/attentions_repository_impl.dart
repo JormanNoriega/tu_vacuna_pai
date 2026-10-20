@@ -13,6 +13,8 @@ class AttentionsRepositoryImpl implements AttentionsRepository {
     required String patientId,
     String? observations,
     String? attentionDate,
+    double? latitude,
+    double? longitude,
     bool? completeScheme,
     bool? paiwebRegistered,
     String? paiwebNotRegisteredReason,
@@ -24,6 +26,8 @@ class AttentionsRepositoryImpl implements AttentionsRepository {
         'observations': observations,
       if (attentionDate != null && attentionDate.isNotEmpty)
         'attentionDate': attentionDate,
+      'latitude': ?latitude,
+      'longitude': ?longitude,
       'completeScheme': ?completeScheme,
       'paiwebRegistered': ?paiwebRegistered,
       if (paiwebNotRegisteredReason != null &&

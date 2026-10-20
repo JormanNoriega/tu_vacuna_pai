@@ -66,5 +66,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Se requiere acceso a la ubicacion para registrar las coordenadas geograficas donde se realiza la atencion de vacunacion.</string>
 </dict>
 </plist>

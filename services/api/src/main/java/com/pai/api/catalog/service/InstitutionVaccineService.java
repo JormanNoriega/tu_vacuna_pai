@@ -68,11 +68,11 @@ public class InstitutionVaccineService implements InstitutionCatalogSeeder {
     // Carga las vacunas en bloque (1 query) en lugar de un findById por relacion.
     Map<UUID, VaccineEntity> vaccinesById = vaccines
         .findAllById(relationList.stream()
-            .map(InstitutionVaccineEntity::getVaccineId)
+            .map(r -> r.getVaccineId())
             .distinct()
             .toList())
         .stream()
-        .collect(Collectors.toMap(VaccineEntity::getId, vaccine -> vaccine));
+        .collect(Collectors.toMap(v -> v.getId(), vaccine -> vaccine));
 
     return relationList.stream()
         .map(relation -> {
@@ -190,7 +190,7 @@ public class InstitutionVaccineService implements InstitutionCatalogSeeder {
     UUID institutionId = institution(actor, requestedInstitution);
 
     Set<UUID> existing = relations.findByInstitutionId(institutionId).stream()
-        .map(InstitutionVaccineEntity::getVaccineId)
+        .map(r -> r.getVaccineId())
         .collect(Collectors.toSet());
 
     return vaccines.findByActiveTrueOrderByNameAsc().stream()

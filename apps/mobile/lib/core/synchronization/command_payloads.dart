@@ -30,10 +30,14 @@ class CommandPayloads {
     required String patientId,
     String? attentionDate,
     String? observations,
+    double? latitude,
+    double? longitude,
   }) => {
     'patientId': patientId,
     if (_filled(attentionDate)) 'attentionDate': attentionDate,
     if (_filled(observations)) 'observations': observations,
+    'latitude': ?latitude,
+    'longitude': ?longitude,
   };
 
   static Map<String, dynamic> registerAppliedDose({

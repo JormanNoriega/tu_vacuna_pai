@@ -305,6 +305,7 @@ class _DashboardPageState extends State<DashboardPage> {
       return;
     }
     if (label == 'Exportar datos') {
+      if (!widget.user.hasPermission('USER_MANAGE')) return;
       AppSnackbar.info(context, 'Exportar datos: proximamente.');
     }
   }
@@ -1390,13 +1391,11 @@ class _ActionsGrid extends StatelessWidget {
         label: 'Exportar datos',
         description: 'Descargar reportes',
         primary: false,
-        requiredPermission: null,
+        requiredPermission: 'USER_MANAGE',
       ),
     ];
     final actions = allActions.where(
-      (action) =>
-          action.requiredPermission == null ||
-          permissions.contains(action.requiredPermission),
+      (action) => permissions.contains(action.requiredPermission),
     );
 
     if (actions.isEmpty) return const SizedBox.shrink();

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../app/widgets/clinical_components.dart';
 import '../../../../core/auth/offline_access.dart';
+import '../../../../core/device/location_service.dart';
 import '../../../../core/presentation/offline_messages.dart';
 import '../../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../../core/presentation/widgets/loading_button.dart';
@@ -63,6 +64,10 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
   bool _cancelling = false;
   final _doseFormKey = GlobalKey<FormState>();
 
+  final _locationService = const LocationService();
+  double? _latitude;
+  double? _longitude;
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +80,21 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
     // No arrastrar la busqueda de una visita anterior (el dashboard recrea la
     // pagina al cambiar de pestaña).
     widget.controller.clearSearch();
+    _fetchLocationInBackground();
+  }
+
+  /// Intenta resolver la ubicacion en segundo plano de manera no bloqueante.
+  Future<void> _fetchLocationInBackground() async {
+    try {
+      final loc = await _locationService.getCurrentLocation();
+      if (!mounted) return;
+      if (loc != null) {
+        setState(() {
+          _latitude = loc.latitude;
+          _longitude = loc.longitude;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -113,7 +133,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
       lastDate: now,
       helpText: 'Fecha de atencion',
     );
-    if (picked == null) return;
+    if (!mounted || picked == null) return;
     setState(() {
       _attentionDate = picked;
       _attentionDateText.text = _displayDate(picked);
@@ -175,6 +195,9 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
   /// Selecciona un paciente y carga el catalogo efectivo para aplicar vacuna.
   Future<void> _selectPatient(Patient patient) async {
     widget.controller.selectPatient(patient);
+    if (_latitude == null || _longitude == null) {
+      _fetchLocationInBackground();
+    }
     await widget.controller.loadEffectiveCatalog();
   }
 
@@ -207,6 +230,18 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
       }
     }
 
+    // Si la atencion se va a crear con esta primera dosis, nos aseguramos de
+    // tener la ubicacion capturada (con timeout no bloqueante de 4s max).
+    if (widget.controller.attention == null &&
+        (_latitude == null || _longitude == null)) {
+      final loc = await _locationService.getCurrentLocation();
+      if (!mounted) return;
+      if (loc != null) {
+        _latitude = loc.latitude;
+        _longitude = loc.longitude;
+      }
+    }
+
     setState(() => _submittingDose = true);
     final ok = await widget.controller.addDose(
       offline: widget.offline,
@@ -214,6 +249,8 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
       doseOptionId: dose.id,
       observations: _observations.text.trim(),
       attentionDate: dateIso,
+      latitude: _latitude,
+      longitude: _longitude,
       pneumococcalTypeOptionId: _pneumo?.id,
       lotNumber: _lotNumber.text.trim(),
       applicationDate: dateIso,
@@ -329,7 +366,10 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
       _observations.clear();
       _attentionDate = today;
       _attentionDateText.text = _displayDate(today);
+      _latitude = null;
+      _longitude = null;
     });
+    _fetchLocationInBackground();
   }
 
   List<EffectiveOption> _operational(String fieldType) =>

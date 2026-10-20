@@ -62,6 +62,12 @@ public class AttentionEntity {
   @Column(name = "paiweb_not_registered_reason")
   private String paiwebNotRegisteredReason;
 
+  @Column(name = "latitude")
+  private Double latitude;
+
+  @Column(name = "longitude")
+  private Double longitude;
+
   @Version
   private long version;
 
@@ -188,6 +194,19 @@ public class AttentionEntity {
 
   public Instant getCreatedAt() {
     return createdAt;
+  }
+
+  public Double getLatitude() {
+    return latitude;
+  }
+
+  public Double getLongitude() {
+    return longitude;
+  }
+
+  public void setLocation(Double latitude, Double longitude) {
+    this.latitude = latitude;
+    this.longitude = longitude;
   }
 
   public Instant getUpdatedAt() {

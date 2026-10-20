@@ -32,11 +32,25 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
-    String message = ex.getBindingResult().getFieldErrors().stream()
+    String message = ex.getBindingResult().getAllErrors().stream()
         .findFirst()
         .map(error -> error.getDefaultMessage())
         .orElse("Datos invalidos.");
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .body(new ErrorResponse("VALIDATION_ERROR", message));
+  }
+
+  @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+  public ResponseEntity<ErrorResponse> handleMessageNotReadable(
+      org.springframework.http.converter.HttpMessageNotReadableException ex) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(new ErrorResponse("MALFORMED_REQUEST", "Cuerpo de la peticion invalido o con formato incorrecto."));
+  }
+
+  @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ErrorResponse> handleTypeMismatch(
+      org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(new ErrorResponse("INVALID_PARAMETER", "Parametro '" + ex.getName() + "' invalido."));
   }
 }

@@ -114,7 +114,7 @@ class _CreateVaccinatorPageState extends State<CreateVaccinatorPage> {
       lastDate: now,
       helpText: 'Fecha de nacimiento',
     );
-    if (picked == null) return;
+    if (!mounted || picked == null) return;
     setState(() {
       _birthDate = picked;
       _birthDateController.text = _formatDate(picked);

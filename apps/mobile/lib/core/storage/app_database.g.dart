@@ -5928,6 +5928,28 @@ class $AttentionsLocalTable extends AttentionsLocal
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _latitudeMeta = const VerificationMeta(
+    'latitude',
+  );
+  @override
+  late final GeneratedColumn<double> latitude = GeneratedColumn<double>(
+    'latitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _longitudeMeta = const VerificationMeta(
+    'longitude',
+  );
+  @override
+  late final GeneratedColumn<double> longitude = GeneratedColumn<double>(
+    'longitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _versionMeta = const VerificationMeta(
     'version',
   );
@@ -5973,6 +5995,8 @@ class $AttentionsLocalTable extends AttentionsLocal
     completedAt,
     observations,
     cancelReason,
+    latitude,
+    longitude,
     version,
     syncState,
     updatedAt,
@@ -6072,6 +6096,18 @@ class $AttentionsLocalTable extends AttentionsLocal
         ),
       );
     }
+    if (data.containsKey('latitude')) {
+      context.handle(
+        _latitudeMeta,
+        latitude.isAcceptableOrUnknown(data['latitude']!, _latitudeMeta),
+      );
+    }
+    if (data.containsKey('longitude')) {
+      context.handle(
+        _longitudeMeta,
+        longitude.isAcceptableOrUnknown(data['longitude']!, _longitudeMeta),
+      );
+    }
     if (data.containsKey('version')) {
       context.handle(
         _versionMeta,
@@ -6145,6 +6181,14 @@ class $AttentionsLocalTable extends AttentionsLocal
         DriftSqlType.string,
         data['${effectivePrefix}cancel_reason'],
       ),
+      latitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}latitude'],
+      ),
+      longitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}longitude'],
+      ),
       version: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}version'],
@@ -6178,6 +6222,8 @@ class AttentionsLocalData extends DataClass
   final int? completedAt;
   final String? observations;
   final String? cancelReason;
+  final double? latitude;
+  final double? longitude;
   final int version;
   final String syncState;
   final int updatedAt;
@@ -6192,6 +6238,8 @@ class AttentionsLocalData extends DataClass
     this.completedAt,
     this.observations,
     this.cancelReason,
+    this.latitude,
+    this.longitude,
     required this.version,
     required this.syncState,
     required this.updatedAt,
@@ -6220,6 +6268,12 @@ class AttentionsLocalData extends DataClass
     }
     if (!nullToAbsent || cancelReason != null) {
       map['cancel_reason'] = Variable<String>(cancelReason);
+    }
+    if (!nullToAbsent || latitude != null) {
+      map['latitude'] = Variable<double>(latitude);
+    }
+    if (!nullToAbsent || longitude != null) {
+      map['longitude'] = Variable<double>(longitude);
     }
     map['version'] = Variable<int>(version);
     map['sync_state'] = Variable<String>(syncState);
@@ -6251,6 +6305,12 @@ class AttentionsLocalData extends DataClass
       cancelReason: cancelReason == null && nullToAbsent
           ? const Value.absent()
           : Value(cancelReason),
+      latitude: latitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(latitude),
+      longitude: longitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(longitude),
       version: Value(version),
       syncState: Value(syncState),
       updatedAt: Value(updatedAt),
@@ -6273,6 +6333,8 @@ class AttentionsLocalData extends DataClass
       completedAt: serializer.fromJson<int?>(json['completedAt']),
       observations: serializer.fromJson<String?>(json['observations']),
       cancelReason: serializer.fromJson<String?>(json['cancelReason']),
+      latitude: serializer.fromJson<double?>(json['latitude']),
+      longitude: serializer.fromJson<double?>(json['longitude']),
       version: serializer.fromJson<int>(json['version']),
       syncState: serializer.fromJson<String>(json['syncState']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
@@ -6292,6 +6354,8 @@ class AttentionsLocalData extends DataClass
       'completedAt': serializer.toJson<int?>(completedAt),
       'observations': serializer.toJson<String?>(observations),
       'cancelReason': serializer.toJson<String?>(cancelReason),
+      'latitude': serializer.toJson<double?>(latitude),
+      'longitude': serializer.toJson<double?>(longitude),
       'version': serializer.toJson<int>(version),
       'syncState': serializer.toJson<String>(syncState),
       'updatedAt': serializer.toJson<int>(updatedAt),
@@ -6309,6 +6373,8 @@ class AttentionsLocalData extends DataClass
     Value<int?> completedAt = const Value.absent(),
     Value<String?> observations = const Value.absent(),
     Value<String?> cancelReason = const Value.absent(),
+    Value<double?> latitude = const Value.absent(),
+    Value<double?> longitude = const Value.absent(),
     int? version,
     String? syncState,
     int? updatedAt,
@@ -6325,6 +6391,8 @@ class AttentionsLocalData extends DataClass
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     observations: observations.present ? observations.value : this.observations,
     cancelReason: cancelReason.present ? cancelReason.value : this.cancelReason,
+    latitude: latitude.present ? latitude.value : this.latitude,
+    longitude: longitude.present ? longitude.value : this.longitude,
     version: version ?? this.version,
     syncState: syncState ?? this.syncState,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -6353,6 +6421,8 @@ class AttentionsLocalData extends DataClass
       cancelReason: data.cancelReason.present
           ? data.cancelReason.value
           : this.cancelReason,
+      latitude: data.latitude.present ? data.latitude.value : this.latitude,
+      longitude: data.longitude.present ? data.longitude.value : this.longitude,
       version: data.version.present ? data.version.value : this.version,
       syncState: data.syncState.present ? data.syncState.value : this.syncState,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -6372,6 +6442,8 @@ class AttentionsLocalData extends DataClass
           ..write('completedAt: $completedAt, ')
           ..write('observations: $observations, ')
           ..write('cancelReason: $cancelReason, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
           ..write('version: $version, ')
           ..write('syncState: $syncState, ')
           ..write('updatedAt: $updatedAt')
@@ -6391,6 +6463,8 @@ class AttentionsLocalData extends DataClass
     completedAt,
     observations,
     cancelReason,
+    latitude,
+    longitude,
     version,
     syncState,
     updatedAt,
@@ -6409,6 +6483,8 @@ class AttentionsLocalData extends DataClass
           other.completedAt == this.completedAt &&
           other.observations == this.observations &&
           other.cancelReason == this.cancelReason &&
+          other.latitude == this.latitude &&
+          other.longitude == this.longitude &&
           other.version == this.version &&
           other.syncState == this.syncState &&
           other.updatedAt == this.updatedAt);
@@ -6425,6 +6501,8 @@ class AttentionsLocalCompanion extends UpdateCompanion<AttentionsLocalData> {
   final Value<int?> completedAt;
   final Value<String?> observations;
   final Value<String?> cancelReason;
+  final Value<double?> latitude;
+  final Value<double?> longitude;
   final Value<int> version;
   final Value<String> syncState;
   final Value<int> updatedAt;
@@ -6440,6 +6518,8 @@ class AttentionsLocalCompanion extends UpdateCompanion<AttentionsLocalData> {
     this.completedAt = const Value.absent(),
     this.observations = const Value.absent(),
     this.cancelReason = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
     this.version = const Value.absent(),
     this.syncState = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -6456,6 +6536,8 @@ class AttentionsLocalCompanion extends UpdateCompanion<AttentionsLocalData> {
     this.completedAt = const Value.absent(),
     this.observations = const Value.absent(),
     this.cancelReason = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
     required int version,
     required String syncState,
     required int updatedAt,
@@ -6478,6 +6560,8 @@ class AttentionsLocalCompanion extends UpdateCompanion<AttentionsLocalData> {
     Expression<int>? completedAt,
     Expression<String>? observations,
     Expression<String>? cancelReason,
+    Expression<double>? latitude,
+    Expression<double>? longitude,
     Expression<int>? version,
     Expression<String>? syncState,
     Expression<int>? updatedAt,
@@ -6494,6 +6578,8 @@ class AttentionsLocalCompanion extends UpdateCompanion<AttentionsLocalData> {
       if (completedAt != null) 'completed_at': completedAt,
       if (observations != null) 'observations': observations,
       if (cancelReason != null) 'cancel_reason': cancelReason,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
       if (version != null) 'version': version,
       if (syncState != null) 'sync_state': syncState,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -6512,6 +6598,8 @@ class AttentionsLocalCompanion extends UpdateCompanion<AttentionsLocalData> {
     Value<int?>? completedAt,
     Value<String?>? observations,
     Value<String?>? cancelReason,
+    Value<double?>? latitude,
+    Value<double?>? longitude,
     Value<int>? version,
     Value<String>? syncState,
     Value<int>? updatedAt,
@@ -6528,6 +6616,8 @@ class AttentionsLocalCompanion extends UpdateCompanion<AttentionsLocalData> {
       completedAt: completedAt ?? this.completedAt,
       observations: observations ?? this.observations,
       cancelReason: cancelReason ?? this.cancelReason,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       version: version ?? this.version,
       syncState: syncState ?? this.syncState,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -6568,6 +6658,12 @@ class AttentionsLocalCompanion extends UpdateCompanion<AttentionsLocalData> {
     if (cancelReason.present) {
       map['cancel_reason'] = Variable<String>(cancelReason.value);
     }
+    if (latitude.present) {
+      map['latitude'] = Variable<double>(latitude.value);
+    }
+    if (longitude.present) {
+      map['longitude'] = Variable<double>(longitude.value);
+    }
     if (version.present) {
       map['version'] = Variable<int>(version.value);
     }
@@ -6596,6 +6692,8 @@ class AttentionsLocalCompanion extends UpdateCompanion<AttentionsLocalData> {
           ..write('completedAt: $completedAt, ')
           ..write('observations: $observations, ')
           ..write('cancelReason: $cancelReason, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
           ..write('version: $version, ')
           ..write('syncState: $syncState, ')
           ..write('updatedAt: $updatedAt, ')
@@ -11283,6 +11381,8 @@ typedef $$AttentionsLocalTableCreateCompanionBuilder =
       Value<int?> completedAt,
       Value<String?> observations,
       Value<String?> cancelReason,
+      Value<double?> latitude,
+      Value<double?> longitude,
       required int version,
       required String syncState,
       required int updatedAt,
@@ -11300,6 +11400,8 @@ typedef $$AttentionsLocalTableUpdateCompanionBuilder =
       Value<int?> completedAt,
       Value<String?> observations,
       Value<String?> cancelReason,
+      Value<double?> latitude,
+      Value<double?> longitude,
       Value<int> version,
       Value<String> syncState,
       Value<int> updatedAt,
@@ -11362,6 +11464,16 @@ class $$AttentionsLocalTableFilterComposer
 
   ColumnFilters<String> get cancelReason => $composableBuilder(
     column: $table.cancelReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get longitude => $composableBuilder(
+    column: $table.longitude,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11440,6 +11552,16 @@ class $$AttentionsLocalTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get version => $composableBuilder(
     column: $table.version,
     builder: (column) => ColumnOrderings(column),
@@ -11507,6 +11629,12 @@ class $$AttentionsLocalTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<double> get latitude =>
+      $composableBuilder(column: $table.latitude, builder: (column) => column);
+
+  GeneratedColumn<double> get longitude =>
+      $composableBuilder(column: $table.longitude, builder: (column) => column);
+
   GeneratedColumn<int> get version =>
       $composableBuilder(column: $table.version, builder: (column) => column);
 
@@ -11564,6 +11692,8 @@ class $$AttentionsLocalTableTableManager
                 Value<int?> completedAt = const Value.absent(),
                 Value<String?> observations = const Value.absent(),
                 Value<String?> cancelReason = const Value.absent(),
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
                 Value<int> version = const Value.absent(),
                 Value<String> syncState = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
@@ -11579,6 +11709,8 @@ class $$AttentionsLocalTableTableManager
                 completedAt: completedAt,
                 observations: observations,
                 cancelReason: cancelReason,
+                latitude: latitude,
+                longitude: longitude,
                 version: version,
                 syncState: syncState,
                 updatedAt: updatedAt,
@@ -11596,6 +11728,8 @@ class $$AttentionsLocalTableTableManager
                 Value<int?> completedAt = const Value.absent(),
                 Value<String?> observations = const Value.absent(),
                 Value<String?> cancelReason = const Value.absent(),
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
                 required int version,
                 required String syncState,
                 required int updatedAt,
@@ -11611,6 +11745,8 @@ class $$AttentionsLocalTableTableManager
                 completedAt: completedAt,
                 observations: observations,
                 cancelReason: cancelReason,
+                latitude: latitude,
+                longitude: longitude,
                 version: version,
                 syncState: syncState,
                 updatedAt: updatedAt,

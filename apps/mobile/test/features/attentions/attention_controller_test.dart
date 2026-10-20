@@ -503,6 +503,8 @@ class FakeAttentionsRepository implements AttentionsRepository {
   String? lastObservations;
   String? lastApplicationDate;
   String? lastAttentionDate;
+  double? lastLatitude;
+  double? lastLongitude;
 
   @override
   Future<Attention> createAttention(
@@ -510,6 +512,8 @@ class FakeAttentionsRepository implements AttentionsRepository {
     required String patientId,
     String? observations,
     String? attentionDate,
+    double? latitude,
+    double? longitude,
     bool? completeScheme,
     bool? paiwebRegistered,
     String? paiwebNotRegisteredReason,
@@ -518,6 +522,8 @@ class FakeAttentionsRepository implements AttentionsRepository {
     createAttentionCalls++;
     lastObservations = observations;
     lastAttentionDate = attentionDate;
+    lastLatitude = latitude;
+    lastLongitude = longitude;
     return Attention(
       id: 'att-1',
       patientId: patientId,
@@ -525,6 +531,8 @@ class FakeAttentionsRepository implements AttentionsRepository {
       status: 'DRAFT',
       version: 0,
       doses: const [],
+      latitude: latitude,
+      longitude: longitude,
     );
   }
 

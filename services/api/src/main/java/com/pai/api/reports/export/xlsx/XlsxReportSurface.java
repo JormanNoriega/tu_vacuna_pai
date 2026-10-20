@@ -51,9 +51,9 @@ final class XlsxReportSurface {
   }
 
   byte[] toBytes() {
-    try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-      workbook.write(out);
-      workbook.close();
+    try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Workbook wb = this.workbook) {
+      wb.write(out);
       return out.toByteArray();
     } catch (IOException ex) {
       throw new IllegalStateException("No se pudo generar el archivo XLSX.", ex);

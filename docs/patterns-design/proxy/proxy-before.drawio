@@ -1,0 +1,118 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Antes" id="proxy-antes">
+    <mxGraphModel dx="1882" dy="1045" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- CatalogController (Client) -->
+        <mxCell id="ctl" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="CatalogController" vertex="1">
+          <mxGeometry height="190" width="330" x="50" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="ctl-f1" parent="ctl" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="- service: VaccineService (clase concreta)" vertex="1">
+          <mxGeometry height="26" width="330" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="ctl-sep" parent="ctl" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="330" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="ctl-m1" parent="ctl" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ list(a: Authentication): List&lt;VaccineResponse&gt;" vertex="1">
+          <mxGeometry height="26" width="330" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ctl-m2" parent="ctl" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ create(a: Authentication, r: VaccineRequest): ResponseEntity" vertex="1">
+          <mxGeometry height="26" width="330" y="86" as="geometry" />
+        </mxCell>
+        <mxCell id="ctl-m3" parent="ctl" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ update(a: Authentication, id: UUID, r: VaccineRequest, v: long): VaccineResponse" vertex="1">
+          <mxGeometry height="26" width="330" y="112" as="geometry" />
+        </mxCell>
+        <mxCell id="ctl-m4" parent="ctl" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ delete(a: Authentication, id: UUID, v: long): ResponseEntity" vertex="1">
+          <mxGeometry height="26" width="330" y="138" as="geometry" />
+        </mxCell>
+        <mxCell id="ctl-m5" parent="ctl" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ globalOptions(...), createOption(...), templates(...)" vertex="1">
+          <mxGeometry height="26" width="330" y="164" as="geometry" />
+        </mxCell>
+
+        <!-- VaccineService (Concrete Class, Tightly Coupled) -->
+        <mxCell id="svc" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="VaccineService (Clase Concreta Acoplada)" vertex="1">
+          <mxGeometry height="320" width="450" x="490" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-f1" parent="svc" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="- vaccines: VaccineRepository" vertex="1">
+          <mxGeometry height="24" width="450" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-f2" parent="svc" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="- options: VaccineOptionRepository" vertex="1">
+          <mxGeometry height="24" width="450" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-f3" parent="svc" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="- templates: VaccineOptionTemplateRepository" vertex="1">
+          <mxGeometry height="24" width="450" y="74" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-f4" parent="svc" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontStyle=1;fillColor=#f5d6d6;" value="- guard: PermissionGuard  // Mezcla de seguridad en el servicio" vertex="1">
+          <mxGeometry height="24" width="450" y="98" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-f5" parent="svc" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="- mapper: CatalogMapper" vertex="1">
+          <mxGeometry height="24" width="450" y="122" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-sep" parent="svc" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="450" y="146" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-m1" parent="svc" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ list(actor: UUID): List&lt;VaccineResponse&gt;  // guard.require('CATALOG_GLOBAL_READ')" vertex="1">
+          <mxGeometry height="26" width="450" y="154" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-m2" parent="svc" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ create(actor: UUID, r: VaccineRequest): VaccineResponse  // guard.require('CATALOG_GLOBAL_WRITE')" vertex="1">
+          <mxGeometry height="26" width="450" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-m3" parent="svc" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ update(actor: UUID, id: UUID, r: VaccineRequest, v: long): VaccineResponse" vertex="1">
+          <mxGeometry height="26" width="450" y="206" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-m4" parent="svc" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ delete(actor: UUID, id: UUID, v: long): void  // guard.require('CATALOG_GLOBAL_WRITE')" vertex="1">
+          <mxGeometry height="26" width="450" y="232" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-m5" parent="svc" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ globalOptions(actor: UUID, vaccine: UUID): List&lt;OptionResponse&gt;" vertex="1">
+          <mxGeometry height="26" width="450" y="258" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-m6" parent="svc" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ createOption(...), updateOption(...), deleteOption(...), templates(...)" vertex="1">
+          <mxGeometry height="36" width="450" y="284" as="geometry" />
+        </mxCell>
+
+        <!-- PermissionGuard -->
+        <mxCell id="grd" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="PermissionGuard" vertex="1">
+          <mxGeometry height="90" width="380" x="1050" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="grd-m1" parent="grd" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ require(actorId: UUID, permission: String): AuthorizedUser&#xa;  // Lanza PermissionDeniedException si no posee el permiso" vertex="1">
+          <mxGeometry height="60" width="380" y="26" as="geometry" />
+        </mxCell>
+
+        <!-- Repositorios -->
+        <mxCell id="repo" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="VaccineRepository (y repositorios de opciones)" vertex="1">
+          <mxGeometry height="130" width="380" x="1050" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="repo-m1" parent="repo" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ findByActiveTrueOrderByNameAsc(): List&lt;VaccineEntity&gt;" vertex="1">
+          <mxGeometry height="26" width="380" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="repo-m2" parent="repo" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ findById(id: UUID): Optional&lt;VaccineEntity&gt;" vertex="1">
+          <mxGeometry height="26" width="380" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="repo-m3" parent="repo" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ save(x: VaccineEntity): VaccineEntity" vertex="1">
+          <mxGeometry height="26" width="380" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="repo-m4" parent="repo" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ lockActive(vaccineId: UUID): List&lt;...&gt;" vertex="1">
+          <mxGeometry height="26" width="380" y="104" as="geometry" />
+        </mxCell>
+
+        <!-- Edges -->
+        <mxCell id="e1" edge="1" parent="1" source="ctl" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" target="svc" value="Inyeccion directa de clase concreta&#xa;(Sin interfaz - Viola DIP)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="svc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" target="grd" value="guard.require(actor, perm)&#xa;(Seguridad intrusiva en dominio - Viola SRP)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="svc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" target="repo" value="Consultas y guardado directo">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Note of Problem -->
+        <mxCell id="note" parent="1" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;size=18;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=14;" value="ESTADO ANTES (Sin Patron Proxy)&#xa;&#xa;1. Violacion de SRP (Single Responsibility Principle):&#xa;   VaccineService realiza dos tareas dispares: administra el catalogo de vacunas (logica de negocio y persistencia) y ejecuta la verificacion de autorizacion (invocando imperativamente guard.require(...) en cada metodo).&#xa;&#xa;2. Violacion de DIP (Dependency Inversion Principle):&#xa;   CatalogController esta fuertemente acoplado a la clase concreta VaccineService en lugar de depender de una interfaz abstracta.&#xa;&#xa;3. Dificultad en Pruebas Unitarias:&#xa;   Para probar la logica de negocio pura del catalogo es mandatorio simular y mockear forzosamente PermissionGuard y el objeto AuthorizedUser, mezclando la infraestructura de seguridad con las aserciones de catalogo." vertex="1">
+          <mxGeometry height="200" width="890" x="50" y="440" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
