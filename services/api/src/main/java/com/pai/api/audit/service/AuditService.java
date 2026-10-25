@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
  * <p>El payload se serializa con {@link JsonSerializer#writeOrEmpty(Object)}:
  * un fallo de serializacion no aborta la operacion de negocio.
  */
-@Service
+@Service("auditService")
 public class AuditService implements AuditRecorder {
 
   private final AuditEventRepository repository;
