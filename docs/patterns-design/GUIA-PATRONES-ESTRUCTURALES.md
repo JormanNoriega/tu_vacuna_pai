@@ -1,6 +1,6 @@
 # Guia de estudio — Patrones estructurales (GoF) en Tu Vacuna PAI
 
-Guia para **estudiar, exponer y compartir** los 3 patrones estructurales del GoF tal como se aplican en el backend (`services/api`, Spring Boot 3, Java 21). Resume y enlaza a los docs detallados de cada patron en `docs/patterns-design/`.
+Guia para **estudiar, exponer y compartir** los 4 patrones estructurales del GoF tal como se aplican en el backend (`services/api`, Spring Boot 3, Java 21). Resume y enlaza a los docs detallados de cada patron en `docs/patterns-design/`.
 
 ---
 
@@ -14,21 +14,23 @@ Guia para **estudiar, exponer y compartir** los 3 patrones estructurales del GoF
 
 ## 1. Que son los patrones estructurales
 
-Los **patrones estructurales** se ocupan de como se **componen y relacionan las clases y objetos** para formar estructuras mas grandes y flexibles, manteniendo los sistemas desacoplados y faciles de mantener:
+Los **patrones estructurales** se ocupan de como se **componen y relacionan las clases y objetos** para formar estructuras mas grandes y flexibles, manteniendo los sistemas desacoplados, optimizados y faciles de mantener:
 
 1. **Proxy (Protection Proxy)** — Controla el acceso a un objeto intermediando y validando permisos de seguridad antes de delegar en el objeto real.
 2. **Decorator (Decorador)** — Anade responsabilidades dinamicas (como sanitizacion y enmascaramiento de datos) envolviendo al objeto original sin modificar su codigo ni alterar su interfaz.
 3. **Adapter (Adaptador)** — Convierte la interfaz tecnica o protocolo de una libreria/servicio externo (como las Edge Functions de Supabase) a la interfaz de dominio que espera la aplicacion.
+4. **Flyweight (Peso Ligero)** — Comparte las partes comunes e inmutables del estado entre miles de objetos en memoria RAM (definiciones de vacunas) en lugar de duplicar la informacion en cada dosis.
 
 ---
 
-## 2. Tabla resumen (Control de Cambios PE-01 a PE-03)
+## 2. Tabla resumen (Control de Cambios PE-01 a PE-04)
 
 | ID | Patron | Ubicacion en el Codigo | Problema Previo | Mejora Obtenida |
 |---|---|---|---|---|
 | **PE-01** | **Proxy** | `catalog/service/VaccineSecurityProxy.java`<br>`catalog/service/VaccineService.java`<br>`catalog/service/DefaultVaccineService.java` | `VaccineService` mezclaba la logica de negocio con verificaciones imperativas de seguridad (`PermissionGuard`), forzando consultas a BD innecesarias y violando SRP. | Se intercepta el acceso a nivel de interfaz: si el actor no tiene permisos, se cortocircuita la ejecucion antes de tocar la base de datos o el servicio real. |
 | **PE-02** | **Decorator** | `audit/service/AuditRecorderDecorator.java`<br>`audit/service/MaskingAuditRecorderDecorator.java`<br>`audit/service/AuditService.java` | `AuditService` persistia eventos directamente en BD. Sanitizar contrasenas o tokens sensibles en el JSON exigia modificar y contaminar la persistencia (viola OCP y SRP). | Se desacopla la persistencia del preprocesamiento. `MaskingAuditRecorderDecorator` intercepta y enmascara campos sensibles (`password`, `token`) de forma transparente antes de persistir; extensible a nuevos decoradores. |
 | **PE-03** | **Adapter** | `identity/service/SupabaseAuthAdapter.java`<br>`identity/service/SupabaseAuthRestClient.java`<br>`identity/service/AuthUserProvisioningClient.java` | `SupabaseAuthUserClient` implementaba directamente el puerto de dominio mezclando el protocolo HTTP de bajo nivel de Supabase Edge Functions con la logica de negocio y excepciones del dominio. | Se separa el cliente HTTP de bajo nivel (`SupabaseAuthRestClient`, Adaptee) del adaptador de dominio (`SupabaseAuthAdapter`, Adapter). El adaptador traduce datos y excepciones HTTP a excepciones de dominio. |
+| **PE-04** | **Flyweight** | `catalog/service/VaccineFlyweight.java`<br>`catalog/service/SharedVaccineFlyweight.java`<br>`catalog/service/VaccineFlyweightFactory.java`<br>`attentions/dto/DoseExtrinsicContext.java` | Miles de dosis aplicadas (`AppliedDose`) duplicaban repetitivamente en memoria strings y metadatos clinicos inmutables de cada vacuna, saturando la RAM y el GC. | Se separa el estado intrinseco inmutable (`SharedVaccineFlyweight` en `catalog.service`) del contexto extrinseco clinico (`DoseExtrinsicContext` en `attentions.dto`). `VaccineFlyweightFactory` se integra con `VaccineEntity` y reutiliza la misma referencia en el heap con validacion de consistencia. |
 
 ---
 
@@ -91,7 +93,30 @@ Adaptar la interfaz de una clase o protocolo incompatible a la interfaz que espe
 
 ---
 
-## 6. Diagrama de Clases UML Consolidado (Mermaid)
+## 6. Flyweight (Peso Ligero)
+
+### 6.1 Que es
+Compartir eficientemente el estado comun entre multiples objetos de grano fino para reducir el uso de memoria RAM y aliviar la recoleccion de basura.
+
+### 6.2 Donde esta
+- **Flyweight:** `com.pai.api.catalog.service.VaccineFlyweight` (interface en `catalog.service`)
+- **ConcreteFlyweight:** `com.pai.api.catalog.service.SharedVaccineFlyweight` (inmutable, `final`, en `catalog.service`)
+- **FlyweightFactory:** `com.pai.api.catalog.service.VaccineFlyweightFactory` (`@Component`, thread-safe pool e integracion con `VaccineEntity`)
+- **Excepcion:** `com.pai.api.catalog.exception.InconsistentFlyweightException` (en `catalog.exception`)
+- **Extrinsic State:** `com.pai.api.attentions.dto.DoseExtrinsicContext` (`record` en `attentions.dto`)
+- **Context Holder:** `com.pai.api.attentions.dto.AppliedDoseItem` (en `attentions.dto`)
+- **Doc detallado:** `docs/patterns-design/flyweight/README.md`
+
+### 6.3 Como nos ayuda (Antes vs. Despues)
+- **Antes:** Al consultar miles de dosis aplicadas para reportes masivos o historiales de vacunacion, cada registro repetia copias identicas de strings pesados (nombres completos de biológicos, categorías, requisitos de jeringas y lotes).
+- **Despues:** `VaccineFlyweightFactory` aloja una unica instancia en memoria por cada tipo de vacuna (`computeIfAbsent`/`compute` con validacion de consistencia). Los datos particulares de la aplicacion (paciente, fecha, lote) se suministran como estado extrinseco, garantizando consumo de memoria $O(1)$ por tipo de vacuna.
+
+### 6.4 Guion oral (30 s)
+> *"Para optimizar el consumo de memoria RAM cuando procesamos miles de dosis en reportes o consultas masivas, implementamos el patron estructural Flyweight. Separamos el estado intrinseco e inmutable de la vacuna (codigo, nombre oficial y reglas de aplicacion) del estado extrinseco contextual de cada dosis (paciente, fecha y lote). La fabrica `VaccineFlyweightFactory` asegura que 10.000 dosis de Pentavalente compartan exactamente la misma referencia en el heap, reduciendo la huella de memoria y protegiendo el Garbage Collector."*
+
+---
+
+## 7. Diagrama de Clases UML Consolidado (Mermaid)
 
 ```mermaid
 classDiagram
@@ -139,7 +164,7 @@ classDiagram
     namespace Identity_Adapter {
         class AuthUserProvisioningClient {
             <<interface (Target)>>
-            +createAuthUser(token, opId, email, pass, name, profile) UUID
+            +createAuthUser(...) UUID
             +deleteAuthUser(token, userId) void
         }
         class SupabaseAuthAdapter {
@@ -150,8 +175,37 @@ classDiagram
         class SupabaseAuthRestClient {
             <<Adaptee>>
             -restClient: RestClient
-            -baseUrl: String
-            +postCreateAuthUser(token, payload) ResponseEntity
+            +postCreateAuthUser(...) ResponseEntity
+        }
+    }
+
+    namespace Catalog_Flyweight {
+        class VaccineFlyweight {
+            <<interface (Flyweight PE-04)>>
+            +getCode() String
+            +getName() String
+            +getCategory() String
+            +formatDoseSummary(ctx) String
+        }
+        class SharedVaccineFlyweight {
+            <<ConcreteFlyweight (Inmutable)>>
+            -final code: String
+            -final name: String
+            -final category: String
+            +formatDoseSummary(ctx) String
+        }
+        class VaccineFlyweightFactory {
+            <<FlyweightFactory>>
+            -pool: ConcurrentMap
+            +getFlyweight(...) VaccineFlyweight
+            +getPoolSize() int
+        }
+        class DoseExtrinsicContext {
+            <<record (Estado Extrinseco)>>
+            +doseId: UUID
+            +patientId: UUID
+            +lotNumber: String
+            +applicationDate: Instant
         }
     }
 
@@ -170,22 +224,25 @@ classDiagram
     %% Conexiones Adapter
     SupabaseAuthAdapter ..|> AuthUserProvisioningClient
     SupabaseAuthAdapter --> SupabaseAuthRestClient : adapta y delega
+
+    %% Conexiones Flyweight
+    SharedVaccineFlyweight ..|> VaccineFlyweight
+    VaccineFlyweightFactory o--> VaccineFlyweight : administra pool
+    VaccineFlyweight ..> DoseExtrinsicContext : usa en formatDoseSummary
 ```
 
 ---
 
-## 7. Verificacion con Maven
+## 8. Verificacion con Maven
 
 Para ejecutar todas las pruebas unitarias y las reglas de arquitectura de ArchUnit:
 
-```bash
+```powershell
 cd services/api
-./mvnw test
+.\mvnw.cmd test
 ```
 
-Resultado esperado:
-```
-[INFO] Results:
-[INFO] Tests run: 257, Failures: 0, Errors: 0, Skipped: 0
-[INFO] BUILD SUCCESS
-```
+Resultado verificado:
+* **262 pruebas ejecutadas** (257 anteriores + 5 de Flyweight).
+* **0 fallos, 0 errores, 0 omitidas**.
+* Todas las reglas de **ArchUnit (`ArchitectureTest`)** pasan al 100%.

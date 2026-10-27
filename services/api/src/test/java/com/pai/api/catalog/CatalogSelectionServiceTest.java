@@ -17,6 +17,7 @@ import com.pai.api.catalog.repository.InstitutionVaccineRepository;
 import com.pai.api.catalog.repository.VaccineOptionRepository;
 import com.pai.api.catalog.repository.VaccineRepository;
 import com.pai.api.catalog.service.CatalogSelectionService;
+import com.pai.api.catalog.service.VaccineFlyweightFactory;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,7 +43,8 @@ class CatalogSelectionServiceTest {
     institutionVaccines = mock(InstitutionVaccineRepository.class);
     institutionOptions = mock(InstitutionVaccineOptionRepository.class);
     service = new CatalogSelectionService(
-        vaccines, vaccineOptions, institutionVaccines, institutionOptions);
+        vaccines, vaccineOptions, institutionVaccines, institutionOptions,
+        new VaccineFlyweightFactory());
   }
 
   private VaccineEntity vaccine() {
@@ -116,8 +118,9 @@ class CatalogSelectionServiceTest {
     DoseSelection selection = service.resolve(request(dose, pneumo));
 
     assertThat(selection.vaccineId()).isEqualTo(VACCINE);
-    assertThat(selection.vaccineName()).isEqualTo("Influenza");
-    assertThat(selection.vaccineCode()).isEqualTo("INF");
+    assertThat(selection.vaccine().getName()).isEqualTo("Influenza");
+    assertThat(selection.vaccine().getCode()).isEqualTo("INF");
+    assertThat(selection.vaccine().getCategory()).isEqualTo("PAI");
     assertThat(selection.doseOptionId()).isEqualTo(dose);
     assertThat(selection.pneumococcalTypeOptionId()).isEqualTo(pneumo);
     assertThat(selection.laboratoryId()).isEqualTo(institutionOptionId("laboratory"));

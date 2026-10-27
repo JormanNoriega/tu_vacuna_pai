@@ -30,16 +30,19 @@ public class CatalogSelectionService implements VaccineCatalogPolicy {
   private final VaccineOptionRepository vaccineOptions;
   private final InstitutionVaccineRepository institutionVaccines;
   private final InstitutionVaccineOptionRepository institutionOptions;
+  private final VaccineFlyweightFactory flyweights;
 
   public CatalogSelectionService(
       VaccineRepository vaccines,
       VaccineOptionRepository vaccineOptions,
       InstitutionVaccineRepository institutionVaccines,
-      InstitutionVaccineOptionRepository institutionOptions) {
+      InstitutionVaccineOptionRepository institutionOptions,
+      VaccineFlyweightFactory flyweights) {
     this.vaccines = vaccines;
     this.vaccineOptions = vaccineOptions;
     this.institutionVaccines = institutionVaccines;
     this.institutionOptions = institutionOptions;
+    this.flyweights = flyweights;
   }
 
   @Override
@@ -76,8 +79,7 @@ public class CatalogSelectionService implements VaccineCatalogPolicy {
 
     return new DoseSelection(
         vaccine.getId(),
-        vaccine.getName(),
-        vaccine.getCode(),
+        flyweights.getFlyweight(vaccine),
         vaccine.getVersion(),
         doseOption.getId(),
         doseOption.getDisplayName(),

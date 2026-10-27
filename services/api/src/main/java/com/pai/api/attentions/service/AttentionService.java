@@ -17,6 +17,7 @@ import com.pai.api.attentions.repository.AttentionRepository;
 import com.pai.api.audit.AuditAction;
 import com.pai.api.audit.AuditResourceType;
 import com.pai.api.catalog.exception.OptimisticCatalogException;
+import com.pai.api.catalog.service.VaccineFlyweight;
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.DataScope;
 import com.pai.api.identity.service.IdentityService;
@@ -287,6 +288,8 @@ public class AttentionService {
                   request.selectedDropperId(),
                   request.selectedObservationId()));
 
+          VaccineFlyweight vaccine = selection.vaccine();
+
           AppliedDoseEntity dose =
               AppliedDoseEntity.builder()
                   .id(doseId)
@@ -295,8 +298,8 @@ public class AttentionService {
                   .lot(request.lotId(), Strings.blankToNull(request.lotNumber()))
                   .vaccine(
                       selection.vaccineId(),
-                      selection.vaccineName(),
-                      selection.vaccineCode(),
+                      vaccine.getName(),
+                      vaccine.getCode(),
                       selection.catalogVersion())
                   .dose(selection.doseOptionId(), selection.doseLabel(), selection.doseValue())
                   .pneumococcal(

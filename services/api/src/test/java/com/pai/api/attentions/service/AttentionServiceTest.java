@@ -27,6 +27,8 @@ import com.pai.api.audit.AuditAction;
 import com.pai.api.audit.AuditResourceType;
 import com.pai.api.audit.service.AuditService;
 import com.pai.api.catalog.exception.OptimisticCatalogException;
+import com.pai.api.catalog.service.VaccineFlyweight;
+import com.pai.api.catalog.service.VaccineFlyweightFactory;
 import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.DataScope;
@@ -133,10 +135,11 @@ class AttentionServiceTest {
   }
 
   private DoseSelection selection(UUID vaccineId, UUID doseOptionId) {
+    VaccineFlyweight vaccine = new VaccineFlyweightFactory()
+        .getFlyweight("INF", "Influenza", "PAI", false, false);
     return new DoseSelection(
         vaccineId,
-        "Influenza",
-        "INF",
+        vaccine,
         1L,
         doseOptionId,
         "Primera dosis",
