@@ -1,5 +1,6 @@
 package com.pai.api.attentions.service;
 
+import com.pai.api.catalog.service.VaccineFlyweight;
 import java.util.UUID;
 
 /**
@@ -21,11 +22,15 @@ public interface VaccineCatalogPolicy {
   /**
    * Datos validados del catalogo necesarios para registrar una dosis
    * (snapshot que quedara grabado en {@code AppliedDoseEntity}).
+   *
+   * <p>Incluye el {@link VaccineFlyweight} compartido para que el modulo clinico
+   * no reconstruya el estado intrinseco de la vacuna (nombre, codigo, categoria
+   * y banderas) a partir de copias locales, sino que consuma la unica instancia
+   * administrada por {@code VaccineFlyweightFactory} (patron Flyweight, PE-04).
    */
   record DoseSelection(
       UUID vaccineId,
-      String vaccineName,
-      String vaccineCode,
+      VaccineFlyweight vaccine,
       long catalogVersion,
       UUID doseOptionId,
       String doseLabel,
