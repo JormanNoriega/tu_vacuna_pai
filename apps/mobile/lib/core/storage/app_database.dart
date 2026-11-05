@@ -866,21 +866,40 @@ class AppDatabase extends _$AppDatabase {
   // ---------- Metricas locales (respaldo offline del home) ----------
 
   /// Pacientes distintos con al menos una atencion no anulada en la institucion.
-  Future<int> countDistinctPatientsLocal(String institutionId) async {
+  /// Si se proporciona [vaccinatorId], filtra exclusivamente las atenciones
+  /// realizadas por ese profesional (metrica personal del home para vacunadoras).
+  Future<int> countDistinctPatientsLocal(
+    String institutionId, {
+    String? vaccinatorId,
+  }) async {
     final count = attentionsLocal.patientId.count(distinct: true);
+    var predicate =
+        attentionsLocal.institutionId.equals(institutionId) &
+        attentionsLocal.status.equals('CANCELLED').not();
+    if (vaccinatorId != null && vaccinatorId.isNotEmpty) {
+      predicate = predicate & attentionsLocal.vaccinatorId.equals(vaccinatorId);
+    }
     final query = selectOnly(attentionsLocal)
       ..addColumns([count])
-      ..where(
-        attentionsLocal.institutionId.equals(institutionId) &
-            attentionsLocal.status.equals('CANCELLED').not(),
-      );
+      ..where(predicate);
     final row = await query.getSingle();
     return row.read(count) ?? 0;
   }
 
   /// Dosis no anuladas de la institucion (via la atencion a la que pertenecen).
-  Future<int> countAppliedDosesLocal(String institutionId) async {
+  /// Si se proporciona [vaccinatorId], filtra exclusivamente las dosis aplicadas
+  /// por ese profesional.
+  Future<int> countAppliedDosesLocal(
+    String institutionId, {
+    String? vaccinatorId,
+  }) async {
     final count = appliedDosesLocal.id.count();
+    var predicate =
+        attentionsLocal.institutionId.equals(institutionId) &
+        appliedDosesLocal.status.equals('CANCELLED').not();
+    if (vaccinatorId != null && vaccinatorId.isNotEmpty) {
+      predicate = predicate & attentionsLocal.vaccinatorId.equals(vaccinatorId);
+    }
     final query =
         selectOnly(appliedDosesLocal).join([
             innerJoin(
@@ -889,11 +908,65 @@ class AppDatabase extends _$AppDatabase {
             ),
           ])
           ..addColumns([count])
-          ..where(
-            attentionsLocal.institutionId.equals(institutionId) &
-                appliedDosesLocal.status.equals('CANCELLED').not(),
-          );
+          ..where(predicate);
     final row = await query.getSingle();
     return row.read(count) ?? 0;
+  }
+
+  /// Ultimos registros de atencion de la institucion (offline).
+  /// Si se proporciona [vaccinatorId], filtra exclusivamente las atenciones
+  /// de ese profesional.
+  Future<List<Map<String, dynamic>>> recentRecordsLocal(
+    String institutionId, {
+    String? vaccinatorId,
+    int limit = 5,
+  }) async {
+    var predicate =
+        attentionsLocal.institutionId.equals(institutionId) &
+        attentionsLocal.status.equals('CANCELLED').not();
+    if (vaccinatorId != null && vaccinatorId.isNotEmpty) {
+      predicate = predicate & attentionsLocal.vaccinatorId.equals(vaccinatorId);
+    }
+
+    final query =
+        select(attentionsLocal).join([
+            innerJoin(
+              patientsLocal,
+              patientsLocal.id.equalsExp(attentionsLocal.patientId),
+            ),
+            leftOuterJoin(
+              appliedDosesLocal,
+              appliedDosesLocal.attentionId.equalsExp(attentionsLocal.id),
+            ),
+          ])
+          ..where(predicate)
+          ..orderBy([
+            OrderingTerm.desc(attentionsLocal.attentionDate),
+            OrderingTerm.desc(attentionsLocal.completedAt),
+          ])
+          ..limit(limit);
+
+    final rows = await query.get();
+    return rows.map((row) {
+      final attention = row.readTable(attentionsLocal);
+      final patient = row.readTable(patientsLocal);
+      final dose = row.readTableOrNull(appliedDosesLocal);
+      final fullName = '${patient.firstName} ${patient.lastName}'.trim();
+      final vaccineName = dose?.vaccineNameSnapshot ?? 'Vacunación';
+      final sec = attention.attentionDate ?? attention.completedAt;
+      final dt = sec != null
+          ? (sec < 10000000000
+                ? DateTime.fromMillisecondsSinceEpoch(sec * 1000, isUtc: true)
+                : DateTime.fromMillisecondsSinceEpoch(sec, isUtc: true))
+          : DateTime.now().toUtc();
+
+      return {
+        'id': attention.id,
+        'patientId': attention.patientId,
+        'patientName': fullName.isEmpty ? 'Paciente sin nombre' : fullName,
+        'vaccineName': vaccineName,
+        'timestamp': dt.toIso8601String(),
+      };
+    }).toList();
   }
 }

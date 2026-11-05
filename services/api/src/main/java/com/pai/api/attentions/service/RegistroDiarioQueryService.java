@@ -74,7 +74,20 @@ public class RegistroDiarioQueryService implements RegistroDiarioQuery {
               dose.getSelectedDropperSnapshot(),
               dose.getSelectedObservationSnapshot(),
               dose.getApplicationDate(),
-              dose.getStatus().name()));
+              dose.getStatus().name(),
+              attention.getId(),
+              dose.getVaccineId(),
+              attention.getProfessionalId(),
+              attention.isCompleteScheme(),
+              dose.getSyringeLot(),
+              dose.getDiluent(),
+              dose.getPneumococcalTypeSnapshot(),
+              dose.getVialCount(),
+              attention.isPaiwebRegistered(),
+              attention.getPaiwebNotRegisteredReason(),
+              attention.getObservations(),
+              attention.getLatitude(),
+              attention.getLongitude()));
     }
     return rows;
   }

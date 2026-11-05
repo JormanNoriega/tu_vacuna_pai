@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -21,7 +22,9 @@ class LocationService {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        debugPrint('[LocationService] El servicio de ubicacion esta desactivado.');
+        debugPrint(
+          '[LocationService] El servicio de ubicacion esta desactivado.',
+        );
         return null;
       }
 
@@ -35,7 +38,9 @@ class LocationService {
       }
 
       if (permission == LocationPermission.deniedForever) {
-        debugPrint('[LocationService] Permiso de ubicacion denegado permanentemente.');
+        debugPrint(
+          '[LocationService] Permiso de ubicacion denegado permanentemente.',
+        );
         return null;
       }
 
@@ -49,7 +54,9 @@ class LocationService {
         );
         return (latitude: position.latitude, longitude: position.longitude);
       } catch (e) {
-        debugPrint('[LocationService] Error o timeout en getCurrentPosition: $e. Intentando getLastKnownPosition...');
+        debugPrint(
+          '[LocationService] Error o timeout en getCurrentPosition: $e. Intentando getLastKnownPosition...',
+        );
         final last = await Geolocator.getLastKnownPosition();
         if (last != null) {
           return (latitude: last.latitude, longitude: last.longitude);

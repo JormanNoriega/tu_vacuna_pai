@@ -6,6 +6,8 @@ import static org.mockito.Mockito.when;
 import com.pai.api.identity.entity.InstitutionEntity;
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.identity.service.DataScope;
+import com.pai.api.identity.service.IdentityPermissions;
+import com.pai.api.identity.service.RoleCodes;
 import com.pai.api.reports.dto.MetricsSummaryResponse;
 import java.time.Instant;
 import java.util.List;
@@ -37,19 +39,32 @@ class MetricsServiceTest {
   }
 
   @Test
-  void resume_pacientes_y_dosis_no_anuladas_de_la_institucion() {
-    AuthorizedUser actor = actor();
-    when(dataScope.institutionOf(actor)).thenReturn(INSTITUTION_ID);
-    when(metrics.patientsAttended(INSTITUTION_ID)).thenReturn(12L);
-    when(metrics.dosesApplied(INSTITUTION_ID)).thenReturn(34L);
+  void resume_pacientes_y_dosis_del_profesional_para_vacunadoras() {
+    AuthorizedUser vaccinator = vaccinatorActor();
+    when(dataScope.institutionOf(vaccinator)).thenReturn(INSTITUTION_ID);
+    when(metrics.patientsAttendedByProfessional(INSTITUTION_ID, ACTOR_ID)).thenReturn(5L);
+    when(metrics.dosesAppliedByProfessional(INSTITUTION_ID, ACTOR_ID)).thenReturn(8L);
 
-    MetricsSummaryResponse summary = service.summary(actor);
+    MetricsSummaryResponse summary = service.summary(vaccinator);
 
-    assertThat(summary.patientsAttended()).isEqualTo(12L);
-    assertThat(summary.dosesApplied()).isEqualTo(34L);
+    assertThat(summary.patientsAttended()).isEqualTo(5L);
+    assertThat(summary.dosesApplied()).isEqualTo(8L);
   }
 
-  private AuthorizedUser actor() {
+  @Test
+  void resume_pacientes_y_dosis_institucionales_para_administradores() {
+    AuthorizedUser admin = adminActor();
+    when(dataScope.institutionOf(admin)).thenReturn(INSTITUTION_ID);
+    when(metrics.patientsAttended(INSTITUTION_ID)).thenReturn(120L);
+    when(metrics.dosesApplied(INSTITUTION_ID)).thenReturn(340L);
+
+    MetricsSummaryResponse summary = service.summary(admin);
+
+    assertThat(summary.patientsAttended()).isEqualTo(120L);
+    assertThat(summary.dosesApplied()).isEqualTo(340L);
+  }
+
+  private AuthorizedUser vaccinatorActor() {
     return new AuthorizedUser(
         ACTOR_ID,
         "vac@hosp.a",
@@ -62,8 +77,26 @@ class MetricsServiceTest {
             (short) 72,
             Instant.now(),
             Instant.now()),
-        List.of("VACCINATOR"),
-        List.of("ATTENTION_READ"),
+        List.of(RoleCodes.VACCINATOR),
+        List.of("ATTENTION_READ", "USER_WRITE_VACCINATION"),
+        Instant.now());
+  }
+
+  private AuthorizedUser adminActor() {
+    return new AuthorizedUser(
+        UUID.fromString("33333333-3333-3333-3333-333333333333"),
+        "admin@hosp.a",
+        "Carlos Admin",
+        new InstitutionEntity(
+            INSTITUTION_ID,
+            "HOSP-A",
+            "Hospital A",
+            InstitutionEntity.Status.ACTIVE,
+            (short) 72,
+            Instant.now(),
+            Instant.now()),
+        List.of(RoleCodes.ADMIN_INSTITUTION),
+        List.of("ATTENTION_READ", IdentityPermissions.USER_MANAGE),
         Instant.now());
   }
 }

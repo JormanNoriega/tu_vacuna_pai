@@ -44,7 +44,7 @@ Proporcionar un sustituto o intermediario de otro objeto para controlar el acces
 - **RealSubject:** `com.pai.api.catalog.service.DefaultVaccineService`
 - **Proxy:** `com.pai.api.catalog.service.VaccineSecurityProxy` (`@Primary`)
 - **Collaborator:** `com.pai.api.shared.security.PermissionGuard`
-- **Doc detallado:** `docs/patterns-design/proxy/README.md`
+- **Doc detallado:** `docs/patterns-design/estructurales/proxy/README.md`
 
 ### 3.3 Guion oral (30 s)
 > *"Para proteger el catalogo de vacunas no metemos ifs de permisos dentro del servicio de base de datos ni en cada endpoint. Usamos un Protection Proxy llamado `VaccineSecurityProxy`. Implementa la misma interfaz `VaccineService`, intercepta la llamada, valida los permisos con `PermissionGuard` y si el usuario no tiene autorizacion, corta la ejecucion de inmediato sin tocar la base de datos."*
@@ -61,7 +61,7 @@ Anadir responsabilidades a un objeto dinamicamente envolviendolo con otro objeto
 - **ConcreteComponent:** `com.pai.api.audit.service.AuditService` (`@Service("auditService")`)
 - **Decorator:** `com.pai.api.audit.service.AuditRecorderDecorator` (abstract)
 - **ConcreteDecorator:** `com.pai.api.audit.service.MaskingAuditRecorderDecorator` (`@Primary`)
-- **Doc detallado:** `docs/patterns-design/decorator/README.md`
+- **Doc detallado:** `docs/patterns-design/estructurales/decorator/README.md`
 
 ### 4.3 Como nos ayuda (Antes vs. Despues)
 - **Antes:** `AuditService` guardaba directamente el payload en la base de datos PostgreSQL. Si una accion contenia contrasenas o tokens, se guardaban en claro. Modificar el metodo violaba OCP.
@@ -82,7 +82,7 @@ Adaptar la interfaz de una clase o protocolo incompatible a la interfaz que espe
 - **Adaptee:** `com.pai.api.identity.service.SupabaseAuthRestClient`
 - **Adapter:** `com.pai.api.identity.service.SupabaseAuthAdapter` (`@Primary`)
 - **Client:** `com.pai.api.identity.service.UserProvisioningService`
-- **Doc detallado:** `docs/patterns-design/adapter/README.md`
+- **Doc detallado:** `docs/patterns-design/estructurales/adapter/README.md`
 
 ### 5.3 Como nos ayuda (Antes vs. Despues)
 - **Antes:** `SupabaseAuthUserClient` mezclaba construccion de requests HTTP con `RestClient`, URLs de bajo nivel y manejo de excepciones de red directamente dentro del contrato del dominio.
@@ -105,7 +105,7 @@ Compartir eficientemente el estado comun entre multiples objetos de grano fino p
 - **Excepcion:** `com.pai.api.catalog.exception.InconsistentFlyweightException` (en `catalog.exception`)
 - **Extrinsic State:** `com.pai.api.attentions.dto.DoseExtrinsicContext` (`record` en `attentions.dto`)
 - **Context Holder:** `com.pai.api.attentions.dto.AppliedDoseItem` (en `attentions.dto`)
-- **Doc detallado:** `docs/patterns-design/flyweight/README.md`
+- **Doc detallado:** `docs/patterns-design/estructurales/flyweight/README.md`
 
 ### 6.3 Como nos ayuda (Antes vs. Despues)
 - **Antes:** Al consultar miles de dosis aplicadas para reportes masivos o historiales de vacunacion, cada registro repetia copias identicas de strings pesados (nombres completos de biológicos, categorías, requisitos de jeringas y lotes).

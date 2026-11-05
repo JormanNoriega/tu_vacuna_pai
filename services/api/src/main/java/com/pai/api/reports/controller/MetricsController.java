@@ -2,8 +2,10 @@ package com.pai.api.reports.controller;
 
 import com.pai.api.identity.service.AuthorizedUser;
 import com.pai.api.reports.dto.MetricsSummaryResponse;
+import com.pai.api.reports.dto.RecentRecordResponse;
 import com.pai.api.reports.service.MetricsService;
 import com.pai.api.shared.security.ActorResolver;
+import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -30,5 +32,12 @@ public class MetricsController {
   public ResponseEntity<MetricsSummaryResponse> summary(Authentication authentication) {
     AuthorizedUser actor = ActorResolver.resolve(authentication);
     return ResponseEntity.ok(service.summary(actor));
+  }
+
+  @GetMapping("/recent")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_READ')")
+  public ResponseEntity<List<RecentRecordResponse>> recent(Authentication authentication) {
+    AuthorizedUser actor = ActorResolver.resolve(authentication);
+    return ResponseEntity.ok(service.recentRecords(actor, 5));
   }
 }

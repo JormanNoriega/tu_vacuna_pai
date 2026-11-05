@@ -1,14 +1,25 @@
 package com.pai.api.reports.export.xlsx;
 
+import com.pai.api.reports.export.ReportCategoryBlock;
+import com.pai.api.reports.export.ReportCategoryColors;
+import com.pai.api.reports.export.ReportFieldHeader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+import org.apache.poi.xssf.usermodel.XSSFColor;
+import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 /**
@@ -20,43 +31,199 @@ final class XlsxReportSurface {
 
   private static final String SHEET_NAME = "Registro Diario";
 
-  private final Workbook workbook = new XSSFWorkbook();
-  private final Sheet sheet = workbook.createSheet(SHEET_NAME);
-  private final CellStyle headerStyle;
+  private final XSSFWorkbook workbook = new XSSFWorkbook();
+  private final XSSFSheet sheet = workbook.createSheet(SHEET_NAME);
+  private final CellStyle simpleHeaderStyle;
+  private final CellStyle evenRowStyle;
+  private final CellStyle oddRowStyle;
+  private final Map<String, CellStyle> categoryStyles = new HashMap<>();
+  private final Map<String, CellStyle> subheaderStyles = new HashMap<>();
   private int rowCursor = 0;
+  private int totalColumns = 0;
 
   XlsxReportSurface() {
-    this.headerStyle = workbook.createCellStyle();
-    Font font = workbook.createFont();
-    font.setBold(true);
-    headerStyle.setFont(font);
+    this.simpleHeaderStyle = createSimpleHeaderStyle();
+    this.evenRowStyle = createRowStyle(ReportCategoryColors.ROW_EVEN);
+    this.oddRowStyle = createRowStyle(ReportCategoryColors.ROW_ODD);
   }
 
   void writeHeaderRow(List<String> titles) {
     Row row = sheet.createRow(rowCursor++);
+    totalColumns = Math.max(totalColumns, titles.size());
     for (int column = 0; column < titles.size(); column++) {
       Cell cell = row.createCell(column);
       cell.setCellValue(titles.get(column));
-      cell.setCellStyle(headerStyle);
+      cell.setCellStyle(simpleHeaderStyle);
     }
   }
 
+  void writeDualLevelHeader(
+      List<ReportCategoryBlock> categories, List<ReportFieldHeader> fields) {
+    Row row0 = sheet.createRow(0);
+    row0.setHeightInPoints(28);
+
+    int colIndex = 0;
+    for (ReportCategoryBlock category : categories) {
+      int span = category.columnSpan();
+      CellStyle catStyle = getCategoryStyle(category.hexColor());
+
+      for (int i = 0; i < span; i++) {
+        Cell cell = row0.createCell(colIndex + i);
+        if (i == 0) {
+          cell.setCellValue(category.name());
+        }
+        cell.setCellStyle(catStyle);
+      }
+
+      if (span > 1) {
+        sheet.addMergedRegion(
+            new CellRangeAddress(0, 0, colIndex, colIndex + span - 1));
+      }
+      colIndex += span;
+    }
+
+    Row row1 = sheet.createRow(1);
+    row1.setHeightInPoints(24);
+
+    for (int i = 0; i < fields.size(); i++) {
+      ReportFieldHeader field = fields.get(i);
+      Cell cell = row1.createCell(i);
+      cell.setCellValue(field.name());
+      cell.setCellStyle(getSubheaderStyle(field.hexColor()));
+    }
+
+    totalColumns = Math.max(colIndex, fields.size());
+    sheet.createFreezePane(0, 2);
+    rowCursor = 2;
+  }
+
   void writeDataRow(List<String> cells) {
-    Row row = sheet.createRow(rowCursor++);
+    Row row = sheet.createRow(rowCursor);
+    row.setHeightInPoints(20);
+    CellStyle style = (rowCursor % 2 == 0) ? evenRowStyle : oddRowStyle;
+    rowCursor++;
+
+    totalColumns = Math.max(totalColumns, cells.size());
     for (int column = 0; column < cells.size(); column++) {
       Cell cell = row.createCell(column);
       String value = cells.get(column);
       cell.setCellValue(value == null ? "" : value);
+      cell.setCellStyle(style);
     }
   }
 
   byte[] toBytes() {
+    for (int i = 0; i < totalColumns; i++) {
+      sheet.setColumnWidth(i, 18 * 256);
+    }
     try (ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Workbook wb = this.workbook) {
+        XSSFWorkbook wb = this.workbook) {
       wb.write(out);
       return out.toByteArray();
     } catch (IOException ex) {
       throw new IllegalStateException("No se pudo generar el archivo XLSX.", ex);
     }
+  }
+
+  private CellStyle createSimpleHeaderStyle() {
+    XSSFCellStyle style = workbook.createCellStyle();
+    XSSFFont font = workbook.createFont();
+    font.setBold(true);
+    style.setFont(font);
+    return style;
+  }
+
+  private CellStyle getCategoryStyle(String hexColor) {
+    return categoryStyles.computeIfAbsent(
+        hexColor,
+        hex -> {
+          XSSFCellStyle style = workbook.createCellStyle();
+          XSSFColor bg = parseColor(hex);
+          style.setFillForegroundColor(bg);
+          style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+          XSSFFont font = workbook.createFont();
+          font.setBold(true);
+          font.setColor(
+              new XSSFColor(
+                  new byte[] {(byte) 0xFF, (byte) 0xFF, (byte) 0xFF}, null));
+          font.setFontHeightInPoints((short) 10);
+          style.setFont(font);
+
+          style.setAlignment(HorizontalAlignment.CENTER);
+          style.setVerticalAlignment(VerticalAlignment.CENTER);
+          applyBorders(style);
+          return style;
+        });
+  }
+
+  private CellStyle getSubheaderStyle(String hexColor) {
+    return subheaderStyles.computeIfAbsent(
+        hexColor,
+        hex -> {
+          XSSFCellStyle style = workbook.createCellStyle();
+          XSSFColor bg = parseColor(hex);
+          style.setFillForegroundColor(bg);
+          style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+          XSSFFont font = workbook.createFont();
+          font.setBold(true);
+          font.setFontHeightInPoints((short) 9);
+          style.setFont(font);
+
+          style.setAlignment(HorizontalAlignment.CENTER);
+          style.setVerticalAlignment(VerticalAlignment.CENTER);
+          style.setWrapText(true);
+          applyBorders(style);
+          return style;
+        });
+  }
+
+  private CellStyle createRowStyle(String hexColor) {
+    XSSFCellStyle style = workbook.createCellStyle();
+    XSSFColor bg = parseColor(hexColor);
+    style.setFillForegroundColor(bg);
+    style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+    XSSFFont font = workbook.createFont();
+    font.setFontHeightInPoints((short) 10);
+    style.setFont(font);
+
+    style.setVerticalAlignment(VerticalAlignment.CENTER);
+    applyLightBorders(style);
+    return style;
+  }
+
+  private void applyBorders(XSSFCellStyle style) {
+    style.setBorderTop(BorderStyle.THIN);
+    style.setBorderBottom(BorderStyle.THIN);
+    style.setBorderLeft(BorderStyle.THIN);
+    style.setBorderRight(BorderStyle.THIN);
+  }
+
+  private void applyLightBorders(XSSFCellStyle style) {
+    style.setBorderTop(BorderStyle.HAIR);
+    style.setBorderBottom(BorderStyle.HAIR);
+    style.setBorderLeft(BorderStyle.HAIR);
+    style.setBorderRight(BorderStyle.HAIR);
+  }
+
+  private static XSSFColor parseColor(String hex) {
+    if (hex == null || hex.isBlank()) {
+      return new XSSFColor(
+          new byte[] {(byte) 0xFF, (byte) 0xFF, (byte) 0xFF}, null);
+    }
+    String clean = hex.replace("#", "").trim();
+    if (clean.length() == 8) {
+      clean = clean.substring(2);
+    }
+    if (clean.length() < 6) {
+      return new XSSFColor(
+          new byte[] {(byte) 0xFF, (byte) 0xFF, (byte) 0xFF}, null);
+    }
+    int r = Integer.parseInt(clean.substring(0, 2), 16);
+    int g = Integer.parseInt(clean.substring(2, 4), 16);
+    int b = Integer.parseInt(clean.substring(4, 6), 16);
+    return new XSSFColor(new byte[] {(byte) r, (byte) g, (byte) b}, null);
   }
 }

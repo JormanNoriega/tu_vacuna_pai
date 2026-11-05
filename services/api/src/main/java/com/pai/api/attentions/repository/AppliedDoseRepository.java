@@ -27,7 +27,7 @@ public interface AppliedDoseRepository extends JpaRepository<AppliedDoseEntity, 
 
   /**
    * Dosis no anuladas de la institucion (via la atencion a la que pertenecen).
-   * Alimenta la metrica del home (acumulado historico).
+   * Alimenta la metrica institucional del home (acumulado historico).
    */
   @Query("""
       SELECT COUNT(d) FROM AppliedDoseEntity d, AttentionEntity a
@@ -35,5 +35,18 @@ public interface AppliedDoseRepository extends JpaRepository<AppliedDoseEntity, 
       """)
   long countByInstitutionId(
       @Param("institutionId") UUID institutionId,
+      @Param("excluded") AppliedDoseEntity.Status excluded);
+
+  /**
+   * Dosis no anuladas aplicadas por un profesional especifico en la institucion.
+   * Alimenta la metrica personal del home para enfermeras/vacunadoras.
+   */
+  @Query("""
+      SELECT COUNT(d) FROM AppliedDoseEntity d, AttentionEntity a
+      WHERE a.id = d.attentionId AND a.institutionId = :institutionId AND a.professionalId = :professionalId AND d.status <> :excluded
+      """)
+  long countByInstitutionIdAndProfessionalId(
+      @Param("institutionId") UUID institutionId,
+      @Param("professionalId") UUID professionalId,
       @Param("excluded") AppliedDoseEntity.Status excluded);
 }

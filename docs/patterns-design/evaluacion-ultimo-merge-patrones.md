@@ -164,4 +164,4 @@ Si decides que complementemos la implementación de Brayan, este es el plan orde
   ```
 
 ### Manual Verification
-* Revisar que los diagramas Mermaid en [`GUIA-PATRONES-ESTRUCTURALES.md`](file:///C:/Users/jorma/Desktop/mi%20vacuna/tu_vacuna_pai/docs/patterns-design/GUIA-PATRONES-ESTRUCTURALES.md) y [`README.md`](file:///C:/Users/jorma/Desktop/mi%20vacuna/tu_vacuna_pai/docs/patterns-design/adapter/README.md) coincidan exactamente con la estructura de clases del proyecto.
+* Revisar que los diagramas Mermaid en [`GUIA-PATRONES-ESTRUCTURALES.md`](file:///C:/Users/Juliocrm/Documents/code/tu_vacuna_pai/docs/patterns-design/estructurales/GUIA-PATRONES-ESTRUCTURALES.md) y [`README.md`](file:///C:/Users/Juliocrm/Documents/code/tu_vacuna_pai/docs/patterns-design/estructurales/adapter/README.md) coincidan exactamente con la estructura de clases del proyecto.

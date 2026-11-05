@@ -6,4 +6,9 @@ import java.util.List;
 public interface ReportHeaderBuilder {
 
   void writeHeader(List<String> titles);
+
+  default void writeCategoryHeader(
+      List<ReportCategoryBlock> categories, List<ReportFieldHeader> fields) {
+    writeHeader(fields.stream().map(ReportFieldHeader::name).toList());
+  }
 }
