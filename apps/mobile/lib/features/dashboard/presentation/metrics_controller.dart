@@ -24,6 +24,30 @@ class MetricsController extends AsyncController {
     required bool offline,
     String? vaccinatorId,
   }) async {
+    // Si no es un usuario que realiza atenciones (ej. admin hospital), no consulta
+    // registros recientes y solo carga el resumen institucional.
+    if (vaccinatorId == null || vaccinatorId.isEmpty) {
+      if (offline) {
+        _summary = await getSummary.local(institutionId);
+        _recentRecords = const [];
+        notifyListeners();
+        return;
+      }
+
+      await execute((token) async {
+        _summary = await getSummary.remote(token);
+        _recentRecords = const [];
+      });
+
+      if (error != null) {
+        clearError();
+        _summary = await getSummary.local(institutionId);
+        _recentRecords = const [];
+        notifyListeners();
+      }
+      return;
+    }
+
     if (offline) {
       _summary = await getSummary.local(
         institutionId,

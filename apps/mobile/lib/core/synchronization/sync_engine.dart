@@ -311,11 +311,13 @@ class SyncEngine {
       case SyncCommandType.createAttention:
         final lat = (payload['latitude'] as num?)?.toDouble();
         final lng = (payload['longitude'] as num?)?.toDouble();
+        final profile = await _db.currentUserProfile();
         await _db.upsertAttentionLocal(
           AttentionsLocalCompanion.insert(
             id: operation.aggregateId,
             institutionId: institutionId,
             patientId: _str(payload['patientId']),
+            vaccinatorId: Value(profile?.id),
             status: 'DRAFT',
             attentionDate: Value(_epoch(payload['attentionDate'])),
             observations: Value(_nullable(payload['observations'])),

@@ -64,6 +64,30 @@ class MetricsServiceTest {
     assertThat(summary.dosesApplied()).isEqualTo(340L);
   }
 
+  @Test
+  void recentRecords_retorna_registros_del_profesional_para_vacunadoras() {
+    AuthorizedUser vaccinator = vaccinatorActor();
+    when(dataScope.institutionOf(vaccinator)).thenReturn(INSTITUTION_ID);
+    com.pai.api.reports.dto.RecentRecordResponse record =
+        new com.pai.api.reports.dto.RecentRecordResponse(
+            UUID.randomUUID(), UUID.randomUUID(), "Paciente Juan", "COVID-19", Instant.now());
+    when(metrics.recentRecords(INSTITUTION_ID, ACTOR_ID, false, 5)).thenReturn(List.of(record));
+
+    List<com.pai.api.reports.dto.RecentRecordResponse> records =
+        service.recentRecords(vaccinator, 5);
+
+    assertThat(records).containsExactly(record);
+  }
+
+  @Test
+  void recentRecords_retorna_lista_vacia_para_administradores() {
+    AuthorizedUser admin = adminActor();
+
+    List<com.pai.api.reports.dto.RecentRecordResponse> records = service.recentRecords(admin, 5);
+
+    assertThat(records).isEmpty();
+  }
+
   private AuthorizedUser vaccinatorActor() {
     return new AuthorizedUser(
         ACTOR_ID,

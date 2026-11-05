@@ -50,9 +50,11 @@ public class MetricsService {
 
   @Transactional(readOnly = true)
   public List<RecentRecordResponse> recentRecords(AuthorizedUser actor, int limit) {
+    if (isInstitutionalAdmin(actor)) {
+      return List.of();
+    }
     UUID institutionId = dataScope.institutionOf(actor);
-    boolean isInstitutionalAdmin = isInstitutionalAdmin(actor);
-    return metrics.recentRecords(institutionId, actor.getId(), isInstitutionalAdmin, limit);
+    return metrics.recentRecords(institutionId, actor.getId(), false, limit);
   }
 
   private boolean isInstitutionalAdmin(AuthorizedUser actor) {

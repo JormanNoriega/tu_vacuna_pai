@@ -914,19 +914,21 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Ultimos registros de atencion de la institucion (offline).
-  /// Si se proporciona [vaccinatorId], filtra exclusivamente las atenciones
-  /// de ese profesional.
+  /// Exclusivo para quien realiza atenciones; requiere [vaccinatorId] para
+  /// asegurar que cada profesional solo vea sus propias atenciones.
   Future<List<Map<String, dynamic>>> recentRecordsLocal(
     String institutionId, {
     String? vaccinatorId,
     int limit = 5,
   }) async {
-    var predicate =
-        attentionsLocal.institutionId.equals(institutionId) &
-        attentionsLocal.status.equals('CANCELLED').not();
-    if (vaccinatorId != null && vaccinatorId.isNotEmpty) {
-      predicate = predicate & attentionsLocal.vaccinatorId.equals(vaccinatorId);
+    if (vaccinatorId == null || vaccinatorId.isEmpty) {
+      return const [];
     }
+
+    final predicate =
+        attentionsLocal.institutionId.equals(institutionId) &
+        attentionsLocal.status.equals('CANCELLED').not() &
+        attentionsLocal.vaccinatorId.equals(vaccinatorId);
 
     final query =
         select(attentionsLocal).join([

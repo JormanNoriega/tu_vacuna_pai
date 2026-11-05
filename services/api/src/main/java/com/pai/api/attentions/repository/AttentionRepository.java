@@ -75,4 +75,11 @@ public interface AttentionRepository extends JpaRepository<AttentionEntity, UUID
    */
   List<AttentionEntity> findTop5ByInstitutionIdAndProfessionalIdAndStatusNotOrderByAttentionDateDesc(
       UUID institutionId, UUID professionalId, AttentionEntity.Status excluded);
+
+  /**
+   * Ultimas 5 atenciones no anuladas realizadas por el profesional ordenadas por fecha de atencion y creacion.
+   */
+  List<AttentionEntity>
+      findTop5ByInstitutionIdAndProfessionalIdAndStatusNotOrderByAttentionDateDescCreatedAtDesc(
+          UUID institutionId, UUID professionalId, AttentionEntity.Status excluded);
 }

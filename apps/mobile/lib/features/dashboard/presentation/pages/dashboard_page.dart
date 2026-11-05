@@ -1079,11 +1079,10 @@ class _DashboardContentState extends State<_DashboardContent> {
   @override
   void initState() {
     super.initState();
-    final isInstitutionalAdmin = widget.permissions.contains('USER_MANAGE');
     widget.metricsController?.load(
       institutionId: widget.institutionId,
       offline: widget.offline,
-      vaccinatorId: isInstitutionalAdmin ? null : widget.userId,
+      vaccinatorId: widget.canPerformAttentions ? widget.userId : null,
     );
   }
 
@@ -1157,16 +1156,18 @@ class _DashboardContentState extends State<_DashboardContent> {
                     permissions: widget.permissions,
                     onAction: widget.onAction,
                   ),
-                  const SizedBox(height: 32),
-                  AnimatedBuilder(
-                    animation: listenable,
-                    builder: (context, _) => _RecentRecordsSection(
-                      records:
-                          widget.metricsController?.recentRecords ?? const [],
-                      onViewAll: () => widget.onAction('Historial'),
-                      onOpenPatientDetail: widget.onOpenPatientDetail,
+                  if (widget.canPerformAttentions) ...[
+                    const SizedBox(height: 32),
+                    AnimatedBuilder(
+                      animation: listenable,
+                      builder: (context, _) => _RecentRecordsSection(
+                        records:
+                            widget.metricsController?.recentRecords ?? const [],
+                        onViewAll: () => widget.onAction('Historial'),
+                        onOpenPatientDetail: widget.onOpenPatientDetail,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -1448,6 +1449,7 @@ class _ActionsGrid extends StatelessWidget {
     // El administrador de hospital (USER_MANAGE) no realiza atenciones ni
     // requiere el acceso directo a Nueva Atencion ni Historial en el centro
     // de accion (el historial ya se accede desde "Ver todos" en Ultimos Registros).
+    // Como los vacunadores no gestionan exportaciones, solo el admin ve "Exportar".
     final isHospitalAdmin = permissions.contains('USER_MANAGE');
 
     final actions = [
@@ -1480,22 +1482,25 @@ class _ActionsGrid extends StatelessWidget {
         iconColor: const Color(0xFF16A34A),
         actionKey: 'Inventario',
       ),
-      (
-        icon: Icons.download_rounded,
-        label: 'Exportar',
-        description: 'Descargar datos',
-        isPrimary: false,
-        iconBgColor: const Color(0xFFFEF3C7),
-        iconColor: const Color(0xFFD97706),
-        actionKey: 'Exportar',
-      ),
+      if (isHospitalAdmin)
+        (
+          icon: Icons.download_rounded,
+          label: 'Exportar',
+          description: 'Descargar datos',
+          isPrimary: false,
+          iconBgColor: const Color(0xFFFEF3C7),
+          iconColor: const Color(0xFFD97706),
+          actionKey: 'Exportar',
+        ),
     ];
 
+    final effectiveColumns = columns == 2 ? 2 : actions.length;
+
     return GridView.count(
-      crossAxisCount: columns,
+      crossAxisCount: effectiveColumns,
       crossAxisSpacing: 14,
       mainAxisSpacing: 14,
-      childAspectRatio: columns == 2 ? 1.05 : 1.15,
+      childAspectRatio: effectiveColumns == 2 ? 1.05 : 1.15,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [
