@@ -3,6 +3,7 @@ package com.pai.api.identity.service;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -30,14 +31,14 @@ public class SupabaseAuthRestClient {
   /**
    * Ejecuta la peticion HTTP POST cruda contra la Edge Function de creacion.
    */
-  public ResponseEntity<Map> postCreateAuthUser(String accessToken, Map<String, Object> payload) {
+  public ResponseEntity<Map<String, Object>> postCreateAuthUser(String accessToken, Map<String, Object> payload) {
     return restClient
         .post()
         .uri(baseUrl + "/create-auth-user")
         .header("Authorization", "Bearer " + accessToken)
         .body(payload)
         .retrieve()
-        .toEntity(Map.class);
+        .toEntity(new ParameterizedTypeReference<Map<String, Object>>() {});
   }
 
   /**

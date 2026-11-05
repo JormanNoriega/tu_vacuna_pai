@@ -46,7 +46,7 @@ void main() {
 
     expect(find.text('Buenos dias'), findsOneWidget);
     expect(find.text('Datos protegidos'), findsOneWidget);
-    expect(find.text('Acciones frecuentes'), findsOneWidget);
+    expect(find.text('Centro de Acción'), findsOneWidget);
   });
 
   testWidgets('SUPER_ADMIN ve la seccion de administracion con dos acciones', (
@@ -106,7 +106,7 @@ void main() {
     expect(find.text('Usuarios'), findsWidgets);
     // Las acciones genericas de vacunador no deben aparecer.
     expect(find.text('Nueva atencion'), findsNothing);
-    expect(find.text('Acciones frecuentes'), findsNothing);
+    expect(find.text('Centro de Acción'), findsNothing);
     // El SUPER_ADMIN tiene barra de navegacion propia.
     expect(find.byKey(const Key('dashboard-nav-bar')), findsOneWidget);
   });
@@ -146,8 +146,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // En el inicio, el administrador ve la accion frecuente de exportar datos.
-    expect(find.text('Exportar datos'), findsOneWidget);
+    // En el inicio, el administrador ve el Centro de Accion con Exportar e Inventario, sin Nueva Atencion
+    expect(find.text('Exportar'), findsOneWidget);
+    expect(find.text('Inventario'), findsWidgets);
+    expect(find.text('Nueva Atención'), findsNothing);
 
     // Navegar a la pestaña Administracion muestra la gestion de usuarios.
     await tester.tap(
@@ -195,11 +197,22 @@ void main() {
     expect(find.text('Buenos dias'), findsOneWidget);
     expect(find.byKey(const Key('dashboard-nav-bar')), findsOneWidget);
     expect(find.text('Nueva atencion'), findsWidgets);
-    expect(find.text('Historial'), findsOneWidget);
-    // No ve administracion de usuarios, inventario ni exportar datos.
-    expect(find.text('Administracion'), findsNothing);
-    expect(find.text('Inventario'), findsNothing);
-    expect(find.text('Exportar datos'), findsNothing);
+    expect(find.text('Historial'), findsWidgets);
+    // No ve administracion de usuarios ni inventario en la barra inferior.
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('dashboard-nav-bar')),
+        matching: find.text('Administracion'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('dashboard-nav-bar')),
+        matching: find.text('Inventario'),
+      ),
+      findsNothing,
+    );
   });
 
   testWidgets('ADMIN_INSTITUTION edita el estado y los roles de un vacunador', (

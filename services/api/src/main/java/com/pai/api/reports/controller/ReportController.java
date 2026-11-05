@@ -1,6 +1,7 @@
 package com.pai.api.reports.controller;
 
 import com.pai.api.identity.service.AuthorizedUser;
+import com.pai.api.reports.dto.RegistroDiarioSummaryResponse;
 import com.pai.api.reports.export.ExportedReport;
 import com.pai.api.reports.export.ReportFormat;
 import com.pai.api.reports.service.RegistroDiarioExportService;
@@ -18,9 +19,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Exportacion de reportes PAI. Backend-only por ahora (el cliente movil aun no lo
- * consume). La institucion se deriva del actor; el cliente nunca la envia
- * (ADR-007).
+ * Exportacion de reportes PAI.
+ * La institucion se deriva del actor; el cliente nunca la envia (ADR-007).
  */
 @RestController
 @RequestMapping("/api/v1/reports")
@@ -30,6 +30,16 @@ public class ReportController {
 
   public ReportController(RegistroDiarioExportService service) {
     this.service = service;
+  }
+
+  @GetMapping("/registro-diario/summary")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_READ')")
+  public ResponseEntity<RegistroDiarioSummaryResponse> registroDiarioSummary(
+      Authentication authentication,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to) {
+    AuthorizedUser actor = ActorResolver.resolve(authentication);
+    return ResponseEntity.ok(service.summary(actor, from, to));
   }
 
   @GetMapping("/registro-diario")

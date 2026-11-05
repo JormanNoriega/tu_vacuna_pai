@@ -2,7 +2,7 @@
 
 Guía para **estudiar y exponer** los 5 patrones creacionales del GoF tal como se
 aplican en el backend (`services/api`, Spring Boot). Resume y enlaza a los docs
-detallados de cada patrón en `docs/patterns-design/`.
+detallados de cada patrón en `docs/patterns-design/creacionales/`.
 
 ---
 
@@ -560,7 +560,7 @@ local.save(template.copyToInstitution(institutionId, actorId));
 ## 9. Anexo
 
 ### 9.1 Rutas clave
-- Docs detallados y diagramas: `docs/patterns-design/{singleton,factory-method,abstract-factory,builder,prototype}/`.
+- Docs detallados y diagramas: `docs/patterns-design/creacionales/{singleton,factory-method,abstract-factory,builder,prototype}/`.
 - Código: `services/api/src/main/java/com/pai/api/`
   - `reports/export/**` (Abstract Factory + Factory Method C).
   - `attentions/entity/AppliedDoseEntity.java` (Builder).

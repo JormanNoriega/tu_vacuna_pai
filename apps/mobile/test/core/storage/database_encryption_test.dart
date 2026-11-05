@@ -103,10 +103,12 @@ void main() {
     final kdfRows = raw.select('PRAGMA kdf_iter;');
 
     // Los pragmas de sqlite3mc devuelven TEXT aunque el valor sea numerico.
-    final cipher =
-        cipherRows.isEmpty ? null : cipherRows.first.values.first?.toString();
-    final kdfRaw =
-        kdfRows.isEmpty ? null : kdfRows.first.values.first?.toString();
+    final cipher = cipherRows.isEmpty
+        ? null
+        : cipherRows.first.values.first?.toString();
+    final kdfRaw = kdfRows.isEmpty
+        ? null
+        : kdfRows.first.values.first?.toString();
     final kdfIter = kdfRaw == null ? null : int.tryParse(kdfRaw);
 
     stderr.writeln('PRAGMA cipher   = $cipher');

@@ -161,7 +161,9 @@ class _PatientWizardPageState extends State<PatientWizardPage> {
       widget.controller.loadCountries().then((_) {
         if (!mounted) return;
         if (_birthCountryId == null && widget.controller.countries.isNotEmpty) {
-          setState(() => _birthCountryId = widget.controller.countries.first.id);
+          setState(
+            () => _birthCountryId = widget.controller.countries.first.id,
+          );
         }
       });
     });

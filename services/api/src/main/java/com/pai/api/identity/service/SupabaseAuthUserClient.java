@@ -10,6 +10,7 @@ package com.pai.api.identity.service;
 @Deprecated(forRemoval = true)
 public class SupabaseAuthUserClient extends SupabaseAuthAdapter {
 
+  @Deprecated(forRemoval = true)
   public SupabaseAuthUserClient(SupabaseAuthRestClient restClient) {
     super(restClient);
   }

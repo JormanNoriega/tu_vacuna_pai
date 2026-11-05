@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -47,6 +48,69 @@ class ApiClient {
     return _decodeObject(
       response,
       fallback: 'Error al consultar las metricas.',
+    );
+  }
+
+  /// Ultimos registros de atencion para el home.
+  Future<List<Map<String, dynamic>>> fetchRecentRecords(
+    String accessToken, {
+    int limit = 5,
+  }) async {
+    final uri = Uri.parse('$baseUrl/metrics/recent')
+        .replace(queryParameters: {'limit': limit.toString()});
+    final response = await _send(
+      _http.get(uri, headers: _jsonHeaders(accessToken)),
+    );
+    return _decodeList(
+      response,
+      fallback: 'Error al consultar los ultimos registros.',
+    );
+  }
+
+  /// Resumen de metricas para el reporte "Registro Diario" en un rango de fechas.
+  Future<Map<String, dynamic>> fetchRegistroDiarioSummary(
+    String accessToken, {
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final uri = Uri.parse('$baseUrl/reports/registro-diario/summary').replace(
+      queryParameters: {
+        'from': from.toUtc().toIso8601String(),
+        'to': to.toUtc().toIso8601String(),
+      },
+    );
+    final response = await _send(
+      _http.get(uri, headers: _jsonHeaders(accessToken)),
+    );
+    return _decodeObject(
+      response,
+      fallback: 'Error al consultar el resumen de exportacion.',
+    );
+  }
+
+  /// Descarga el archivo de reporte "Registro Diario" en bytes (XLSX o CSV).
+  Future<Uint8List> downloadRegistroDiario(
+    String accessToken, {
+    required DateTime from,
+    required DateTime to,
+    String format = 'xlsx',
+  }) async {
+    final uri = Uri.parse('$baseUrl/reports/registro-diario').replace(
+      queryParameters: {
+        'from': from.toUtc().toIso8601String(),
+        'to': to.toUtc().toIso8601String(),
+        'format': format,
+      },
+    );
+    final response = await _send(
+      _http.get(uri, headers: {'Authorization': 'Bearer $accessToken'}),
+    );
+    if (response.statusCode == 200) {
+      return response.bodyBytes;
+    }
+    throw ApiException(
+      _messageFromBody(response.body) ?? 'Error al descargar el reporte.',
+      statusCode: response.statusCode,
     );
   }
 

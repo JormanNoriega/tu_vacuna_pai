@@ -41,7 +41,7 @@ public interface AttentionRepository extends JpaRepository<AttentionEntity, UUID
 
   /**
    * Pacientes distintos con al menos una atencion no anulada en la institucion.
-   * Alimenta la metrica del home (acumulado historico).
+   * Alimenta la metrica institucional del home (acumulado historico).
    */
   @Query("""
       SELECT COUNT(DISTINCT a.patientId) FROM AttentionEntity a
@@ -50,4 +50,29 @@ public interface AttentionRepository extends JpaRepository<AttentionEntity, UUID
   long countDistinctPatientsByInstitutionId(
       @Param("institutionId") UUID institutionId,
       @Param("excluded") AttentionEntity.Status excluded);
+
+  /**
+   * Pacientes distintos con al menos una atencion no anulada atendidos por un profesional especifico.
+   * Alimenta la metrica personal del home para enfermeras/vacunadoras.
+   */
+  @Query("""
+      SELECT COUNT(DISTINCT a.patientId) FROM AttentionEntity a
+      WHERE a.institutionId = :institutionId AND a.professionalId = :professionalId AND a.status <> :excluded
+      """)
+  long countDistinctPatientsByInstitutionIdAndProfessionalId(
+      @Param("institutionId") UUID institutionId,
+      @Param("professionalId") UUID professionalId,
+      @Param("excluded") AttentionEntity.Status excluded);
+
+  /**
+   * Ultimas 5 atenciones no anuladas de la institucion para la seccion de ultimos registros del home.
+   */
+  List<AttentionEntity> findTop5ByInstitutionIdAndStatusNotOrderByAttentionDateDesc(
+      UUID institutionId, AttentionEntity.Status excluded);
+
+  /**
+   * Ultimas 5 atenciones no anuladas realizadas por el profesional para el home del vacunador.
+   */
+  List<AttentionEntity> findTop5ByInstitutionIdAndProfessionalIdAndStatusNotOrderByAttentionDateDesc(
+      UUID institutionId, UUID professionalId, AttentionEntity.Status excluded);
 }

@@ -24,7 +24,11 @@ import '../../../attentions/presentation/history_controller.dart';
 import '../../../attentions/presentation/pages/historial_page.dart';
 import '../../../attentions/presentation/pages/nueva_atencion_page.dart';
 import '../../../patients/presentation/patient_detail_controller.dart';
+import '../../../patients/presentation/pages/patient_detail_page.dart';
+import '../../domain/entities/recent_record_item.dart';
 import '../metrics_controller.dart';
+import '../../../reports/presentation/export_report_controller.dart';
+import '../../../reports/presentation/pages/export_report_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
@@ -41,6 +45,7 @@ class DashboardPage extends StatefulWidget {
     this.networkInfo,
     this.syncStatusController,
     this.metricsController,
+    this.exportReportController,
     super.key,
   });
 
@@ -86,6 +91,7 @@ class DashboardPage extends StatefulWidget {
   /// Metricas del home (pacientes atendidos y dosis aplicadas). Null en tests
   /// y demos.
   final MetricsController? metricsController;
+  final ExportReportController? exportReportController;
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -214,6 +220,13 @@ class _DashboardPageState extends State<DashboardPage> {
 
   bool get _isSuperAdminView => _isSuperAdmin && widget.adminController != null;
 
+  /// Indica si el usuario realiza atenciones clinicas (vacunador / enfermera).
+  /// Excluye a Super Admin y administradores hospitalarios que solo gestionan.
+  bool get _canPerformAttentions =>
+      !_isSuperAdmin &&
+      (widget.user.hasRole('VACCINATOR') ||
+          widget.user.hasPermission('ATTENTION_CREATE'));
+
   OfflineAccess get _offline => OfflineAccess(
     status: widget.sessionStatus,
     permissions: widget.user.permissions,
@@ -279,12 +292,34 @@ class _DashboardPageState extends State<DashboardPage> {
 
     return _DashboardContent(
       userName: widget.user.name,
+      userId: widget.user.id,
       permissions: widget.user.permissions,
+      canPerformAttentions: _canPerformAttentions,
       onAction: _openQuickAction,
+      onOpenPatientDetail: _openPatientDetail,
       metricsController: widget.metricsController,
       syncStatusController: widget.syncStatusController,
       institutionId: widget.user.institution.id,
       offline: widget.sessionStatus != SessionStatus.signedIn,
+    );
+  }
+
+  /// Abre la ficha tecnica del paciente a partir de su ID.
+  void _openPatientDetail(String patientId) {
+    final controller = widget.patientDetailController;
+    if (controller == null) {
+      AppSnackbar.info(context, 'Ficha del paciente no disponible.');
+      return;
+    }
+    if (patientId.isEmpty) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PatientDetailPage(
+          controller: controller,
+          offline: _offline,
+          patientId: patientId,
+        ),
+      ),
     );
   }
 
@@ -293,9 +328,9 @@ class _DashboardPageState extends State<DashboardPage> {
   void _openQuickAction(String label) {
     final index = _destinations.indexWhere(
       (destination) => switch (label) {
-        'Nueva atencion' => destination.isNewAttention,
-        'Buscar paciente' => destination.isHistory,
-        'Ver inventario' => destination.isCatalog,
+        'Nueva atencion' || 'Nueva Atención' => destination.isNewAttention,
+        'Buscar paciente' || 'Historial' => destination.isHistory,
+        'Ver inventario' || 'Inventario' => destination.isCatalog,
         'Administracion' => destination.isUsersManagement,
         _ => false,
       },
@@ -304,9 +339,18 @@ class _DashboardPageState extends State<DashboardPage> {
       setState(() => _selectedIndex = index);
       return;
     }
-    if (label == 'Exportar datos') {
-      if (!widget.user.hasPermission('USER_MANAGE')) return;
-      AppSnackbar.info(context, 'Exportar datos: proximamente.');
+    if (label == 'Exportar datos' || label == 'Exportar') {
+      final controller = widget.exportReportController;
+      if (controller == null) {
+        AppSnackbar.info(context, 'Modulo de exportacion no disponible.');
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              ExportReportPage(user: widget.user, controller: controller),
+        ),
+      );
     }
   }
 
@@ -388,7 +432,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ],
         ),
         actions: [
-          if (widget.syncStatusController != null)
+          if (widget.syncStatusController != null && _canPerformAttentions)
             _SyncStatusBadge(
               controller: widget.syncStatusController!,
               isOffline: widget.sessionStatus != SessionStatus.signedIn,
@@ -1004,20 +1048,27 @@ class _DashboardDestination {
 class _DashboardContent extends StatefulWidget {
   const _DashboardContent({
     required this.userName,
+    required this.userId,
     required this.permissions,
     required this.onAction,
+    required this.onOpenPatientDetail,
     required this.institutionId,
     required this.offline,
+    this.canPerformAttentions = true,
     this.metricsController,
     this.syncStatusController,
   });
 
   final String userName;
+  final String userId;
   final List<String> permissions;
+  final bool canPerformAttentions;
   final ValueChanged<String> onAction;
+  final ValueChanged<String> onOpenPatientDetail;
   final String institutionId;
   final bool offline;
   final MetricsController? metricsController;
+
   final SyncStatusController? syncStatusController;
 
   @override
@@ -1028,9 +1079,11 @@ class _DashboardContentState extends State<_DashboardContent> {
   @override
   void initState() {
     super.initState();
+    final isInstitutionalAdmin = widget.permissions.contains('USER_MANAGE');
     widget.metricsController?.load(
       institutionId: widget.institutionId,
       offline: widget.offline,
+      vaccinatorId: isInstitutionalAdmin ? null : widget.userId,
     );
   }
 
@@ -1045,6 +1098,7 @@ class _DashboardContentState extends State<_DashboardContent> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final horizontalPadding = constraints.maxWidth >= 700 ? 32.0 : 16.0;
+        final twoColumns = constraints.maxWidth >= 640;
         final columns = constraints.maxWidth >= 900 ? 3 : 1;
         return SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(
@@ -1075,7 +1129,7 @@ class _DashboardContentState extends State<_DashboardContent> {
                   AnimatedBuilder(
                     animation: listenable,
                     builder: (context, _) => _StatsGrid(
-                      columns: columns,
+                      twoColumns: twoColumns,
                       patientsAttended:
                           widget.metricsController?.summary.patientsAttended
                               .toString() ??
@@ -1088,18 +1142,30 @@ class _DashboardContentState extends State<_DashboardContent> {
                           widget.syncStatusController?.pendingCount
                               .toString() ??
                           '0',
+                      showPendingSync: widget.canPerformAttentions,
                     ),
                   ),
                   const SizedBox(height: 32),
                   Text(
-                    'Acciones frecuentes',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    'Centro de Acción',
+                    style: Theme.of(context).textTheme.titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
                   _ActionsGrid(
                     columns: columns == 1 ? 2 : 4,
                     permissions: widget.permissions,
                     onAction: widget.onAction,
+                  ),
+                  const SizedBox(height: 32),
+                  AnimatedBuilder(
+                    animation: listenable,
+                    builder: (context, _) => _RecentRecordsSection(
+                      records:
+                          widget.metricsController?.recentRecords ?? const [],
+                      onViewAll: () => widget.onAction('Historial'),
+                      onOpenPatientDetail: widget.onOpenPatientDetail,
+                    ),
                   ),
                 ],
               ),
@@ -1258,16 +1324,18 @@ class _OfflineLockedBanner extends StatelessWidget {
 
 class _StatsGrid extends StatelessWidget {
   const _StatsGrid({
-    required this.columns,
     required this.patientsAttended,
     required this.dosesApplied,
     required this.pendingSync,
+    required this.twoColumns,
+    this.showPendingSync = true,
   });
 
-  final int columns;
   final String patientsAttended;
   final String dosesApplied;
   final String pendingSync;
+  final bool twoColumns;
+  final bool showPendingSync;
 
   @override
   Widget build(BuildContext context) {
@@ -1277,57 +1345,56 @@ class _StatsGrid extends StatelessWidget {
       (
         icon: Icons.people_alt_outlined,
         value: patientsAttended,
-        label: 'Pacientes atendidos',
+        label: showPendingSync
+            ? 'Mis pacientes atendidos'
+            : 'Pacientes atendidos',
         color: AppColors.primary,
       ),
       (
         icon: Icons.vaccines_outlined,
         value: dosesApplied,
-        label: 'Dosis aplicadas',
+        label: showPendingSync ? 'Mis dosis aplicadas' : 'Dosis aplicadas',
         color: AppColors.success,
       ),
-      (
-        icon: Icons.pending_actions_rounded,
-        value: pendingSync,
-        label: 'Pendientes de sync',
-        color: AppColors.warning,
-      ),
+      if (showPendingSync)
+        (
+          icon: Icons.pending_actions_rounded,
+          value: pendingSync,
+          label: 'Pendientes de sync',
+          color: AppColors.warning,
+        ),
     ];
-    return GridView.count(
-      crossAxisCount: columns,
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      childAspectRatio: columns == 1 ? 3.5 : 1.35,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      children: [
-        for (final stat in stats)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: stat.color.withValues(alpha: .1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(stat.icon, color: stat.color),
+
+    final children = [
+      for (final stat in stats)
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: stat.color.withValues(alpha: .1),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(width: 14),
-                  Column(
+                  child: Icon(stat.icon, color: stat.color),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         stat.value,
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         stat.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: AppColors.slate,
                           fontSize: 12,
@@ -1335,10 +1402,31 @@ class _StatsGrid extends StatelessWidget {
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
+        ),
+    ];
+
+    if (!twoColumns) {
+      return Column(
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) const SizedBox(height: 12),
+            children[i],
+          ],
+        ],
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0) const SizedBox(width: 12),
+          Expanded(child: children[i]),
+        ],
       ],
     );
   }
@@ -1357,97 +1445,133 @@ class _ActionsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const allActions = [
+    // El administrador de hospital (USER_MANAGE) no realiza atenciones ni
+    // requiere el acceso directo a Nueva Atencion ni Historial en el centro
+    // de accion (el historial ya se accede desde "Ver todos" en Ultimos Registros).
+    final isHospitalAdmin = permissions.contains('USER_MANAGE');
+
+    final actions = [
+      if (!isHospitalAdmin) ...[
+        (
+          icon: Icons.person_add_alt_1_rounded,
+          label: 'Nueva Atención',
+          description: 'Registrar paciente',
+          isPrimary: true,
+          iconBgColor: Colors.white.withValues(alpha: 0.22),
+          iconColor: Colors.white,
+          actionKey: 'Nueva Atención',
+        ),
+        (
+          icon: Icons.history_rounded,
+          label: 'Historial',
+          description: 'Ver registros',
+          isPrimary: false,
+          iconBgColor: const Color(0xFFE0F2FE),
+          iconColor: const Color(0xFF0284C7),
+          actionKey: 'Historial',
+        ),
+      ],
       (
-        icon: Icons.person_add_alt_1_rounded,
-        label: 'Nueva atencion',
-        description: 'Registrar un paciente',
-        primary: true,
-        requiredPermission: 'ATTENTION_CREATE',
+        icon: Icons.all_inbox_rounded,
+        label: 'Inventario',
+        description: 'Gestión de vacunas',
+        isPrimary: false,
+        iconBgColor: const Color(0xFFDCFCE7),
+        iconColor: const Color(0xFF16A34A),
+        actionKey: 'Inventario',
       ),
       (
-        icon: Icons.search_rounded,
-        label: 'Buscar paciente',
-        description: 'Consultar historial',
-        primary: false,
-        requiredPermission: 'PATIENT_READ',
-      ),
-      (
-        icon: Icons.inventory_2_outlined,
-        label: 'Ver inventario',
-        description: 'Consultar existencias',
-        primary: false,
-        requiredPermission: 'INVENTORY_READ',
-      ),
-      (
-        icon: Icons.admin_panel_settings_rounded,
-        label: 'Administracion',
-        description: 'Instituciones y usuarios',
-        primary: false,
-        requiredPermission: 'USER_MANAGE',
-      ),
-      (
-        icon: Icons.file_download_outlined,
-        label: 'Exportar datos',
-        description: 'Descargar reportes',
-        primary: false,
-        requiredPermission: 'USER_MANAGE',
+        icon: Icons.download_rounded,
+        label: 'Exportar',
+        description: 'Descargar datos',
+        isPrimary: false,
+        iconBgColor: const Color(0xFFFEF3C7),
+        iconColor: const Color(0xFFD97706),
+        actionKey: 'Exportar',
       ),
     ];
-    final actions = allActions.where(
-      (action) => permissions.contains(action.requiredPermission),
-    );
-
-    if (actions.isEmpty) return const SizedBox.shrink();
 
     return GridView.count(
       crossAxisCount: columns,
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      childAspectRatio: columns == 2 ? 1.55 : 1.2,
+      crossAxisSpacing: 14,
+      mainAxisSpacing: 14,
+      childAspectRatio: columns == 2 ? 1.05 : 1.15,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [
         for (final action in actions)
-          Card(
-            color: action.primary ? AppColors.primary : AppColors.surface,
+          Material(
+            color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: () => onAction(action.label),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Icon(
-                      action.icon,
-                      color: action.primary ? Colors.white : AppColors.primary,
-                      size: 30,
+              borderRadius: BorderRadius.circular(22),
+              onTap: () => onAction(action.actionKey),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: action.isPrimary
+                      ? const Color(0xFF2563EB)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  border: action.isPrimary
+                      ? null
+                      : Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: action.isPrimary
+                          ? const Color(0xFF2563EB).withValues(alpha: 0.28)
+                          : Colors.black.withValues(alpha: 0.04),
+                      blurRadius: action.isPrimary ? 12 : 10,
+                      offset: const Offset(0, 4),
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          action.label,
-                          style: TextStyle(
-                            color: action.primary
-                                ? Colors.white
-                                : AppColors.ink,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          action.description,
-                          style: TextStyle(
-                            color: action.primary
-                                ? Colors.white70
-                                : AppColors.slate,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+                  ],
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 16,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: action.iconBgColor,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        action.icon,
+                        color: action.iconColor,
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      action.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: action.isPrimary
+                            ? Colors.white
+                            : const Color(0xFF0F172A),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      action.description,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: action.isPrimary
+                            ? Colors.white.withValues(alpha: 0.85)
+                            : const Color(0xFF64748B),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
@@ -1455,6 +1579,176 @@ class _ActionsGrid extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _RecentRecordsSection extends StatelessWidget {
+  const _RecentRecordsSection({
+    required this.records,
+    required this.onViewAll,
+    required this.onOpenPatientDetail,
+  });
+
+  final List<RecentRecordItem> records;
+  final VoidCallback onViewAll;
+  final ValueChanged<String> onOpenPatientDetail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Últimos Registros',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            TextButton(
+              onPressed: onViewAll,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text(
+                'Ver todos',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2563EB),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (records.isEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+            ),
+            child: const Center(
+              child: Text(
+                'No hay registros recientes',
+                style: TextStyle(
+                  color: AppColors.slate,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          )
+        else
+          Column(
+            children: [
+              for (var i = 0; i < records.length; i++) ...[
+                if (i > 0) const SizedBox(height: 10),
+                _RecentRecordCard(
+                  record: records[i],
+                  onTap: () => onOpenPatientDetail(records[i].patientId),
+                ),
+              ],
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+class _RecentRecordCard extends StatelessWidget {
+  const _RecentRecordCard({required this.record, this.onTap});
+
+  final RecentRecordItem record;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFEFF6FF),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.person_rounded,
+                  color: Color(0xFF2563EB),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      record.patientName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      record.vaccineName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                record.timeAgo,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

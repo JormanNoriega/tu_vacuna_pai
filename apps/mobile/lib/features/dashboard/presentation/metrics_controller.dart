@@ -1,5 +1,6 @@
 import '../../../core/presentation/async_controller.dart';
 import '../domain/entities/metrics_summary.dart';
+import '../domain/entities/recent_record_item.dart';
 import '../domain/use_cases/get_metrics_summary.dart';
 
 /// Metricas del home (pacientes atendidos y dosis aplicadas).
@@ -15,31 +16,51 @@ class MetricsController extends AsyncController {
   MetricsSummary _summary = MetricsSummary.empty;
   MetricsSummary get summary => _summary;
 
+  List<RecentRecordItem> _recentRecords = const [];
+  List<RecentRecordItem> get recentRecords => _recentRecords;
+
   Future<void> load({
     required String institutionId,
     required bool offline,
+    String? vaccinatorId,
   }) async {
     if (offline) {
-      _summary = await getSummary.local(institutionId);
+      _summary = await getSummary.local(
+        institutionId,
+        vaccinatorId: vaccinatorId,
+      );
+      _recentRecords = await getSummary.localRecent(
+        institutionId,
+        vaccinatorId: vaccinatorId,
+      );
       notifyListeners();
       return;
     }
 
     await execute((token) async {
-      _summary = await getSummary.remote(token);
+      _summary = await getSummary.remote(token, vaccinatorId: vaccinatorId);
+      _recentRecords = await getSummary.remoteRecent(token);
     });
 
     // Sin red o servidor no disponible: usar el respaldo local sin dejar error
     // visible (los pendientes ya se comunican en la insignia de sincronizacion).
     if (error != null) {
       clearError();
-      _summary = await getSummary.local(institutionId);
+      _summary = await getSummary.local(
+        institutionId,
+        vaccinatorId: vaccinatorId,
+      );
+      _recentRecords = await getSummary.localRecent(
+        institutionId,
+        vaccinatorId: vaccinatorId,
+      );
       notifyListeners();
     }
   }
 
   void clearSession() {
     _summary = MetricsSummary.empty;
+    _recentRecords = const [];
     clearError();
     notifyListeners();
   }

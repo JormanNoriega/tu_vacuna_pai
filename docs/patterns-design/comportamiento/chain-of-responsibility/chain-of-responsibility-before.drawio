@@ -1,0 +1,108 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Antes-Sin-Patron-Chain" id="before-chain-id">
+    <mxGraphModel dx="1882" dy="1045" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="5080" pageHeight="5080" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Cliente: Controlador REST -->
+        <mxCell id="client-controller" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" value="&lt;div&gt;SyncController&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="180" x="120" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="cc-sep" parent="client-controller" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="180" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cc-m" parent="client-controller" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="&lt;div&gt;+ push(req): ResponseEntity&lt;/div&gt;" vertex="1">
+          <mxGeometry height="32" width="180" y="38" as="geometry" />
+        </mxCell>
+
+        <!-- Clase Monolítica: SyncPushService (Antes) -->
+        <mxCell id="monolith-service" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=34;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;" value="&lt;div&gt;SyncPushService (Monolito ANTES)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="260" width="340" x="420" y="145" as="geometry" />
+        </mxCell>
+        <mxCell id="ms-attr" parent="monolith-service" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="&lt;div&gt;- identity: IdentityService&lt;/div&gt;&lt;div&gt;- mergeRequests: PatientMergeRequestService&lt;/div&gt;&lt;div&gt;- processedOperations: ProcessedOperationsPort&lt;/div&gt;&lt;div&gt;- handlers: Map&amp;lt;String, SyncCommandHandler&amp;gt;&lt;/div&gt;" xml:space="preserve" vertex="1">
+          <mxGeometry height="68" width="340" y="34" as="geometry" />
+        </mxCell>
+        <mxCell id="ms-sep" parent="monolith-service" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="340" y="102" as="geometry" />
+        </mxCell>
+        <mxCell id="ms-meth" parent="monolith-service" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="&lt;div&gt;&lt;b&gt;+ push(actorId, request): SyncPushResponse&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&amp;nbsp;&amp;nbsp;↳ bucle for cada operacion:&lt;/div&gt;&lt;div&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;1. if (!dependencias) -&amp;gt; continue&lt;/div&gt;&lt;div&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;2. if (idempotencia) -&amp;gt; continue&lt;/div&gt;&lt;div&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;3. if (!handler) -&amp;gt; continue&lt;/div&gt;&lt;div&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;4. if (!permisos) -&amp;gt; continue&lt;/div&gt;&lt;div&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;5. try-catch 6 excepciones dominio&lt;/div&gt;&lt;div&gt;- dependencyRejection(op, outcomes): String&lt;/div&gt;&lt;div&gt;- reject(rejected, outcomes, ...): void&lt;/div&gt;" xml:space="preserve" vertex="1">
+          <mxGeometry height="150" width="340" y="110" as="geometry" />
+        </mxCell>
+
+        <!-- Acoplamientos directos del monolito -->
+        <!-- Dependencia 1: ProcessedOperationsPort -->
+        <mxCell id="dep-port" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" value="ProcessedOperationsPort" vertex="1">
+          <mxGeometry height="60" width="220" x="880" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="dp-sep" parent="dep-port" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="220" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="dp-m" parent="dep-port" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ exists(operationId): boolean" vertex="1">
+          <mxGeometry height="26" width="220" y="34" as="geometry" />
+        </mxCell>
+
+        <!-- Dependencia 2: SyncCommandHandler -->
+        <mxCell id="dep-handler" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" value="SyncCommandHandler" vertex="1">
+          <mxGeometry height="60" width="220" x="880" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="dh-sep" parent="dep-handler" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="220" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="dh-m" parent="dep-handler" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ apply(actor, opId, op): void" vertex="1">
+          <mxGeometry height="26" width="220" y="34" as="geometry" />
+        </mxCell>
+
+        <!-- Dependencia 3: PatientMergeRequestService -->
+        <mxCell id="dep-merge" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" value="PatientMergeRequestService" vertex="1">
+          <mxGeometry height="60" width="220" x="880" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="dm-sep" parent="dep-merge" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="220" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="dm-m" parent="dep-merge" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ requestReview(patientId): void" vertex="1">
+          <mxGeometry height="26" width="220" y="34" as="geometry" />
+        </mxCell>
+
+        <!-- Dependencia 4: AuthorizedUser / Identity -->
+        <mxCell id="dep-actor" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" value="AuthorizedUser" vertex="1">
+          <mxGeometry height="60" width="220" x="880" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="da-sep" parent="dep-actor" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" value="" vertex="1">
+          <mxGeometry height="8" width="220" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="da-m" parent="dep-actor" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ hasPermission(p): boolean" vertex="1">
+          <mxGeometry height="26" width="220" y="34" as="geometry" />
+        </mxCell>
+
+        <!-- Conexiones -->
+        <mxCell id="edge-ctrl-service" edge="1" parent="1" source="client-controller" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="monolith-service">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl-c-s" connectable="0" parent="edge-ctrl-service" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="invoca push()" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-s-port" edge="1" parent="1" source="monolith-service" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.2;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=open;endFill=0;dashed=1;" target="dep-port">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-s-handler" edge="1" parent="1" source="monolith-service" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.4;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=open;endFill=0;dashed=1;" target="dep-handler">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-s-merge" edge="1" parent="1" source="monolith-service" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.6;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=open;endFill=0;dashed=1;" target="dep-merge">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-s-actor" edge="1" parent="1" source="monolith-service" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.8;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=open;endFill=0;dashed=1;" target="dep-actor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Cuadro de Notas de Problemas -->
+        <mxCell id="note-problems" parent="1" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#F8CECC;strokeColor=#B85450;size=16;" value="&lt;b&gt;Problemas de Diseño (ANTES):&lt;/b&gt;&lt;br/&gt;• &lt;b&gt;Violación SRP:&lt;/b&gt; SyncPushService orquesta lotes, valida dependencias, verifica idempotencia, evalúa seguridad y mapea 6 excepciones de dominio.&lt;br/&gt;• &lt;b&gt;Violación OCP:&lt;/b&gt; Agregar una regla (ej. reloj de dispositivo, IPS activa) obliga a modificar el bucle con más if, continue y acoplamientos.&lt;br/&gt;• &lt;b&gt;Alto Acoplamiento:&lt;/b&gt; Conoce múltiples servicios de infraestructura y dominio directamente en un solo método." vertex="1">
+          <mxGeometry height="140" width="340" x="420" y="440" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

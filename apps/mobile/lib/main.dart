@@ -44,6 +44,8 @@ import 'features/attentions/presentation/history_controller.dart';
 import 'features/dashboard/data/metrics_repository_impl.dart';
 import 'features/dashboard/domain/use_cases/get_metrics_summary.dart';
 import 'features/dashboard/presentation/metrics_controller.dart';
+import 'features/reports/data/reports_repository_impl.dart';
+import 'features/reports/presentation/export_report_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -168,6 +170,10 @@ Future<void> main() async {
       ),
     ),
   );
+  final exportReportController = ExportReportController(
+    sessionManager: sessionManager,
+    repository: ReportsRepositoryImpl(api: apiClient, database: appDatabase),
+  );
 
   runApp(
     TuVacunaApp(
@@ -183,6 +189,7 @@ Future<void> main() async {
       syncStatusController: syncStatusController,
       clinicalOfflineRepository: clinicalOfflineRepository,
       metricsController: metricsController,
+      exportReportController: exportReportController,
     ),
   );
 

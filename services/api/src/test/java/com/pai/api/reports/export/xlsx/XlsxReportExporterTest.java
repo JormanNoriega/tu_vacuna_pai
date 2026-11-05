@@ -2,6 +2,9 @@ package com.pai.api.reports.export.xlsx;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.pai.api.reports.export.ReportCategoryBlock;
+import com.pai.api.reports.export.ReportCategoryColors;
+import com.pai.api.reports.export.ReportFieldHeader;
 import java.io.ByteArrayInputStream;
 import java.util.List;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -26,6 +29,50 @@ class XlsxReportExporterTest {
       assertThat(sheet.getRow(0).getCell(1).getStringCellValue()).isEqualTo("B");
       assertThat(sheet.getRow(1).getCell(0).getStringCellValue()).isEqualTo("1");
       assertThat(sheet.getRow(1).getCell(1).getStringCellValue()).isEqualTo("2");
+    }
+  }
+
+  @Test
+  void exportsDualLevelCategorizedHeaderAndZebraRows() throws Exception {
+    XlsxPaiReportFactory factory = new XlsxPaiReportFactory();
+
+    List<ReportCategoryBlock> categories =
+        List.of(
+            new ReportCategoryBlock("DATOS BÁSICOS", 2, ReportCategoryColors.BASIC_DATA),
+            new ReportCategoryBlock("DATOS ENFERMERA", 1, ReportCategoryColors.NURSE_DATA));
+
+    List<ReportFieldHeader> fields =
+        List.of(
+            new ReportFieldHeader("CONSECUTIVO", ReportCategoryColors.HEADER_ROW),
+            new ReportFieldHeader("PRIMER NOMBRE", ReportCategoryColors.HEADER_ROW),
+            new ReportFieldHeader("NOMBRE ENFERMERA", ReportCategoryColors.NURSE_FIELD));
+
+    factory.headerBuilder().writeCategoryHeader(categories, fields);
+    factory.rowWriter().writeRow(List.of("001", "CARLOS", "ANA LÓPEZ"));
+    factory.rowWriter().writeRow(List.of("002", "MARÍA", "ANA LÓPEZ"));
+
+    byte[] bytes = factory.exporter().export();
+
+    assertThat(bytes).isNotEmpty();
+    try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+      Sheet sheet = workbook.getSheetAt(0);
+
+      // Fila 0: Categorias combinadas
+      assertThat(sheet.getRow(0).getCell(0).getStringCellValue()).isEqualTo("DATOS BÁSICOS");
+      assertThat(sheet.getRow(0).getCell(2).getStringCellValue()).isEqualTo("DATOS ENFERMERA");
+      assertThat(sheet.getNumMergedRegions()).isEqualTo(1);
+      assertThat(sheet.getMergedRegion(0).formatAsString()).isEqualTo("A1:B1");
+
+      // Fila 1: Subencabezados
+      assertThat(sheet.getRow(1).getCell(0).getStringCellValue()).isEqualTo("CONSECUTIVO");
+      assertThat(sheet.getRow(1).getCell(1).getStringCellValue()).isEqualTo("PRIMER NOMBRE");
+      assertThat(sheet.getRow(1).getCell(2).getStringCellValue()).isEqualTo("NOMBRE ENFERMERA");
+
+      // Fila 2 y 3: Datos
+      assertThat(sheet.getRow(2).getCell(0).getStringCellValue()).isEqualTo("001");
+      assertThat(sheet.getRow(2).getCell(1).getStringCellValue()).isEqualTo("CARLOS");
+      assertThat(sheet.getRow(3).getCell(0).getStringCellValue()).isEqualTo("002");
+      assertThat(sheet.getRow(3).getCell(1).getStringCellValue()).isEqualTo("MARÍA");
     }
   }
 }

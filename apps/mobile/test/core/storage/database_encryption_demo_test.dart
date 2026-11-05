@@ -57,11 +57,11 @@ void main() {
     const plainHeader = 'SQLite format 3';
     final plainHeaderVisible =
         bytes.length >= plainHeader.length &&
-            String.fromCharCodes(bytes.take(plainHeader.length)) ==
-                plainHeader;
+        String.fromCharCodes(bytes.take(plainHeader.length)) == plainHeader;
     stderr.writeln(
-        'Cabecera "SQLite format 3" en texto plano: '
-        '${plainHeaderVisible ? 'VISIBLE' : 'NO (cifrada)'}');
+      'Cabecera "SQLite format 3" en texto plano: '
+      '${plainHeaderVisible ? 'VISIBLE' : 'NO (cifrada)'}',
+    );
     expect(plainHeaderVisible, isFalse);
     expect(String.fromCharCodes(bytes), isNot(contains(secret)));
 
@@ -84,8 +84,11 @@ void main() {
     final ok = sqlite3.open(dbPath);
     ok.execute("PRAGMA key = '$key'");
     ok.execute('PRAGMA cipher_memory_security = OFF');
-    final nombre =
-        ok.select('SELECT nombre FROM pacientes;').first.values.first;
+    final nombre = ok
+        .select('SELECT nombre FROM pacientes;')
+        .first
+        .values
+        .first;
     ok.close();
     stderr.writeln('Lectura con clave correcta: OK -> $nombre');
     expect(nombre, secret);
