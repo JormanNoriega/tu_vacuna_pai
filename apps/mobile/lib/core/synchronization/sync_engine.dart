@@ -331,16 +331,27 @@ class SyncEngine {
       case SyncCommandType.registerAppliedDose:
         final attentionId = _nullable(payload['attentionId']);
         if (attentionId == null) return;
+        final vaccineId = _nullable(payload['vaccineId']);
+        final cachedVaccine = vaccineId != null
+            ? await _db.vaccineById(vaccineId)
+            : null;
+        final vaccineName =
+            _nullable(payload['vaccineName']) ??
+            cachedVaccine?.name ??
+            'Vacunación';
+        final doseLabel =
+            _nullable(payload['doseLabel']) ??
+            _nullable(payload['doseOptionId']);
         await _db.upsertAppliedDoseLocal(
           AppliedDosesLocalCompanion.insert(
             id: operation.aggregateId,
             attentionId: attentionId,
-            vaccineId: Value(_nullable(payload['vaccineId'])),
+            vaccineId: Value(vaccineId),
             status: 'REGISTERED',
             appliedAt: _epoch(payload['applicationDate']) ?? _epochNow(),
             lot: Value(_nullable(payload['lotNumber'])),
-            vaccineNameSnapshot: _str(payload['vaccineId']),
-            doseLabelSnapshot: Value(_nullable(payload['doseOptionId'])),
+            vaccineNameSnapshot: vaccineName,
+            doseLabelSnapshot: Value(doseLabel),
             syncState: SyncAggregateState.synced.value,
             updatedAt: _epochNow(),
           ),

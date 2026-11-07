@@ -159,6 +159,8 @@ Future<void> main() async {
     listDepartments: ListDepartments(catalogRepository),
     listMunicipalities: ListMunicipalities(catalogRepository),
     listPatientAttentions: ListPatientAttentions(attentionsRepository),
+    database: appDatabase,
+    offlineRepository: clinicalOfflineRepository,
   );
   final metricsController = MetricsController(
     sessionManager: sessionManager,

@@ -258,6 +258,7 @@ class _DashboardPageState extends State<DashboardPage> {
         user: widget.user,
         controller: widget.attentionController!,
         offline: _offline,
+        onFinished: () => _selectTab(0),
       );
     }
 

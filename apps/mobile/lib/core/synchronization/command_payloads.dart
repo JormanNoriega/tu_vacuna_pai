@@ -44,6 +44,8 @@ class CommandPayloads {
     required String attentionId,
     required String vaccineId,
     required String doseOptionId,
+    String? vaccineName,
+    String? doseLabel,
     String? pneumococcalTypeOptionId,
     String? lotNumber,
     String? applicationDate,
@@ -55,6 +57,8 @@ class CommandPayloads {
     'attentionId': attentionId,
     'vaccineId': vaccineId,
     'doseOptionId': doseOptionId,
+    if (_filled(vaccineName)) 'vaccineName': vaccineName,
+    if (_filled(doseLabel)) 'doseLabel': doseLabel,
     if (_filled(pneumococcalTypeOptionId))
       'pneumococcalTypeOptionId': pneumococcalTypeOptionId,
     if (_filled(lotNumber)) 'lotNumber': lotNumber,

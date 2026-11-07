@@ -38,6 +38,8 @@ class ClinicalOfflineRepository {
   final AppDatabase _db;
   final SyncOutboxRepository _outbox;
 
+  AppDatabase get database => _db;
+
   Future<ClinicalWrite<PatientsLocalData>> createPatient({
     required String institutionId,
     required NewPatientInput input,
@@ -152,6 +154,8 @@ class ClinicalOfflineRepository {
         attentionId: attentionId,
         vaccineId: vaccineId,
         doseOptionId: doseOptionId,
+        vaccineName: vaccineNameSnapshot,
+        doseLabel: doseLabelSnapshot,
         pneumococcalTypeOptionId: pneumococcalTypeOptionId,
         lotNumber: lotNumber,
         applicationDate: applicationDate,

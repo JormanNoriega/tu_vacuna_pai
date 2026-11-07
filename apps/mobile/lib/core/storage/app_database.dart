@@ -537,6 +537,9 @@ class AppDatabase extends _$AppDatabase {
   Future<List<VaccinesCacheData>> cachedVaccines() =>
       select(vaccinesCache).get();
 
+  Future<VaccinesCacheData?> vaccineById(String id) =>
+      (select(vaccinesCache)..where((t) => t.id.equals(id))).getSingleOrNull();
+
   Future<void> replaceGlobalOptions(
     String vaccineId,
     List<VaccineOption> options,
@@ -940,6 +943,10 @@ class AppDatabase extends _$AppDatabase {
               appliedDosesLocal,
               appliedDosesLocal.attentionId.equalsExp(attentionsLocal.id),
             ),
+            leftOuterJoin(
+              vaccinesCache,
+              vaccinesCache.id.equalsExp(appliedDosesLocal.vaccineId),
+            ),
           ])
           ..where(predicate)
           ..orderBy([
@@ -953,8 +960,16 @@ class AppDatabase extends _$AppDatabase {
       final attention = row.readTable(attentionsLocal);
       final patient = row.readTable(patientsLocal);
       final dose = row.readTableOrNull(appliedDosesLocal);
+      final cachedVaccine = row.readTableOrNull(vaccinesCache);
       final fullName = '${patient.firstName} ${patient.lastName}'.trim();
-      final vaccineName = dose?.vaccineNameSnapshot ?? 'Vacunación';
+      final rawName = dose?.vaccineNameSnapshot;
+      final isUuid =
+          rawName != null &&
+          RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(rawName.trim());
+      final vaccineName =
+          (!isUuid && rawName != null && rawName.trim().isNotEmpty)
+          ? rawName.trim()
+          : (cachedVaccine?.name ?? 'Atención de vacunación');
       final sec = attention.attentionDate ?? attention.completedAt;
       final dt = sec != null
           ? (sec < 10000000000

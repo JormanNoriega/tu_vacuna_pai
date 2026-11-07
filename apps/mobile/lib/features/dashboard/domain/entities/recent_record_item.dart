@@ -33,11 +33,20 @@ class RecentRecordItem {
   }
 
   factory RecentRecordItem.fromJson(Map<String, dynamic> json) {
+    final rawVaccine = json['vaccineName']?.toString();
+    final isUuid =
+        rawVaccine != null &&
+        RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(rawVaccine.trim());
+    final displayVaccine =
+        (!isUuid && rawVaccine != null && rawVaccine.trim().isNotEmpty)
+        ? rawVaccine.trim()
+        : 'Atención de vacunación';
+
     return RecentRecordItem(
       id: json['id']?.toString() ?? '',
       patientId: json['patientId']?.toString() ?? '',
       patientName: json['patientName']?.toString() ?? 'Paciente',
-      vaccineName: json['vaccineName']?.toString() ?? 'Atención de vacunación',
+      vaccineName: displayVaccine,
       timestamp:
           DateTime.tryParse(json['timestamp']?.toString() ?? '') ??
           DateTime.now(),

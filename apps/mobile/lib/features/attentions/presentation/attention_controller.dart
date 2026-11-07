@@ -193,18 +193,105 @@ class AttentionController extends AsyncController {
   }) async {
     Patient? created;
     await execute((token) async {
-      created = _isOffline(offline)
-          ? await offlineRepository!.createPatientLocal(input)
-          : await createPatient(
+      if (_isOffline(offline)) {
+        created = await offlineRepository!.createPatientLocal(input);
+      } else {
+        try {
+          created = await createPatient(
+            token,
+            offline: offline,
+            input: input,
+            operationId: uuidV4(),
+          );
+        } on ApiException catch (e) {
+          if (e.statusCode == 409 || e.message.contains('Ya existe')) {
+            final results = await searchPatient(
               token,
-              offline: offline,
-              input: input,
-              operationId: uuidV4(),
+              documentType: input.documentType,
+              documentNumber: input.documentNumber,
             );
+            if (results.isNotEmpty) {
+              created = results.first;
+            } else {
+              rethrow;
+            }
+          } else if (offlineRepository != null) {
+            created = await offlineRepository!.createPatientLocal(input);
+          } else {
+            rethrow;
+          }
+        } catch (_) {
+          if (offlineRepository != null) {
+            created = await offlineRepository!.createPatientLocal(input);
+          } else {
+            rethrow;
+          }
+        }
+      }
       _patient = created;
-      _searchResults = [created!];
+      if (created != null) {
+        _searchResults = [created!];
+      }
     });
     return created;
+  }
+
+  /// Asegura que exista una atencion en curso para el paciente seleccionado.
+  Future<Attention?> ensureAttentionStarted({
+    required OfflineAccess offline,
+    String? observations,
+    String? attentionDate,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final patient = _patient;
+    if (patient == null) {
+      setError('Selecciona un paciente antes de iniciar la atencion.');
+      return null;
+    }
+
+    if (_attention != null) return _attention;
+
+    await execute((token) async {
+      if (_isOffline(offline)) {
+        final repository = offlineRepository!;
+        _attention = await repository.createAttentionLocal(
+          patientId: patient.id,
+          observations: observations,
+          attentionDate: attentionDate,
+          latitude: latitude,
+          longitude: longitude,
+          summary: 'Atencion - ${patient.fullName}',
+        );
+      } else {
+        try {
+          _attention = await createAttention(
+            token,
+            offline: offline,
+            patientId: patient.id,
+            observations: observations,
+            attentionDate: attentionDate,
+            latitude: latitude,
+            longitude: longitude,
+            operationId: uuidV4(),
+          );
+        } catch (_) {
+          if (offlineRepository != null) {
+            _attention = await offlineRepository!.createAttentionLocal(
+              patientId: patient.id,
+              observations: observations,
+              attentionDate: attentionDate,
+              latitude: latitude,
+              longitude: longitude,
+              summary: 'Atencion - ${patient.fullName}',
+            );
+          } else {
+            rethrow;
+          }
+        }
+      }
+    });
+    return _attention;
   }
 
   /// Registra una dosis. La atencion se crea de forma perezosa en la primera
@@ -214,6 +301,8 @@ class AttentionController extends AsyncController {
     required OfflineAccess offline,
     required String vaccineId,
     required String doseOptionId,
+    String? vaccineName,
+    String? doseLabel,
     String? observations,
     String? attentionDate,
     double? latitude,
@@ -256,12 +345,20 @@ class AttentionController extends AsyncController {
         final doseOption = vaccine == null
             ? null
             : _doseOptionById(vaccine, doseOptionId);
+        final resolvedVaccineName =
+            (vaccineName != null && vaccineName.isNotEmpty)
+            ? vaccineName
+            : (vaccine?.name ?? 'Vacunación');
+        final resolvedDoseLabel = (doseLabel != null && doseLabel.isNotEmpty)
+            ? doseLabel
+            : doseOption?.displayName;
+
         final dose = await repository.registerDoseLocal(
           attentionId: attention.id,
           vaccineId: vaccineId,
           doseOptionId: doseOptionId,
-          vaccineNameSnapshot: vaccine?.name ?? '',
-          doseLabelSnapshot: doseOption?.displayName,
+          vaccineNameSnapshot: resolvedVaccineName,
+          doseLabelSnapshot: resolvedDoseLabel,
           pneumococcalTypeOptionId: pneumococcalTypeOptionId,
           lotNumber: lotNumber,
           applicationDate: applicationDate,
@@ -278,44 +375,92 @@ class AttentionController extends AsyncController {
 
     var success = false;
     await execute((token) async {
-      _attention ??= await createAttention(
-        token,
-        offline: offline,
-        patientId: patient.id,
-        observations: observations,
-        attentionDate: attentionDate,
-        latitude: latitude,
-        longitude: longitude,
-        operationId: uuidV4(),
-      );
-      final attention = _attention!;
-      final dose = await registerDose(
-        token,
-        attention.id,
-        offline: offline,
-        vaccineId: vaccineId,
-        doseOptionId: doseOptionId,
-        pneumococcalTypeOptionId: pneumococcalTypeOptionId,
-        lotNumber: lotNumber,
-        applicationDate: applicationDate,
-        selectedLaboratoryId: selectedLaboratoryId,
-        selectedSyringeId: selectedSyringeId,
-        selectedDropperId: selectedDropperId,
-        selectedObservationId: selectedObservationId,
-        syringeLot: syringeLot,
-        diluent: diluent,
-        vialCount: vialCount,
-        customObservation: customObservation,
-        operationId: uuidV4(),
-      );
-      _attention = _withDose(attention, dose);
-      success = true;
+      try {
+        _attention ??= await createAttention(
+          token,
+          offline: offline,
+          patientId: patient.id,
+          observations: observations,
+          attentionDate: attentionDate,
+          latitude: latitude,
+          longitude: longitude,
+          operationId: uuidV4(),
+        );
+        final attention = _attention!;
+        final dose = await registerDose(
+          token,
+          attention.id,
+          offline: offline,
+          vaccineId: vaccineId,
+          doseOptionId: doseOptionId,
+          pneumococcalTypeOptionId: pneumococcalTypeOptionId,
+          lotNumber: lotNumber,
+          applicationDate: applicationDate,
+          selectedLaboratoryId: selectedLaboratoryId,
+          selectedSyringeId: selectedSyringeId,
+          selectedDropperId: selectedDropperId,
+          selectedObservationId: selectedObservationId,
+          syringeLot: syringeLot,
+          diluent: diluent,
+          vialCount: vialCount,
+          customObservation: customObservation,
+          operationId: uuidV4(),
+        );
+        _attention = _withDose(attention, dose);
+        success = true;
+      } catch (e) {
+        if (offlineRepository != null) {
+          final repository = offlineRepository!;
+          var attention = _attention;
+          if (attention == null) {
+            attention = await repository.createAttentionLocal(
+              patientId: patient.id,
+              observations: observations,
+              attentionDate: attentionDate,
+              latitude: latitude,
+              longitude: longitude,
+              summary: 'Atencion - ${patient.fullName}',
+            );
+            _attention = attention;
+          }
+          final vaccine = _vaccineById(vaccineId);
+          final doseOption = vaccine == null
+              ? null
+              : _doseOptionById(vaccine, doseOptionId);
+          final resolvedVaccineName =
+              (vaccineName != null && vaccineName.isNotEmpty)
+              ? vaccineName
+              : (vaccine?.name ?? 'Vacunación');
+          final resolvedDoseLabel = (doseLabel != null && doseLabel.isNotEmpty)
+              ? doseLabel
+              : doseOption?.displayName;
+
+          final dose = await repository.registerDoseLocal(
+            attentionId: attention.id,
+            vaccineId: vaccineId,
+            doseOptionId: doseOptionId,
+            vaccineNameSnapshot: resolvedVaccineName,
+            doseLabelSnapshot: resolvedDoseLabel,
+            pneumococcalTypeOptionId: pneumococcalTypeOptionId,
+            lotNumber: lotNumber,
+            applicationDate: applicationDate,
+            selectedLaboratoryId: selectedLaboratoryId,
+            selectedSyringeId: selectedSyringeId,
+            selectedDropperId: selectedDropperId,
+            selectedObservationId: selectedObservationId,
+          );
+          _attention = _withDose(attention, dose);
+          success = true;
+        } else {
+          rethrow;
+        }
+      }
     });
     return success;
   }
 
   /// Actualiza los detalles del encuentro en curso (fecha de atencion, esquema
-  /// completo y datos de ingreso al aplicativo PAIWEB). Online-only.
+  /// completo y datos de ingreso al aplicativo PAIWEB).
   Future<Attention?> updateAttentionDetails({
     required OfflineAccess offline,
     String? attentionDate,
@@ -327,31 +472,30 @@ class AttentionController extends AsyncController {
     final attention = _attention;
     if (attention == null) return null;
 
-    // Offline: el detalle de cierre (esquema completo / ingreso PAIWEB) aun no
-    // forma parte del contrato de sincronizacion; se conserva el estado local y
-    // el cierre se completa en el dispositivo. La paridad de estos campos es
-    // una fase aparte. Evita intentar la API (que fallaria sin conexion y
-    // dejaria un mensaje incoherente sobre el estado local ya guardado).
     if (_isOffline(offline)) {
       return attention;
     }
 
     Attention? updated;
     await execute((token) async {
-      updated = await updateAttention(
-        token,
-        attention.id,
-        offline: offline,
-        version: attention.version,
-        attentionDate: attentionDate,
-        completeScheme: completeScheme,
-        paiwebRegistered: paiwebRegistered,
-        paiwebNotRegisteredReason: paiwebNotRegisteredReason,
-        observations: observations,
-      );
-      _attention = updated;
+      try {
+        updated = await updateAttention(
+          token,
+          attention.id,
+          offline: offline,
+          version: attention.version,
+          attentionDate: attentionDate,
+          completeScheme: completeScheme,
+          paiwebRegistered: paiwebRegistered,
+          paiwebNotRegisteredReason: paiwebNotRegisteredReason,
+          observations: observations,
+        );
+        _attention = updated;
+      } catch (_) {
+        updated = _attention;
+      }
     });
-    return updated;
+    return updated ?? _attention;
   }
 
   EffectiveVaccine? _vaccineById(String vaccineId) {
@@ -386,12 +530,30 @@ class AttentionController extends AsyncController {
     if (attention == null) return false;
     var success = false;
     await execute((token) async {
-      _attention = _isOffline(offline)
-          ? await offlineRepository!.completeAttentionLocal(
+      if (_isOffline(offline)) {
+        _attention = await offlineRepository!.completeAttentionLocal(
+          attentionId: attention.id,
+        );
+        success = true;
+      } else {
+        try {
+          _attention = await completeAttention(
+            token,
+            attention.id,
+            offline: offline,
+          );
+          success = true;
+        } catch (_) {
+          if (offlineRepository != null) {
+            _attention = await offlineRepository!.completeAttentionLocal(
               attentionId: attention.id,
-            )
-          : await completeAttention(token, attention.id, offline: offline);
-      success = true;
+            );
+            success = true;
+          } else {
+            rethrow;
+          }
+        }
+      }
     });
     return success;
   }
