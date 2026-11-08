@@ -48,24 +48,14 @@ class PatientDetailPage extends StatefulWidget {
 }
 
 class _PatientDetailPageState extends State<PatientDetailPage> {
+  /// Control de edición de secciones en la ficha técnica del paciente.
+  /// Deshabilitado para mantener la ficha en modo solo lectura.
+  static const bool _allowEditing = false;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      widget.controller.load(widget.patientId).then((_) {
-        if (!mounted) return;
-        final profile = widget.controller.profile;
-        final departmentId = (profile != null && profile.addresses.isNotEmpty)
-            ? profile.addresses.first.departmentId
-            : null;
-        widget.controller.loadCountries();
-        widget.controller.loadDepartments();
-        if (departmentId != null) {
-          widget.controller.loadMunicipalities(departmentId);
-        }
-      });
-    });
+    widget.controller.load(widget.patientId);
   }
 
   @override
@@ -83,15 +73,13 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         builder: (context, _) {
           final controller = widget.controller;
           final profile = controller.profile;
-          if (controller.isLoading && profile == null) {
-            return const Center(child: CircularProgressIndicator());
+          if (profile != null) {
+            return _content(profile);
           }
-          if (profile == null) {
-            return _errorView(
-              controller.error ?? 'No se pudo cargar el paciente.',
-            );
+          if (controller.error != null && !controller.isLoading) {
+            return _errorView(controller.error!);
           }
-          return _content(profile);
+          return const Center(child: CircularProgressIndicator());
         },
       ),
     );
@@ -340,7 +328,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                 subtitle: subtitle,
               ),
             ),
-            if (onEdit != null)
+            if (_allowEditing && onEdit != null)
               TextButton.icon(
                 style: TextButton.styleFrom(
                   visualDensity: VisualDensity.compact,

@@ -5,6 +5,7 @@ import '../../../../../core/auth/offline_access.dart';
 import '../../../../../core/utils/field_input.dart';
 import '../../../../catalogs/domain/entities/effective_catalog.dart';
 import '../../attention_controller.dart';
+import '../../../domain/services/vaccine_eligibility_engine.dart';
 import 'form_helpers.dart';
 import 'staged_dose_data.dart';
 
@@ -16,6 +17,12 @@ class Step3VaccinesStep extends StatefulWidget {
     required this.controller,
     required this.offline,
     required this.attentionDate,
+    this.birthDate,
+    this.sex,
+    this.userCondition,
+    this.ethnicity,
+    this.area,
+    this.displaced = false,
     required this.stagedDoses,
     required this.onStagedDoseChanged,
     required this.onStagedDoseRemoved,
@@ -25,6 +32,12 @@ class Step3VaccinesStep extends StatefulWidget {
   final AttentionController controller;
   final OfflineAccess offline;
   final DateTime attentionDate;
+  final DateTime? birthDate;
+  final String? sex;
+  final String? userCondition;
+  final String? ethnicity;
+  final String? area;
+  final bool displaced;
   final Map<String, StagedDose>
   stagedDoses; // key: "${vaccineId}_${doseOptionId}"
   final ValueChanged<StagedDose> onStagedDoseChanged;
@@ -38,6 +51,34 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
     with AutomaticKeepAliveClientMixin {
   final Set<String> _expandedVaccines = {};
   String? _activeDoseKey;
+  bool _showAllVaccines = false;
+  bool _isConfirmingDose = false;
+
+  PatientEligibilityContext _buildPatientContext() {
+    final hasSpecialCondition =
+        widget.displaced ||
+        (widget.area != null && widget.area == 'RURAL') ||
+        (widget.ethnicity != null &&
+            widget.ethnicity != 'NINGUNA' &&
+            widget.ethnicity != 'NO_APLICA');
+
+    final appliedKeys = <String>{};
+    for (final staged
+        in widget.stagedDoses.values.where((d) => d.isCompleted)) {
+      appliedKeys.add(
+        '${staged.vaccineName.toLowerCase()}_${staged.doseDisplayName.toLowerCase()}',
+      );
+    }
+
+    return PatientEligibilityContext.fromDates(
+      birthDate: widget.birthDate,
+      attentionDate: widget.attentionDate,
+      sex: widget.sex,
+      userCondition: widget.userCondition,
+      hasSpecialCondition: hasSpecialCondition,
+      appliedDoseKeys: appliedKeys,
+    );
+  }
 
   // Controladores temporales para la dosis activa en edición
   final _lotController = TextEditingController();
@@ -51,7 +92,21 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
   bool get wantKeepAlive => true;
 
   @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onControllerChanged);
+    if (!widget.controller.effectiveCatalogLoaded) {
+      widget.controller.loadEffectiveCatalog();
+    }
+  }
+
+  void _onControllerChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
     _lotController.dispose();
     _syringeLotController.dispose();
     _diluentController.dispose();
@@ -71,13 +126,43 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
   }
 
   void _onDoseChipTapped(EffectiveVaccine vaccine, EffectiveOption doseOption) {
-    final key = '${vaccine.vaccineId}_${doseOption.id}';
-
-    if (_activeDoseKey == key) {
+    final patientCtx = _buildPatientContext();
+    final ineligibilityWarning =
+        VaccineEligibilityEngine.getDoseIneligibilityWarning(
+          vaccine,
+          doseOption,
+          patientCtx,
+        );
+    if (ineligibilityWarning != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(ineligibilityWarning),
+          backgroundColor: AppColors.danger,
+          duration: const Duration(seconds: 4),
+        ),
+      );
       return;
     }
 
-    // Si ya existía un borrador de esta dosis, cargarla
+    final key = '${vaccine.vaccineId}_${doseOption.id}';
+
+    // Si toca la dosis que ya estaba activa, se suelta/cierra el menú
+    if (_activeDoseKey == key) {
+      if (widget.stagedDoses[key]?.isCompleted != true) {
+        widget.onStagedDoseRemoved(key);
+      }
+      setState(() => _activeDoseKey = null);
+      return;
+    }
+
+    // Si tenía otra dosis abierta sin confirmar, descartar ese borrador
+    if (_activeDoseKey != null &&
+        _activeDoseKey != key &&
+        widget.stagedDoses[_activeDoseKey!]?.isCompleted != true) {
+      widget.onStagedDoseRemoved(_activeDoseKey!);
+    }
+
+    // Si ya existía una dosis confirmada o borrador, cargarla
     StagedDose staged;
     if (widget.stagedDoses.containsKey(key)) {
       staged = widget.stagedDoses[key]!;
@@ -98,7 +183,10 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
     });
   }
 
-  void _saveCurrentDose(StagedDose current) {
+  Future<void> _saveCurrentDose(
+    StagedDose current,
+    EffectiveVaccine vaccine,
+  ) async {
     final lot = _lotController.text.trim();
     if (lot.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -107,14 +195,45 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
       return;
     }
 
+    final syringes = vaccine.operationalOptions
+        .where((o) => o.fieldType == 'SYRINGE')
+        .toList();
+    if (vaccine.hasSyringe &&
+        syringes.isNotEmpty &&
+        (current.selectedSyringeId == null ||
+            current.selectedSyringeId!.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Debe seleccionar la jeringa.')),
+      );
+      return;
+    }
+
+    final syringeLot = _syringeLotController.text.trim();
+    if (vaccine.hasSyringeLot && syringeLot.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('El lote de la jeringa es obligatorio.')),
+      );
+      return;
+    }
+
+    final diluent = _diluentController.text.trim();
+    if (vaccine.hasDiluent && diluent.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('El diluyente es obligatorio.')),
+      );
+      return;
+    }
+
+    setState(() => _isConfirmingDose = true);
+
+    // Breve pausa para dar feedback táctil y visual del loader en el botón
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
+
     final updated = current.copyWith(
       lotNumber: lot,
-      syringeLot: _syringeLotController.text.trim().isEmpty
-          ? null
-          : _syringeLotController.text.trim(),
-      diluent: _diluentController.text.trim().isEmpty
-          ? null
-          : _diluentController.text.trim(),
+      syringeLot: syringeLot.isEmpty ? null : syringeLot,
+      diluent: diluent.isEmpty ? null : diluent,
       vialCount: int.tryParse(_vialCountController.text.trim()),
       customObservation: _customObservationController.text.trim().isEmpty
           ? null
@@ -123,9 +242,15 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
     );
 
     widget.onStagedDoseChanged(updated);
+
+    setState(() {
+      _isConfirmingDose = false;
+      _activeDoseKey = null; // Se suelta/cierra el menú desplegado de la dosis confirmada
+    });
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Dosis ${updated.doseDisplayName} configurada.'),
+        content: Text('Dosis ${updated.doseDisplayName} confirmada.'),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -144,7 +269,12 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
   Widget build(BuildContext context) {
     super.build(context);
 
-    final vaccines = widget.controller.effectiveVaccines;
+    final allVaccines = widget.controller.effectiveVaccines;
+    final patientCtx = _buildPatientContext();
+    final suggestedVaccines = allVaccines
+        .where((v) => VaccineEligibilityEngine.isEligible(v, patientCtx))
+        .toList();
+    final vaccines = _showAllVaccines ? allVaccines : suggestedVaccines;
 
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
@@ -172,11 +302,117 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
           ),
         ),
 
+        // Banner de Esquema PAI y Toggle de Modo Excepcional
+        if (widget.birthDate != null && allVaccines.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: _showAllVaccines
+                  ? const Color(0xFFFFFBEB)
+                  : AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: _showAllVaccines
+                    ? const Color(0xFFFDE68A)
+                    : AppColors.primary.withValues(alpha: 0.25),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _showAllVaccines
+                      ? Icons.warning_amber_rounded
+                      : Icons.verified_user_outlined,
+                  color: _showAllVaccines
+                      ? const Color(0xFFD97706)
+                      : AppColors.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _showAllVaccines
+                        ? 'Mostrando catálogo completo (${allVaccines.length} vacunas).'
+                        : 'Esquema PAI: ${suggestedVaccines.length} vacunas sugeridas para ${patientCtx.formattedAgeSummary}.',
+                    style: TextStyle(
+                      color: _showAllVaccines
+                          ? const Color(0xFF92400E)
+                          : AppColors.primary,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _showAllVaccines = !_showAllVaccines;
+                    });
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    backgroundColor: _showAllVaccines
+                        ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
+                        : AppColors.primary.withValues(alpha: 0.1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    _showAllVaccines ? 'Ver sugeridas' : 'Ver todas',
+                    style: TextStyle(
+                      color: _showAllVaccines
+                          ? const Color(0xFFB45309)
+                          : AppColors.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
         // Estado del Catálogo
         if (!widget.controller.effectiveCatalogLoaded)
-          const Padding(
-            padding: EdgeInsets.all(40),
-            child: Center(child: CircularProgressIndicator()),
+          Padding(
+            padding: const EdgeInsets.all(40),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Cargando catálogo de vacunas...',
+                    style: TextStyle(color: AppColors.slate, fontSize: 13),
+                  ),
+                  if (widget.controller.error != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.controller.error!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppColors.danger,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton.icon(
+                      onPressed: () => widget.controller.loadEffectiveCatalog(),
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: const Text('Reintentar'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           )
         else if (vaccines.isEmpty)
           Container(
@@ -195,20 +431,36 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
                   color: AppColors.slate.withValues(alpha: 0.5),
                 ),
                 const SizedBox(height: 14),
-                const Text(
-                  'No hay vacunas disponibles',
-                  style: TextStyle(
+                Text(
+                  _showAllVaccines
+                      ? 'No hay vacunas disponibles'
+                      : 'No hay vacunas sugeridas para este grupo etario',
+                  style: const TextStyle(
                     color: AppColors.ink,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  'Tu institución no tiene biológicos habilitados en el catálogo.',
+                Text(
+                  _showAllVaccines
+                      ? 'Tu institución no tiene biológicos habilitados en el catálogo.'
+                      : 'Según el Esquema PAI Colombia, no hay biológicos de rutina para esta edad en el catálogo institucional.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.slate, fontSize: 13),
+                  style: const TextStyle(color: AppColors.slate, fontSize: 13),
                 ),
+                if (!_showAllVaccines && allVaccines.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _showAllVaccines = true;
+                      });
+                    },
+                    icon: const Icon(Icons.visibility_outlined, size: 18),
+                    label: const Text('Ver catálogo completo'),
+                  ),
+                ],
               ],
             ),
           )
@@ -525,9 +777,9 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
                 }
               },
               child: InputDecorator(
-                decoration: const InputDecoration(
-                  labelText: 'Fecha de Aplicación *',
-                  prefixIcon: Icon(Icons.event, size: 20),
+                decoration: InputDecoration(
+                  label: requiredFieldLabel('Fecha de Aplicación'),
+                  prefixIcon: const Icon(Icons.event, size: 20),
                 ),
                 child: Text(
                   formatDisplayDate(currentDose.applicationDate),
@@ -571,15 +823,15 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
             // Lote de la Vacuna
             TextFormField(
               controller: _lotController,
-              decoration: const InputDecoration(
-                labelText: 'Número de Lote *',
+              decoration: InputDecoration(
+                label: requiredFieldLabel('Número de Lote'),
                 hintText: 'Ej: AB12345',
               ),
               onChanged: (val) => currentDose.lotNumber = val.trim(),
             ),
             const SizedBox(height: 12),
 
-            // Jeringa
+            // Jeringa (Obligatoria si la vacuna la requiere)
             if (vaccine.hasSyringe && syringes.isNotEmpty) ...[
               DropdownButtonFormField<EffectiveOption>(
                 initialValue:
@@ -589,7 +841,9 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
                       )
                     : null,
                 isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Jeringa'),
+                decoration: InputDecoration(
+                  label: requiredFieldLabel('Jeringa'),
+                ),
                 items: [
                   const DropdownMenuItem(
                     value: null,
@@ -608,12 +862,12 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
               const SizedBox(height: 12),
             ],
 
-            // Lote de Jeringa
+            // Lote de Jeringa (Obligatorio si la vacuna lo requiere)
             if (vaccine.hasSyringeLot) ...[
               TextFormField(
                 controller: _syringeLotController,
-                decoration: const InputDecoration(
-                  labelText: 'Lote de Jeringa',
+                decoration: InputDecoration(
+                  label: requiredFieldLabel('Lote de Jeringa'),
                   hintText: 'Ej: SYR987',
                 ),
                 onChanged: (val) => currentDose.syringeLot = val.trim(),
@@ -621,12 +875,12 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
               const SizedBox(height: 12),
             ],
 
-            // Diluyente
+            // Diluyente (Obligatorio si la vacuna lo requiere)
             if (vaccine.hasDiluent) ...[
               TextFormField(
                 controller: _diluentController,
-                decoration: const InputDecoration(
-                  labelText: 'Diluyente',
+                decoration: InputDecoration(
+                  label: requiredFieldLabel('Diluyente'),
                   hintText: 'Lote o código del diluyente',
                 ),
                 onChanged: (val) => currentDose.diluent = val.trim(),
@@ -754,11 +1008,13 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
             ),
             const SizedBox(height: 14),
 
-            // Botón Confirmar Dosis
+            // Botón Confirmar Dosis con Loader y feedback inmediato
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () => _saveCurrentDose(currentDose),
+                onPressed: _isConfirmingDose
+                    ? null
+                    : () => _saveCurrentDose(currentDose, vaccine),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -767,8 +1023,21 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                icon: const Icon(Icons.check_rounded, size: 18),
-                label: const Text('Confirmar esta dosis'),
+                icon: _isConfirmingDose
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.check_rounded, size: 18),
+                label: Text(
+                  _isConfirmingDose
+                      ? 'Confirmando dosis...'
+                      : 'Confirmar esta dosis',
+                ),
               ),
             ),
           ],

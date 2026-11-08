@@ -258,7 +258,7 @@ class Step4ReviewStep extends StatelessWidget {
             children: [
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text(
+                title: requiredFieldLabel(
                   '¿El registro fue ingresado al aplicativo PAIWEB?',
                 ),
                 value: paiwebRegistered,
@@ -270,8 +270,8 @@ class Step4ReviewStep extends StatelessWidget {
                   controller: paiwebReasonController,
                   maxLines: 2,
                   inputFormatters: maxLengthFormatters(FieldLimits.reason),
-                  decoration: const InputDecoration(
-                    labelText: 'Motivo de no ingreso al PAIWEB *',
+                  decoration: InputDecoration(
+                    label: requiredFieldLabel('Motivo de no ingreso al PAIWEB'),
                     helperText: 'Mínimo 5 caracteres.',
                   ),
                 ),

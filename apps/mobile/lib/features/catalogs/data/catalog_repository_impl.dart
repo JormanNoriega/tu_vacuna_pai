@@ -21,6 +21,13 @@ class CatalogRepositoryImpl implements CatalogRepository {
   static String _municipalitiesKey(String departmentId) =>
       'geo_municipalities_v1_$departmentId';
 
+  // In-Memory RAM Caches para respuesta instantánea (0 ms)
+  List<GeoDepartment>? _departmentsCache;
+  final Map<String, List<GeoMunicipality>> _municipalitiesCache = {};
+  List<GeoCountry>? _countriesCache;
+  List<ReferenceCatalog>? _referenceCatalogsCache;
+  List<HealthInsurer>? _insurersCache;
+
   /// Lee del cache JSON en [SyncMetadata] como respaldo offline.
   Future<List<Map<String, dynamic>>?> _cachedJsonList(String key) async {
     final raw = await database.syncMetadataValue(key);
@@ -37,7 +44,7 @@ class CatalogRepositoryImpl implements CatalogRepository {
       final raw = await api.getEffectiveCatalog(token);
       await _cacheJsonList(_effectiveCatalogKey, raw);
       return raw.map(EffectiveVaccine.fromJson).toList();
-    } on ApiException {
+    } catch (_) {
       final cached = await _cachedJsonList(_effectiveCatalogKey);
       if (cached == null || cached.isEmpty) rethrow;
       return cached.map(EffectiveVaccine.fromJson).toList();
@@ -46,53 +53,96 @@ class CatalogRepositoryImpl implements CatalogRepository {
 
   @override
   Future<List<GeoCountry>> listCountries(String token) async {
+    if (_countriesCache != null && _countriesCache!.isNotEmpty) {
+      return _countriesCache!;
+    }
+    final cached = await _cachedJsonList(_countriesKey);
+    if (cached != null && cached.isNotEmpty) {
+      _countriesCache = cached.map(GeoCountry.fromJson).toList();
+      return _countriesCache!;
+    }
     try {
       final raw = await api.getCountries(token);
       await _cacheJsonList(_countriesKey, raw);
-      return raw.map(GeoCountry.fromJson).toList();
-    } on ApiException {
-      final cached = await _cachedJsonList(_countriesKey);
-      if (cached == null || cached.isEmpty) rethrow;
-      return cached.map(GeoCountry.fromJson).toList();
+      _countriesCache = raw.map(GeoCountry.fromJson).toList();
+      return _countriesCache!;
+    } catch (_) {
+      final cachedAgain = await _cachedJsonList(_countriesKey);
+      if (cachedAgain == null || cachedAgain.isEmpty) rethrow;
+      _countriesCache = cachedAgain.map(GeoCountry.fromJson).toList();
+      return _countriesCache!;
     }
   }
 
   @override
   Future<List<ReferenceCatalog>> listReferenceCatalogs(String token) async {
+    if (_referenceCatalogsCache != null &&
+        _referenceCatalogsCache!.isNotEmpty) {
+      return _referenceCatalogsCache!;
+    }
+    final cached = await _cachedJsonList(_referenceCatalogsKey);
+    if (cached != null && cached.isNotEmpty) {
+      _referenceCatalogsCache = cached.map(ReferenceCatalog.fromJson).toList();
+      return _referenceCatalogsCache!;
+    }
     try {
       final raw = await api.getReferenceCatalogs(token);
       await _cacheJsonList(_referenceCatalogsKey, raw);
-      return raw.map(ReferenceCatalog.fromJson).toList();
-    } on ApiException {
-      final cached = await _cachedJsonList(_referenceCatalogsKey);
-      if (cached == null || cached.isEmpty) rethrow;
-      return cached.map(ReferenceCatalog.fromJson).toList();
+      _referenceCatalogsCache = raw.map(ReferenceCatalog.fromJson).toList();
+      return _referenceCatalogsCache!;
+    } catch (_) {
+      final cachedAgain = await _cachedJsonList(_referenceCatalogsKey);
+      if (cachedAgain == null || cachedAgain.isEmpty) rethrow;
+      _referenceCatalogsCache = cachedAgain
+          .map(ReferenceCatalog.fromJson)
+          .toList();
+      return _referenceCatalogsCache!;
     }
   }
 
   @override
   Future<List<HealthInsurer>> listInsurers(String token) async {
+    if (_insurersCache != null && _insurersCache!.isNotEmpty) {
+      return _insurersCache!;
+    }
+    final cached = await _cachedJsonList(_insurersKey);
+    if (cached != null && cached.isNotEmpty) {
+      _insurersCache = cached.map(HealthInsurer.fromJson).toList();
+      return _insurersCache!;
+    }
     try {
       final raw = await api.getInsurers(token);
       await _cacheJsonList(_insurersKey, raw);
-      return raw.map(HealthInsurer.fromJson).toList();
-    } on ApiException {
-      final cached = await _cachedJsonList(_insurersKey);
-      if (cached == null || cached.isEmpty) rethrow;
-      return cached.map(HealthInsurer.fromJson).toList();
+      _insurersCache = raw.map(HealthInsurer.fromJson).toList();
+      return _insurersCache!;
+    } catch (_) {
+      final cachedAgain = await _cachedJsonList(_insurersKey);
+      if (cachedAgain == null || cachedAgain.isEmpty) rethrow;
+      _insurersCache = cachedAgain.map(HealthInsurer.fromJson).toList();
+      return _insurersCache!;
     }
   }
 
   @override
   Future<List<GeoDepartment>> listDepartments(String token) async {
+    if (_departmentsCache != null && _departmentsCache!.isNotEmpty) {
+      return _departmentsCache!;
+    }
+    final cached = await _cachedJsonList(_departmentsKey);
+    if (cached != null && cached.isNotEmpty) {
+      _departmentsCache = cached.map(GeoDepartment.fromJson).toList();
+      return _departmentsCache!;
+    }
     try {
       final raw = await api.getDepartments(token);
       await _cacheJsonList(_departmentsKey, raw);
-      return raw.map(GeoDepartment.fromJson).toList();
-    } on ApiException {
-      final cached = await _cachedJsonList(_departmentsKey);
-      if (cached == null || cached.isEmpty) rethrow;
-      return cached.map(GeoDepartment.fromJson).toList();
+      _departmentsCache = raw.map(GeoDepartment.fromJson).toList();
+      return _departmentsCache!;
+    } catch (_) {
+      final cachedAgain = await _cachedJsonList(_departmentsKey);
+      if (cachedAgain == null || cachedAgain.isEmpty) rethrow;
+      _departmentsCache = cachedAgain.map(GeoDepartment.fromJson).toList();
+      return _departmentsCache!;
     }
   }
 
@@ -101,6 +151,7 @@ class CatalogRepositoryImpl implements CatalogRepository {
     final raw = await api.getFullGeo(token);
     final departments = <Map<String, dynamic>>[];
     for (final item in raw) {
+      final deptId = item['id'].toString();
       departments.add({
         'id': item['id'],
         'code': item['code'],
@@ -109,13 +160,14 @@ class CatalogRepositoryImpl implements CatalogRepository {
       final municipalities =
           (item['municipalities'] as List<dynamic>? ?? const [])
               .cast<Map<String, dynamic>>();
-      await _cacheJsonList(
-        _municipalitiesKey(item['id'].toString()),
-        municipalities,
-      );
+      await _cacheJsonList(_municipalitiesKey(deptId), municipalities);
+      _municipalitiesCache[deptId] = municipalities
+          .map(GeoMunicipality.fromJson)
+          .toList();
     }
     await _cacheJsonList(_departmentsKey, departments);
-    return departments.map(GeoDepartment.fromJson).toList();
+    _departmentsCache = departments.map(GeoDepartment.fromJson).toList();
+    return _departmentsCache!;
   }
 
   @override
@@ -123,15 +175,28 @@ class CatalogRepositoryImpl implements CatalogRepository {
     String token,
     String departmentId,
   ) async {
+    if (_municipalitiesCache.containsKey(departmentId)) {
+      return _municipalitiesCache[departmentId]!;
+    }
     final key = _municipalitiesKey(departmentId);
+    final cached = await _cachedJsonList(key);
+    if (cached != null && cached.isNotEmpty) {
+      final list = cached.map(GeoMunicipality.fromJson).toList();
+      _municipalitiesCache[departmentId] = list;
+      return list;
+    }
     try {
       final raw = await api.getMunicipalities(token, departmentId);
       await _cacheJsonList(key, raw);
-      return raw.map(GeoMunicipality.fromJson).toList();
-    } on ApiException {
-      final cached = await _cachedJsonList(key);
-      if (cached == null || cached.isEmpty) rethrow;
-      return cached.map(GeoMunicipality.fromJson).toList();
+      final list = raw.map(GeoMunicipality.fromJson).toList();
+      _municipalitiesCache[departmentId] = list;
+      return list;
+    } catch (_) {
+      final cachedAgain = await _cachedJsonList(key);
+      if (cachedAgain == null || cachedAgain.isEmpty) rethrow;
+      final list = cachedAgain.map(GeoMunicipality.fromJson).toList();
+      _municipalitiesCache[departmentId] = list;
+      return list;
     }
   }
 

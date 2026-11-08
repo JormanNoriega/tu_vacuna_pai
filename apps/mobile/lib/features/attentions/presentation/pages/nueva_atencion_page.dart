@@ -28,6 +28,7 @@ class NuevaAtencionPage extends StatefulWidget {
     required this.controller,
     required this.offline,
     this.onFinished,
+    this.onSubmittingChanged,
     super.key,
   });
 
@@ -35,6 +36,7 @@ class NuevaAtencionPage extends StatefulWidget {
   final AttentionController controller;
   final OfflineAccess offline;
   final VoidCallback? onFinished;
+  final ValueChanged<bool>? onSubmittingChanged;
 
   @override
   State<NuevaAtencionPage> createState() => _NuevaAtencionPageState();
@@ -122,6 +124,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
     super.initState();
     _attentionDate = DateTime.now();
     widget.controller.loadReferenceCatalogs();
+    widget.controller.loadEffectiveCatalog();
     widget.controller.clearSearch();
     _fetchLocationInBackground();
   }
@@ -251,32 +254,20 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
       return;
     }
 
-    // Validación Paso 3
+    // Validación Paso 3 (Registro de Vacunas)
     if (_currentStep == 2) {
+      // Descartar borradores que no fueron confirmados con "Confirmar esta dosis"
+      setState(() {
+        _stagedDoses.removeWhere((_, dose) => !dose.isCompleted);
+      });
+
       if (_stagedDoses.isEmpty) {
-        final proceed = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            title: const Text('¿Continuar sin vacunas?'),
-            content: const Text(
-              'No has configurado ninguna dosis para aplicar en esta atención. ¿Deseas continuar a la revisión?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Agregar vacuna'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Continuar'),
-              ),
-            ],
-          ),
+        AppSnackbar.show(
+          context,
+          'Debes registrar y confirmar al menos una vacuna antes de continuar.',
+          type: AppSnackbarType.warning,
         );
-        if (proceed != true) return;
+        return;
       }
       _goToStep(3);
       return;
@@ -298,6 +289,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
     }
 
     setState(() => _submitting = true);
+    widget.onSubmittingChanged?.call(true);
 
     try {
       // 1. Si es paciente nuevo, registrarlo
@@ -461,8 +453,8 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
         return;
       }
 
-      // 3. Registrar cada dosis configurada en borrador
-      for (final staged in _stagedDoses.values) {
+      // 3. Registrar cada dosis configurada en borrador (únicamente las confirmadas)
+      for (final staged in _stagedDoses.values.where((d) => d.isCompleted)) {
         final doseOk = await widget.controller.addDose(
           offline: widget.offline,
           vaccineId: staged.vaccineId,
@@ -531,7 +523,10 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
         );
       }
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      if (mounted) {
+        setState(() => _submitting = false);
+        widget.onSubmittingChanged?.call(false);
+      }
     }
   }
 
@@ -604,6 +599,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
   }
 
   Future<bool> _onWillPop() async {
+    if (_submitting) return false;
     if (_currentStep > 0) {
       _previousStep();
       return false;
@@ -613,7 +609,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
         _documentNumber.text.isNotEmpty ||
         _firstName.text.isNotEmpty ||
         _lastName.text.isNotEmpty ||
-        _stagedDoses.isNotEmpty;
+        _stagedDoses.values.any((d) => d.isCompleted);
 
     if (!hasData) return true;
 
@@ -823,6 +819,12 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
                     controller: widget.controller,
                     offline: widget.offline,
                     attentionDate: _attentionDate,
+                    birthDate: _birthDate,
+                    sex: _sex,
+                    userCondition: _userCondition,
+                    ethnicity: _ethnicity,
+                    area: _area,
+                    displaced: _displaced,
                     stagedDoses: _stagedDoses,
                     onStagedDoseChanged: (dose) {
                       setState(() {
@@ -862,7 +864,9 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
                     vaccinationCardType: _vaccinationCardType,
                     cellphone: _cellphone.text.trim(),
                     email: _email.text.trim(),
-                    stagedDoses: _stagedDoses.values.toList(),
+                    stagedDoses: _stagedDoses.values
+                        .where((d) => d.isCompleted)
+                        .toList(),
                     paiwebRegistered: _paiwebRegistered,
                     onPaiwebRegisteredChanged: (val) =>
                         setState(() => _paiwebRegistered = val),

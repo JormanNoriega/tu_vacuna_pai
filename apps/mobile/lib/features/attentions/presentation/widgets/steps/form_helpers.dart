@@ -40,6 +40,25 @@ String formatIsoDate(DateTime date) {
   return '$y-$m-$d';
 }
 
+/// Etiqueta con asterisco rojo (*) para indicar campos obligatorios.
+Widget requiredFieldLabel(String label, {TextStyle? style}) {
+  return Text.rich(
+    TextSpan(
+      text: label,
+      style: style,
+      children: const [
+        TextSpan(
+          text: ' *',
+          style: TextStyle(
+            color: AppColors.danger,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 /// Tarjeta de edad calculada con diseño idéntico al de las vistas anteriores.
 class AgeSummaryCard extends StatelessWidget {
   const AgeSummaryCard({required this.birthDate, super.key});

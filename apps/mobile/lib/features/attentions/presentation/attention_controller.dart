@@ -115,8 +115,11 @@ class AttentionController extends AsyncController {
   Future<void> loadEffectiveCatalog() async {
     if (_effectiveCatalogLoaded) return;
     await execute((token) async {
-      _effectiveVaccines = await listEffectiveCatalog(token);
-      _effectiveCatalogLoaded = true;
+      try {
+        _effectiveVaccines = await listEffectiveCatalog(token);
+      } finally {
+        _effectiveCatalogLoaded = true;
+      }
     });
   }
 
@@ -155,11 +158,17 @@ class AttentionController extends AsyncController {
     });
   }
 
-  /// Carga los municipios del departamento indicado.
-  Future<void> loadMunicipalities(String departmentId) =>
-      execute((token) async {
+  /// Carga los municipios del departamento indicado de forma instantánea sin bloquear la UI con spinner global.
+  Future<void> loadMunicipalities(String departmentId) async {
+    try {
+      final session = await sessionManager.loadSession();
+      final token = session?.accessToken;
+      if (token != null) {
         _municipalities = await listMunicipalities(token, departmentId);
-      });
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
 
   /// Busca pacientes por documento. Deja el resultado en [searchResults].
   /// Offline consulta el working set local; online consulta la API.

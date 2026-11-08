@@ -119,13 +119,16 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
       barrierDismissible: false,
       builder: (dialogCtx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 16, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(
                 Icons.person_search_rounded,
@@ -144,6 +147,15 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
                 ),
               ),
             ),
+            IconButton(
+              icon: const Icon(Icons.close_rounded, color: AppColors.slate),
+              onPressed: () {
+                Navigator.of(dialogCtx).pop();
+                _lastCheckedId = null;
+              },
+              tooltip: 'Cerrar',
+              visualDensity: VisualDensity.compact,
+            ),
           ],
         ),
         content: Column(
@@ -154,65 +166,128 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
               'Ya existe un paciente registrado con este documento:',
               style: TextStyle(color: AppColors.slate, fontSize: 13.5),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.surfaceAlt,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.border),
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Text(
-                    patient.fullName,
-                    style: const TextStyle(
-                      color: AppColors.ink,
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.person_rounded,
+                      color: AppColors.primary,
+                      size: 24,
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '${patient.documentType} • ${patient.documentNumber}',
-                    style: const TextStyle(
-                      color: AppColors.slate,
-                      fontSize: 12.5,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          patient.fullName,
+                          style: const TextStyle(
+                            color: AppColors.ink,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Text(
+                            '${patient.documentType} • ${patient.documentNumber}',
+                            style: const TextStyle(
+                              color: AppColors.slate,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             const Text(
               '¿Deseas cargar los datos de este paciente para registrar su atención?',
-              style: TextStyle(color: AppColors.ink, fontSize: 13.5),
+              style: TextStyle(
+                color: AppColors.ink,
+                fontSize: 13.5,
+                height: 1.3,
+              ),
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogCtx).pop();
-              _lastCheckedId = null;
-            },
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(dialogCtx).pop();
-              widget.onExistingPatientLoaded(patient);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.of(dialogCtx).pop();
+                    _lastCheckedId = null;
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: const BorderSide(color: Color(0xFFCBD5E1)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(
+                      color: AppColors.slate,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               ),
-            ),
-            child: const Text('Sí, cargar paciente'),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(dialogCtx).pop();
+                    widget.onExistingPatientLoaded(patient);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Sí, cargar',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -282,7 +357,7 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Complete la información básica del paciente o busque por documento.',
+                  'Complete la información básica del paciente o busque por documento. Los campos con asterisco (*) son obligatorios.',
                   style: TextStyle(color: AppColors.slate, fontSize: 13.5),
                 ),
               ],
@@ -300,9 +375,9 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
                   onTap: _pickAttentionDate,
                   borderRadius: BorderRadius.circular(8),
                   child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Fecha de Atención',
-                      prefixIcon: Icon(Icons.calendar_today_outlined, size: 20),
+                    decoration: InputDecoration(
+                      label: requiredFieldLabel('Fecha de Atención'),
+                      prefixIcon: const Icon(Icons.calendar_today_outlined, size: 20),
                     ),
                     child: Text(
                       formatDisplayDate(widget.attentionDate),
@@ -319,8 +394,8 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
                 DropdownButtonFormField<String>(
                   initialValue: widget.documentType,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Tipo de Documento *',
+                  decoration: InputDecoration(
+                    label: requiredFieldLabel('Tipo de Documento'),
                   ),
                   items: [
                     for (final opt in _documentTypes())
@@ -351,7 +426,7 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
                     ...maxLengthFormatters(maxLen),
                   ],
                   decoration: InputDecoration(
-                    labelText: 'Número de Identificación *',
+                    label: requiredFieldLabel('Número de Identificación'),
                     hintText: 'Ej: 1020304050',
                     suffixIcon: _searching
                         ? const SizedBox(
@@ -383,8 +458,8 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
                   enabled: !widget.isExistingPatient,
                   inputFormatters: maxLengthFormatters(FieldLimits.name),
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Primer Nombre *',
+                  decoration: InputDecoration(
+                    label: requiredFieldLabel('Primer Nombre'),
                     hintText: 'Ingrese el primer nombre',
                   ),
                   validator: (val) => val == null || val.trim().isEmpty
@@ -412,8 +487,8 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
                   enabled: !widget.isExistingPatient,
                   inputFormatters: maxLengthFormatters(FieldLimits.name),
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Primer Apellido *',
+                  decoration: InputDecoration(
+                    label: requiredFieldLabel('Primer Apellido'),
                     hintText: 'Ingrese el primer apellido',
                   ),
                   validator: (val) => val == null || val.trim().isEmpty
@@ -449,7 +524,7 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
                         borderRadius: BorderRadius.circular(8),
                         child: InputDecorator(
                           decoration: InputDecoration(
-                            labelText: 'Fecha de Nacimiento *',
+                            label: requiredFieldLabel('Fecha de Nacimiento'),
                             prefixIcon: const Icon(
                               Icons.cake_outlined,
                               size: 20,
@@ -462,7 +537,7 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
                                 : 'Seleccione la fecha de nacimiento',
                             style: TextStyle(
                               color: widget.birthDate != null
-                                  ? AppColors.ink
+                                   ? AppColors.ink
                                   : AppColors.hint,
                               fontSize: 15,
                             ),
@@ -482,9 +557,9 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
                 const SizedBox(height: 18),
 
                 // Esquema Completo
-                const Text(
+                requiredFieldLabel(
                   '¿Esquema Completo?',
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: AppColors.slate,
                     fontSize: 13.5,
                     fontWeight: FontWeight.w500,

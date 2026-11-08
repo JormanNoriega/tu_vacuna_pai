@@ -71,13 +71,17 @@ void main() {
     );
   });
 
-  Widget createTestWidget({VoidCallback? onFinished}) {
+  Widget createTestWidget({
+    VoidCallback? onFinished,
+    ValueChanged<bool>? onSubmittingChanged,
+  }) {
     return MaterialApp(
       home: NuevaAtencionPage(
         user: user,
         controller: controller,
         offline: offline,
         onFinished: onFinished,
+        onSubmittingChanged: onSubmittingChanged,
       ),
     );
   }
@@ -92,13 +96,13 @@ void main() {
       expect(find.text('Registro de Vacunación'), findsOneWidget);
       expect(find.text('Paso 1 de 4'), findsOneWidget);
       expect(find.text('Datos Básicos del Paciente'), findsOneWidget);
-      expect(find.text('Fecha de Atención'), findsOneWidget);
+      expect(find.text('Fecha de Atención *'), findsOneWidget);
       expect(find.text('Tipo de Documento *'), findsOneWidget);
       expect(find.text('Número de Identificación *'), findsOneWidget);
       expect(find.text('Primer Nombre *'), findsOneWidget);
       expect(find.text('Primer Apellido *'), findsOneWidget);
       expect(find.text('Fecha de Nacimiento *'), findsOneWidget);
-      expect(find.text('¿Esquema Completo?'), findsOneWidget);
+      expect(find.text('¿Esquema Completo? *'), findsOneWidget);
       expect(find.text('Siguiente'), findsOneWidget);
     });
 
@@ -211,12 +215,13 @@ void main() {
         expect(find.text('Paciente Encontrado'), findsOneWidget);
         expect(find.textContaining('Mariana Lopez'), findsOneWidget);
 
-        // Tocar "Sí, cargar paciente"
-        await tester.tap(find.text('Sí, cargar paciente'));
+        // Tocar "Sí, cargar"
+        await tester.tap(find.text('Sí, cargar'));
         await tester.pumpAndSettle();
 
-        // Debe haber cargado el paciente
+        // Debe haber cargado el paciente y avanzado directamente al Paso 3 de vacunas
         expect(controller.patient?.firstName, 'Mariana');
+        expect(find.text('Paso 3 de 4'), findsOneWidget);
       },
     );
 
@@ -227,8 +232,12 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
 
         bool finishedCalled = false;
+        final submittingEvents = <bool>[];
         await tester.pumpWidget(
-          createTestWidget(onFinished: () => finishedCalled = true),
+          createTestWidget(
+            onFinished: () => finishedCalled = true,
+            onSubmittingChanged: (val) => submittingEvents.add(val),
+          ),
         );
         await tester.pumpAndSettle();
 
@@ -262,20 +271,36 @@ void main() {
         await tester.tap(find.text('Mujer'));
         await tester.pumpAndSettle();
 
+        // Seleccionar Nivel Educativo en Paso 2 (Dropdown)
+        await tester.tap(find.text('Seleccione escolaridad'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Primaria').last);
+        await tester.pumpAndSettle();
+
         // Siguiente -> Paso 3
         await tester.tap(find.text('Siguiente'));
         await tester.pumpAndSettle();
         expect(find.text('Paso 3 de 4'), findsOneWidget);
 
+        // Configurar y confirmar una dosis en Paso 3
+        if (find.text('Ver todas').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Ver todas'));
+          await tester.pumpAndSettle();
+        }
+        await tester.tap(find.text('BCG'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Única'));
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Número de Lote *'),
+          'LOT-999',
+        );
+        await tester.tap(find.text('Confirmar esta dosis'));
+        await tester.pumpAndSettle(const Duration(milliseconds: 350));
+
         // Siguiente -> Paso 4
         await tester.tap(find.text('Siguiente'));
         await tester.pumpAndSettle();
-
-        // Diálogo si no hay dosis configuradas
-        if (find.text('¿Continuar sin vacunas?').evaluate().isNotEmpty) {
-          await tester.tap(find.text('Continuar'));
-          await tester.pumpAndSettle();
-        }
 
         expect(find.text('Paso 4 de 4'), findsOneWidget);
         expect(find.text('Confirmar Atención'), findsOneWidget);
@@ -284,8 +309,178 @@ void main() {
         await tester.tap(find.text('Confirmar Atención'));
         await tester.pumpAndSettle();
 
-        // Debe haber invocado onFinished
+        // Debe haber invocado onFinished y notificado cambio de estado submitting
         expect(finishedCalled, isTrue);
+        expect(submittingEvents, contains(true));
+        expect(submittingEvents.last, isFalse);
+      },
+    );
+
+    testWidgets(
+      'descarta dosis seleccionadas que no fueron confirmadas explicitamente con el boton al avanzar',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1400);
+        tester.view.devicePixelRatio = 1.0;
+
+        await tester.pumpWidget(createTestWidget());
+        await tester.pumpAndSettle();
+
+        // 1. Llenar Paso 1
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Número de Identificación *'),
+          '11223344',
+        );
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Primer Nombre *'),
+          'Carlos',
+        );
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Primer Apellido *'),
+          'Gomez',
+        );
+        await tester.tap(find.text('Seleccione la fecha de nacimiento'));
+        await tester.pumpAndSettle();
+        final confirmBtn = find.text('ACEPTAR').evaluate().isNotEmpty
+            ? find.text('ACEPTAR')
+            : find.text('OK');
+        await tester.tap(confirmBtn);
+        await tester.pumpAndSettle();
+
+        // Siguiente -> Paso 2
+        await tester.tap(find.text('Siguiente'));
+        await tester.pumpAndSettle();
+
+        // Seleccionar Sexo en Paso 2
+        await tester.tap(find.text('Hombre'));
+        await tester.pumpAndSettle();
+
+        // Siguiente -> Paso 3
+        await tester.tap(find.text('Siguiente'));
+        await tester.pumpAndSettle();
+        expect(find.text('Paso 3 de 4'), findsOneWidget);
+
+        // Mostrar todas las vacunas para ver el catálogo completo
+        if (find.text('Ver todas').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Ver todas'));
+          await tester.pumpAndSettle();
+        }
+
+        // Expandir tarjeta de vacuna BCG
+        await tester.tap(find.text('BCG'));
+        await tester.pumpAndSettle();
+
+        // Seleccionar la dosis 'Única' de BCG para abrir el menú pero NO confirmar
+        final chipDosis = find.text('Única');
+        expect(chipDosis, findsOneWidget);
+        await tester.tap(chipDosis);
+        await tester.pumpAndSettle();
+
+        // El menú de la dosis se abre mostrando el botón "Confirmar esta dosis"
+        expect(find.text('Confirmar esta dosis'), findsOneWidget);
+
+        // El usuario NO confirma y hace tap en "Siguiente" directamente
+        await tester.tap(find.text('Siguiente'));
+        await tester.pumpAndSettle();
+
+        // Debe bloquear el avance y mostrar advertencia porque la dosis no confirmada fue descartada
+        expect(
+          find.text('Debes registrar y confirmar al menos una vacuna antes de continuar.'),
+          findsOneWidget,
+        );
+        // Debe mantenerse en el Paso 3
+        expect(find.text('Paso 3 de 4'), findsOneWidget);
+        expect(find.text('Paso 4 de 4'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'al presionar Confirmar esta dosis se marca como completada, cierra el formulario y se incluye en la revision',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1400);
+        tester.view.devicePixelRatio = 1.0;
+
+        await tester.pumpWidget(createTestWidget());
+        await tester.pumpAndSettle();
+
+        // 1. Llenar Paso 1
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Número de Identificación *'),
+          '55667788',
+        );
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Primer Nombre *'),
+          'Ana',
+        );
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Primer Apellido *'),
+          'Ruiz',
+        );
+        await tester.tap(find.text('Seleccione la fecha de nacimiento'));
+        await tester.pumpAndSettle();
+        final confirmBtn = find.text('ACEPTAR').evaluate().isNotEmpty
+            ? find.text('ACEPTAR')
+            : find.text('OK');
+        await tester.tap(confirmBtn);
+        await tester.pumpAndSettle();
+
+        // Siguiente -> Paso 2
+        await tester.tap(find.text('Siguiente'));
+        await tester.pumpAndSettle();
+
+        // Seleccionar Sexo en Paso 2
+        await tester.tap(find.text('Mujer'));
+        await tester.pumpAndSettle();
+
+        // Seleccionar Nivel Educativo en Paso 2 (Dropdown)
+        await tester.tap(find.text('Seleccione escolaridad'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Primaria').last);
+        await tester.pumpAndSettle();
+
+        // Siguiente -> Paso 3
+        await tester.tap(find.text('Siguiente'));
+        await tester.pumpAndSettle();
+        expect(find.text('Paso 3 de 4'), findsOneWidget);
+
+        // Mostrar todas las vacunas para ver el catálogo completo
+        if (find.text('Ver todas').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Ver todas'));
+          await tester.pumpAndSettle();
+        }
+
+        // Expandir tarjeta de vacuna BCG
+        await tester.tap(find.text('BCG'));
+        await tester.pumpAndSettle();
+
+        // Seleccionar la dosis 'Única' de BCG
+        await tester.tap(find.text('Única'));
+        await tester.pumpAndSettle();
+
+        // Ingresar Lote
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Número de Lote *'),
+          'LOT-12345',
+        );
+        await tester.pumpAndSettle();
+
+        // Confirmar la dosis
+        await tester.tap(find.text('Confirmar esta dosis'));
+        await tester.pumpAndSettle();
+
+        // El formulario de la dosis debe cerrarse (soltarse)
+        expect(find.text('Confirmar esta dosis'), findsNothing);
+
+        // Siguiente -> Paso 4
+        await tester.tap(find.text('Siguiente'));
+        await tester.pumpAndSettle();
+
+        // No debe mostrar diálogo de "Continuar sin vacunas"
+        expect(find.text('¿Continuar sin vacunas?'), findsNothing);
+        expect(find.text('Paso 4 de 4'), findsOneWidget);
+
+        // En la revisión debe aparecer la vacuna BCG con su dosis confirmada y el lote ingresado
+        expect(find.text('BCG - Única'), findsOneWidget);
+        expect(find.text('LOT-12345'), findsOneWidget);
       },
     );
   });
@@ -373,6 +568,35 @@ class _FakeAttentionsRepository implements AttentionsRepository {
     status: 'IN_PROGRESS',
     version: version + 1,
     doses: const [],
+  );
+
+  @override
+  Future<AppliedDose> registerDose(
+    String accessToken,
+    String attentionId, {
+    required String vaccineId,
+    required String doseOptionId,
+    String? pneumococcalTypeOptionId,
+    String? lotNumber,
+    String? applicationDate,
+    String? selectedLaboratoryId,
+    String? selectedSyringeId,
+    String? selectedDropperId,
+    String? selectedObservationId,
+    String? syringeLot,
+    String? diluent,
+    int? vialCount,
+    String? customObservation,
+    String? operationId,
+  }) async => AppliedDose(
+    id: 'dose-1',
+    attentionId: attentionId,
+    vaccineId: vaccineId,
+    vaccineNameSnapshot: 'BCG',
+    vaccineCodeSnapshot: 'BCG',
+    doseLabelSnapshot: 'Única',
+    lotNumber: lotNumber ?? 'LOT-1',
+    status: 'APPLIED',
   );
 
   @override

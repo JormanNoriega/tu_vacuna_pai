@@ -27,12 +27,12 @@ class MetricsController extends AsyncController {
     // Si no es un usuario que realiza atenciones (ej. admin hospital), no consulta
     // registros recientes y solo carga el resumen institucional.
     if (vaccinatorId == null || vaccinatorId.isEmpty) {
-      if (offline) {
-        _summary = await getSummary.local(institutionId);
-        _recentRecords = const [];
-        notifyListeners();
-        return;
-      }
+      // 1. Pintar inmediatamente el estado local para 0 latencia y no arrancar en 0
+      _summary = await getSummary.local(institutionId);
+      _recentRecords = const [];
+      notifyListeners();
+
+      if (offline) return;
 
       await execute((token) async {
         _summary = await getSummary.remote(token);
@@ -48,19 +48,20 @@ class MetricsController extends AsyncController {
       return;
     }
 
-    if (offline) {
-      _summary = await getSummary.local(
-        institutionId,
-        vaccinatorId: vaccinatorId,
-      );
-      _recentRecords = await getSummary.localRecent(
-        institutionId,
-        vaccinatorId: vaccinatorId,
-      );
-      notifyListeners();
-      return;
-    }
+    // 1. Pintar inmediatamente el estado local / caché
+    _summary = await getSummary.local(
+      institutionId,
+      vaccinatorId: vaccinatorId,
+    );
+    _recentRecords = await getSummary.localRecent(
+      institutionId,
+      vaccinatorId: vaccinatorId,
+    );
+    notifyListeners();
 
+    if (offline) return;
+
+    // 2. Refrescar en línea desde la API
     await execute((token) async {
       _summary = await getSummary.remote(token, vaccinatorId: vaccinatorId);
       _recentRecords = await getSummary.remoteRecent(token);

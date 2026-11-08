@@ -99,6 +99,7 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
+  bool _isAttentionSubmitting = false;
 
   /// Razon visual del banner, ajustable en vivo por la conectividad del
   /// dispositivo (no re-autoriza ni re-valida).
@@ -258,7 +259,13 @@ class _DashboardPageState extends State<DashboardPage> {
         user: widget.user,
         controller: widget.attentionController!,
         offline: _offline,
-        onFinished: () => _selectTab(0),
+        onSubmittingChanged: (submitting) {
+          if (mounted) setState(() => _isAttentionSubmitting = submitting);
+        },
+        onFinished: () {
+          if (mounted) setState(() => _isAttentionSubmitting = false);
+          _selectTab(0);
+        },
       );
     }
 
@@ -368,7 +375,20 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  void _selectTab(int index) => setState(() => _selectedIndex = index);
+  void _selectTab(int index) {
+    if (_selectedIndex == index) return;
+    setState(() => _selectedIndex = index);
+    if (index == 0) {
+      widget.syncStatusController?.refresh();
+      if (_canPerformAttentions) {
+        widget.metricsController?.load(
+          institutionId: widget.user.institution.id,
+          offline: widget.sessionStatus != SessionStatus.signedIn,
+          vaccinatorId: widget.user.id,
+        );
+      }
+    }
+  }
 
   void _openCatalog() {
     final catalogController = widget.catalogController;
@@ -450,7 +470,8 @@ class _DashboardPageState extends State<DashboardPage> {
       bottomNavigationBar: _LegacyNavBar(
         destinations: destinations,
         selectedIndex: selectedIndex,
-        onSelected: (value) => setState(() => _selectedIndex = value),
+        enabled: !_isAttentionSubmitting,
+        onSelected: _selectTab,
       ),
     );
   }
@@ -513,11 +534,13 @@ class _LegacyNavBar extends StatelessWidget {
     required this.destinations,
     required this.selectedIndex,
     required this.onSelected,
+    this.enabled = true,
   });
 
   final List<_DashboardDestination> destinations;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -546,37 +569,40 @@ class _LegacyNavBar extends StatelessWidget {
                 for (var i = 0; i < destinations.length; i++)
                   Expanded(
                     child: InkWell(
-                      onTap: () => onSelected(i),
+                      onTap: enabled ? () => onSelected(i) : null,
                       splashColor: Colors.transparent,
                       highlightColor: Colors.transparent,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            i == selectedIndex
-                                ? destinations[i].selectedIcon
-                                : destinations[i].icon,
-                            size: isTablet ? 30 : 26,
-                            color: i == selectedIndex
-                                ? AppColors.primary
-                                : Colors.grey,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            destinations[i].label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: isTablet ? 11 : 10,
-                              fontWeight: i == selectedIndex
-                                  ? FontWeight.w600
-                                  : FontWeight.normal,
+                      child: Opacity(
+                        opacity: enabled ? 1.0 : 0.4,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              i == selectedIndex
+                                  ? destinations[i].selectedIcon
+                                  : destinations[i].icon,
+                              size: isTablet ? 30 : 26,
                               color: i == selectedIndex
                                   ? AppColors.primary
                                   : Colors.grey,
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 4),
+                            Text(
+                              destinations[i].label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: isTablet ? 11 : 10,
+                                fontWeight: i == selectedIndex
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                                color: i == selectedIndex
+                                    ? AppColors.primary
+                                    : Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -1080,11 +1106,25 @@ class _DashboardContentState extends State<_DashboardContent> {
   @override
   void initState() {
     super.initState();
+    widget.metricsController?.addListener(_onControllerUpdated);
+    widget.syncStatusController?.addListener(_onControllerUpdated);
+    widget.syncStatusController?.refresh();
     widget.metricsController?.load(
       institutionId: widget.institutionId,
       offline: widget.offline,
       vaccinatorId: widget.canPerformAttentions ? widget.userId : null,
     );
+  }
+
+  void _onControllerUpdated() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    widget.metricsController?.removeListener(_onControllerUpdated);
+    widget.syncStatusController?.removeListener(_onControllerUpdated);
+    super.dispose();
   }
 
   @override

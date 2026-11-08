@@ -176,12 +176,18 @@ class Step2AdditionalDataStep extends StatefulWidget {
 
 class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
     with AutomaticKeepAliveClientMixin {
+  late bool _hasGuardian;
+
   @override
   bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
+    _hasGuardian = widget.guardianDocumentController.text.isNotEmpty ||
+        widget.guardianFirstNameController.text.isNotEmpty ||
+        widget.guardianLastNameController.text.isNotEmpty ||
+        widget.guardianCellphoneController.text.isNotEmpty;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.controller.loadReferenceCatalogs();
       widget.controller.loadCountries();
@@ -208,6 +214,37 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
 
   List<ReferenceOption> _refOptions(String code) =>
       widget.controller.referenceOptions(code);
+
+  static const _educationLevelOptions = [
+    'Ninguno',
+    'Preescolar',
+    'Primaria',
+    'Secundaria',
+    'Media / Bachillerato',
+    'Técnico / Tecnológico',
+    'Universitario',
+    'Posgrado',
+    'No informa',
+  ];
+
+  List<String> get _effectiveEducationLevels {
+    final list = List<String>.from(_educationLevelOptions);
+    final current = widget.educationLevelController.text.trim();
+    if (current.isNotEmpty &&
+        !list.any((e) => e.toLowerCase() == current.toLowerCase())) {
+      list.insert(0, current);
+    }
+    return list;
+  }
+
+  String? _selectedEducationLevel() {
+    final current = widget.educationLevelController.text.trim();
+    if (current.isEmpty) return null;
+    return _effectiveEducationLevels.cast<String?>().firstWhere(
+      (opt) => opt?.toLowerCase() == current.toLowerCase(),
+      orElse: () => null,
+    );
+  }
 
   static const _carnetTypeFallbacks = [
     ReferenceOption(
@@ -280,7 +317,7 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Información sociodemográfica, residencia, EPS y antecedentes.',
+                  'Información sociodemográfica, residencia, EPS y antecedentes. Los campos con asterisco (*) son obligatorios.',
                   style: TextStyle(color: AppColors.slate, fontSize: 13.5),
                 ),
               ],
@@ -303,9 +340,9 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                   builder: (field) => Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Sexo *',
-                        style: TextStyle(
+                      requiredFieldLabel(
+                        'Sexo',
+                        style: const TextStyle(
                           color: AppColors.slate,
                           fontSize: 13.5,
                           fontWeight: FontWeight.w500,
@@ -412,25 +449,65 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                   decoration: const InputDecoration(
                     labelText: 'Pertenencia Étnica',
                   ),
+                  selectedItemBuilder: (BuildContext context) {
+                    final opts = _refOptions('ethnicity');
+                    return [
+                      const Text(
+                        'No aplica / Ninguna',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      for (final opt in opts)
+                        Text(
+                          opt.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ];
+                  },
                   items: [
                     const DropdownMenuItem(
                       value: null,
                       child: Text('No aplica / Ninguna'),
                     ),
                     for (final opt in _refOptions('ethnicity'))
-                      DropdownMenuItem(value: opt.code, child: Text(opt.label)),
+                      DropdownMenuItem(
+                        value: opt.code,
+                        child: Text(
+                          opt.label,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                   ],
                   onChanged: widget.onEthnicityChanged,
                 ),
                 const SizedBox(height: 16),
 
-                // Nivel Educativo / Escolaridad
-                TextFormField(
-                  controller: widget.educationLevelController,
+                // Nivel Educativo / Escolaridad (Dropdown con opciones estándar)
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedEducationLevel(),
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Nivel Educativo / Escolaridad',
-                    hintText: 'Ej: Primaria, Secundaria, Ninguno',
+                    prefixIcon: Icon(Icons.school_outlined, size: 20),
                   ),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('Seleccione escolaridad'),
+                    ),
+                    for (final opt in _effectiveEducationLevels)
+                      DropdownMenuItem<String>(
+                        value: opt,
+                        child: Text(opt),
+                      ),
+                  ],
+                  onChanged: (val) {
+                    setState(() {
+                      widget.educationLevelController.text = val ?? '';
+                    });
+                  },
                 ),
               ],
             ),
@@ -469,8 +546,9 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                 TextFormField(
                   controller: widget.birthPlaceController,
                   decoration: const InputDecoration(
-                    labelText: 'Lugar de Nacimiento / Municipio',
-                    hintText: 'Ej: Cali, Valle del Cauca',
+                    labelText: 'Lugar de Nacimiento (Hospital o Institución)',
+                    hintText: 'Ej: Hospital Rosario Pumarejo',
+                    prefixIcon: Icon(Icons.local_hospital_outlined, size: 20),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -506,13 +584,35 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                   decoration: const InputDecoration(
                     labelText: 'Tipo de Carnet de Vacunación',
                   ),
+                  selectedItemBuilder: (BuildContext context) {
+                    return [
+                      const Text(
+                        'No especificado',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      for (final opt in _carnetOptions)
+                        Text(
+                          opt.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ];
+                  },
                   items: [
                     const DropdownMenuItem(
                       value: null,
                       child: Text('No especificado'),
                     ),
                     for (final opt in _carnetOptions)
-                      DropdownMenuItem(value: opt.code, child: Text(opt.label)),
+                      DropdownMenuItem(
+                        value: opt.code,
+                        child: Text(
+                          opt.label,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                   ],
                   onChanged: (val) => widget.onVaccinationCardTypeChanged(val),
                 ),
@@ -524,8 +624,8 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                     controller: widget.gestationalAgeController,
                     keyboardType: TextInputType.number,
                     inputFormatters: digitsOnlyFormatters(max: 2),
-                    decoration: const InputDecoration(
-                      labelText: 'Edad Gestacional al Nacer (Semanas) *',
+                    decoration: InputDecoration(
+                      label: requiredFieldLabel('Edad Gestacional al Nacer (Semanas)'),
                       helperText:
                           'Obligatoria para menores de 1 año (0-45 sem).',
                     ),
@@ -580,6 +680,24 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                     labelText: 'Aseguradora / EPS',
                     helperText: 'Filtra según el régimen seleccionado',
                   ),
+                  selectedItemBuilder: (BuildContext context) {
+                    final insurers = widget.controller.insurersForRegime(
+                      widget.affiliationRegime,
+                    );
+                    return [
+                      const Text(
+                        'Sin EPS / No aplica',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      for (final ins in insurers)
+                        Text(
+                          '${ins.code} - ${ins.name}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ];
+                  },
                   items: [
                     const DropdownMenuItem(
                       value: null,
@@ -590,7 +708,11 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                     ))
                       DropdownMenuItem(
                         value: ins,
-                        child: Text('${ins.code} - ${ins.name}'),
+                        child: Text(
+                          '${ins.code} - ${ins.name}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                   ],
                   onChanged: widget.onInsurerChanged,
@@ -674,6 +796,25 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                   decoration: const InputDecoration(
                     labelText: 'Zona de Residencia',
                   ),
+                  selectedItemBuilder: (BuildContext context) {
+                    return const [
+                      Text(
+                        'No especificada',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Urbana (Cabecera municipal)',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Rural (Centro poblado o disperso)',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ];
+                  },
                   items: const [
                     DropdownMenuItem(
                       value: null,
@@ -681,11 +822,19 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                     ),
                     DropdownMenuItem(
                       value: 'URBANA',
-                      child: Text('Urbana (Cabecera municipal)'),
+                      child: Text(
+                        'Urbana (Cabecera municipal)',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     DropdownMenuItem(
                       value: 'RURAL',
-                      child: Text('Rural (Centro poblado o disperso)'),
+                      child: Text(
+                        'Rural (Centro poblado o disperso)',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                   onChanged: widget.onAreaChanged,
@@ -893,84 +1042,174 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
             ),
 
           // SECCIÓN 8: DATOS DE LA MADRE / CUIDADOR
-          FormCard(
-            title: '8. Datos de la Madre / Cuidador',
-            icon: Icons.escalator_warning_outlined,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                DropdownButtonFormField<String>(
-                  initialValue: widget.guardianRelationship,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Parentesco / Rol',
+                const Text(
+                  'Datos del Cuidador / Madre',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.ink,
                   ),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'CAREGIVER',
-                      child: Text('Cuidador responsable'),
-                    ),
-                    DropdownMenuItem(value: 'MOTHER', child: Text('Madre')),
-                    DropdownMenuItem(value: 'FATHER', child: Text('Padre')),
-                    DropdownMenuItem(
-                      value: 'OTHER',
-                      child: Text('Otro familiar'),
-                    ),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) widget.onGuardianRelationshipChanged(val);
-                  },
                 ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: widget.guardianDocumentType,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Tipo de Documento',
-                  ),
-                  items: [
-                    for (final opt
-                        in _refOptions('document_type').isNotEmpty
-                            ? _refOptions('document_type')
-                            : documentTypeFallback)
-                      DropdownMenuItem(
-                        value: opt.code,
-                        child: Text('${opt.code} - ${opt.label}'),
+                const SizedBox(height: 10),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
                       ),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) widget.onGuardianDocumentTypeChanged(val);
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: widget.guardianDocumentController,
-                  decoration: const InputDecoration(
-                    labelText: 'Número de Documento del Acompañante',
+                    ],
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: widget.guardianFirstNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nombres del Acompañante',
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: widget.guardianLastNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Apellidos del Acompañante',
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: widget.guardianCellphoneController,
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: digitsOnlyFormatters(max: 10),
-                  decoration: const InputDecoration(
-                    labelText: 'Teléfono / Celular del Acompañante',
-                    prefixIcon: Icon(Icons.phone_outlined, size: 20),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '¿Desea agregar datos del cuidador?',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.ink,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Madre, tutor o responsable del paciente',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.slate,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: _hasGuardian,
+                            activeTrackColor: AppColors.primary,
+                            onChanged: (val) {
+                              setState(() => _hasGuardian = val);
+                              if (!val) {
+                                widget.guardianDocumentController.clear();
+                                widget.guardianFirstNameController.clear();
+                                widget.guardianLastNameController.clear();
+                                widget.guardianCellphoneController.clear();
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      if (_hasGuardian) ...[
+                        const SizedBox(height: 14),
+                        const Divider(color: AppColors.border, height: 1),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          initialValue: widget.guardianRelationship,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            label: requiredFieldLabel('Parentesco / Rol'),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'MOTHER',
+                              child: Text('Madre'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'CAREGIVER',
+                              child: Text('Cuidador responsable'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'FATHER',
+                              child: Text('Padre'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'OTHER',
+                              child: Text('Otro familiar / tutor'),
+                            ),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              widget.onGuardianRelationshipChanged(val);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          initialValue: widget.guardianDocumentType,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            label: requiredFieldLabel('Tipo de Documento'),
+                          ),
+                          items: [
+                            for (final opt
+                                in _refOptions('document_type').isNotEmpty
+                                    ? _refOptions('document_type')
+                                    : documentTypeFallback)
+                              DropdownMenuItem(
+                                value: opt.code,
+                                child: Text('${opt.code} - ${opt.label}'),
+                              ),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              widget.onGuardianDocumentTypeChanged(val);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: widget.guardianDocumentController,
+                          keyboardType: TextInputType.text,
+                          decoration: const InputDecoration(
+                            labelText: 'Número de Documento',
+                            hintText: 'Ej: 1234567890',
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: widget.guardianFirstNameController,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Primer Nombre',
+                            hintText: 'Ej: María',
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: widget.guardianLastNameController,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Apellidos',
+                            hintText: 'Ej: Pérez Gómez',
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: widget.guardianCellphoneController,
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: digitsOnlyFormatters(max: 10),
+                          decoration: const InputDecoration(
+                            labelText: 'Teléfono / Celular',
+                            hintText: 'Ej: 3001234567',
+                            prefixIcon: Icon(Icons.phone_outlined, size: 20),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],

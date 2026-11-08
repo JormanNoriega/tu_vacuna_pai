@@ -53,11 +53,19 @@ class PatientDetailController extends AsyncController {
   List<Attention> get attentions => List.unmodifiable(_attentions);
 
   Future<bool> load(String patientId) async {
-    // 1. Respaldo offline: si existe en SQLite, se ensambla el perfil
+    if (_profile?.patient.id != patientId) {
+      _profile = null;
+      _attentions = const [];
+    }
+    clearError();
+
+    // 1. Respaldo offline preparado (render instantaneo si ya esta en SQLite)
+    PatientProfile? localProfile;
+    List<Attention> localAttentions = const [];
     if (database != null) {
       final localPatient = await database!.patientLocalById(patientId);
       if (localPatient != null) {
-        _profile = _buildProfileFromLocal(localPatient);
+        localProfile = _buildProfileFromLocal(localPatient);
         final localAtts = await database!.attentionsLocalByPatient(patientId);
         final loadedAtts = <Attention>[];
         for (final a in localAtts) {
@@ -75,27 +83,66 @@ class PatientDetailController extends AsyncController {
             loadedAtts.add(full);
           } catch (_) {}
         }
-        _attentions = loadedAtts;
+        localAttentions = loadedAtts;
+        _profile = localProfile;
+        _attentions = localAttentions;
         notifyListeners();
       }
     }
 
-    var ok = _profile != null;
+    var ok = false;
     await execute((token) async {
       try {
         final remote = await getPatient(token, patientId);
         _profile = remote;
         ok = true;
-        try {
-          _attentions = await listPatientAttentions(token, patientId);
-        } catch (_) {}
+
+        final deptId = (remote.addresses.isNotEmpty)
+            ? remote.addresses.first.departmentId
+            : null;
+
+        await Future.wait([
+          listPatientAttentions(token, patientId)
+              .then((atts) {
+                _attentions = atts;
+              })
+              .catchError((_) {}),
+          if (_countries.isEmpty)
+            listCountries(token)
+                .then((c) {
+                  _countries = c;
+                })
+                .catchError((_) {}),
+          if (_departments.isEmpty)
+            listDepartments(token)
+                .then((d) {
+                  _departments = d;
+                })
+                .catchError((_) {}),
+          if (deptId != null && _municipalities.isEmpty)
+            listMunicipalities(token, deptId)
+                .then((m) {
+                  _municipalities = m;
+                })
+                .catchError((_) {}),
+        ]);
       } catch (e) {
-        if (_profile != null) {
+        if (localProfile != null) {
+          _profile = localProfile;
+          _attentions = localAttentions;
+          ok = true;
           return;
         }
         rethrow;
       }
     });
+
+    if (_profile == null && localProfile != null) {
+      _profile = localProfile;
+      _attentions = localAttentions;
+      ok = true;
+      notifyListeners();
+    }
 
     if (_profile != null && error != null) {
       clearError();
