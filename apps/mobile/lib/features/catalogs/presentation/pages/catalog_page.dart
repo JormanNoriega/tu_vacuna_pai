@@ -238,176 +238,317 @@ class _CatalogPageState extends State<CatalogPage> {
       ],
     ),
   );
-  Widget _card(Vaccine v) => Card(
-    margin: const EdgeInsets.only(bottom: 12),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: AppColors.primary.withValues(alpha: .1),
-                foregroundColor: AppColors.primary,
-                child: Text(v.name.substring(0, 1).toUpperCase()),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      v.name,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    Text(
-                      'Codigo: ${v.code}',
-                      style: const TextStyle(
-                        color: AppColors.slate,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (globalAdmin || institutionAdmin)
-                PopupMenuButton<String>(
-                  onSelected: (value) {
-                    if (value == 'edit' && globalAdmin) _form(v);
-                    if (value == 'toggle' && institutionAdmin) _toggle(v);
-                    if (value == 'options') _options(v);
-                  },
-                  itemBuilder: (_) => [
-                    if (globalAdmin)
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Text('Editar catalogo'),
-                      ),
-                    if (institutionAdmin)
-                      PopupMenuItem(
-                        value: 'toggle',
-                        child: Text('Cambiar disponibilidad'),
-                      ),
-                    if (globalAdmin || institutionAdmin)
-                      const PopupMenuItem(
-                        value: 'options',
-                        child: Text('Opciones clinicas y operativas'),
-                      ),
-                  ],
-                ),
-            ],
-          ),
-          const Divider(height: 24),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _chip('${v.maxDoses} dosis', Icons.format_list_numbered),
-              _chip(v.ageRange, Icons.calendar_today),
-              _chip(
-                v.category.replaceAll(
-                  'Programa Ampliado de Inmunización (PAI)',
-                  'PAI',
-                ),
-                Icons.category,
-                color: Colors.deepPurple,
-              ),
-              if (!v.active)
-                _chip(
-                  'INACTIVA',
-                  Icons.visibility_off,
-                  color: AppColors.warning,
-                ),
-              if (institutionAdmin)
-                _chip(
-                  (widget.controller.institutionEnabled[v.id] ?? false)
-                      ? 'HABILITADA'
-                      : 'DESHABILITADA',
-                  (widget.controller.institutionEnabled[v.id] ?? false)
-                      ? Icons.check_circle_outline
-                      : Icons.remove_circle_outline,
-                  color: (widget.controller.institutionEnabled[v.id] ?? false)
-                      ? AppColors.success
-                      : AppColors.warning,
-                ),
-            ],
-          ),
-          if (_hasFeature(v)) ...[
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  if (v.hasLaboratory) _featureChip('Laboratorio'),
-                  if (v.hasLot) _featureChip('Lote'),
-                  if (v.hasSyringe) _featureChip('Jeringa'),
-                  if (v.hasSyringeLot) _featureChip('Lote jeringa'),
-                  if (v.hasDiluent) _featureChip('Diluyente'),
-                  if (v.hasDropper) _featureChip('Gotero'),
-                  if (v.hasPneumococcalType) _featureChip('Tipo neumococo'),
-                  if (v.hasVialCount) _featureChip('Conteo frascos'),
-                  if (v.hasObservation) _featureChip('Observaciones'),
-                ],
-              ),
-            ),
-          ],
-          _doseSummary(v),
-        ],
-      ),
-    ),
-  );
-  Widget _chip(
-    String label,
-    IconData icon, {
-    Color color = AppColors.primary,
-  }) => Chip(
-    avatar: Icon(icon, size: 16, color: color),
-    label: Text(label),
-    labelStyle: TextStyle(
-      color: color,
-      fontSize: 12,
-      fontWeight: FontWeight.w600,
-    ),
-  );
-  Widget _featureChip(String label) => Chip(
-    label: Text(label),
-    backgroundColor: AppColors.surface,
-    side: const BorderSide(color: AppColors.border),
-    labelStyle: const TextStyle(fontSize: 11),
-  );
+  String _formatAgeRange(Vaccine v) {
+    if (v.minAgeMonths == null && v.maxAgeMonths == null) {
+      return 'Todas las edades';
+    }
+    if (v.minAgeMonths != null && v.maxAgeMonths != null) {
+      return '${v.minAgeMonths}-${v.maxAgeMonths} meses';
+    }
+    if (v.minAgeMonths != null) {
+      return 'Desde ${v.minAgeMonths} meses';
+    }
+    return 'Hasta ${v.maxAgeMonths} meses';
+  }
 
-  Widget _doseSummary(Vaccine vaccine) {
-    final doses = widget.controller.doseOptions[vaccine.id] ?? const [];
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
+  Widget _metaChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Color bgColor,
+    required Color borderColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor, width: 1.2),
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 2),
-            child: Icon(Icons.format_list_numbered, size: 18),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              doses.isEmpty
-                  ? 'Dosis: sin opciones configuradas'
-                  : 'Dosis: ${doses.map((dose) => dose.displayName).join('  |  ')}',
-              style: const TextStyle(color: AppColors.slate, fontSize: 13),
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
       ),
     );
   }
+
+  Widget _featurePill({
+    Widget? iconWidget,
+    IconData? icon,
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ?iconWidget,
+          if (icon != null)
+            Icon(icon, size: 15, color: const Color(0xFF2563EB)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF1E293B),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _card(Vaccine v) => Container(
+    margin: const EdgeInsets.only(bottom: 14),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.02),
+          blurRadius: 6,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header: Avatar Squircle + Título + Código + Menú
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0EDFF),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Center(
+                  child: Text(
+                    v.name.isNotEmpty ? v.name[0].toUpperCase() : 'V',
+                    style: const TextStyle(
+                      color: Color(0xFF2563EB),
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      v.name,
+                      style: const TextStyle(
+                        color: Color(0xFF0F172A),
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Código: ${v.code}',
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: Color(0xFF64748B)),
+                onSelected: (value) {
+                  if (value == 'edit' && globalAdmin) _form(v);
+                  if (value == 'toggle' && institutionAdmin) _toggle(v);
+                  if (value == 'options') _options(v);
+                },
+                itemBuilder: (_) => [
+                  if (globalAdmin)
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Text('Editar catálogo'),
+                    ),
+                  if (institutionAdmin)
+                    PopupMenuItem(
+                      value: 'toggle',
+                      child: Text(
+                        (widget.controller.institutionEnabled[v.id] ?? false)
+                            ? 'Deshabilitar'
+                            : 'Habilitar',
+                      ),
+                    ),
+                  const PopupMenuItem(
+                    value: 'options',
+                    child: Text('Opciones clínicas y operativas'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 14),
+
+          // Fila de Badges / Chips
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _metaChip(
+                icon: Icons.format_list_bulleted_rounded,
+                label: '${v.maxDoses} dosis',
+                color: const Color(0xFF2563EB),
+                bgColor: const Color(0xFFEFF6FF),
+                borderColor: const Color(0xFF93C5FD),
+              ),
+              _metaChip(
+                icon: Icons.calendar_today_outlined,
+                label: _formatAgeRange(v),
+                color: const Color(0xFF2563EB),
+                bgColor: const Color(0xFFEFF6FF),
+                borderColor: const Color(0xFF93C5FD),
+              ),
+              _metaChip(
+                icon: Icons.interests_rounded,
+                label: v.category.toLowerCase().replaceAll(
+                  'programa ampliado de inmunización (pai)',
+                  'pai',
+                ),
+                color: const Color(0xFF7C3AED),
+                bgColor: const Color(0xFFF5F3FF),
+                borderColor: const Color(0xFFDDD6FE),
+              ),
+              if (!v.active)
+                _metaChip(
+                  icon: Icons.visibility_off_outlined,
+                  label: 'INACTIVA',
+                  color: const Color(0xFFDC2626),
+                  bgColor: const Color(0xFFFEF2F2),
+                  borderColor: const Color(0xFFFECACA),
+                ),
+              if (institutionAdmin)
+                _metaChip(
+                  icon: (widget.controller.institutionEnabled[v.id] ?? false)
+                      ? Icons.check_circle_outline
+                      : Icons.remove_circle_outline,
+                  label: (widget.controller.institutionEnabled[v.id] ?? false)
+                      ? 'HABILITADA'
+                      : 'DESHABILITADA',
+                  color: (widget.controller.institutionEnabled[v.id] ?? false)
+                      ? AppColors.success
+                      : AppColors.warning,
+                  bgColor: (widget.controller.institutionEnabled[v.id] ?? false)
+                      ? AppColors.successSoft
+                      : AppColors.warningSoft,
+                  borderColor: (widget.controller.institutionEnabled[v.id] ?? false)
+                      ? AppColors.success.withValues(alpha: 0.3)
+                      : AppColors.warning.withValues(alpha: 0.3),
+                ),
+            ],
+          ),
+
+          // Sección Características
+          if (_hasFeature(v)) ...[
+            const SizedBox(height: 16),
+            const Text(
+              'Características:',
+              style: TextStyle(
+                color: Color(0xFF475569),
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (v.hasLot)
+                  _featurePill(
+                    iconWidget: const Text(
+                      '#',
+                      style: TextStyle(
+                        color: Color(0xFF2563EB),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    label: 'Lote',
+                  ),
+                if (v.hasSyringe)
+                  _featurePill(
+                    icon: Icons.add_box_rounded,
+                    label: 'Jeringa',
+                  ),
+                if (v.hasSyringeLot)
+                  _featurePill(
+                    icon: Icons.grid_view_rounded,
+                    label: 'Lote Jeringa',
+                  ),
+                if (v.hasDiluent)
+                  _featurePill(
+                    icon: Icons.water_drop_rounded,
+                    label: 'Diluyente',
+                  ),
+                if (v.hasObservation)
+                  _featurePill(
+                    icon: Icons.note_alt_rounded,
+                    label: 'Observaciones',
+                  ),
+                if (v.hasLaboratory)
+                  _featurePill(
+                    icon: Icons.biotech_rounded,
+                    label: 'Laboratorio',
+                  ),
+                if (v.hasDropper)
+                  _featurePill(
+                    icon: Icons.opacity_rounded,
+                    label: 'Gotero',
+                  ),
+                if (v.hasPneumococcalType)
+                  _featurePill(
+                    icon: Icons.coronavirus_rounded,
+                    label: 'Tipo neumococo',
+                  ),
+                if (v.hasVialCount)
+                  _featurePill(
+                    icon: Icons.numbers_rounded,
+                    label: 'Conteo frascos',
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
 
   bool _hasFeature(Vaccine v) =>
       v.hasLaboratory ||

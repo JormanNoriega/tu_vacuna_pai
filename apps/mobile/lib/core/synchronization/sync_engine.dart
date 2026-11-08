@@ -311,11 +311,13 @@ class SyncEngine {
       case SyncCommandType.createAttention:
         final lat = (payload['latitude'] as num?)?.toDouble();
         final lng = (payload['longitude'] as num?)?.toDouble();
+        final profile = await _db.currentUserProfile();
         await _db.upsertAttentionLocal(
           AttentionsLocalCompanion.insert(
             id: operation.aggregateId,
             institutionId: institutionId,
             patientId: _str(payload['patientId']),
+            vaccinatorId: Value(profile?.id),
             status: 'DRAFT',
             attentionDate: Value(_epoch(payload['attentionDate'])),
             observations: Value(_nullable(payload['observations'])),
@@ -329,16 +331,27 @@ class SyncEngine {
       case SyncCommandType.registerAppliedDose:
         final attentionId = _nullable(payload['attentionId']);
         if (attentionId == null) return;
+        final vaccineId = _nullable(payload['vaccineId']);
+        final cachedVaccine = vaccineId != null
+            ? await _db.vaccineById(vaccineId)
+            : null;
+        final vaccineName =
+            _nullable(payload['vaccineName']) ??
+            cachedVaccine?.name ??
+            'Vacunación';
+        final doseLabel =
+            _nullable(payload['doseLabel']) ??
+            _nullable(payload['doseOptionId']);
         await _db.upsertAppliedDoseLocal(
           AppliedDosesLocalCompanion.insert(
             id: operation.aggregateId,
             attentionId: attentionId,
-            vaccineId: Value(_nullable(payload['vaccineId'])),
+            vaccineId: Value(vaccineId),
             status: 'REGISTERED',
             appliedAt: _epoch(payload['applicationDate']) ?? _epochNow(),
             lot: Value(_nullable(payload['lotNumber'])),
-            vaccineNameSnapshot: _str(payload['vaccineId']),
-            doseLabelSnapshot: Value(_nullable(payload['doseOptionId'])),
+            vaccineNameSnapshot: vaccineName,
+            doseLabelSnapshot: Value(doseLabel),
             syncState: SyncAggregateState.synced.value,
             updatedAt: _epochNow(),
           ),

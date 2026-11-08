@@ -311,7 +311,7 @@ void main() {
     );
 
     testWidgets(
-      'Centro de Accion muestra las 4 acciones principales para el vacunador',
+      'Centro de Accion muestra Nueva Atención, Historial e Inventario para el vacunador (sin Exportar)',
       (tester) async {
         await tester.pumpWidget(
           MaterialApp(
@@ -327,7 +327,7 @@ void main() {
         expect(find.text('Nueva Atención'), findsOneWidget);
         expect(find.text('Historial'), findsWidgets);
         expect(find.text('Inventario'), findsWidgets);
-        expect(find.text('Exportar'), findsOneWidget);
+        expect(find.text('Exportar'), findsNothing);
       },
     );
   });
@@ -441,6 +441,31 @@ void main() {
 
         // Debe abrir la ficha técnica (PatientDetailPage)
         expect(find.text('Ficha del paciente'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Hospital Admin NO ve la seccion de ultimos registros recientes',
+      (tester) async {
+        final metricsRepo = _TestMetricsRepository();
+        final metricsController = MetricsController(
+          sessionManager: FakeSessionManager('token-test'),
+          getSummary: GetMetricsSummary(metricsRepo),
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: DashboardPage(
+              user: adminUser,
+              onSignOut: () {},
+              metricsController: metricsController,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Últimos registros'), findsNothing);
+        expect(find.text('Julio Rios'), findsNothing);
       },
     );
   });

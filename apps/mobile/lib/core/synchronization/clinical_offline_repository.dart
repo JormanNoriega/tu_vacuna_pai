@@ -38,6 +38,8 @@ class ClinicalOfflineRepository {
   final AppDatabase _db;
   final SyncOutboxRepository _outbox;
 
+  AppDatabase get database => _db;
+
   Future<ClinicalWrite<PatientsLocalData>> createPatient({
     required String institutionId,
     required NewPatientInput input,
@@ -80,6 +82,7 @@ class ClinicalOfflineRepository {
   Future<ClinicalWrite<AttentionsLocalData>> createAttention({
     required String institutionId,
     required String patientId,
+    String? vaccinatorId,
     String? attentionDate,
     String? observations,
     double? latitude,
@@ -109,6 +112,7 @@ class ClinicalOfflineRepository {
           id: attentionId,
           institutionId: institutionId,
           patientId: patientId,
+          vaccinatorId: Value(vaccinatorId),
           status: 'DRAFT',
           attentionDate: Value(_epoch(attentionDate)),
           observations: Value(observations),
@@ -150,6 +154,8 @@ class ClinicalOfflineRepository {
         attentionId: attentionId,
         vaccineId: vaccineId,
         doseOptionId: doseOptionId,
+        vaccineName: vaccineNameSnapshot,
+        doseLabel: doseLabelSnapshot,
         pneumococcalTypeOptionId: pneumococcalTypeOptionId,
         lotNumber: lotNumber,
         applicationDate: applicationDate,
@@ -257,9 +263,11 @@ class ClinicalOfflineRepository {
     String? summary,
     List<String> dependencies = const [],
   }) async {
+    final profile = await _db.currentUserProfile();
     final write = await createAttention(
-      institutionId: await _institutionId(),
+      institutionId: profile?.institutionId ?? await _institutionId(),
       patientId: patientId,
+      vaccinatorId: profile?.id,
       attentionDate: attentionDate,
       observations: observations,
       latitude: latitude,

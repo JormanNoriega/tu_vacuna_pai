@@ -537,6 +537,9 @@ class AppDatabase extends _$AppDatabase {
   Future<List<VaccinesCacheData>> cachedVaccines() =>
       select(vaccinesCache).get();
 
+  Future<VaccinesCacheData?> vaccineById(String id) =>
+      (select(vaccinesCache)..where((t) => t.id.equals(id))).getSingleOrNull();
+
   Future<void> replaceGlobalOptions(
     String vaccineId,
     List<VaccineOption> options,
@@ -914,19 +917,21 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Ultimos registros de atencion de la institucion (offline).
-  /// Si se proporciona [vaccinatorId], filtra exclusivamente las atenciones
-  /// de ese profesional.
+  /// Exclusivo para quien realiza atenciones; requiere [vaccinatorId] para
+  /// asegurar que cada profesional solo vea sus propias atenciones.
   Future<List<Map<String, dynamic>>> recentRecordsLocal(
     String institutionId, {
     String? vaccinatorId,
     int limit = 5,
   }) async {
-    var predicate =
-        attentionsLocal.institutionId.equals(institutionId) &
-        attentionsLocal.status.equals('CANCELLED').not();
-    if (vaccinatorId != null && vaccinatorId.isNotEmpty) {
-      predicate = predicate & attentionsLocal.vaccinatorId.equals(vaccinatorId);
+    if (vaccinatorId == null || vaccinatorId.isEmpty) {
+      return const [];
     }
+
+    final predicate =
+        attentionsLocal.institutionId.equals(institutionId) &
+        attentionsLocal.status.equals('CANCELLED').not() &
+        attentionsLocal.vaccinatorId.equals(vaccinatorId);
 
     final query =
         select(attentionsLocal).join([
@@ -937,6 +942,10 @@ class AppDatabase extends _$AppDatabase {
             leftOuterJoin(
               appliedDosesLocal,
               appliedDosesLocal.attentionId.equalsExp(attentionsLocal.id),
+            ),
+            leftOuterJoin(
+              vaccinesCache,
+              vaccinesCache.id.equalsExp(appliedDosesLocal.vaccineId),
             ),
           ])
           ..where(predicate)
@@ -951,8 +960,16 @@ class AppDatabase extends _$AppDatabase {
       final attention = row.readTable(attentionsLocal);
       final patient = row.readTable(patientsLocal);
       final dose = row.readTableOrNull(appliedDosesLocal);
+      final cachedVaccine = row.readTableOrNull(vaccinesCache);
       final fullName = '${patient.firstName} ${patient.lastName}'.trim();
-      final vaccineName = dose?.vaccineNameSnapshot ?? 'Vacunación';
+      final rawName = dose?.vaccineNameSnapshot;
+      final isUuid =
+          rawName != null &&
+          RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(rawName.trim());
+      final vaccineName =
+          (!isUuid && rawName != null && rawName.trim().isNotEmpty)
+          ? rawName.trim()
+          : (cachedVaccine?.name ?? 'Atención de vacunación');
       final sec = attention.attentionDate ?? attention.completedAt;
       final dt = sec != null
           ? (sec < 10000000000

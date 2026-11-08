@@ -1,15 +1,18 @@
 import '../../../core/auth/offline_access.dart';
 import '../../../core/presentation/async_controller.dart';
+import '../../../core/storage/app_database.dart';
+import '../../../core/synchronization/clinical_offline_repository.dart';
 import '../../attentions/domain/entities/attention.dart';
 import '../../attentions/domain/use_cases/attentions_use_cases.dart';
 import '../../catalogs/domain/entities/geo.dart';
 import '../../catalogs/domain/use_cases/catalog_use_cases.dart';
 import '../domain/entities/new_patient.dart';
+import '../domain/entities/patient.dart';
 import '../domain/entities/patient_profile.dart';
 import '../domain/use_cases/patient_profile_use_cases.dart';
 
 /// Controlador de la ficha del paciente: carga el perfil completo y permite
-/// editar demografia, contacto/direccion y antecedentes (online-first).
+/// editar demografia, contacto/direccion y antecedentes (online-first con respaldo offline).
 class PatientDetailController extends AsyncController {
   PatientDetailController({
     required super.sessionManager,
@@ -21,6 +24,8 @@ class PatientDetailController extends AsyncController {
     required this.listDepartments,
     required this.listMunicipalities,
     required this.listPatientAttentions,
+    this.database,
+    this.offlineRepository,
   });
 
   final GetPatient getPatient;
@@ -31,6 +36,8 @@ class PatientDetailController extends AsyncController {
   final ListDepartments listDepartments;
   final ListMunicipalities listMunicipalities;
   final ListPatientAttentions listPatientAttentions;
+  final AppDatabase? database;
+  final ClinicalOfflineRepository? offlineRepository;
 
   PatientProfile? _profile;
   List<GeoCountry> _countries = const [];
@@ -46,39 +53,184 @@ class PatientDetailController extends AsyncController {
   List<Attention> get attentions => List.unmodifiable(_attentions);
 
   Future<bool> load(String patientId) async {
+    if (_profile?.patient.id != patientId) {
+      _profile = null;
+      _attentions = const [];
+    }
+    clearError();
+
+    // 1. Respaldo offline preparado (render instantaneo si ya esta en SQLite)
+    PatientProfile? localProfile;
+    List<Attention> localAttentions = const [];
+    if (database != null) {
+      final localPatient = await database!.patientLocalById(patientId);
+      if (localPatient != null) {
+        localProfile = _buildProfileFromLocal(localPatient);
+        final localAtts = await database!.attentionsLocalByPatient(patientId);
+        final loadedAtts = <Attention>[];
+        for (final a in localAtts) {
+          try {
+            final full = offlineRepository != null
+                ? await offlineRepository!.attentionLocalWithDoses(a.id)
+                : Attention(
+                    id: a.id,
+                    patientId: a.patientId,
+                    professionalId: a.vaccinatorId ?? '',
+                    status: a.status,
+                    version: 1,
+                    doses: const [],
+                  );
+            loadedAtts.add(full);
+          } catch (_) {}
+        }
+        localAttentions = loadedAtts;
+        _profile = localProfile;
+        _attentions = localAttentions;
+        notifyListeners();
+      }
+    }
+
     var ok = false;
     await execute((token) async {
-      _profile = await getPatient(token, patientId);
-      // El historial de vacunacion es complementario: si falla, la ficha igual
-      // se muestra con el perfil.
       try {
-        _attentions = await listPatientAttentions(token, patientId);
-      } catch (_) {
-        _attentions = const [];
+        final remote = await getPatient(token, patientId);
+        _profile = remote;
+        ok = true;
+
+        final deptId = (remote.addresses.isNotEmpty)
+            ? remote.addresses.first.departmentId
+            : null;
+
+        await Future.wait([
+          listPatientAttentions(token, patientId)
+              .then((atts) {
+                _attentions = atts;
+              })
+              .catchError((_) {}),
+          if (_countries.isEmpty)
+            listCountries(token)
+                .then((c) {
+                  _countries = c;
+                })
+                .catchError((_) {}),
+          if (_departments.isEmpty)
+            listDepartments(token)
+                .then((d) {
+                  _departments = d;
+                })
+                .catchError((_) {}),
+          if (deptId != null && _municipalities.isEmpty)
+            listMunicipalities(token, deptId)
+                .then((m) {
+                  _municipalities = m;
+                })
+                .catchError((_) {}),
+        ]);
+      } catch (e) {
+        if (localProfile != null) {
+          _profile = localProfile;
+          _attentions = localAttentions;
+          ok = true;
+          return;
+        }
+        rethrow;
       }
-      ok = true;
     });
+
+    if (_profile == null && localProfile != null) {
+      _profile = localProfile;
+      _attentions = localAttentions;
+      ok = true;
+      notifyListeners();
+    }
+
+    if (_profile != null && error != null) {
+      clearError();
+    }
     return ok;
+  }
+
+  PatientProfile _buildProfileFromLocal(PatientsLocalData row) {
+    return PatientProfile(
+      patient: Patient(
+        id: row.id,
+        documentType: row.documentType,
+        documentNumber: row.documentNumber,
+        firstName: row.firstName,
+        lastName: row.lastName,
+        birthDate: row.birthDate,
+        sex: row.sex ?? 'UNKNOWN',
+        status: 'ACTIVE',
+      ),
+      demographics: (row.gender != null)
+          ? PatientDemographics(gender: row.gender)
+          : null,
+      contacts: [
+        if (row.phone != null && row.phone!.isNotEmpty)
+          PatientContact(
+            id: 'local-phone-${row.id}',
+            type: 'PHONE',
+            value: row.phone!,
+            phoneKind: 'CELLPHONE',
+            primary: true,
+          ),
+        if (row.email != null && row.email!.isNotEmpty)
+          PatientContact(
+            id: 'local-email-${row.id}',
+            type: 'EMAIL',
+            value: row.email!,
+            primary: false,
+          ),
+      ],
+      addresses: [
+        if ((row.addressLine != null && row.addressLine!.isNotEmpty) ||
+            row.addressDepartment != null ||
+            row.addressMunicipality != null)
+          PatientAddress(
+            id: 'local-addr-${row.id}',
+            street: row.addressLine,
+            departmentId: row.addressDepartment,
+            municipalityId: row.addressMunicipality,
+            primary: true,
+          ),
+      ],
+    );
   }
 
   Future<void> loadCountries() async {
     if (_countries.isNotEmpty) return;
-    await execute((token) async {
-      _countries = await listCountries(token);
-    });
+    try {
+      final session = await sessionManager.loadSession();
+      final token = session?.accessToken;
+      if (token != null) {
+        _countries = await listCountries(token);
+        notifyListeners();
+      }
+    } catch (_) {}
   }
 
   Future<void> loadDepartments() async {
     if (_departments.isNotEmpty) return;
-    await execute((token) async {
-      _departments = await listDepartments(token);
-    });
+    try {
+      final session = await sessionManager.loadSession();
+      final token = session?.accessToken;
+      if (token != null) {
+        _departments = await listDepartments(token);
+        notifyListeners();
+      }
+    } catch (_) {}
   }
 
-  Future<void> loadMunicipalities(String departmentId) =>
-      execute((token) async {
+  Future<void> loadMunicipalities(String departmentId) async {
+    try {
+      final session = await sessionManager.loadSession();
+      final token = session?.accessToken;
+      if (token != null) {
         _municipalities = await listMunicipalities(token, departmentId);
-      });
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
 
   Future<bool> saveDemographics({
     required OfflineAccess offline,

@@ -69,11 +69,13 @@ public class ClinicalMetricsQueryService implements ClinicalMetricsQuery {
   @Transactional(readOnly = true)
   public List<RecentRecordResponse> recentRecords(
       UUID institutionId, UUID professionalId, boolean isInstitutionalAdmin, int limit) {
+    if (isInstitutionalAdmin || professionalId == null) {
+      return List.of();
+    }
+
     List<AttentionEntity> attentionList =
-        isInstitutionalAdmin
-            ? attentions.findTop5ByInstitutionIdAndStatusNotOrderByAttentionDateDesc(
-                institutionId, AttentionEntity.Status.CANCELLED)
-            : attentions.findTop5ByInstitutionIdAndProfessionalIdAndStatusNotOrderByAttentionDateDesc(
+        attentions
+            .findTop5ByInstitutionIdAndProfessionalIdAndStatusNotOrderByAttentionDateDescCreatedAtDesc(
                 institutionId, professionalId, AttentionEntity.Status.CANCELLED);
 
     if (attentionList.isEmpty()) {

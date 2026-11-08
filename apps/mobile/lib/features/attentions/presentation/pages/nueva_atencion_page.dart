@@ -1,89 +1,134 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
-import '../../../../app/widgets/clinical_components.dart';
 import '../../../../core/auth/offline_access.dart';
 import '../../../../core/device/location_service.dart';
 import '../../../../core/presentation/offline_messages.dart';
 import '../../../../core/presentation/widgets/app_snackbar.dart';
-import '../../../../core/presentation/widgets/loading_button.dart';
-import '../../../../core/utils/document_input.dart';
-import '../../../../core/utils/field_input.dart';
 import '../../../auth/domain/entities/auth_user.dart';
-import '../../../auth/domain/entities/session_restore_result.dart';
 import '../../../catalogs/domain/entities/catalog_entities.dart';
-import '../../../catalogs/domain/entities/effective_catalog.dart';
+import '../../../patients/domain/entities/new_patient.dart';
 import '../../../patients/domain/entities/patient.dart';
-import '../../../patients/presentation/pages/patient_wizard_page.dart';
-import '../../domain/entities/attention.dart';
 import '../attention_controller.dart';
+import '../widgets/steps/form_helpers.dart';
+import '../widgets/steps/staged_dose_data.dart';
+import '../widgets/steps/step1_basic_data_step.dart';
+import '../widgets/steps/step2_additional_data_step.dart';
+import '../widgets/steps/step3_vaccines_step.dart';
+import '../widgets/steps/step4_review_step.dart';
 
-/// Flujo de una nueva atencion: buscar o registrar paciente, seleccionar la
-/// vacuna del catalogo efectivo, registrar dosis y completar la atencion.
+/// Flujo de Atención de Vacunación en 4 Pasos:
+/// Paso 1: Datos Básicos del Paciente y fecha de atención.
+/// Paso 2: Datos Adicionales (Demográficos, Residencia, EPS, Antecedentes, etc.).
+/// Paso 3: Selección de Vacunas y Registro de Dosis.
+/// Paso 4: Revisión, Cierre PAIWEB y Confirmación.
 class NuevaAtencionPage extends StatefulWidget {
   const NuevaAtencionPage({
     required this.user,
     required this.controller,
     required this.offline,
+    this.onFinished,
+    this.onSubmittingChanged,
     super.key,
   });
 
   final AuthUser user;
   final AttentionController controller;
   final OfflineAccess offline;
+  final VoidCallback? onFinished;
+  final ValueChanged<bool>? onSubmittingChanged;
 
   @override
   State<NuevaAtencionPage> createState() => _NuevaAtencionPageState();
 }
 
 class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
-  final _searchNumber = TextEditingController();
-  final _lotNumber = TextEditingController();
-  final _syringeLot = TextEditingController();
-  final _diluent = TextEditingController();
-  final _vialCount = TextEditingController();
-  final _customObservation = TextEditingController();
-  final _observations = TextEditingController();
-  final _paiwebReason = TextEditingController();
-  final _attentionDateText = TextEditingController();
-  String _searchDocType = 'CC';
-  bool _searched = false;
-  bool _completeScheme = false;
-  bool _paiwebRegistered = true;
+  final PageController _pageController = PageController();
+  int _currentStep = 0;
+  static const int _totalSteps = 4;
 
-  EffectiveVaccine? _vaccine;
-  EffectiveOption? _dose;
-  EffectiveOption? _pneumo;
-  EffectiveOption? _laboratory;
-  EffectiveOption? _syringe;
-  EffectiveOption? _dropper;
-  EffectiveOption? _observation;
-  DateTime? _attentionDate;
-  bool _submittingDose = false;
-  bool _finishing = false;
-  bool _cancelling = false;
-  final _doseFormKey = GlobalKey<FormState>();
+  final _step1FormKey = GlobalKey<FormState>();
+  final _step2FormKey = GlobalKey<FormState>();
 
+  // Ubicación GPS
   final _locationService = const LocationService();
   double? _latitude;
   double? _longitude;
 
+  // Estado Paso 1
+  late DateTime _attentionDate;
+  String _documentType = 'CC';
+  final _documentNumber = TextEditingController();
+  final _firstName = TextEditingController();
+  final _secondName = TextEditingController();
+  final _lastName = TextEditingController();
+  final _secondLastName = TextEditingController();
+  DateTime? _birthDate;
+  bool _completeScheme = false;
+  bool _isExistingPatient = false;
+
+  // Estado Paso 2
+  String? _sex;
+  String? _gender;
+  String? _sexualOrientation;
+  String? _ethnicity;
+  final _educationLevel = TextEditingController();
+  String? _birthCountryId;
+  final _birthPlace = TextEditingController();
+  String _migrationStatus = 'REGULAR';
+  String? _vaccinationCardType;
+  final _gestationalAge = TextEditingController();
+  String? _affiliationRegime;
+  HealthInsurer? _selectedInsurer;
+  String? _departmentId;
+  String? _municipalityId;
+  final _street = TextEditingController();
+  final _locality = TextEditingController();
+  String? _area;
+  final _landline = TextEditingController();
+  final _cellphone = TextEditingController();
+  final _email = TextEditingController();
+  bool _authorizeCalls = false;
+  bool _authorizeEmail = false;
+  bool _displaced = false;
+  bool _disabled = false;
+  bool _deceased = false;
+  bool _armedConflictVictim = false;
+  bool _currentlyStudying = false;
+  bool _hasContraindication = false;
+  final _contraindicationDetails = TextEditingController();
+  bool _hasPreviousReaction = false;
+  final _reactionDetails = TextEditingController();
+  String? _userCondition;
+  final _lastMenstrualDate = TextEditingController();
+  final _previousPregnancies = TextEditingController();
+  final _birthPlaceDelivery = TextEditingController();
+  String _guardianRelationship = 'CAREGIVER';
+  String _guardianDocumentType = 'CC';
+  final _guardianDocument = TextEditingController();
+  final _guardianFirstName = TextEditingController();
+  final _guardianLastName = TextEditingController();
+  final _guardianCellphone = TextEditingController();
+
+  // Estado Paso 3: Dosis configuradas en borrador
+  final Map<String, StagedDose> _stagedDoses = {};
+
+  // Estado Paso 4
+  bool _paiwebRegistered = true;
+  final _paiwebReason = TextEditingController();
+  final _observations = TextEditingController();
+  bool _submitting = false;
+
   @override
   void initState() {
     super.initState();
-    // La fecha de atencion arranca en hoy (fecha local del dispositivo) para
-    // agilizar el registro; el vacunador solo la cambia si aplico otro dia.
-    final today = DateTime.now();
-    _attentionDate = today;
-    _attentionDateText.text = _displayDate(today);
+    _attentionDate = DateTime.now();
     widget.controller.loadReferenceCatalogs();
-    // No arrastrar la busqueda de una visita anterior (el dashboard recrea la
-    // pagina al cambiar de pestaña).
+    widget.controller.loadEffectiveCatalog();
     widget.controller.clearSearch();
     _fetchLocationInBackground();
   }
 
-  /// Intenta resolver la ubicacion en segundo plano de manera no bloqueante.
   Future<void> _fetchLocationInBackground() async {
     try {
       final loc = await _locationService.getCurrentLocation();
@@ -99,1046 +144,904 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
 
   @override
   void dispose() {
-    _searchNumber.dispose();
-    _lotNumber.dispose();
-    _syringeLot.dispose();
-    _diluent.dispose();
-    _vialCount.dispose();
-    _customObservation.dispose();
-    _observations.dispose();
+    _pageController.dispose();
+    _documentNumber.dispose();
+    _firstName.dispose();
+    _secondName.dispose();
+    _lastName.dispose();
+    _secondLastName.dispose();
+    _educationLevel.dispose();
+    _birthPlace.dispose();
+    _gestationalAge.dispose();
+    _street.dispose();
+    _locality.dispose();
+    _landline.dispose();
+    _cellphone.dispose();
+    _email.dispose();
+    _contraindicationDetails.dispose();
+    _reactionDetails.dispose();
+    _lastMenstrualDate.dispose();
+    _previousPregnancies.dispose();
+    _birthPlaceDelivery.dispose();
+    _guardianDocument.dispose();
+    _guardianFirstName.dispose();
+    _guardianLastName.dispose();
+    _guardianCellphone.dispose();
     _paiwebReason.dispose();
-    _attentionDateText.dispose();
+    _observations.dispose();
     super.dispose();
   }
 
-  static String _isoDate(DateTime date) {
-    final y = date.year.toString().padLeft(4, '0');
-    final m = date.month.toString().padLeft(2, '0');
-    final d = date.day.toString().padLeft(2, '0');
-    return '$y-$m-$d';
-  }
-
-  static String _displayDate(DateTime date) {
-    final d = date.day.toString().padLeft(2, '0');
-    final m = date.month.toString().padLeft(2, '0');
-    return '$d/$m/${date.year}';
-  }
-
-  Future<void> _pickAttentionDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _attentionDate ?? now,
-      firstDate: DateTime(2000),
-      lastDate: now,
-      helpText: 'Fecha de atencion',
-    );
-    if (!mounted || picked == null) return;
+  void _onExistingPatientLoaded(Patient patient) {
     setState(() {
-      _attentionDate = picked;
-      _attentionDateText.text = _displayDate(picked);
+      _isExistingPatient = true;
+      _documentType = patient.documentType;
+      _documentNumber.text = patient.documentNumber;
+      _firstName.text = patient.firstName;
+      _secondName.text = patient.secondName ?? '';
+      _lastName.text = patient.lastName;
+      _secondLastName.text = patient.secondLastName ?? '';
+      _birthDate = patient.birthDate;
+      _sex = patient.sex.isNotEmpty ? patient.sex : null;
+      _birthCountryId = patient.birthCountryId;
+      _birthPlace.text = patient.birthPlace ?? '';
+      _migrationStatus = patient.migrationStatus ?? 'REGULAR';
+      _vaccinationCardType = patient.vaccinationCardType;
+      _gestationalAge.text = patient.gestationalAgeAtBirth != null
+          ? patient.gestationalAgeAtBirth.toString()
+          : '';
     });
+
+    widget.controller.selectPatient(patient);
+    widget.controller.loadEffectiveCatalog();
+
+    AppSnackbar.success(context, 'Paciente cargado correctamente.');
+
+    // Brindar opción rápida de ir directamente a vacunas o revisar datos
+    _goToStep(2);
   }
 
-  /// Pide un motivo (obligatorio) para una anulacion. Devuelve null si cancela.
-  Future<String?> _promptReason(String title) => showDialog<String>(
-    context: context,
-    builder: (_) => _ReasonDialog(title: title),
-  );
-
-  Future<void> _search() async {
-    FocusScope.of(context).unfocus();
-    final number = _searchNumber.text.trim();
-    if (number.isEmpty) {
-      AppSnackbar.warning(context, 'Ingresa el numero de documento.');
-      return;
-    }
-    await widget.controller.findPatients(
-      offline: widget.offline,
-      documentType: _searchDocType,
-      documentNumber: number,
-    );
-    if (!mounted) return;
-    setState(() => _searched = true);
-    if (widget.controller.searchResults.isEmpty) {
-      AppSnackbar.warning(
-        context,
-        'No se encontro un paciente con ese documento.',
+  void _goToStep(int step) {
+    if (step >= 0 && step < _totalSteps) {
+      setState(() => _currentStep = step);
+      _pageController.animateToPage(
+        step,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
       );
     }
   }
 
-  Future<void> _createPatient() async {
-    final created = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => PatientWizardPage(
-          controller: widget.controller,
-          offline: widget.offline,
-        ),
-      ),
-    );
-    if (!mounted) return;
-    // Al volver del alta rapida, deja la busqueda en blanco: sin documento ni
-    // resultados previos.
-    setState(() {
-      _searchNumber.clear();
-      _searched = false;
-    });
-    widget.controller.clearSearch();
-    if (created == true) {
-      await widget.controller.loadEffectiveCatalog();
-      if (!mounted) return;
-      AppSnackbar.success(context, 'Paciente listo.');
+  void _previousStep() {
+    if (_currentStep > 0) {
+      _goToStep(_currentStep - 1);
     }
   }
 
-  /// Selecciona un paciente y carga el catalogo efectivo para aplicar vacuna.
-  Future<void> _selectPatient(Patient patient) async {
-    widget.controller.selectPatient(patient);
-    if (_latitude == null || _longitude == null) {
-      _fetchLocationInBackground();
-    }
-    await widget.controller.loadEffectiveCatalog();
-  }
-
-  Future<void> _addDose() async {
-    if (!(_doseFormKey.currentState?.validate() ?? false)) return;
-    final vaccine = _vaccine!;
-    final dose = _dose!;
-    final dateIso = _attentionDate == null
-        ? null
-        : '${_isoDate(_attentionDate!)}T12:00:00Z';
-
-    // Si la atencion ya existe y el vacunador cambio la fecha, se actualiza
-    // antes de registrar: todas las dosis de la visita comparten la fecha.
-    // La actualizacion de detalles es online-only; en offline se conserva la
-    // fecha con la que se creo la atencion.
-    final attention = widget.controller.attention;
-    if (attention != null &&
-        dateIso != null &&
-        widget.offline.status == SessionStatus.signedIn) {
-      final current = attention.attentionDate == null
-          ? null
-          : _isoDate(attention.attentionDate!.toLocal());
-      final selected = _isoDate(_attentionDate!);
-      if (current != selected) {
-        await widget.controller.updateAttentionDetails(
-          offline: widget.offline,
-          attentionDate: dateIso,
+  Future<void> _handleNext() async {
+    // Validación Paso 1
+    if (_currentStep == 0) {
+      if (!(_step1FormKey.currentState?.validate() ?? false)) {
+        return;
+      }
+      if (_birthDate == null) {
+        AppSnackbar.warning(
+          context,
+          'Seleccione la fecha de nacimiento del paciente.',
         );
-        if (!mounted) return;
+        return;
       }
+      _goToStep(1);
+      return;
     }
 
-    // Si la atencion se va a crear con esta primera dosis, nos aseguramos de
-    // tener la ubicacion capturada (con timeout no bloqueante de 4s max).
-    if (widget.controller.attention == null &&
-        (_latitude == null || _longitude == null)) {
-      final loc = await _locationService.getCurrentLocation();
-      if (!mounted) return;
-      if (loc != null) {
-        _latitude = loc.latitude;
-        _longitude = loc.longitude;
+    // Validación Paso 2
+    if (_currentStep == 1) {
+      if (!(_step2FormKey.currentState?.validate() ?? false)) {
+        return;
       }
+      if (_sex == null || _sex!.isEmpty) {
+        AppSnackbar.warning(context, 'Seleccione el sexo del paciente.');
+        return;
+      }
+
+      // Si no ha cargado el catálogo efectivo, cargarlo antes de pasar al paso 3
+      if (!widget.controller.effectiveCatalogLoaded) {
+        await widget.controller.loadEffectiveCatalog();
+      }
+
+      _goToStep(2);
+      return;
     }
 
-    setState(() => _submittingDose = true);
-    final ok = await widget.controller.addDose(
-      offline: widget.offline,
-      vaccineId: vaccine.vaccineId,
-      doseOptionId: dose.id,
-      observations: _observations.text.trim(),
-      attentionDate: dateIso,
-      latitude: _latitude,
-      longitude: _longitude,
-      pneumococcalTypeOptionId: _pneumo?.id,
-      lotNumber: _lotNumber.text.trim(),
-      applicationDate: dateIso,
-      selectedLaboratoryId: _laboratory?.id,
-      selectedSyringeId: _syringe?.id,
-      selectedDropperId: _dropper?.id,
-      selectedObservationId: _observation?.id,
-      syringeLot: _syringeLot.text.trim().isEmpty
-          ? null
-          : _syringeLot.text.trim(),
-      diluent: _diluent.text.trim().isEmpty ? null : _diluent.text.trim(),
-      vialCount: int.tryParse(_vialCount.text.trim()),
-      customObservation: _customObservation.text.trim().isEmpty
-          ? null
-          : _customObservation.text.trim(),
-    );
-    if (!mounted) return;
-    setState(() {
-      _submittingDose = false;
-      if (ok) {
-        _dose = null;
-        _pneumo = null;
-        _laboratory = null;
-        _syringe = null;
-        _dropper = null;
-        _observation = null;
-        _lotNumber.clear();
-        _syringeLot.clear();
-        _diluent.clear();
-        _vialCount.clear();
-        _customObservation.clear();
-      }
-    });
-  }
+    // Validación Paso 3 (Registro de Vacunas)
+    if (_currentStep == 2) {
+      // Descartar borradores que no fueron confirmados con "Confirmar esta dosis"
+      setState(() {
+        _stagedDoses.removeWhere((_, dose) => !dose.isCompleted);
+      });
 
-  Future<void> _cancelDose(String doseId) async {
-    final reason = await _promptReason('Anular dosis');
-    if (reason == null || !mounted) return;
-    final ok = await widget.controller.cancelDoseFlow(
-      offline: widget.offline,
-      doseId: doseId,
-      reason: reason,
-    );
-    if (!mounted) return;
-    if (ok) {
-      AppSnackbar.success(context, 'Dosis anulada.');
-    } else {
-      AppSnackbar.error(context, 'No se pudo anular la dosis.');
+      if (_stagedDoses.isEmpty) {
+        AppSnackbar.show(
+          context,
+          'Debes registrar y confirmar al menos una vacuna antes de continuar.',
+          type: AppSnackbarType.warning,
+        );
+        return;
+      }
+      _goToStep(3);
+      return;
+    }
+
+    // Paso 4: Confirmación Final
+    if (_currentStep == 3) {
+      await _submitAttention();
     }
   }
 
-  Future<void> _cancelAttention() async {
-    final reason = await _promptReason('Anular atencion');
-    if (reason == null || !mounted) return;
-    setState(() => _cancelling = true);
-    final ok = await widget.controller.cancelAttentionFlow(
-      offline: widget.offline,
-      reason: reason,
-    );
-    if (!mounted) return;
-    setState(() => _cancelling = false);
-    if (ok) {
-      AppSnackbar.success(context, 'Atencion anulada.');
-      _resetFlow();
-    } else {
-      AppSnackbar.error(context, 'No se pudo anular la atencion.');
-    }
-  }
-
-  Future<void> _finish() async {
+  Future<void> _submitAttention() async {
     if (!_paiwebRegistered && _paiwebReason.text.trim().length < 5) {
       AppSnackbar.warning(
         context,
-        'Indica el motivo de no ingreso al aplicativo PAIWEB.',
+        'Indica el motivo de no ingreso al aplicativo PAIWEB (mínimo 5 caracteres).',
       );
       return;
     }
-    final details = await widget.controller.updateAttentionDetails(
-      offline: widget.offline,
-      completeScheme: _completeScheme,
-      paiwebRegistered: _paiwebRegistered,
-      paiwebNotRegisteredReason: _paiwebRegistered
-          ? null
-          : _paiwebReason.text.trim(),
-    );
-    if (!mounted) return;
-    if (details == null) {
-      AppSnackbar.error(context, 'No se pudo guardar el cierre del registro.');
-      return;
-    }
-    setState(() => _finishing = true);
-    final ok = await widget.controller.finishAttention(offline: widget.offline);
-    if (!mounted) return;
-    setState(() => _finishing = false);
-    if (ok) {
-      AppSnackbar.success(
-        context,
-        OfflineMessages.isOffline(widget.offline)
-            ? OfflineMessages.savedAttention
-            : 'Atencion completada.',
+
+    setState(() => _submitting = true);
+    widget.onSubmittingChanged?.call(true);
+
+    try {
+      // 1. Si es paciente nuevo, registrarlo
+      Patient? currentPatient = widget.controller.patient;
+
+      if (!_isExistingPatient || currentPatient == null) {
+        final newPatientInput = NewPatientInput(
+          documentType: _documentType,
+          documentNumber: _documentNumber.text.trim(),
+          firstName: _firstName.text.trim(),
+          secondName: _secondName.text.trim().isEmpty
+              ? null
+              : _secondName.text.trim(),
+          lastName: _lastName.text.trim(),
+          secondLastName: _secondLastName.text.trim().isEmpty
+              ? null
+              : _secondLastName.text.trim(),
+          birthDate: formatIsoDate(_birthDate!),
+          sex: _sex ?? 'FEMALE',
+          birthCountryId: _birthCountryId,
+          birthPlace: _birthPlace.text.trim().isEmpty
+              ? null
+              : _birthPlace.text.trim(),
+          migrationStatus: _migrationStatus,
+          vaccinationCardType: _vaccinationCardType,
+          gestationalAgeAtBirth: int.tryParse(_gestationalAge.text.trim()),
+          authorizeCalls: _authorizeCalls,
+          authorizeEmail: _authorizeEmail,
+          demographics: NewPatientDemographic(
+            gender: _gender,
+            ethnicity: _ethnicity,
+            sexualOrientation: _sexualOrientation,
+            educationLevel: _educationLevel.text.trim().isEmpty
+                ? null
+                : _educationLevel.text.trim(),
+          ),
+          affiliation: NewPatientAffiliation(
+            affiliationRegime: _affiliationRegime,
+            insurer: _selectedInsurer?.name,
+            insurerCode: _selectedInsurer?.code,
+          ),
+          specialConditions: NewPatientSpecialConditions(
+            displaced: _displaced,
+            disabled: _disabled,
+            deceased: _deceased,
+            armedConflictVictim: _armedConflictVictim,
+            currentlyStudying: _currentlyStudying,
+          ),
+          medicalHistories: (_hasContraindication || _hasPreviousReaction)
+              ? [
+                  NewPatientMedicalHistory(
+                    condition: 'ANTECEDENTE_CLINICO',
+                    hasContraindication: _hasContraindication,
+                    contraindicationDetails:
+                        _contraindicationDetails.text.trim().isEmpty
+                        ? null
+                        : _contraindicationDetails.text.trim(),
+                    hasPreviousReaction: _hasPreviousReaction,
+                    reactionDetails: _reactionDetails.text.trim().isEmpty
+                        ? null
+                        : _reactionDetails.text.trim(),
+                  ),
+                ]
+              : const [],
+          userCondition: _userCondition != null
+              ? NewPatientUserCondition(
+                  userCondition: _userCondition,
+                  lastMenstrualDate: _lastMenstrualDate.text.trim().isEmpty
+                      ? null
+                      : _lastMenstrualDate.text.trim(),
+                  previousPregnancies: int.tryParse(
+                    _previousPregnancies.text.trim(),
+                  ),
+                  birthPlaceDelivery: _birthPlaceDelivery.text.trim().isEmpty
+                      ? null
+                      : _birthPlaceDelivery.text.trim(),
+                )
+              : null,
+          contacts: [
+            if (_cellphone.text.trim().isNotEmpty)
+              NewPatientContact(
+                type: 'PHONE',
+                value: _cellphone.text.trim(),
+                phoneKind: 'CELLPHONE',
+                primary: true,
+              ),
+            if (_landline.text.trim().isNotEmpty)
+              NewPatientContact(
+                type: 'PHONE',
+                value: _landline.text.trim(),
+                phoneKind: 'LANDLINE',
+              ),
+            if (_email.text.trim().isNotEmpty)
+              NewPatientContact(type: 'EMAIL', value: _email.text.trim()),
+          ],
+          addresses: [
+            if (_street.text.trim().isNotEmpty || _departmentId != null)
+              NewPatientAddress(
+                street: _street.text.trim().isEmpty
+                    ? null
+                    : _street.text.trim(),
+                locality: _locality.text.trim().isEmpty
+                    ? null
+                    : _locality.text.trim(),
+                departmentId: _departmentId,
+                municipalityId: _municipalityId,
+                area: _area,
+                primary: true,
+              ),
+          ],
+          guardians: [
+            if (_guardianDocument.text.trim().isNotEmpty ||
+                _guardianFirstName.text.trim().isNotEmpty)
+              NewPatientGuardian(
+                relationship: _guardianRelationship,
+                fullName:
+                    '${_guardianFirstName.text.trim()} ${_guardianLastName.text.trim()}'
+                        .trim(),
+                documentType: _guardianDocumentType,
+                documentNumber: _guardianDocument.text.trim().isEmpty
+                    ? null
+                    : _guardianDocument.text.trim(),
+                cellphone: _guardianCellphone.text.trim().isEmpty
+                    ? null
+                    : _guardianCellphone.text.trim(),
+              ),
+          ],
+        );
+
+        currentPatient = await widget.controller.registerPatient(
+          offline: widget.offline,
+          input: newPatientInput,
+        );
+
+        if (currentPatient == null) {
+          if (!mounted) return;
+          AppSnackbar.error(
+            context,
+            widget.controller.error ?? 'No se pudo crear el paciente.',
+          );
+          return;
+        }
+      }
+
+      // 2. Asegurar que existe una atención iniciada para el paciente
+      final attentionDateIso = '${formatIsoDate(_attentionDate)}T12:00:00Z';
+      final currentAttention = await widget.controller.ensureAttentionStarted(
+        offline: widget.offline,
+        observations: _observations.text.trim(),
+        attentionDate: attentionDateIso,
+        latitude: _latitude,
+        longitude: _longitude,
       );
-      _resetFlow();
+
+      if (currentAttention == null) {
+        if (!mounted) return;
+        AppSnackbar.error(
+          context,
+          widget.controller.error ?? 'No se pudo iniciar la atención.',
+        );
+        return;
+      }
+
+      // 3. Registrar cada dosis configurada en borrador (únicamente las confirmadas)
+      for (final staged in _stagedDoses.values.where((d) => d.isCompleted)) {
+        final doseOk = await widget.controller.addDose(
+          offline: widget.offline,
+          vaccineId: staged.vaccineId,
+          doseOptionId: staged.doseOptionId,
+          vaccineName: staged.vaccineName,
+          doseLabel: staged.doseDisplayName,
+          observations: _observations.text.trim(),
+          attentionDate: attentionDateIso,
+          latitude: _latitude,
+          longitude: _longitude,
+          pneumococcalTypeOptionId: staged.pneumococcalTypeOptionId,
+          lotNumber: staged.lotNumber,
+          applicationDate: '${formatIsoDate(staged.applicationDate)}T12:00:00Z',
+          selectedLaboratoryId: staged.selectedLaboratoryId,
+          selectedSyringeId: staged.selectedSyringeId,
+          selectedDropperId: staged.selectedDropperId,
+          selectedObservationId: staged.selectedObservationId,
+          syringeLot: staged.syringeLot,
+          diluent: staged.diluent,
+          vialCount: staged.vialCount,
+          customObservation: staged.customObservation,
+        );
+
+        if (!doseOk) {
+          if (!mounted) return;
+          AppSnackbar.error(
+            context,
+            widget.controller.error ??
+                'Error registrando dosis de ${staged.vaccineName}.',
+          );
+          return;
+        }
+      }
+
+      // 3. Actualizar detalles de cierre (esquema completo y PAIWEB)
+      await widget.controller.updateAttentionDetails(
+        offline: widget.offline,
+        completeScheme: _completeScheme,
+        paiwebRegistered: _paiwebRegistered,
+        paiwebNotRegisteredReason: _paiwebRegistered
+            ? null
+            : _paiwebReason.text.trim(),
+        observations: _observations.text.trim(),
+      );
+
+      // 4. Completar la atención
+      final finished = await widget.controller.finishAttention(
+        offline: widget.offline,
+      );
+
+      if (!mounted) return;
+
+      if (finished) {
+        AppSnackbar.success(
+          context,
+          OfflineMessages.isOffline(widget.offline)
+              ? OfflineMessages.savedAttention
+              : 'Atención y vacunas registradas correctamente.',
+        );
+        _resetForm();
+        widget.onFinished?.call();
+      } else {
+        AppSnackbar.error(
+          context,
+          widget.controller.error ?? 'No se pudo finalizar la atención.',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+        widget.onSubmittingChanged?.call(false);
+      }
     }
   }
 
-  /// Reinicia el flujo y limpia el estado local de busqueda.
-  void _resetFlow() {
+  void _resetForm() {
     widget.controller.resetFlow();
-    final today = DateTime.now();
     setState(() {
-      _searched = false;
-      _searchNumber.clear();
+      _currentStep = 0;
+      _attentionDate = DateTime.now();
+      _documentType = 'CC';
+      _documentNumber.clear();
+      _firstName.clear();
+      _secondName.clear();
+      _lastName.clear();
+      _secondLastName.clear();
+      _birthDate = null;
+      _completeScheme = false;
+      _isExistingPatient = false;
+
+      _sex = null;
+      _gender = null;
+      _sexualOrientation = null;
+      _ethnicity = null;
+      _educationLevel.clear();
+      _birthCountryId = null;
+      _birthPlace.clear();
+      _migrationStatus = 'REGULAR';
+      _vaccinationCardType = null;
+      _gestationalAge.clear();
+      _affiliationRegime = null;
+      _selectedInsurer = null;
+      _departmentId = null;
+      _municipalityId = null;
+      _street.clear();
+      _locality.clear();
+      _area = null;
+      _landline.clear();
+      _cellphone.clear();
+      _email.clear();
+      _authorizeCalls = false;
+      _authorizeEmail = false;
+      _displaced = false;
+      _disabled = false;
+      _deceased = false;
+      _armedConflictVictim = false;
+      _currentlyStudying = false;
+      _hasContraindication = false;
+      _contraindicationDetails.clear();
+      _hasPreviousReaction = false;
+      _reactionDetails.clear();
+      _userCondition = null;
+      _lastMenstrualDate.clear();
+      _previousPregnancies.clear();
+      _birthPlaceDelivery.clear();
+      _guardianRelationship = 'CAREGIVER';
+      _guardianDocumentType = 'CC';
+      _guardianDocument.clear();
+      _guardianFirstName.clear();
+      _guardianLastName.clear();
+      _guardianCellphone.clear();
+
+      _stagedDoses.clear();
+      _paiwebRegistered = true;
+      _paiwebReason.clear();
       _observations.clear();
-      _attentionDate = today;
-      _attentionDateText.text = _displayDate(today);
-      _latitude = null;
-      _longitude = null;
     });
-    _fetchLocationInBackground();
+
+    if (_pageController.hasClients) {
+      _pageController.jumpToPage(0);
+    }
   }
 
-  List<EffectiveOption> _operational(String fieldType) =>
-      _vaccine?.operationalOptions
-          .where((option) => option.fieldType == fieldType)
-          .toList() ??
-      const [];
+  Future<bool> _onWillPop() async {
+    if (_submitting) return false;
+    if (_currentStep > 0) {
+      _previousStep();
+      return false;
+    }
 
-  /// Tipo de identificacion con etiqueta "CODIGO - Nombre" (ej.
-  /// "CC - Cedula de Ciudadania"), desde el catalogo `document_type`.
-  List<DropdownMenuItem<String>> _documentTypeItems() {
-    final options = widget.controller.referenceOptions('document_type');
-    final list = options.isEmpty ? documentTypeFallback : options;
-    return [
-      for (final option in list)
-        DropdownMenuItem(
-          value: option.code,
-          child: Text('${option.code} - ${option.label}'),
+    final hasData =
+        _documentNumber.text.isNotEmpty ||
+        _firstName.text.isNotEmpty ||
+        _lastName.text.isNotEmpty ||
+        _stagedDoses.values.any((d) => d.isCompleted);
+
+    if (!hasData) return true;
+
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: const Text('¿Cancelar registro?'),
+        content: const Text(
+          'Si sales ahora se perderán los datos ingresados en este formulario.',
         ),
-    ];
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Continuar registrando'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Sí, cancelar'),
+          ),
+        ],
+      ),
+    );
+
+    if (discard == true) {
+      _resetForm();
+      widget.onFinished?.call();
+      return true;
+    }
+    return false;
   }
 
-  /// Superficie base de la pantalla: borde tenue y radio consistente.
-  Widget _card({required Widget child}) => Container(
-    decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: AppColors.border),
-    ),
-    padding: const EdgeInsets.all(16),
-    child: child,
-  );
+  String _getDepartmentName(String? id) {
+    if (id == null) return '';
+    final found = widget.controller.departments.where((d) => d.id == id);
+    return found.isNotEmpty ? found.first.name : id;
+  }
+
+  String _getMunicipalityName(String? id) {
+    if (id == null) return '';
+    final found = widget.controller.municipalities.where((m) => m.id == id);
+    return found.isNotEmpty ? found.first.name : id;
+  }
+
+  String _getCountryName(String? id) {
+    if (id == null) return 'Colombia';
+    final found = widget.controller.countries.where((c) => c.id == id);
+    return found.isNotEmpty ? found.first.name : 'Colombia';
+  }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: widget.controller,
-      builder: (context, _) {
-        final controller = widget.controller;
-        if (controller.error != null) {
-          return _ErrorView(
-            message: controller.error!,
-            onRetry: () {
-              controller.clearError();
-              if (controller.patient != null &&
-                  !controller.effectiveCatalogLoaded) {
-                controller.loadEffectiveCatalog();
-              }
-            },
-          );
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop && context.mounted) {
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          } else {
+            widget.onFinished?.call();
+          }
         }
-        if (controller.isLoading &&
-            controller.patient == null &&
-            controller.attention == null) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (controller.patient == null) {
-          return _buildSearch(controller);
-        }
-        return _buildAttention(controller);
       },
-    );
-  }
-
-  Widget _buildSearch(AttentionController controller) => ListView(
-    padding: const EdgeInsets.all(20),
-    children: [
-      const _StepHint(
-        'Paso 1 de 2 · Verifica al paciente antes de aplicar la vacuna.',
-      ),
-      const SizedBox(height: 16),
-      Text('Buscar paciente', style: Theme.of(context).textTheme.titleLarge),
-      const SizedBox(height: 4),
-      const Text(
-        'Ingresa el documento. Si no existe, registralo para continuar.',
-        style: TextStyle(color: AppColors.slate, height: 1.4),
-      ),
-      const SizedBox(height: 16),
-      _card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
           children: [
-            DropdownButtonFormField<String>(
-              initialValue: _searchDocType,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Tipo de documento'),
-              items: _documentTypeItems(),
-              onChanged: (value) => setState(() {
-                if (value != _searchDocType) _searchNumber.clear();
-                _searchDocType = value ?? 'CC';
-              }),
+            // Indicador de Progreso
+            _ProgressIndicator(
+              currentStep: _currentStep,
+              totalSteps: _totalSteps,
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _searchNumber,
-              keyboardType: documentKeyboardType(_searchDocType),
-              inputFormatters: documentInputFormatters(_searchDocType),
-              decoration: const InputDecoration(labelText: 'Documento'),
-              onSubmitted: (_) => _search(),
-            ),
-            const SizedBox(height: 14),
-            ElevatedButton.icon(
-              onPressed: controller.isLoading ? null : _search,
-              icon: const Icon(Icons.search_rounded, size: 20),
-              label: const Text('Buscar'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: controller.isLoading ? null : _createPatient,
-              icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
-              label: const Text('Registrar nuevo paciente'),
-            ),
-          ],
-        ),
-      ),
-      const SizedBox(height: 24),
-      if (controller.searchResults.isEmpty)
-        if (_searched)
-          const EmptyState(
-            icon: Icons.person_search_outlined,
-            title: 'Sin coincidencias',
-            message:
-                'No se encontro un paciente con ese documento. '
-                'Puedes registrarlo como nuevo.',
-          )
-        else
-          const SizedBox.shrink()
-      else ...[
-        Text(
-          'COINCIDENCIAS',
-          style: AppTextStyles.overline.copyWith(color: AppColors.slate),
-        ),
-        const SizedBox(height: 8),
-        for (final patient in controller.searchResults)
-          _PatientTile(patient: patient, onTap: () => _selectPatient(patient)),
-      ],
-    ],
-  );
 
-  Widget _buildAttention(AttentionController controller) {
-    final vaccine = _vaccine;
-    final attentionStarted = controller.attention != null;
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        const _StepHint(
-          'Paso 2 de 2 · Aplica el biologico y cierra el registro.',
-        ),
-        const SizedBox(height: 12),
-        _PatientCard(patient: controller.patient!),
-        const SizedBox(height: 12),
-        _card(
-          child: attentionStarted
-              ? _observationsReadOnly(controller)
-              : TextField(
-                  controller: _observations,
-                  maxLines: 3,
-                  inputFormatters: maxLengthFormatters(
-                    FieldLimits.attentionObservations,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Observaciones de la atencion (opcional)',
-                  ),
-                ),
-        ),
-        const SizedBox(height: 12),
-        _card(
-          child: TextField(
-            controller: _attentionDateText,
-            readOnly: true,
-            onTap: _pickAttentionDate,
-            decoration: const InputDecoration(
-              labelText: 'Fecha de atencion',
-              helperText:
-                  'Por defecto hoy. Cambiala si la aplicacion fue otro dia.',
-              prefixIcon: Icon(Icons.event_available_outlined),
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
-        if (!controller.effectiveCatalogLoaded)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 32),
-            child: Center(child: CircularProgressIndicator()),
-          )
-        else if (controller.effectiveVaccines.isEmpty)
-          _emptyCatalog()
-        else ...[
-          const SectionHeading(
-            index: '01',
-            title: 'Biologico aplicado',
-            subtitle: 'Vacuna, dosis y datos del lote',
-          ),
-          const SizedBox(height: 12),
-          _card(
-            child: Form(
-              key: _doseFormKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+            // Contenido en PageView
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
                 children: [
-                  DropdownButtonFormField<EffectiveVaccine>(
-                    initialValue: vaccine,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Vacuna'),
-                    items: [
-                      for (final item in controller.effectiveVaccines)
-                        DropdownMenuItem(
-                          value: item,
-                          child: Text('${item.name} (${item.code})'),
-                        ),
-                    ],
-                    validator: (value) =>
-                        value == null ? 'Selecciona la vacuna.' : null,
-                    onChanged: (value) => setState(() {
-                      _vaccine = value;
-                      _dose = null;
-                      _pneumo = null;
-                      _laboratory = null;
-                      _syringe = null;
-                      _dropper = null;
-                      _observation = null;
-                    }),
+                  // Paso 1
+                  Step1BasicDataStep(
+                    formKey: _step1FormKey,
+                    controller: widget.controller,
+                    offline: widget.offline,
+                    attentionDate: _attentionDate,
+                    onAttentionDateChanged: (d) =>
+                        setState(() => _attentionDate = d),
+                    documentType: _documentType,
+                    onDocumentTypeChanged: (t) =>
+                        setState(() => _documentType = t),
+                    documentNumberController: _documentNumber,
+                    firstNameController: _firstName,
+                    secondNameController: _secondName,
+                    lastNameController: _lastName,
+                    secondLastNameController: _secondLastName,
+                    birthDate: _birthDate,
+                    onBirthDateChanged: (b) => setState(() => _birthDate = b),
+                    completeScheme: _completeScheme,
+                    onCompleteSchemeChanged: (s) =>
+                        setState(() => _completeScheme = s),
+                    onExistingPatientLoaded: _onExistingPatientLoaded,
+                    isExistingPatient: _isExistingPatient,
                   ),
-                  if (vaccine != null) ...[
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<EffectiveOption>(
-                      initialValue: _dose,
-                      isExpanded: true,
-                      decoration: const InputDecoration(labelText: 'Dosis'),
-                      items: [
-                        for (final dose in vaccine.doses)
-                          DropdownMenuItem(
-                            value: dose,
-                            child: Text(dose.displayName),
-                          ),
-                      ],
-                      validator: (value) =>
-                          value == null ? 'Selecciona la dosis.' : null,
-                      onChanged: (value) => setState(() => _dose = value),
-                    ),
-                    if (vaccine.hasPneumococcalType) ...[
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<EffectiveOption>(
-                        initialValue: _pneumo,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Tipo de neumococo',
-                        ),
-                        items: [
-                          for (final item in vaccine.pneumococcalTypes)
-                            DropdownMenuItem(
-                              value: item,
-                              child: Text(item.displayName),
-                            ),
-                        ],
-                        onChanged: (value) => setState(() => _pneumo = value),
-                      ),
-                    ],
-                    if (vaccine.hasLaboratory)
-                      _optionDropdown(
-                        'Laboratorio',
-                        'laboratory',
-                        _laboratory,
-                        (value) => setState(() => _laboratory = value),
-                      ),
-                    if (vaccine.hasSyringe)
-                      _optionDropdown(
-                        'Jeringa',
-                        'syringe',
-                        _syringe,
-                        (value) => setState(() => _syringe = value),
-                      ),
-                    if (vaccine.hasDropper)
-                      _optionDropdown(
-                        'Gotero',
-                        'dropper',
-                        _dropper,
-                        (value) => setState(() => _dropper = value),
-                      ),
-                    if (vaccine.hasObservation)
-                      _optionDropdown(
-                        'Observacion',
-                        'observation',
-                        _observation,
-                        (value) => setState(() => _observation = value),
-                      ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _lotNumber,
-                      inputFormatters: maxLengthFormatters(
-                        FieldLimits.lotNumber,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Lote (opcional)',
-                      ),
-                    ),
-                    if (vaccine.hasSyringeLot) ...[
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _syringeLot,
-                        inputFormatters: maxLengthFormatters(
-                          FieldLimits.lotNumber,
-                        ),
-                        decoration: const InputDecoration(
-                          labelText: 'Lote de jeringa',
-                        ),
-                      ),
-                    ],
-                    if (vaccine.hasDiluent) ...[
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _diluent,
-                        inputFormatters: maxLengthFormatters(
-                          FieldLimits.lotNumber,
-                        ),
-                        decoration: const InputDecoration(
-                          labelText: 'Diluyente',
-                        ),
-                      ),
-                    ],
-                    if (vaccine.hasVialCount) ...[
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _vialCount,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: digitsOnlyFormatters(max: 3),
-                        decoration: const InputDecoration(
-                          labelText: 'Cantidad de frascos',
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _customObservation,
-                      inputFormatters: maxLengthFormatters(
-                        FieldLimits.historyNotes,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Observacion personalizada (opcional)',
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    LoadingButton(
-                      onPressed: _addDose,
-                      loading: _submittingDose,
-                      icon: Icons.vaccines_rounded,
-                      label: 'Registrar dosis',
-                      loadingLabel: 'Registrando dosis...',
-                    ),
-                  ],
+
+                  // Paso 2
+                  Step2AdditionalDataStep(
+                    formKey: _step2FormKey,
+                    controller: widget.controller,
+                    offline: widget.offline,
+                    birthDate: _birthDate,
+                    sex: _sex,
+                    onSexChanged: (val) => setState(() => _sex = val),
+                    gender: _gender,
+                    onGenderChanged: (val) => setState(() => _gender = val),
+                    sexualOrientation: _sexualOrientation,
+                    onSexualOrientationChanged: (val) =>
+                        setState(() => _sexualOrientation = val),
+                    ethnicity: _ethnicity,
+                    onEthnicityChanged: (val) =>
+                        setState(() => _ethnicity = val),
+                    educationLevelController: _educationLevel,
+                    birthCountryId: _birthCountryId,
+                    onBirthCountryChanged: (val) =>
+                        setState(() => _birthCountryId = val),
+                    birthPlaceController: _birthPlace,
+                    migrationStatus: _migrationStatus,
+                    onMigrationStatusChanged: (val) =>
+                        setState(() => _migrationStatus = val),
+                    vaccinationCardType: _vaccinationCardType,
+                    onVaccinationCardTypeChanged: (val) =>
+                        setState(() => _vaccinationCardType = val),
+                    gestationalAgeController: _gestationalAge,
+                    affiliationRegime: _affiliationRegime,
+                    onAffiliationRegimeChanged: (val) =>
+                        setState(() => _affiliationRegime = val),
+                    selectedInsurer: _selectedInsurer,
+                    onInsurerChanged: (val) =>
+                        setState(() => _selectedInsurer = val),
+                    departmentId: _departmentId,
+                    onDepartmentChanged: (val) => setState(() {
+                      _departmentId = val;
+                      _municipalityId = null;
+                    }),
+                    municipalityId: _municipalityId,
+                    onMunicipalityChanged: (val) =>
+                        setState(() => _municipalityId = val),
+                    streetController: _street,
+                    localityController: _locality,
+                    area: _area,
+                    onAreaChanged: (val) => setState(() => _area = val),
+                    landlineController: _landline,
+                    cellphoneController: _cellphone,
+                    emailController: _email,
+                    authorizeCalls: _authorizeCalls,
+                    onAuthorizeCallsChanged: (val) =>
+                        setState(() => _authorizeCalls = val),
+                    authorizeEmail: _authorizeEmail,
+                    onAuthorizeEmailChanged: (val) =>
+                        setState(() => _authorizeEmail = val),
+                    displaced: _displaced,
+                    onDisplacedChanged: (val) =>
+                        setState(() => _displaced = val),
+                    disabled: _disabled,
+                    onDisabledChanged: (val) => setState(() => _disabled = val),
+                    deceased: _deceased,
+                    onDeceasedChanged: (val) => setState(() => _deceased = val),
+                    armedConflictVictim: _armedConflictVictim,
+                    onArmedConflictVictimChanged: (val) =>
+                        setState(() => _armedConflictVictim = val),
+                    currentlyStudying: _currentlyStudying,
+                    onCurrentlyStudyingChanged: (val) =>
+                        setState(() => _currentlyStudying = val),
+                    hasContraindication: _hasContraindication,
+                    onHasContraindicationChanged: (val) =>
+                        setState(() => _hasContraindication = val),
+                    contraindicationDetailsController: _contraindicationDetails,
+                    hasPreviousReaction: _hasPreviousReaction,
+                    onHasPreviousReactionChanged: (val) =>
+                        setState(() => _hasPreviousReaction = val),
+                    reactionDetailsController: _reactionDetails,
+                    userCondition: _userCondition,
+                    onUserConditionChanged: (val) =>
+                        setState(() => _userCondition = val),
+                    lastMenstrualDateController: _lastMenstrualDate,
+                    previousPregnanciesController: _previousPregnancies,
+                    birthPlaceDeliveryController: _birthPlaceDelivery,
+                    guardianRelationship: _guardianRelationship,
+                    onGuardianRelationshipChanged: (val) =>
+                        setState(() => _guardianRelationship = val),
+                    guardianDocumentType: _guardianDocumentType,
+                    onGuardianDocumentTypeChanged: (val) =>
+                        setState(() => _guardianDocumentType = val),
+                    guardianDocumentController: _guardianDocument,
+                    guardianFirstNameController: _guardianFirstName,
+                    guardianLastNameController: _guardianLastName,
+                    guardianCellphoneController: _guardianCellphone,
+                  ),
+
+                  // Paso 3
+                  Step3VaccinesStep(
+                    controller: widget.controller,
+                    offline: widget.offline,
+                    attentionDate: _attentionDate,
+                    birthDate: _birthDate,
+                    sex: _sex,
+                    userCondition: _userCondition,
+                    ethnicity: _ethnicity,
+                    area: _area,
+                    displaced: _displaced,
+                    stagedDoses: _stagedDoses,
+                    onStagedDoseChanged: (dose) {
+                      setState(() {
+                        final key = '${dose.vaccineId}_${dose.doseOptionId}';
+                        _stagedDoses[key] = dose;
+                      });
+                    },
+                    onStagedDoseRemoved: (key) {
+                      setState(() {
+                        _stagedDoses.remove(key);
+                      });
+                    },
+                  ),
+
+                  // Paso 4
+                  Step4ReviewStep(
+                    attentionDate: _attentionDate,
+                    documentType: _documentType,
+                    documentNumber: _documentNumber.text.trim(),
+                    firstName: _firstName.text.trim(),
+                    secondName: _secondName.text.trim(),
+                    lastName: _lastName.text.trim(),
+                    secondLastName: _secondLastName.text.trim(),
+                    birthDate: _birthDate,
+                    completeScheme: _completeScheme,
+                    sex: _sex,
+                    birthCountryName: _getCountryName(_birthCountryId),
+                    birthPlace: _birthPlace.text.trim(),
+                    departmentName: _getDepartmentName(_departmentId),
+                    municipalityName: _getMunicipalityName(_municipalityId),
+                    address: [
+                      _street.text.trim(),
+                      _locality.text.trim(),
+                    ].where((s) => s.isNotEmpty).join(', '),
+                    affiliationRegime: _affiliationRegime,
+                    selectedInsurer: _selectedInsurer,
+                    vaccinationCardType: _vaccinationCardType,
+                    cellphone: _cellphone.text.trim(),
+                    email: _email.text.trim(),
+                    stagedDoses: _stagedDoses.values
+                        .where((d) => d.isCompleted)
+                        .toList(),
+                    paiwebRegistered: _paiwebRegistered,
+                    onPaiwebRegisteredChanged: (val) =>
+                        setState(() => _paiwebRegistered = val),
+                    paiwebReasonController: _paiwebReason,
+                    observationsController: _observations,
+                    latitude: _latitude,
+                    longitude: _longitude,
+                  ),
                 ],
               ),
             ),
-          ),
-        ],
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            Text(
-              '02 · DOSIS REGISTRADAS',
-              style: AppTextStyles.overline.copyWith(color: AppColors.primary),
-            ),
-            const Spacer(),
-            if (controller.doses.isNotEmpty)
-              StatusPill(
-                label: '${controller.doses.length} registradas',
-                tone: StatusTone.neutral,
-              ),
           ],
         ),
-        const SizedBox(height: 10),
-        if (controller.doses.isEmpty)
-          const EmptyState(
-            icon: Icons.vaccines_outlined,
-            title: 'Aun no hay dosis',
-            message: 'Registra la primera dosis para verla listada aqui.',
-          )
-        else
-          for (final dose in controller.doses) _doseEntry(dose),
-        if (attentionStarted) ...[
-          const SizedBox(height: 16),
-          _closingSection(),
-          const SizedBox(height: 16),
-          LoadingButton(
-            onPressed: _finish,
-            loading: _finishing,
-            icon: Icons.done_all_rounded,
-            label: 'Completar atención',
-            loadingLabel: 'Completando atención...',
-          ),
-          const SizedBox(height: 8),
-          LoadingButton(
-            onPressed: _cancelAttention,
-            loading: _cancelling,
-            icon: Icons.cancel_outlined,
-            style: LoadingButtonStyle.outlined,
-            label: 'Anular atención',
-            loadingLabel: 'Anulando atención...',
-          ),
-        ],
-        const SizedBox(height: 8),
-        TextButton(
-          onPressed: controller.isLoading ? null : _resetFlow,
-          child: const Text('Cambiar paciente'),
+        bottomNavigationBar: _BottomNavigation(
+          currentStep: _currentStep,
+          totalSteps: _totalSteps,
+          submitting: _submitting,
+          onPrevious: _previousStep,
+          onNext: _handleNext,
         ),
-      ],
+      ),
     );
   }
+}
 
-  Widget _closingSection() => _card(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const SectionHeading(
-          index: '03',
-          title: 'Cierre del registro',
-          subtitle: 'Esquema completo y reporte PAIWEB',
-        ),
-        const SizedBox(height: 4),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Esquema completo para la edad'),
-          value: _completeScheme,
-          onChanged: (value) => setState(() => _completeScheme = value),
-        ),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('El registro fue ingresado al aplicativo PAIWEB'),
-          value: _paiwebRegistered,
-          onChanged: (value) => setState(() => _paiwebRegistered = value),
-        ),
-        if (!_paiwebRegistered)
-          TextField(
-            controller: _paiwebReason,
-            maxLines: 2,
-            inputFormatters: maxLengthFormatters(FieldLimits.reason),
-            decoration: const InputDecoration(
-              labelText: 'Motivo de no ingreso',
-              helperText: 'Minimo 5 caracteres.',
+class _ProgressIndicator extends StatelessWidget {
+  const _ProgressIndicator({
+    required this.currentStep,
+    required this.totalSteps,
+  });
+
+  final int currentStep;
+  final int totalSteps;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = (currentStep + 1) / totalSteps;
+
+    return Container(
+      color: AppColors.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Registro de Vacunación',
+                style: TextStyle(
+                  color: AppColors.ink,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                'Paso ${currentStep + 1} de $totalSteps',
+                style: const TextStyle(
+                  color: AppColors.slate,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: AppColors.border,
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppColors.primary,
+              ),
+              minHeight: 6,
             ),
           ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
+}
 
-  /// Entrada de la dosis como linea de registro: franja de estado a la
-  /// izquierda, biologico y lote en cifras tabulares, sello a la derecha.
-  /// El `IntrinsicHeight` acota la altura del `Row` (que si no seria infinita
-  /// dentro del `ListView`) para que `stretch` dimensione la franja.
-  Widget _doseEntry(AppliedDose dose) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: IntrinsicHeight(
+class _BottomNavigation extends StatelessWidget {
+  const _BottomNavigation({
+    required this.currentStep,
+    required this.totalSteps,
+    required this.submitting,
+    required this.onPrevious,
+    required this.onNext,
+  });
+
+  final int currentStep;
+  final int totalSteps;
+  final bool submitting;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    final isLastStep = currentStep == totalSteps - 1;
+    final showBack = currentStep > 0;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border, width: 1)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                width: 4,
-                color: dose.isCancelled ? AppColors.danger : AppColors.success,
-              ),
+              if (showBack) ...[
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: submitting ? null : onPrevious,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: const BorderSide(color: AppColors.primary),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text('Anterior'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                flex: showBack ? 2 : 1,
+                child: ElevatedButton(
+                  onPressed: submitting ? null : onNext,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 2,
+                  ),
+                  child: submitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              dose.vaccineNameSnapshot,
+                              isLastStep ? 'Confirmar Atención' : 'Siguiente',
                               style: const TextStyle(
-                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${dose.doseLabelSnapshot}'
-                              '${(dose.lotNumber ?? '').isNotEmpty ? '  ·  Lote ${dose.lotNumber}' : ''}',
-                              style: const TextStyle(
-                                color: AppColors.slate,
-                                fontSize: 12.5,
-                              ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              isLastStep
+                                  ? Icons.check_circle_rounded
+                                  : Icons.arrow_forward_rounded,
+                              size: 18,
                             ),
                           ],
                         ),
-                      ),
-                      StatusPill(
-                        label: dose.isCancelled ? 'Anulada' : 'Aplicada',
-                        tone: dose.isCancelled
-                            ? StatusTone.cancelled
-                            : StatusTone.applied,
-                      ),
-                      if (!dose.isCancelled)
-                        IconButton(
-                          tooltip: 'Anular dosis',
-                          onPressed: _submittingDose
-                              ? null
-                              : () => _cancelDose(dose.id),
-                          icon: const Icon(Icons.close_rounded, size: 18),
-                          color: AppColors.hint,
-                        ),
-                    ],
-                  ),
                 ),
               ),
             ],
           ),
         ),
-      ),
-    ),
-  );
-
-  Widget _observationsReadOnly(AttentionController controller) {
-    final observations = controller.attention?.observations;
-    final hasText = observations != null && observations.isNotEmpty;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'OBSERVACIONES DE LA ATENCION',
-          style: AppTextStyles.overline.copyWith(color: AppColors.slate),
-        ),
-        const SizedBox(height: 5),
-        Text(
-          hasText ? observations : 'Sin observaciones.',
-          style: TextStyle(
-            color: hasText ? AppColors.ink : AppColors.hint,
-            height: 1.4,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _emptyCatalog() => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: AppColors.warningSoft,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: AppColors.warning.withValues(alpha: .35)),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(Icons.warning_amber_rounded, color: AppColors.warning),
-        const SizedBox(width: 12),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'No hay vacunas habilitadas',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              SizedBox(height: 4),
-              Text(
-                'Tu institucion no tiene vacunas habilitadas en el catalogo. '
-                'Configuralas en Inventario para poder registrar dosis.',
-                style: TextStyle(
-                  color: AppColors.slate,
-                  fontSize: 13,
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _optionDropdown(
-    String label,
-    String fieldType,
-    EffectiveOption? value,
-    ValueChanged<EffectiveOption?> onChanged,
-  ) {
-    final options = _operational(fieldType);
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: DropdownButtonFormField<EffectiveOption>(
-        initialValue: value,
-        isExpanded: true,
-        decoration: InputDecoration(labelText: label),
-        items: [
-          for (final option in options)
-            DropdownMenuItem(value: option, child: Text(option.displayName)),
-        ],
-        onChanged: onChanged,
       ),
     );
   }
-}
-
-class _PatientTile extends StatelessWidget {
-  const _PatientTile({required this.patient, required this.onTap});
-
-  final Patient patient;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: IdentityStrip(
-                  documentType: patient.documentType,
-                  documentNumber: patient.documentNumber,
-                  name: patient.fullName,
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.hint),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-class _PatientCard extends StatelessWidget {
-  const _PatientCard({required this.patient});
-
-  final Patient patient;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: AppColors.primarySoft,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: AppColors.primary.withValues(alpha: .22)),
-    ),
-    child: IdentityStrip(
-      documentType: patient.documentType,
-      documentNumber: patient.documentNumber,
-      name: patient.fullName,
-    ),
-  );
-}
-
-class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.error_outline, color: AppColors.warning, size: 44),
-          const SizedBox(height: 12),
-          Text(message, textAlign: TextAlign.center),
-          const SizedBox(height: 16),
-          FilledButton(onPressed: onRetry, child: const Text('Entendido')),
-        ],
-      ),
-    ),
-  );
-}
-
-class _StepHint extends StatelessWidget {
-  const _StepHint(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Padding(
-        padding: EdgeInsets.only(top: 2),
-        child: Icon(
-          Icons.subdirectory_arrow_right_rounded,
-          size: 15,
-          color: AppColors.hint,
-        ),
-      ),
-      const SizedBox(width: 8),
-      Expanded(
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: AppColors.slate,
-            fontSize: 12.5,
-            height: 1.35,
-          ),
-        ),
-      ),
-    ],
-  );
-}
-
-class _ReasonDialog extends StatefulWidget {
-  const _ReasonDialog({required this.title});
-
-  final String title;
-
-  @override
-  State<_ReasonDialog> createState() => _ReasonDialogState();
-}
-
-class _ReasonDialogState extends State<_ReasonDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    if (_formKey.currentState?.validate() ?? false) {
-      Navigator.of(context).pop(_controller.text.trim());
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: Text(widget.title),
-    content: Form(
-      key: _formKey,
-      child: TextFormField(
-        controller: _controller,
-        autofocus: true,
-        maxLines: 3,
-        inputFormatters: maxLengthFormatters(FieldLimits.reason),
-        decoration: const InputDecoration(
-          labelText: 'Motivo',
-          helperText: 'Minimo 5 caracteres.',
-        ),
-        validator: (value) => (value == null || value.trim().length < 5)
-            ? 'Ingresa un motivo (minimo 5 caracteres).'
-            : null,
-      ),
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.of(context).pop(),
-        child: const Text('Cancelar'),
-      ),
-      FilledButton(onPressed: _submit, child: const Text('Anular')),
-    ],
-  );
 }

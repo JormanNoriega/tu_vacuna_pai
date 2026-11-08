@@ -179,6 +179,7 @@ void main() {
           id: 'att-1',
           institutionId: 'inst-1',
           patientId: 'pat-1',
+          vaccinatorId: const Value('vac-1'),
           status: 'COMPLETED',
           attentionDate: const Value(1730780000),
           version: 1,
@@ -198,12 +199,27 @@ void main() {
         ),
       );
 
-      final recents = await repository.localRecentRecords('inst-1');
-      expect(recents.length, 1);
-      expect(recents.first.patientId, 'pat-1');
-      expect(recents.first.patientName, 'Julio Rios');
-      expect(recents.first.vaccineName, 'COVID-19');
-      expect(recents.first.timeAgo, isNotEmpty);
+      // Vacunadora 'vac-1' ve su atencion
+      final recentsVac1 = await repository.localRecentRecords(
+        'inst-1',
+        vaccinatorId: 'vac-1',
+      );
+      expect(recentsVac1.length, 1);
+      expect(recentsVac1.first.patientId, 'pat-1');
+      expect(recentsVac1.first.patientName, 'Julio Rios');
+      expect(recentsVac1.first.vaccineName, 'COVID-19');
+      expect(recentsVac1.first.timeAgo, isNotEmpty);
+
+      // Otra profesional 'vac-2' no ve las atenciones de 'vac-1'
+      final recentsVac2 = await repository.localRecentRecords(
+        'inst-1',
+        vaccinatorId: 'vac-2',
+      );
+      expect(recentsVac2, isEmpty);
+
+      // Hospital Admin sin vaccinatorId no ve registros recientes
+      final recentsAdmin = await repository.localRecentRecords('inst-1');
+      expect(recentsAdmin, isEmpty);
     },
   );
 }
