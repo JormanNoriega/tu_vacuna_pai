@@ -123,6 +123,18 @@ class InstitutionVaccine {
     required this.name,
     required this.code,
     required this.category,
+    this.maxDoses = 1,
+    this.minAgeMonths,
+    this.maxAgeMonths,
+    this.hasLaboratory = false,
+    this.hasLot = true,
+    this.hasSyringe = false,
+    this.hasSyringeLot = false,
+    this.hasDiluent = false,
+    this.hasDropper = false,
+    this.hasPneumococcalType = false,
+    this.hasVialCount = false,
+    this.hasObservation = false,
     required this.enabled,
     required this.version,
   });
@@ -132,6 +144,18 @@ class InstitutionVaccine {
   final String name;
   final String code;
   final String category;
+  final int maxDoses;
+  final int? minAgeMonths;
+  final int? maxAgeMonths;
+  final bool hasLaboratory;
+  final bool hasLot;
+  final bool hasSyringe;
+  final bool hasSyringeLot;
+  final bool hasDiluent;
+  final bool hasDropper;
+  final bool hasPneumococcalType;
+  final bool hasVialCount;
+  final bool hasObservation;
   final bool enabled;
   final int version;
 
@@ -143,6 +167,18 @@ class InstitutionVaccine {
         name: json['name'] as String,
         code: json['code'] as String,
         category: json['category'] as String,
+        maxDoses: (json['maxDoses'] as num?)?.toInt() ?? 1,
+        minAgeMonths: (json['minAgeMonths'] as num?)?.toInt(),
+        maxAgeMonths: (json['maxAgeMonths'] as num?)?.toInt(),
+        hasLaboratory: json['hasLaboratory'] as bool? ?? false,
+        hasLot: json['hasLot'] as bool? ?? true,
+        hasSyringe: json['hasSyringe'] as bool? ?? false,
+        hasSyringeLot: json['hasSyringeLot'] as bool? ?? false,
+        hasDiluent: json['hasDiluent'] as bool? ?? false,
+        hasDropper: json['hasDropper'] as bool? ?? false,
+        hasPneumococcalType: json['hasPneumococcalType'] as bool? ?? false,
+        hasVialCount: json['hasVialCount'] as bool? ?? false,
+        hasObservation: json['hasObservation'] as bool? ?? false,
         enabled: json['enabled'] as bool? ?? false,
         version: (json['version'] as num?)?.toInt() ?? 0,
       );

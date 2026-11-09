@@ -90,3 +90,16 @@ List<TextInputFormatter> digitsOnlyFormatters({int? max}) => [
   FilteringTextInputFormatter.digitsOnly,
   if (max != null) LengthLimitingTextInputFormatter(max),
 ];
+
+/// Teclado + restricción para nombres y apellidos: solo letras (con tildes, ñ, ü),
+/// espacios, guiones y apóstrofes. Limita longitud al tope [max].
+List<TextInputFormatter> nameFormatters({int max = FieldLimits.name}) => [
+  FilteringTextInputFormatter.allow(RegExp(r"[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\-']")),
+  LengthLimitingTextInputFormatter(max),
+];
+
+/// Teclado + restricción para números de lote y códigos: alfanumérico, guiones y guión bajo.
+List<TextInputFormatter> lotFormatters({int max = FieldLimits.lotNumber}) => [
+  FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9\-_]')),
+  LengthLimitingTextInputFormatter(max),
+];

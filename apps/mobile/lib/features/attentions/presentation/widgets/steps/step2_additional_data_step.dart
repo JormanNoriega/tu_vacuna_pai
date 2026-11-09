@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../app/theme/app_theme.dart';
 import '../../../../../core/auth/offline_access.dart';
+import '../../../../../core/utils/document_input.dart';
 import '../../../../../core/utils/field_input.dart';
 import '../../../../catalogs/domain/entities/catalog_entities.dart';
 import '../../attention_controller.dart';
@@ -545,6 +546,7 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                 // Lugar de Nacimiento
                 TextFormField(
                   controller: widget.birthPlaceController,
+                  inputFormatters: maxLengthFormatters(FieldLimits.birthPlace),
                   decoration: const InputDecoration(
                     labelText: 'Lugar de Nacimiento (Hospital o Institución)',
                     hintText: 'Ej: Hospital Rosario Pumarejo',
@@ -774,6 +776,7 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                 // Dirección y Barrio
                 TextFormField(
                   controller: widget.streetController,
+                  inputFormatters: maxLengthFormatters(FieldLimits.street),
                   decoration: const InputDecoration(
                     labelText: 'Dirección de Residencia',
                     hintText: 'Ej: Carrera 10 # 20 - 30',
@@ -782,6 +785,7 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: widget.localityController,
+                  inputFormatters: maxLengthFormatters(FieldLimits.locality),
                   decoration: const InputDecoration(
                     labelText: 'Barrio / Localidad',
                     hintText: 'Ej: San Fernando',
@@ -789,55 +793,33 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                 ),
                 const SizedBox(height: 16),
 
-                // Zona
-                DropdownButtonFormField<String>(
-                  initialValue: widget.area,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Zona de Residencia',
-                  ),
-                  selectedItemBuilder: (BuildContext context) {
-                    return const [
-                      Text(
-                        'No especificada',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        'Urbana (Cabecera municipal)',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        'Rural (Centro poblado o disperso)',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ];
-                  },
-                  items: const [
-                    DropdownMenuItem(
-                      value: null,
-                      child: Text('No especificada'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'URBANA',
-                      child: Text(
-                        'Urbana (Cabecera municipal)',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                // Área (Urbana / Rural)
+                requiredFieldLabel('Área'),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: AreaOptionCard(
+                        label: 'Urbana',
+                        icon: Icons.apartment_rounded,
+                        isSelected: widget.area == 'URBANA',
+                        onTap: () => widget.onAreaChanged(
+                          widget.area == 'URBANA' ? null : 'URBANA',
+                        ),
                       ),
                     ),
-                    DropdownMenuItem(
-                      value: 'RURAL',
-                      child: Text(
-                        'Rural (Centro poblado o disperso)',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: AreaOptionCard(
+                        label: 'Rural',
+                        icon: Icons.park_rounded,
+                        isSelected: widget.area == 'RURAL',
+                        onTap: () => widget.onAreaChanged(
+                          widget.area == 'RURAL' ? null : 'RURAL',
+                        ),
                       ),
                     ),
                   ],
-                  onChanged: widget.onAreaChanged,
                 ),
                 const SizedBox(height: 16),
 
@@ -867,6 +849,7 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                 TextFormField(
                   controller: widget.emailController,
                   keyboardType: TextInputType.emailAddress,
+                  inputFormatters: maxLengthFormatters(FieldLimits.email),
                   decoration: const InputDecoration(
                     labelText: 'Correo Electrónico',
                     prefixIcon: Icon(Icons.email_outlined, size: 20),
@@ -953,6 +936,9 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                   TextFormField(
                     controller: widget.contraindicationDetailsController,
                     maxLines: 2,
+                    inputFormatters: maxLengthFormatters(
+                      FieldLimits.contraindicationDetails,
+                    ),
                     decoration: const InputDecoration(
                       labelText: 'Detalle de la contraindicación',
                       hintText: 'Describa la contraindicación médica',
@@ -973,6 +959,9 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                   TextFormField(
                     controller: widget.reactionDetailsController,
                     maxLines: 2,
+                    inputFormatters: maxLengthFormatters(
+                      FieldLimits.reactionDetails,
+                    ),
                     decoration: const InputDecoration(
                       labelText: 'Detalle de la reacción adversa previa',
                       hintText: 'Describa la reacción presentada',
@@ -1021,6 +1010,20 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: widget.lastMenstrualDateController,
+                      readOnly: true,
+                      onTap: () async {
+                        final now = DateTime.now();
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: now,
+                          firstDate: now.subtract(const Duration(days: 300)),
+                          lastDate: now,
+                        );
+                        if (picked != null) {
+                          widget.lastMenstrualDateController.text =
+                              formatIsoDate(picked);
+                        }
+                      },
                       decoration: const InputDecoration(
                         labelText: 'Fecha de Última Menstruación (FUM)',
                         hintText: 'yyyy-MM-dd',
@@ -1173,29 +1176,67 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: widget.guardianDocumentController,
-                          keyboardType: TextInputType.text,
-                          decoration: const InputDecoration(
-                            labelText: 'Número de Documento',
+                          keyboardType: documentKeyboardType(
+                            widget.guardianDocumentType,
+                          ),
+                          inputFormatters: [
+                            ...documentInputFormatters(
+                              widget.guardianDocumentType,
+                            ),
+                            ...maxLengthFormatters(FieldLimits.patientDocument),
+                          ],
+                          decoration: InputDecoration(
+                            label: requiredFieldLabel('Número de Documento'),
                             hintText: 'Ej: 1234567890',
                           ),
+                          validator: (val) {
+                            if (_hasGuardian) {
+                              if (val == null || val.trim().isEmpty) {
+                                return 'Número de identificación del cuidador requerido';
+                              }
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: widget.guardianFirstNameController,
                           textCapitalization: TextCapitalization.words,
-                          decoration: const InputDecoration(
-                            labelText: 'Primer Nombre',
+                          inputFormatters: nameFormatters(
+                            max: FieldLimits.name,
+                          ),
+                          decoration: InputDecoration(
+                            label: requiredFieldLabel('Primer Nombre'),
                             hintText: 'Ej: María',
                           ),
+                          validator: (val) {
+                            if (_hasGuardian) {
+                              if (val == null || val.trim().isEmpty) {
+                                return 'Primer nombre del cuidador requerido';
+                              }
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: widget.guardianLastNameController,
                           textCapitalization: TextCapitalization.words,
-                          decoration: const InputDecoration(
-                            labelText: 'Apellidos',
+                          inputFormatters: nameFormatters(
+                            max: FieldLimits.name,
+                          ),
+                          decoration: InputDecoration(
+                            label: requiredFieldLabel('Apellidos'),
                             hintText: 'Ej: Pérez Gómez',
                           ),
+                          validator: (val) {
+                            if (_hasGuardian) {
+                              if (val == null || val.trim().isEmpty) {
+                                return 'Apellidos del cuidador requeridos';
+                              }
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 16),
                         TextFormField(

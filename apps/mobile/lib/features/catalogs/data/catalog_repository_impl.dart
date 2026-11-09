@@ -234,14 +234,21 @@ class CatalogRepositoryImpl implements CatalogRepository {
     String token,
     String institutionId,
   ) async {
+    final key = 'inst_vaccines_v1_$institutionId';
     try {
-      final result = (await api.listInstitutionCatalogVaccines(
+      final raw = await api.listInstitutionCatalogVaccines(
         token,
         institutionId,
-      )).map(InstitutionVaccine.fromJson).toList();
+      );
+      await _cacheJsonList(key, raw);
+      final result = raw.map(InstitutionVaccine.fromJson).toList();
       await database.replaceInstitutionVaccines(institutionId, result);
       return result;
     } on ApiException {
+      final cachedJson = await _cachedJsonList(key);
+      if (cachedJson != null && cachedJson.isNotEmpty) {
+        return cachedJson.map(InstitutionVaccine.fromJson).toList();
+      }
       final cached = await database.cachedInstitutionVaccines(institutionId);
       if (cached.isEmpty) rethrow;
       return cached

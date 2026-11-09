@@ -289,25 +289,25 @@ class _CatalogPageState extends State<CatalogPage> {
     required String label,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.1),
+        border: Border.all(color: const Color(0xFFD1D5DB), width: 1.1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           ?iconWidget,
           if (icon != null)
-            Icon(icon, size: 15, color: const Color(0xFF2563EB)),
-          const SizedBox(width: 6),
+            Icon(icon, size: 16, color: const Color(0xFF2563EB)),
+          const SizedBox(width: 7),
           Text(
             label,
             style: const TextStyle(
-              color: Color(0xFF1E293B),
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
+              color: Color(0xFF0F172A),
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -315,240 +315,258 @@ class _CatalogPageState extends State<CatalogPage> {
     );
   }
 
-  Widget _card(Vaccine v) => Container(
-    margin: const EdgeInsets.only(bottom: 14),
-    decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.02),
-          blurRadius: 6,
-          offset: const Offset(0, 2),
-        ),
-      ],
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header: Avatar Squircle + Título + Código + Menú
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE0EDFF),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Center(
-                  child: Text(
-                    v.name.isNotEmpty ? v.name[0].toUpperCase() : 'V',
-                    style: const TextStyle(
-                      color: Color(0xFF2563EB),
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
+  Widget _card(Vaccine v) {
+    final canManage = globalAdmin || institutionAdmin;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: canManage ? () => _options(v) : null,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header: Avatar Squircle + Título + Código
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      v.name,
-                      style: const TextStyle(
-                        color: Color(0xFF0F172A),
-                        fontSize: 16.5,
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE0EDFF),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Center(
+                        child: Text(
+                          v.name.isNotEmpty ? v.name[0].toUpperCase() : 'V',
+                          style: const TextStyle(
+                            color: Color(0xFF2563EB),
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Código: ${v.code}',
-                      style: const TextStyle(
-                        color: Color(0xFF64748B),
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w500,
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Builder(
+                        builder: (context) {
+                          String mainName = v.name;
+                          String? subName;
+
+                          final parenMatch = RegExp(r'^(.*?)\s*(\([^\)]+\))\s*$')
+                              .firstMatch(v.name);
+                          if (parenMatch != null) {
+                            mainName = parenMatch.group(1)!.trim();
+                            subName = parenMatch.group(2)!.trim();
+                          } else {
+                            final lower =
+                                '${v.name} ${v.code} ${v.category}'.toLowerCase();
+                            if (lower.contains('suero')) {
+                              subName = '(Suero)';
+                            } else if (lower.contains('inmunoglobulina')) {
+                              subName = '(Inmunoglobulina)';
+                            } else if (lower.contains('antitoxina')) {
+                              subName = '(Antitoxina)';
+                            } else {
+                              subName = '(Vacuna)';
+                            }
+                          }
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                mainName,
+                                style: const TextStyle(
+                                  color: Color(0xFF0F172A),
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                subName,
+                                style: const TextStyle(
+                                  color: Color(0xFF0F172A),
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Código: ${v.code}',
+                                style: const TextStyle(
+                                  color: Color(0xFF64748B),
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ],
                 ),
-              ),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Color(0xFF64748B)),
-                onSelected: (value) {
-                  if (value == 'edit' && globalAdmin) _form(v);
-                  if (value == 'toggle' && institutionAdmin) _toggle(v);
-                  if (value == 'options') _options(v);
-                },
-                itemBuilder: (_) => [
-                  if (globalAdmin)
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Text('Editar catálogo'),
+                const SizedBox(height: 14),
+                const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
+                const SizedBox(height: 14),
+
+                // Fila de Badges / Chips
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _metaChip(
+                      icon: Icons.format_list_numbered_rounded,
+                      label: '${v.maxDoses} dosis',
+                      color: const Color(0xFF2563EB),
+                      bgColor: const Color(0xFFEFF6FF),
+                      borderColor: const Color(0xFF93C5FD),
                     ),
-                  if (institutionAdmin)
-                    PopupMenuItem(
-                      value: 'toggle',
-                      child: Text(
-                        (widget.controller.institutionEnabled[v.id] ?? false)
-                            ? 'Deshabilitar'
-                            : 'Habilitar',
+                    _metaChip(
+                      icon: Icons.calendar_today_outlined,
+                      label: _formatAgeRange(v),
+                      color: const Color(0xFF2563EB),
+                      bgColor: const Color(0xFFEFF6FF),
+                      borderColor: const Color(0xFF93C5FD),
+                    ),
+                    _metaChip(
+                      icon: Icons.change_history_rounded,
+                      label: v.category.toLowerCase().replaceAll(
+                        'programa ampliado de inmunización (pai)',
+                        'pai',
                       ),
+                      color: const Color(0xFF7C3AED),
+                      bgColor: const Color(0xFFF5F3FF),
+                      borderColor: const Color(0xFFDDD6FE),
                     ),
-                  const PopupMenuItem(
-                    value: 'options',
-                    child: Text('Opciones clínicas y operativas'),
+                    if (!v.active)
+                      _metaChip(
+                        icon: Icons.visibility_off_outlined,
+                        label: 'INACTIVA',
+                        color: const Color(0xFFDC2626),
+                        bgColor: const Color(0xFFFEF2F2),
+                        borderColor: const Color(0xFFFECACA),
+                      ),
+                    if (institutionAdmin)
+                      _metaChip(
+                        icon: (widget.controller.institutionEnabled[v.id] ?? false)
+                            ? Icons.check_circle_outline
+                            : Icons.remove_circle_outline,
+                        label: (widget.controller.institutionEnabled[v.id] ?? false)
+                            ? 'HABILITADA'
+                            : 'DESHABILITADA',
+                        color: (widget.controller.institutionEnabled[v.id] ?? false)
+                            ? AppColors.success
+                            : AppColors.warning,
+                        bgColor: (widget.controller.institutionEnabled[v.id] ?? false)
+                            ? AppColors.successSoft
+                            : AppColors.warningSoft,
+                        borderColor: (widget.controller.institutionEnabled[v.id] ?? false)
+                            ? AppColors.success.withValues(alpha: 0.3)
+                            : AppColors.warning.withValues(alpha: 0.3),
+                      ),
+                  ],
+                ),
+
+                // Sección Características
+                if (_hasFeature(v)) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Características:',
+                    style: TextStyle(
+                      color: Color(0xFF475569),
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (v.hasLot)
+                        _featurePill(
+                          iconWidget: const Text(
+                            '#',
+                            style: TextStyle(
+                              color: Color(0xFF2563EB),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          label: 'Lote',
+                        ),
+                      if (v.hasSyringe)
+                        _featurePill(
+                          icon: Icons.add_box_rounded,
+                          label: 'Jeringa',
+                        ),
+                      if (v.hasSyringeLot)
+                        _featurePill(
+                          icon: Icons.grid_view_rounded,
+                          label: 'Lote Jeringa',
+                        ),
+                      if (v.hasDiluent)
+                        _featurePill(
+                          icon: Icons.water_drop_rounded,
+                          label: 'Diluyente',
+                        ),
+                      if (v.hasObservation)
+                        _featurePill(
+                          icon: Icons.folder_rounded,
+                          label: 'Observaciones',
+                        ),
+                      if (v.hasVialCount)
+                        _featurePill(
+                          icon: Icons.numbers_rounded,
+                          label: 'Cant. Frascos',
+                        ),
+                      if (v.hasLaboratory)
+                        _featurePill(
+                          icon: Icons.biotech_rounded,
+                          label: 'Laboratorio',
+                        ),
+                      if (v.hasDropper)
+                        _featurePill(
+                          icon: Icons.opacity_rounded,
+                          label: 'Gotero',
+                        ),
+                      if (v.hasPneumococcalType)
+                        _featurePill(
+                          icon: Icons.coronavirus_rounded,
+                          label: 'Tipo Neumococo',
+                        ),
+                    ],
                   ),
                 ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
-          const SizedBox(height: 14),
-
-          // Fila de Badges / Chips
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _metaChip(
-                icon: Icons.format_list_bulleted_rounded,
-                label: '${v.maxDoses} dosis',
-                color: const Color(0xFF2563EB),
-                bgColor: const Color(0xFFEFF6FF),
-                borderColor: const Color(0xFF93C5FD),
-              ),
-              _metaChip(
-                icon: Icons.calendar_today_outlined,
-                label: _formatAgeRange(v),
-                color: const Color(0xFF2563EB),
-                bgColor: const Color(0xFFEFF6FF),
-                borderColor: const Color(0xFF93C5FD),
-              ),
-              _metaChip(
-                icon: Icons.interests_rounded,
-                label: v.category.toLowerCase().replaceAll(
-                  'programa ampliado de inmunización (pai)',
-                  'pai',
-                ),
-                color: const Color(0xFF7C3AED),
-                bgColor: const Color(0xFFF5F3FF),
-                borderColor: const Color(0xFFDDD6FE),
-              ),
-              if (!v.active)
-                _metaChip(
-                  icon: Icons.visibility_off_outlined,
-                  label: 'INACTIVA',
-                  color: const Color(0xFFDC2626),
-                  bgColor: const Color(0xFFFEF2F2),
-                  borderColor: const Color(0xFFFECACA),
-                ),
-              if (institutionAdmin)
-                _metaChip(
-                  icon: (widget.controller.institutionEnabled[v.id] ?? false)
-                      ? Icons.check_circle_outline
-                      : Icons.remove_circle_outline,
-                  label: (widget.controller.institutionEnabled[v.id] ?? false)
-                      ? 'HABILITADA'
-                      : 'DESHABILITADA',
-                  color: (widget.controller.institutionEnabled[v.id] ?? false)
-                      ? AppColors.success
-                      : AppColors.warning,
-                  bgColor: (widget.controller.institutionEnabled[v.id] ?? false)
-                      ? AppColors.successSoft
-                      : AppColors.warningSoft,
-                  borderColor: (widget.controller.institutionEnabled[v.id] ?? false)
-                      ? AppColors.success.withValues(alpha: 0.3)
-                      : AppColors.warning.withValues(alpha: 0.3),
-                ),
-            ],
-          ),
-
-          // Sección Características
-          if (_hasFeature(v)) ...[
-            const SizedBox(height: 16),
-            const Text(
-              'Características:',
-              style: TextStyle(
-                color: Color(0xFF475569),
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (v.hasLot)
-                  _featurePill(
-                    iconWidget: const Text(
-                      '#',
-                      style: TextStyle(
-                        color: Color(0xFF2563EB),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    label: 'Lote',
-                  ),
-                if (v.hasSyringe)
-                  _featurePill(
-                    icon: Icons.add_box_rounded,
-                    label: 'Jeringa',
-                  ),
-                if (v.hasSyringeLot)
-                  _featurePill(
-                    icon: Icons.grid_view_rounded,
-                    label: 'Lote Jeringa',
-                  ),
-                if (v.hasDiluent)
-                  _featurePill(
-                    icon: Icons.water_drop_rounded,
-                    label: 'Diluyente',
-                  ),
-                if (v.hasObservation)
-                  _featurePill(
-                    icon: Icons.note_alt_rounded,
-                    label: 'Observaciones',
-                  ),
-                if (v.hasLaboratory)
-                  _featurePill(
-                    icon: Icons.biotech_rounded,
-                    label: 'Laboratorio',
-                  ),
-                if (v.hasDropper)
-                  _featurePill(
-                    icon: Icons.opacity_rounded,
-                    label: 'Gotero',
-                  ),
-                if (v.hasPneumococcalType)
-                  _featurePill(
-                    icon: Icons.coronavirus_rounded,
-                    label: 'Tipo neumococo',
-                  ),
-                if (v.hasVialCount)
-                  _featurePill(
-                    icon: Icons.numbers_rounded,
-                    label: 'Conteo frascos',
-                  ),
               ],
             ),
-          ],
-        ],
+          ),
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   bool _hasFeature(Vaccine v) =>
       v.hasLaboratory ||
@@ -677,6 +695,18 @@ class _CatalogPageState extends State<CatalogPage> {
                 ),
         ),
         actions: [
+          if (institutionAdmin)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _toggle(v);
+              },
+              child: Text(
+                (widget.controller.institutionEnabled[v.id] ?? false)
+                    ? 'Deshabilitar'
+                    : 'Habilitar',
+              ),
+            ),
           if (institutionAdmin)
             TextButton(
               onPressed: () async {

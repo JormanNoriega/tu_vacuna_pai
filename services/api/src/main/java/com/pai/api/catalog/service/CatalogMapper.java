@@ -112,6 +112,18 @@ public class CatalogMapper {
         vaccine.getName(),
         vaccine.getCode(),
         vaccine.getCategory(),
+        vaccine.getMaxDoses(),
+        vaccine.getMinAgeMonths(),
+        vaccine.getMaxAgeMonths(),
+        vaccine.hasLaboratory(),
+        vaccine.hasLot(),
+        vaccine.hasSyringe(),
+        vaccine.hasSyringeLot(),
+        vaccine.hasDiluent(),
+        vaccine.hasDropper(),
+        vaccine.hasPneumococcalType(),
+        vaccine.hasVialCount(),
+        vaccine.hasObservation(),
         relation.isEnabled(),
         relation.getVersion());
   }

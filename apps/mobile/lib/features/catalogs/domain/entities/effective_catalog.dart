@@ -36,6 +36,8 @@ class EffectiveVaccine {
     required this.code,
     required this.category,
     required this.maxDoses,
+    this.minAgeMonths,
+    this.maxAgeMonths,
     required this.version,
     required this.doses,
     required this.pneumococcalTypes,
@@ -56,6 +58,8 @@ class EffectiveVaccine {
   final String code;
   final String category;
   final int maxDoses;
+  final int? minAgeMonths;
+  final int? maxAgeMonths;
   final int version;
   final List<EffectiveOption> doses;
   final List<EffectiveOption> pneumococcalTypes;
@@ -77,6 +81,8 @@ class EffectiveVaccine {
         code: json['code'] as String,
         category: json['category'] as String? ?? '',
         maxDoses: (json['maxDoses'] as num?)?.toInt() ?? 1,
+        minAgeMonths: (json['minAgeMonths'] as num?)?.toInt(),
+        maxAgeMonths: (json['maxAgeMonths'] as num?)?.toInt(),
         version: (json['version'] as num?)?.toInt() ?? 0,
         doses: _options(json['doses']),
         pneumococcalTypes: _options(json['pneumococcalTypes']),
