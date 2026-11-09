@@ -141,6 +141,7 @@ Future<void> main() async {
     completeAttention: CompleteAttention(attentionsRepository),
     cancelAttention: CancelAttention(attentionsRepository),
     cancelDose: CancelDose(attentionsRepository),
+    listPatientAttentions: ListPatientAttentions(attentionsRepository),
     offlineRepository: clinicalOfflineRepository,
   );
   final historyController = HistoryController(

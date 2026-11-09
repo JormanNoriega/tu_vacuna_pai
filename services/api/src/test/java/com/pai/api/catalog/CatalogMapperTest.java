@@ -112,6 +112,7 @@ class CatalogMapperTest {
     when(relation.getVersion()).thenReturn(3L);
     VaccineEntity vaccine = new VaccineEntity(
         VACCINE, "Polio", "POL", "PAI", (short) 3, null, null, ACTOR, Instant.now());
+    vaccine.setLegacyFlags(false, true, true, false, false, false, false, false, true);
 
     InstitutionVaccineResponse response =
         mapper.toInstitutionVaccine(relation, vaccine, INSTITUTION);
@@ -120,6 +121,10 @@ class CatalogMapperTest {
     assertThat(response.vaccineId()).isEqualTo(VACCINE);
     assertThat(response.name()).isEqualTo("Polio");
     assertThat(response.code()).isEqualTo("POL");
+    assertThat(response.maxDoses()).isEqualTo((short) 3);
+    assertThat(response.hasLot()).isTrue();
+    assertThat(response.hasSyringe()).isTrue();
+    assertThat(response.hasObservation()).isTrue();
     assertThat(response.enabled()).isTrue();
     assertThat(response.version()).isEqualTo(3L);
   }

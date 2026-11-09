@@ -41,6 +41,7 @@ class AttentionController extends AsyncController {
     required this.completeAttention,
     required this.cancelAttention,
     required this.cancelDose,
+    this.listPatientAttentions,
     this.offlineRepository,
   });
 
@@ -58,6 +59,7 @@ class AttentionController extends AsyncController {
   final CompleteAttention completeAttention;
   final CancelAttention cancelAttention;
   final CancelDose cancelDose;
+  final ListPatientAttentions? listPatientAttentions;
 
   /// Repositorio local-first de la cadena clinica. Null en tests/demos, donde
   /// el flujo opera solo online.
@@ -77,6 +79,7 @@ class AttentionController extends AsyncController {
   Patient? _patient;
   Attention? _attention;
   bool _effectiveCatalogLoaded = false;
+  List<AppliedDose> _previousAppliedDoses = const [];
 
   List<EffectiveVaccine> get effectiveVaccines =>
       List.unmodifiable(_effectiveVaccines);
@@ -85,6 +88,8 @@ class AttentionController extends AsyncController {
   List<GeoDepartment> get departments => List.unmodifiable(_departments);
   List<GeoMunicipality> get municipalities =>
       List.unmodifiable(_municipalities);
+  List<AppliedDose> get previousAppliedDoses =>
+      List.unmodifiable(_previousAppliedDoses);
 
   /// Opciones de un catalogo de referencia por codigo (`document_type`,
   /// `sex`, `gender`, `affiliation_regime`, `insurer`, ...).
@@ -193,6 +198,44 @@ class AttentionController extends AsyncController {
     _patient = patient;
     _attention = null;
     notifyListeners();
+    loadPatientPreviousDoses(patient.id);
+  }
+
+  /// Carga el histórico de dosis previamente aplicadas al paciente.
+  Future<void> loadPatientPreviousDoses(String patientId) async {
+    _previousAppliedDoses = const [];
+    if (listPatientAttentions == null) return;
+    try {
+      await execute((token) async {
+        final attentions = await listPatientAttentions!(token, patientId);
+        final doses = <AppliedDose>[];
+        for (final att in attentions) {
+          for (final d in att.doses) {
+            if (!d.isCancelled) {
+              doses.add(d);
+            }
+          }
+        }
+        _previousAppliedDoses = doses;
+        notifyListeners();
+      });
+    } catch (_) {
+      // No interrumpir si hay error de red o modo offline
+    }
+  }
+
+  /// Verifica si una dosis específica ya fue aplicada al paciente previamente.
+  bool isDosePreviouslyApplied(String vaccineId, EffectiveOption doseOption) {
+    return _previousAppliedDoses.any((applied) {
+      final matchVaccine = applied.vaccineId == vaccineId;
+      if (!matchVaccine) return false;
+      final matchLabel = applied.doseLabelSnapshot.trim().toLowerCase() ==
+          doseOption.displayName.trim().toLowerCase();
+      final matchValue = applied.doseValueSnapshot != null &&
+          applied.doseValueSnapshot!.trim().toLowerCase() ==
+              doseOption.value.trim().toLowerCase();
+      return matchLabel || matchValue;
+    });
   }
 
   /// Crea un paciente (wizard) y lo selecciona para la atencion.
@@ -654,6 +697,7 @@ class AttentionController extends AsyncController {
     _municipalities = const [];
     _referenceCatalogs = const {};
     _insurers = const [];
+    _previousAppliedDoses = const [];
     clearError();
     notifyListeners();
   }

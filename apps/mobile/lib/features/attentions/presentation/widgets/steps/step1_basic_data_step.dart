@@ -456,7 +456,7 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
                 TextFormField(
                   controller: widget.firstNameController,
                   enabled: !widget.isExistingPatient,
-                  inputFormatters: maxLengthFormatters(FieldLimits.name),
+                  inputFormatters: nameFormatters(max: FieldLimits.name),
                   textCapitalization: TextCapitalization.words,
                   decoration: InputDecoration(
                     label: requiredFieldLabel('Primer Nombre'),
@@ -472,7 +472,7 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
                 TextFormField(
                   controller: widget.secondNameController,
                   enabled: !widget.isExistingPatient,
-                  inputFormatters: maxLengthFormatters(FieldLimits.name),
+                  inputFormatters: nameFormatters(max: FieldLimits.name),
                   textCapitalization: TextCapitalization.words,
                   decoration: const InputDecoration(
                     labelText: 'Segundo Nombre (opcional)',
@@ -485,7 +485,7 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
                 TextFormField(
                   controller: widget.lastNameController,
                   enabled: !widget.isExistingPatient,
-                  inputFormatters: maxLengthFormatters(FieldLimits.name),
+                  inputFormatters: nameFormatters(max: FieldLimits.name),
                   textCapitalization: TextCapitalization.words,
                   decoration: InputDecoration(
                     label: requiredFieldLabel('Primer Apellido'),
@@ -501,7 +501,7 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
                 TextFormField(
                   controller: widget.secondLastNameController,
                   enabled: !widget.isExistingPatient,
-                  inputFormatters: maxLengthFormatters(FieldLimits.name),
+                  inputFormatters: nameFormatters(max: FieldLimits.name),
                   textCapitalization: TextCapitalization.words,
                   decoration: const InputDecoration(
                     labelText: 'Segundo Apellido (opcional)',

@@ -598,12 +598,21 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
                       final isActive = _activeDoseKey == key;
                       final isCompleted =
                           widget.stagedDoses[key]?.isCompleted ?? false;
+                      final isPreviouslyApplied = widget.controller
+                          .isDosePreviouslyApplied(
+                            vaccine.vaccineId,
+                            doseOption,
+                          );
 
                       Color bg;
                       Color textColor;
                       IconData? icon;
 
-                      if (isActive) {
+                      if (isPreviouslyApplied) {
+                        bg = const Color(0xFFE4F5EE);
+                        textColor = AppColors.success;
+                        icon = Icons.check_circle_rounded;
+                      } else if (isActive) {
                         bg = AppColors.primary;
                         textColor = Colors.white;
                         icon = Icons.edit_rounded;
@@ -618,7 +627,31 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
                       }
 
                       return InkWell(
-                        onTap: () => _onDoseChipTapped(vaccine, doseOption),
+                        onTap: isPreviouslyApplied
+                            ? () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.info_outline,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'La ${doseOption.displayName} de ${vaccine.name} ya fue aplicada previamente a este paciente.',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    backgroundColor: const Color(0xFF0F172A),
+                                    duration: const Duration(seconds: 3),
+                                  ),
+                                );
+                              }
+                            : () => _onDoseChipTapped(vaccine, doseOption),
                         borderRadius: BorderRadius.circular(20),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -629,13 +662,15 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
                             color: bg,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: isActive
-                                  ? AppColors.primary
-                                  : (isCompleted
-                                        ? AppColors.success.withValues(
-                                            alpha: 0.5,
-                                          )
-                                        : AppColors.border),
+                              color: isPreviouslyApplied
+                                  ? AppColors.success.withValues(alpha: 0.6)
+                                  : (isActive
+                                      ? AppColors.primary
+                                      : (isCompleted
+                                          ? AppColors.success.withValues(
+                                              alpha: 0.5,
+                                            )
+                                          : AppColors.border)),
                               width: isActive ? 1.5 : 1,
                             ),
                           ),
@@ -647,13 +682,18 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
                                 const SizedBox(width: 5),
                               ],
                               Text(
-                                doseOption.displayName,
+                                isPreviouslyApplied
+                                    ? '${doseOption.displayName} (Aplicada)'
+                                    : doseOption.displayName,
                                 style: TextStyle(
                                   color: textColor,
                                   fontSize: 13,
-                                  fontWeight: isActive || isCompleted
-                                      ? FontWeight.w600
-                                      : FontWeight.normal,
+                                  fontWeight:
+                                      isActive ||
+                                      isCompleted ||
+                                      isPreviouslyApplied
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
                                 ),
                               ),
                             ],
@@ -665,18 +705,24 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
                   const SizedBox(height: 10),
 
                   // Leyenda
-                  Row(
+                  Wrap(
+                    spacing: 14,
+                    runSpacing: 6,
                     children: [
                       _legendItem(
                         Icons.edit_rounded,
                         'Activa',
                         AppColors.primary,
                       ),
-                      const SizedBox(width: 14),
                       _legendItem(
                         Icons.check_circle_rounded,
-                        'Completada',
+                        'Confirmada hoy',
                         AppColors.success,
+                      ),
+                      _legendItem(
+                        Icons.check_circle_outline_rounded,
+                        'Aplicada previamente',
+                        const Color(0xFF0E9F6E),
                       ),
                     ],
                   ),
@@ -823,6 +869,7 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
             // Lote de la Vacuna
             TextFormField(
               controller: _lotController,
+              inputFormatters: lotFormatters(),
               decoration: InputDecoration(
                 label: requiredFieldLabel('Número de Lote'),
                 hintText: 'Ej: AB12345',
@@ -866,6 +913,7 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
             if (vaccine.hasSyringeLot) ...[
               TextFormField(
                 controller: _syringeLotController,
+                inputFormatters: lotFormatters(),
                 decoration: InputDecoration(
                   label: requiredFieldLabel('Lote de Jeringa'),
                   hintText: 'Ej: SYR987',
@@ -879,6 +927,7 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
             if (vaccine.hasDiluent) ...[
               TextFormField(
                 controller: _diluentController,
+                inputFormatters: lotFormatters(),
                 decoration: InputDecoration(
                   label: requiredFieldLabel('Diluyente'),
                   hintText: 'Lote o código del diluyente',
@@ -1000,6 +1049,10 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
             // Observación Personalizada
             TextFormField(
               controller: _customObservationController,
+              inputFormatters: maxLengthFormatters(
+                FieldLimits.specialObservations,
+              ),
+              maxLines: 2,
               decoration: const InputDecoration(
                 labelText: 'Observación Personalizada',
                 hintText: 'Detalles adicionales sobre la aplicación',
