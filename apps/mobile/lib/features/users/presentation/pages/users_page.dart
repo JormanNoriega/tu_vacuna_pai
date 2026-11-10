@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/auth/offline_access.dart';
 import '../../../../core/presentation/widgets/app_snackbar.dart';
+import '../../../../core/presentation/widgets/shimmer_loading.dart';
 import '../../domain/entities/vaccinator.dart';
 import '../users_controller.dart';
 import 'create_vaccinator_page.dart';
@@ -144,25 +145,112 @@ class _UsersList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (controller.isLoading && controller.users.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(24),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      switchInCurve: Curves.easeIn,
+      switchOutCurve: Curves.easeOut,
+      child: controller.isLoading && controller.users.isEmpty
+          ? _skeletonUsersList()
+          : controller.users.isEmpty
+              ? const Align(
+                  key: ValueKey('empty_users'),
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Todavia no hay vacunadores en esta institucion.',
+                    style: TextStyle(color: AppColors.slate),
+                  ),
+                )
+              : Column(
+                  key: const ValueKey('loaded_users'),
+                  children: [
+                    for (final user in controller.users)
+                      _UserTile(user: user, onTap: () => onEditUser(user)),
+                  ],
+                ),
+    );
+  }
 
-    if (controller.users.isEmpty) {
-      return const Text(
-        'Todavia no hay vacunadores en esta institucion.',
-        style: TextStyle(color: AppColors.slate),
-      );
-    }
+  Widget _skeletonUsersList() {
+    return ShimmerLoading(
+      key: const ValueKey('users_skeleton'),
+      child: Column(
+        children: List.generate(
+          5,
+          (_) => const _SkeletonUserTile(),
+        ),
+      ),
+    );
+  }
+}
 
-    return Column(
-      children: [
-        for (final user in controller.users)
-          _UserTile(user: user, onTap: () => onEditUser(user)),
-      ],
+class _SkeletonUserTile extends StatelessWidget {
+  const _SkeletonUserTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: ShimmerEffect(
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 130,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: 180,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                width: 58,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

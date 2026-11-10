@@ -25,6 +25,8 @@ import '../../../attentions/presentation/pages/historial_page.dart';
 import '../../../attentions/presentation/pages/nueva_atencion_page.dart';
 import '../../../patients/presentation/patient_detail_controller.dart';
 import '../../../patients/presentation/pages/patient_detail_page.dart';
+import '../../../../core/presentation/widgets/shimmer_loading.dart';
+import '../../domain/entities/metrics_summary.dart';
 import '../../domain/entities/recent_record_item.dart';
 import '../metrics_controller.dart';
 import '../../../reports/presentation/export_report_controller.dart';
@@ -265,6 +267,7 @@ class _DashboardPageState extends State<DashboardPage> {
         onFinished: () {
           if (mounted) setState(() => _isAttentionSubmitting = false);
           _selectTab(0);
+          _reloadMetrics();
         },
       );
     }
@@ -380,13 +383,17 @@ class _DashboardPageState extends State<DashboardPage> {
     setState(() => _selectedIndex = index);
     if (index == 0) {
       widget.syncStatusController?.refresh();
-      if (_canPerformAttentions) {
-        widget.metricsController?.load(
-          institutionId: widget.user.institution.id,
-          offline: widget.sessionStatus != SessionStatus.signedIn,
-          vaccinatorId: widget.user.id,
-        );
-      }
+    }
+  }
+
+  void _reloadMetrics() {
+    widget.syncStatusController?.refresh();
+    if (_canPerformAttentions || widget.user.hasRole('ADMIN_INSTITUTION')) {
+      widget.metricsController?.load(
+        institutionId: widget.user.institution.id,
+        offline: widget.sessionStatus != SessionStatus.signedIn,
+        vaccinatorId: _canPerformAttentions ? widget.user.id : null,
+      );
     }
   }
 
@@ -638,10 +645,12 @@ class _SuperAdminHomeState extends State<_SuperAdminHome> {
   @override
   void initState() {
     super.initState();
-    widget.controller.loadInstitutions();
-    // Carga los administradores al abrir el home para que el contador salga sin
-    // tener que entrar a la vista de Usuarios.
-    widget.controller.loadAdmins();
+    if (widget.controller.institutions.isEmpty) {
+      widget.controller.loadInstitutions();
+    }
+    if (widget.controller.admins.isEmpty) {
+      widget.controller.loadAdmins();
+    }
   }
 
   Future<void> _openCreateInstitution() async {
@@ -710,6 +719,8 @@ class _SuperAdminHomeState extends State<_SuperAdminHome> {
                               .where((institution) => institution.isActive)
                               .length,
                           twoColumns: twoColumns,
+                          isLoading: widget.controller.isLoading ||
+                              widget.controller.adminsLoading,
                         ),
                         const SizedBox(height: 32),
                         Text(
@@ -830,12 +841,14 @@ class _SuperStats extends StatelessWidget {
     required this.admins,
     required this.activeInstitutions,
     required this.twoColumns,
+    this.isLoading = false,
   });
 
   final int institutions;
   final int admins;
   final int activeInstitutions;
   final bool twoColumns;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -881,10 +894,21 @@ class _SuperStats extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        stat.value,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
+                      isLoading
+                          ? ShimmerEffect(
+                              child: Container(
+                                width: 44,
+                                height: 22,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                            )
+                          : Text(
+                              stat.value,
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
                       const SizedBox(height: 2),
                       Text(
                         stat.label,
@@ -904,26 +928,32 @@ class _SuperStats extends StatelessWidget {
         ),
     ];
 
-    if (!twoColumns) {
-      return Column(
-        children: [
-          for (var i = 0; i < children.length; i++) ...[
-            if (i > 0) const SizedBox(height: 12),
-            children[i],
-          ],
-        ],
+    final grid = !twoColumns
+        ? Column(
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0) const SizedBox(height: 12),
+                children[i],
+              ],
+            ],
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0) const SizedBox(width: 12),
+                Expanded(child: children[i]),
+              ],
+            ],
+          );
+
+    if (isLoading) {
+      return ShimmerLoading(
+        key: const ValueKey('super_stats_skeleton'),
+        child: grid,
       );
     }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (var i = 0; i < children.length; i++) ...[
-          if (i > 0) const SizedBox(width: 12),
-          Expanded(child: children[i]),
-        ],
-      ],
-    );
+    return grid;
   }
 }
 
@@ -1117,11 +1147,16 @@ class _DashboardContentState extends State<_DashboardContent> {
     widget.metricsController?.addListener(_onControllerUpdated);
     widget.syncStatusController?.addListener(_onControllerUpdated);
     widget.syncStatusController?.refresh();
-    widget.metricsController?.load(
-      institutionId: widget.institutionId,
-      offline: widget.offline,
-      vaccinatorId: widget.canPerformAttentions ? widget.userId : null,
-    );
+    final hasData = widget.metricsController != null &&
+        (widget.metricsController!.summary != MetricsSummary.empty ||
+            widget.metricsController!.recentRecords.isNotEmpty);
+    if (!hasData) {
+      widget.metricsController?.load(
+        institutionId: widget.institutionId,
+        offline: widget.offline,
+        vaccinatorId: widget.canPerformAttentions ? widget.userId : null,
+      );
+    }
   }
 
   void _onControllerUpdated() {
@@ -1187,22 +1222,27 @@ class _DashboardContentState extends State<_DashboardContent> {
                     const SizedBox(height: 24),
                     AnimatedBuilder(
                       animation: listenable,
-                      builder: (context, _) => _StatsGrid(
-                        twoColumns: twoColumns,
-                        patientsAttended:
-                            widget.metricsController?.summary.patientsAttended
-                                .toString() ??
-                            '0',
-                        dosesApplied:
-                            widget.metricsController?.summary.dosesApplied
-                                .toString() ??
-                            '0',
-                        pendingSync:
-                            widget.syncStatusController?.pendingCount
-                                .toString() ??
-                            '0',
-                        showPendingSync: widget.canPerformAttentions,
-                      ),
+                      builder: (context, _) {
+                        final isMetricsLoading =
+                            widget.metricsController?.isLoading ?? false;
+
+                        return _StatsGrid(
+                          twoColumns: twoColumns,
+                          patientsAttended: widget.metricsController?.summary
+                                  .patientsAttended
+                                  .toString() ??
+                              '0',
+                          dosesApplied: widget.metricsController?.summary
+                                  .dosesApplied
+                                  .toString() ??
+                              '0',
+                          pendingSync: widget.syncStatusController?.pendingCount
+                                  .toString() ??
+                              '0',
+                          showPendingSync: widget.canPerformAttentions,
+                          isLoading: isMetricsLoading,
+                        );
+                      },
                     ),
                     const SizedBox(height: 32),
                     Text(
@@ -1220,12 +1260,18 @@ class _DashboardContentState extends State<_DashboardContent> {
                       const SizedBox(height: 32),
                       AnimatedBuilder(
                         animation: listenable,
-                        builder: (context, _) => _RecentRecordsSection(
-                          records:
-                              widget.metricsController?.recentRecords ?? const [],
-                          onViewAll: () => widget.onAction('Historial'),
-                          onOpenPatientDetail: widget.onOpenPatientDetail,
-                        ),
+                        builder: (context, _) {
+                          final isMetricsLoading =
+                              widget.metricsController?.isLoading ?? false;
+
+                          return _RecentRecordsSection(
+                            records: widget.metricsController?.recentRecords ??
+                                const [],
+                            onViewAll: () => widget.onAction('Historial'),
+                            onOpenPatientDetail: widget.onOpenPatientDetail,
+                            isLoading: isMetricsLoading,
+                          );
+                        },
                       ),
                     ],
                   ],
@@ -1391,6 +1437,7 @@ class _StatsGrid extends StatelessWidget {
     required this.pendingSync,
     required this.twoColumns,
     this.showPendingSync = true,
+    this.isLoading = false,
   });
 
   final String patientsAttended;
@@ -1398,6 +1445,7 @@ class _StatsGrid extends StatelessWidget {
   final String pendingSync;
   final bool twoColumns;
   final bool showPendingSync;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -1448,10 +1496,21 @@ class _StatsGrid extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        stat.value,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
+                      isLoading
+                          ? ShimmerEffect(
+                              child: Container(
+                                width: 44,
+                                height: 22,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                            )
+                          : Text(
+                              stat.value,
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
                       const SizedBox(height: 2),
                       Text(
                         stat.label,
@@ -1471,26 +1530,32 @@ class _StatsGrid extends StatelessWidget {
         ),
     ];
 
-    if (!twoColumns) {
-      return Column(
-        children: [
-          for (var i = 0; i < children.length; i++) ...[
-            if (i > 0) const SizedBox(height: 12),
-            children[i],
-          ],
-        ],
+    final grid = !twoColumns
+        ? Column(
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0) const SizedBox(height: 12),
+                children[i],
+              ],
+            ],
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0) const SizedBox(width: 12),
+                Expanded(child: children[i]),
+              ],
+            ],
+          );
+
+    if (isLoading) {
+      return ShimmerLoading(
+        key: const ValueKey('stats_skeleton'),
+        child: grid,
       );
     }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (var i = 0; i < children.length; i++) ...[
-          if (i > 0) const SizedBox(width: 12),
-          Expanded(child: children[i]),
-        ],
-      ],
-    );
+    return grid;
   }
 }
 
@@ -1654,11 +1719,93 @@ class _RecentRecordsSection extends StatelessWidget {
     required this.records,
     required this.onViewAll,
     required this.onOpenPatientDetail,
+    this.isLoading = false,
   });
 
   final List<RecentRecordItem> records;
   final VoidCallback onViewAll;
   final ValueChanged<String> onOpenPatientDetail;
+  final bool isLoading;
+
+  Widget _skeletonRecords() {
+    return ShimmerLoading(
+      key: const ValueKey('recent_records_skeleton'),
+      child: ShimmerEffect(
+        child: Column(
+          children: [
+            for (var i = 0; i < 3; i++) ...[
+              if (i > 0) const SizedBox(height: 10),
+              _skeletonRecordCard(),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _skeletonRecordCard() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 140,
+                  height: 15,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  width: 90,
+                  height: 13,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            width: 44,
+            height: 12,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1695,37 +1842,53 @@ class _RecentRecordsSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        if (records.isEmpty)
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
-            ),
-            child: const Center(
-              child: Text(
-                'No hay registros recientes',
-                style: TextStyle(
-                  color: AppColors.slate,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          )
-        else
-          Column(
-            children: [
-              for (var i = 0; i < records.length; i++) ...[
-                if (i > 0) const SizedBox(height: 10),
-                _RecentRecordCard(
-                  record: records[i],
-                  onTap: () => onOpenPatientDetail(records[i].patientId),
-                ),
-              ],
-            ],
-          ),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          switchInCurve: Curves.easeIn,
+          switchOutCurve: Curves.easeOut,
+          child: isLoading
+              ? _skeletonRecords()
+              : records.isEmpty
+                  ? Container(
+                      key: const ValueKey('records_empty'),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 24,
+                        horizontal: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFFF1F5F9),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'No hay registros recientes',
+                          style: TextStyle(
+                            color: AppColors.slate,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    )
+                  : Column(
+                      key: const ValueKey('records_list'),
+                      children: [
+                        for (var i = 0; i < records.length; i++) ...[
+                          if (i > 0) const SizedBox(height: 10),
+                          _RecentRecordCard(
+                            record: records[i],
+                            onTap: () => onOpenPatientDetail(
+                              records[i].patientId,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+        ),
       ],
     );
   }

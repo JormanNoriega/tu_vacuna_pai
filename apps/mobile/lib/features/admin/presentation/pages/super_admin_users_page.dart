@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/auth/offline_access.dart';
 import '../../../../core/presentation/widgets/app_snackbar.dart';
+import '../../../../core/presentation/widgets/shimmer_loading.dart';
 import '../../domain/entities/institution.dart';
 import '../../domain/entities/institution_admin.dart';
 import '../admin_controller.dart';
@@ -73,9 +74,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
                   ),
                   const SizedBox(height: 20),
                   ElevatedButton.icon(
-                    onPressed: widget.controller.isLoading
-                        ? null
-                        : _openCreateAdmin,
+                    onPressed: _openCreateAdmin,
                     icon: const Icon(Icons.person_add_alt_1_rounded),
                     label: const Text('Crear admin de institucion'),
                   ),
@@ -88,38 +87,194 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
                     ),
                     const SizedBox(height: 16),
                   ],
-                  if (widget.controller.adminsLoading)
-                    const Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else if (widget.controller.institutions.isEmpty)
-                    const _EmptyState(
-                      icon: Icons.account_balance_outlined,
-                      message:
-                          'Crea una institucion para poder asignarle '
-                          'administradores.',
-                    )
-                  else if (widget.controller.admins.isEmpty)
-                    const _EmptyState(
-                      icon: Icons.admin_panel_settings_outlined,
-                      message: 'Todavia no hay administradores creados.',
-                    )
-                  else
-                    for (final institution in widget.controller.institutions)
-                      if (widget.controller.adminsFor(institution.id) > 0)
-                        _AdminsByInstitution(
-                          institution: institution,
-                          admins: widget.controller.admins
-                              .where(
-                                (admin) =>
-                                    admin.institutionId == institution.id,
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    switchInCurve: Curves.easeIn,
+                    switchOutCurve: Curves.easeOut,
+                    child: widget.controller.adminsLoading
+                        ? _skeletonSuperAdminUsers()
+                        : widget.controller.institutions.isEmpty
+                            ? const _EmptyState(
+                                key: ValueKey('empty_institutions'),
+                                icon: Icons.account_balance_outlined,
+                                message:
+                                    'Crea una institucion para poder asignarle '
+                                    'administradores.',
                               )
-                              .toList(),
-                        ),
+                            : widget.controller.admins.isEmpty
+                                ? const _EmptyState(
+                                    key: ValueKey('empty_admins'),
+                                    icon: Icons.admin_panel_settings_outlined,
+                                    message:
+                                        'Todavia no hay administradores creados.',
+                                  )
+                                : Column(
+                                    key: const ValueKey('loaded_admins'),
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      for (final institution
+                                          in widget.controller.institutions)
+                                        if (widget.controller
+                                                .adminsFor(institution.id) >
+                                            0)
+                                          _AdminsByInstitution(
+                                            institution: institution,
+                                            admins: widget.controller.admins
+                                                .where(
+                                                  (admin) =>
+                                                      admin.institutionId ==
+                                                      institution.id,
+                                                )
+                                                .toList(),
+                                          ),
+                                    ],
+                                  ),
+                  ),
                 ],
               );
             },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _skeletonSuperAdminUsers() {
+    final institutions = widget.controller.institutions;
+    return ShimmerLoading(
+      key: const ValueKey('super_admin_users_skeleton'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (institutions.isNotEmpty)
+            for (final inst in institutions) ...[
+              _SkeletonSectionHeader(title: inst.name),
+              const SizedBox(height: 10),
+              for (var i = 0; i < 6; i++) ...[
+                _SkeletonAdminTile(roleWidth: i % 2 == 0 ? 124 : 88),
+                const SizedBox(height: 10),
+              ],
+              const SizedBox(height: 14),
+            ]
+          else ...[
+            const _SkeletonSectionHeader(),
+            const SizedBox(height: 10),
+            for (var i = 0; i < 6; i++) ...[
+              _SkeletonAdminTile(roleWidth: i % 2 == 0 ? 124 : 88),
+              const SizedBox(height: 10),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SkeletonSectionHeader extends StatelessWidget {
+  const _SkeletonSectionHeader({this.title});
+
+  final String? title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        if (title != null)
+          Expanded(
+            child: Text(
+              title!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+          )
+        else
+          ShimmerEffect(
+            child: Container(
+              width: 210,
+              height: 22,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+          ),
+        const Spacer(),
+        ShimmerEffect(
+          child: Container(
+            width: 74,
+            height: 24,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SkeletonAdminTile extends StatelessWidget {
+  const _SkeletonAdminTile({this.roleWidth = 110});
+
+  final double roleWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ShimmerEffect(
+        child: ListTile(
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
+          title: Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              width: 140,
+              height: 14,
+              margin: const EdgeInsets.only(bottom: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+          subtitle: Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              width: 180,
+              height: 12,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+          trailing: Wrap(
+            spacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Container(
+                width: roleWidth,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+            ],
           ),
         ),
       ),
@@ -294,7 +449,7 @@ class _CountBadge extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.icon, required this.message});
+  const _EmptyState({required this.icon, required this.message, super.key});
 
   final IconData icon;
   final String message;
