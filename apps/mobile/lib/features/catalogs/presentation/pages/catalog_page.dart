@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/auth/offline_access.dart';
 import '../../../../core/presentation/widgets/app_snackbar.dart';
+import '../../../../core/presentation/widgets/shimmer_loading.dart';
 import '../../../../core/utils/field_input.dart';
 import '../../../auth/domain/entities/auth_user.dart';
 import '../catalog_controller.dart';
@@ -80,22 +81,35 @@ class _CatalogPageState extends State<CatalogPage> {
               _error(c)
             else
               Expanded(
-                child: c.isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : c.filteredVaccines.isEmpty
-                    ? _empty(c)
-                    : RefreshIndicator(
-                        onRefresh: () => institutionAdmin
-                            ? c.loadInstitution(widget.user.institution.id)
-                            : globalAdmin
-                            ? c.load()
-                            : c.loadEffective(),
-                        child: ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                          itemCount: c.filteredVaccines.length,
-                          itemBuilder: (_, i) => _card(c.filteredVaccines[i]),
-                        ),
-                      ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  switchInCurve: Curves.easeIn,
+                  switchOutCurve: Curves.easeOut,
+                  child: c.isLoading
+                      ? ShimmerLoading(
+                          key: const ValueKey('skeleton_view'),
+                          child: ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                            itemCount: 6,
+                            itemBuilder: (context, index) => _skeletonCard(),
+                          ),
+                        )
+                      : c.filteredVaccines.isEmpty
+                          ? _empty(c)
+                          : RefreshIndicator(
+                              key: const ValueKey('real_list_view'),
+                              onRefresh: () => institutionAdmin
+                                  ? c.loadInstitution(widget.user.institution.id)
+                                  : globalAdmin
+                                  ? c.load()
+                                  : c.loadEffective(),
+                              child: ListView.builder(
+                                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                                itemCount: c.filteredVaccines.length,
+                                itemBuilder: (_, i) => _card(c.filteredVaccines[i]),
+                              ),
+                            ),
+                ),
               ),
           ],
         );
@@ -314,6 +328,131 @@ class _CatalogPageState extends State<CatalogPage> {
       ),
     );
   }
+
+  Widget _skeletonCard() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: ShimmerEffect(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                // Avatar Squircle simulado
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                // Líneas de Título, Subtítulo y Código
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 180,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: 120,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: 80,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
+            const SizedBox(height: 14),
+            // Chips simulados (Dosis, Edad, Categoría)
+            Row(
+              children: [
+                _skeletonChip(width: 68),
+                const SizedBox(width: 8),
+                _skeletonChip(width: 110),
+                const SizedBox(width: 8),
+                _skeletonChip(width: 85),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Sección Características simulada
+            Container(
+              width: 90,
+              height: 12,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _skeletonPill(width: 60),
+                const SizedBox(width: 8),
+                _skeletonPill(width: 75),
+                const SizedBox(width: 8),
+                _skeletonPill(width: 65),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _skeletonChip({required double width}) => Container(
+        width: width,
+        height: 28,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+        ),
+      );
+
+  Widget _skeletonPill({required double width}) => Container(
+        width: width,
+        height: 28,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+        ),
+      );
 
   Widget _card(Vaccine v) {
     final canManage = globalAdmin || institutionAdmin;
@@ -599,6 +738,7 @@ class _CatalogPageState extends State<CatalogPage> {
     ),
   );
   Widget _empty(CatalogController c) => Center(
+    key: const ValueKey('empty_view'),
     child: Text(
       c.query.isEmpty
           ? 'No hay vacunas en el catalogo.'

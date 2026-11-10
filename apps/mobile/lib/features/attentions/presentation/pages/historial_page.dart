@@ -4,6 +4,7 @@ import '../../../../app/theme/app_theme.dart';
 import '../../../../app/widgets/clinical_components.dart';
 import '../../../../core/auth/offline_access.dart';
 import '../../../../core/presentation/widgets/app_snackbar.dart';
+import '../../../../core/presentation/widgets/shimmer_loading.dart';
 import '../../../../core/utils/document_input.dart';
 import '../../../catalogs/domain/entities/catalog_entities.dart';
 import '../../../patients/presentation/patient_detail_controller.dart';
@@ -162,65 +163,293 @@ class _HistorialPageState extends State<HistorialPage> {
               ),
             ],
             const SizedBox(height: 24),
-            if (_searching)
-              const Center(child: CircularProgressIndicator())
-            else if (patient == null)
-              const EmptyState(
-                icon: Icons.folder_shared_outlined,
-                title: 'Busca un paciente',
-                message:
-                    'Ingresa un documento para ver sus atenciones y dosis '
-                    'aplicadas.',
-              )
-            else ...[
-              _PatientHeader(
-                patientName: patient.fullName,
-                documentType: patient.documentType,
-                documentNumber: patient.documentNumber,
-                onOpenProfile: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => PatientDetailPage(
-                      controller: widget.patientDetailController,
-                      offline: widget.offline,
-                      patientId: patient.id,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Text(
-                    'ATENCIONES',
-                    style: AppTextStyles.overline.copyWith(
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const Spacer(),
-                  if (controller.history.isNotEmpty)
-                    StatusPill(
-                      label: '${controller.history.length}',
-                      tone: StatusTone.neutral,
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (controller.history.isEmpty)
-                const EmptyState(
-                  icon: Icons.assignment_outlined,
-                  title: 'Sin atenciones registradas',
-                  message: 'Este paciente aun no tiene dosis aplicadas.',
-                )
-              else
-                for (var i = 0; i < controller.history.length; i++)
-                  _AttentionTimelineItem(
-                    attention: controller.history[i],
-                    isLast: i == controller.history.length - 1,
-                  ),
-            ],
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              switchInCurve: Curves.easeIn,
+              switchOutCurve: Curves.easeOut,
+              child: _searching
+                  ? _skeletonHistory()
+                  : patient == null
+                      ? const EmptyState(
+                          key: ValueKey('empty_prompt'),
+                          icon: Icons.folder_shared_outlined,
+                          title: 'Busca un paciente',
+                          message:
+                              'Ingresa un documento para ver sus atenciones y dosis '
+                              'aplicadas.',
+                        )
+                      : Column(
+                          key: const ValueKey('history_content'),
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _PatientHeader(
+                              patientName: patient.fullName,
+                              documentType: patient.documentType,
+                              documentNumber: patient.documentNumber,
+                              onOpenProfile: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => PatientDetailPage(
+                                    controller: widget.patientDetailController,
+                                    offline: widget.offline,
+                                    patientId: patient.id,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                Text(
+                                  'ATENCIONES',
+                                  style: AppTextStyles.overline.copyWith(
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                                const Spacer(),
+                                if (controller.history.isNotEmpty)
+                                  StatusPill(
+                                    label: '${controller.history.length}',
+                                    tone: StatusTone.neutral,
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            if (controller.history.isEmpty)
+                              const EmptyState(
+                                icon: Icons.assignment_outlined,
+                                title: 'Sin atenciones registradas',
+                                message:
+                                    'Este paciente aun no tiene dosis aplicadas.',
+                              )
+                            else
+                              for (var i = 0;
+                                  i < controller.history.length;
+                                  i++)
+                                _AttentionTimelineItem(
+                                  attention: controller.history[i],
+                                  isLast: i == controller.history.length - 1,
+                                ),
+                          ],
+                        ),
+            ),
           ],
         );
       },
+    );
+  }
+
+  Widget _skeletonHistory() {
+    return ShimmerLoading(
+      key: const ValueKey('history_skeleton'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _skeletonPatientHeader(),
+          const SizedBox(height: 20),
+          ShimmerEffect(
+            child: Row(
+              children: [
+                Container(
+                  width: 80,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          _skeletonTimelineItem(isLast: false),
+          _skeletonTimelineItem(isLast: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _skeletonPatientHeader() => Container(
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: AppColors.border),
+    ),
+    padding: const EdgeInsets.all(16),
+    child: ShimmerEffect(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 150,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: 100,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _skeletonTimelineItem({required bool isLast}) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 22,
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCBD5E1),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.surface, width: 2),
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: isLast ? Colors.transparent : const Color(0xFFE2E8F0),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.border),
+                ),
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+                child: ShimmerEffect(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 90,
+                            height: 15,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          const Spacer(),
+                          Container(
+                            width: 60,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: 110,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Divider(height: 1),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 130,
+                                  height: 14,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  width: 80,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

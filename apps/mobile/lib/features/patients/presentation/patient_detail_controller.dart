@@ -59,7 +59,7 @@ class PatientDetailController extends AsyncController {
     }
     clearError();
 
-    // 1. Respaldo offline preparado (render instantaneo si ya esta en SQLite)
+    // 1. Respaldo offline preparado si ya esta en SQLite
     PatientProfile? localProfile;
     List<Attention> localAttentions = const [];
     if (database != null) {
@@ -84,48 +84,68 @@ class PatientDetailController extends AsyncController {
           } catch (_) {}
         }
         localAttentions = loadedAtts;
-        _profile = localProfile;
-        _attentions = localAttentions;
-        notifyListeners();
       }
     }
 
     var ok = false;
     await execute((token) async {
       try {
-        final remote = await getPatient(token, patientId);
-        _profile = remote;
-        ok = true;
+        Future<List<Attention>> fetchAttentions() async {
+          try {
+            return await listPatientAttentions(token, patientId);
+          } catch (_) {
+            return const [];
+          }
+        }
 
+        Future<List<GeoCountry>> fetchCountries() async {
+          if (_countries.isNotEmpty) return _countries;
+          try {
+            return await listCountries(token);
+          } catch (_) {
+            return const [];
+          }
+        }
+
+        Future<List<GeoDepartment>> fetchDepartments() async {
+          if (_departments.isNotEmpty) return _departments;
+          try {
+            return await listDepartments(token);
+          } catch (_) {
+            return const [];
+          }
+        }
+
+        Future<List<GeoMunicipality>> fetchMunicipalities(String deptId) async {
+          if (_municipalities.isNotEmpty) return _municipalities;
+          try {
+            return await listMunicipalities(token, deptId);
+          } catch (_) {
+            return const [];
+          }
+        }
+
+        final remote = await getPatient(token, patientId);
         final deptId = (remote.addresses.isNotEmpty)
             ? remote.addresses.first.departmentId
             : null;
 
-        await Future.wait([
-          listPatientAttentions(token, patientId)
-              .then((atts) {
-                _attentions = atts;
-              })
-              .catchError((_) {}),
-          if (_countries.isEmpty)
-            listCountries(token)
-                .then((c) {
-                  _countries = c;
-                })
-                .catchError((_) {}),
-          if (_departments.isEmpty)
-            listDepartments(token)
-                .then((d) {
-                  _departments = d;
-                })
-                .catchError((_) {}),
-          if (deptId != null && _municipalities.isEmpty)
-            listMunicipalities(token, deptId)
-                .then((m) {
-                  _municipalities = m;
-                })
-                .catchError((_) {}),
+        final results = await Future.wait([
+          fetchAttentions(),
+          fetchCountries(),
+          fetchDepartments(),
+          if (deptId != null) fetchMunicipalities(deptId),
         ]);
+
+        _attentions = results[0] as List<Attention>;
+        if (_countries.isEmpty) _countries = results[1] as List<GeoCountry>;
+        if (_departments.isEmpty) _departments = results[2] as List<GeoDepartment>;
+        if (deptId != null && _municipalities.isEmpty && results.length > 3) {
+          _municipalities = results[3] as List<GeoMunicipality>;
+        }
+
+        _profile = remote;
+        ok = true;
       } catch (e) {
         if (localProfile != null) {
           _profile = localProfile;
@@ -161,6 +181,7 @@ class PatientDetailController extends AsyncController {
         birthDate: row.birthDate,
         sex: row.sex ?? 'UNKNOWN',
         status: 'ACTIVE',
+        birthCountryId: '170',
       ),
       demographics: (row.gender != null)
           ? PatientDemographics(gender: row.gender)
@@ -191,6 +212,7 @@ class PatientDetailController extends AsyncController {
             street: row.addressLine,
             departmentId: row.addressDepartment,
             municipalityId: row.addressMunicipality,
+            countryId: '170',
             primary: true,
           ),
       ],

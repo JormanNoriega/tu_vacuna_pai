@@ -4,6 +4,7 @@ import '../../../../app/theme/app_theme.dart';
 import '../../../../app/widgets/clinical_components.dart';
 import '../../../../core/auth/offline_access.dart';
 import '../../../../core/presentation/widgets/app_snackbar.dart';
+import '../../../../core/presentation/widgets/shimmer_loading.dart';
 import '../../../../core/utils/field_input.dart';
 import '../../../attentions/domain/entities/attention.dart';
 import '../../../catalogs/domain/entities/catalog_entities.dart';
@@ -73,13 +74,25 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         builder: (context, _) {
           final controller = widget.controller;
           final profile = controller.profile;
-          if (profile != null) {
-            return _content(profile);
-          }
-          if (controller.error != null && !controller.isLoading) {
-            return _errorView(controller.error!);
-          }
-          return const Center(child: CircularProgressIndicator());
+          return AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            switchInCurve: Curves.easeIn,
+            switchOutCurve: Curves.easeOut,
+            child: (!controller.isLoading && profile != null)
+                ? KeyedSubtree(
+                    key: const ValueKey('patient_content'),
+                    child: _content(profile),
+                  )
+                : controller.error != null && !controller.isLoading
+                    ? KeyedSubtree(
+                        key: const ValueKey('patient_error'),
+                        child: _errorView(controller.error!),
+                      )
+                    : KeyedSubtree(
+                        key: const ValueKey('patient_skeleton'),
+                        child: _skeletonPatientDetail(),
+                      ),
+          );
         },
       ),
     );
@@ -108,6 +121,169 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     color: AppColors.surface,
     borderRadius: BorderRadius.circular(14),
     border: Border.all(color: AppColors.border),
+  );
+
+  Widget _skeletonPatientDetail() {
+    return ShimmerLoading(
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(20),
+        children: [
+          _skeletonHeaderCard(),
+          const SizedBox(height: 16),
+          _skeletonSection(
+            index: '01',
+            titleWidth: 110,
+            children: [
+              _skeletonInfoRow(labelWidth: 120, valueWidth: 90),
+              _skeletonInfoRow(labelWidth: 140, valueWidth: 110),
+              _skeletonInfoRow(labelWidth: 100, valueWidth: 130),
+              _skeletonInfoRow(labelWidth: 110, valueWidth: 120),
+              _skeletonInfoRow(labelWidth: 130, valueWidth: 80),
+              _skeletonInfoRow(labelWidth: 60, valueWidth: 70),
+            ],
+          ),
+          _skeletonSection(
+            index: '02',
+            titleWidth: 150,
+            children: [
+              _skeletonInfoRow(labelWidth: 80, valueWidth: 70),
+              _skeletonInfoRow(labelWidth: 120, valueWidth: 130),
+              _skeletonInfoRow(labelWidth: 115, valueWidth: 100),
+              _skeletonInfoRow(labelWidth: 130, valueWidth: 95),
+              _skeletonInfoRow(labelWidth: 125, valueWidth: 85),
+            ],
+          ),
+          _skeletonSection(
+            index: '03',
+            titleWidth: 130,
+            children: [
+              _skeletonInfoRow(labelWidth: 80, valueWidth: 110),
+              _skeletonInfoRow(labelWidth: 110, valueWidth: 150),
+              _skeletonInfoRow(labelWidth: 90, valueWidth: 85),
+            ],
+          ),
+          _skeletonSection(
+            index: '04',
+            titleWidth: 90,
+            children: [
+              _skeletonInfoRow(labelWidth: 70, valueWidth: 85),
+              _skeletonInfoRow(labelWidth: 100, valueWidth: 120),
+              _skeletonInfoRow(labelWidth: 95, valueWidth: 110),
+              _skeletonInfoRow(labelWidth: 85, valueWidth: 160),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _skeletonHeaderCard() => Container(
+    decoration: _cardDecoration,
+    padding: const EdgeInsets.all(16),
+    child: ShimmerEffect(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _skeletonBlock(width: 160, height: 16),
+                    const SizedBox(height: 6),
+                    _skeletonBlock(width: 110, height: 12),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              _skeletonBlock(width: 58, height: 22, borderRadius: 999),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _skeletonBlock(width: 90, height: 26, borderRadius: 999),
+              _skeletonBlock(width: 80, height: 26, borderRadius: 999),
+              _skeletonBlock(width: 120, height: 26, borderRadius: 999),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _skeletonSection({
+    required String index,
+    required double titleWidth,
+    required List<Widget> children,
+  }) => Container(
+    margin: const EdgeInsets.only(bottom: 14),
+    decoration: _cardDecoration,
+    padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+    child: ShimmerEffect(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _skeletonBlock(width: titleWidth, height: 15),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...children,
+        ],
+      ),
+    ),
+  );
+
+  Widget _skeletonInfoRow({
+    required double labelWidth,
+    required double valueWidth,
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _skeletonBlock(width: labelWidth, height: 13, borderRadius: 4),
+        const SizedBox(width: 14),
+        _skeletonBlock(width: valueWidth, height: 14, borderRadius: 4),
+      ],
+    ),
+  );
+
+  Widget _skeletonBlock({
+    required double width,
+    required double height,
+    double borderRadius = 6,
+  }) => Container(
+    width: width,
+    height: height,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(borderRadius),
+    ),
   );
 
   Widget _content(PatientProfile profile) {
@@ -879,7 +1055,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
           street: result.street,
           departmentId: result.departmentId,
           municipalityId: result.municipalityId,
-          countryId: current?.countryId,
+          countryId: current?.countryId ?? _defaultCountryId(),
         ),
       ],
     );
@@ -917,13 +1093,26 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
       ),
   ];
 
+  String? _defaultCountryId() {
+    for (final country in widget.controller.countries) {
+      if (country.name.toLowerCase() == 'colombia' ||
+          country.code.toLowerCase() == 'co' ||
+          country.code == '170') {
+        return country.id;
+      }
+    }
+    return widget.controller.countries.isNotEmpty
+        ? widget.controller.countries.first.id
+        : null;
+  }
+
   List<NewPatientAddress> _currentAddresses(PatientProfile profile) => [
     for (final address in profile.addresses)
       NewPatientAddress(
         street: address.street,
         departmentId: address.departmentId,
         municipalityId: address.municipalityId,
-        countryId: address.countryId,
+        countryId: address.countryId ?? _defaultCountryId(),
         primary: address.primary,
       ),
   ];
@@ -936,11 +1125,29 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
   }
 
   String? _countryName(String? id) {
-    if (id == null) return null;
-    for (final country in widget.controller.countries) {
-      if (country.id == id) return country.name;
+    if (id != null && id.trim().isNotEmpty) {
+      for (final country in widget.controller.countries) {
+        if (country.id == id ||
+            country.code.toLowerCase() == id.toLowerCase() ||
+            country.name.toLowerCase() == id.toLowerCase()) {
+          return country.name;
+        }
+      }
+      if (id.toLowerCase() == 'co' ||
+          id.toLowerCase() == 'colombia' ||
+          id == '170') {
+        return 'Colombia';
+      }
+      return id;
     }
-    return null;
+    for (final country in widget.controller.countries) {
+      if (country.name.toLowerCase() == 'colombia' ||
+          country.code.toLowerCase() == 'co' ||
+          country.code == '170') {
+        return country.name;
+      }
+    }
+    return 'Colombia';
   }
 
   String? _departmentName(String? id) {

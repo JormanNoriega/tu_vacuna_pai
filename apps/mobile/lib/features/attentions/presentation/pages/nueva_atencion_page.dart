@@ -123,10 +123,36 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
   void initState() {
     super.initState();
     _attentionDate = DateTime.now();
-    widget.controller.loadReferenceCatalogs();
+    widget.controller.loadReferenceCatalogs().then((_) {
+      if (mounted) {
+        _resolveDefaultCountry();
+      }
+    });
     widget.controller.loadEffectiveCatalog();
     widget.controller.clearSearch();
     _fetchLocationInBackground();
+  }
+
+  String? _colombiaCountryId() {
+    if (widget.controller.countries.isEmpty) return null;
+    return widget.controller.countries
+        .firstWhere(
+          (c) =>
+              c.code == '170' ||
+              c.code.toUpperCase() == 'CO' ||
+              c.name.toLowerCase() == 'colombia',
+          orElse: () => widget.controller.countries.first,
+        )
+        .id;
+  }
+
+  void _resolveDefaultCountry() {
+    if (_birthCountryId == null) {
+      final colId = _colombiaCountryId();
+      if (colId != null) {
+        setState(() => _birthCountryId = colId);
+      }
+    }
   }
 
   Future<void> _fetchLocationInBackground() async {
@@ -183,7 +209,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
       _secondLastName.text = patient.secondLastName ?? '';
       _birthDate = patient.birthDate;
       _sex = patient.sex.isNotEmpty ? patient.sex : null;
-      _birthCountryId = patient.birthCountryId;
+      _birthCountryId = patient.birthCountryId ?? _colombiaCountryId();
       _birthPlace.text = patient.birthPlace ?? '';
       _migrationStatus = patient.migrationStatus ?? 'REGULAR';
       _vaccinationCardType = patient.vaccinationCardType;
@@ -296,6 +322,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
       Patient? currentPatient = widget.controller.patient;
 
       if (!_isExistingPatient || currentPatient == null) {
+        final defaultCountryId = _colombiaCountryId();
         final newPatientInput = NewPatientInput(
           documentType: _documentType,
           documentNumber: _documentNumber.text.trim(),
@@ -309,7 +336,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
               : _secondLastName.text.trim(),
           birthDate: formatIsoDate(_birthDate!),
           sex: _sex ?? 'FEMALE',
-          birthCountryId: _birthCountryId,
+          birthCountryId: _birthCountryId ?? defaultCountryId,
           birthPlace: _birthPlace.text.trim().isEmpty
               ? null
               : _birthPlace.text.trim(),
@@ -400,6 +427,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
                     : _locality.text.trim(),
                 departmentId: _departmentId,
                 municipalityId: _municipalityId,
+                countryId: defaultCountryId,
                 area: _area,
                 primary: true,
               ),
@@ -581,7 +609,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
       _sexualOrientation = null;
       _ethnicity = null;
       _educationLevel.clear();
-      _birthCountryId = null;
+      _birthCountryId = _colombiaCountryId();
       _birthPlace.clear();
       _migrationStatus = 'REGULAR';
       _vaccinationCardType = null;
