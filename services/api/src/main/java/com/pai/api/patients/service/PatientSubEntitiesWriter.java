@@ -98,8 +98,8 @@ public class PatientSubEntitiesWriter {
           dto.municipalityId(),
           dto.departmentId(),
           dto.countryId(),
-          null,
-          null,
+          dto.locality(),
+          dto.area(),
           dto.primary(),
           now);
     }

@@ -24,6 +24,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -53,9 +54,39 @@ public class RegistroDiarioExportService {
           "inmunoglobulina_antitetanica",
           "antitoxina_tetanica");
 
+  private static final List<String> OFFICIAL_VACCINE_ORDER =
+      List.of(
+          "covid19",
+          "bcg",
+          "hepatitis_b",
+          "polio_ipv",
+          "polio_oral",
+          "pentavalente",
+          "hexavalente",
+          "dpt",
+          "dtpa_pediatrico",
+          "td_pediatrico",
+          "rotavirus",
+          "neumococo",
+          "srp",
+          "sr_multidosis",
+          "fiebre_amarilla",
+          "hepatitis_a_pediatrica",
+          "varicela",
+          "td_adulto",
+          "dtpa_adulto",
+          "influenza",
+          "vph",
+          "antirrabica_vacuna",
+          "antirrabico_suero",
+          "hepatitis_b_inmunoglobulina",
+          "inmunoglobulina_antitetanica",
+          "antitoxina_tetanica",
+          "meningococo");
+
   private static final List<String> FIXED_HEADERS =
       List.of(
-          // --- DATOS BÁSICOS (20) ---
+          // --- DATOS BÁSICOS (18) ---
           "CONSECUTIVO",
           "FECHA DE ATENCIÓN",
           "TIPO DE IDENTIFICACIÓN",
@@ -74,8 +105,6 @@ public class RegistroDiarioExportService {
           "GÉNERO",
           "ORIENTACIÓN SEXUAL",
           "EDAD GESTACIONAL (SEMANAS)",
-          "LATITUD",
-          "LONGITUD",
           // --- DATOS COMPLEMENTARIOS (24) ---
           "PAÍS DE NACIMIENTO",
           "ESTATUS MIGRATORIO",
@@ -201,13 +230,21 @@ public class RegistroDiarioExportService {
     List<RegistroDiarioDoseData> doseRows = registroDiarioQuery.doses(institutionId, from, to);
 
     List<VaccineEntity> activeVaccines =
-        vaccineRepository.findByActiveTrueOrderByNameAsc();
+        new ArrayList<>(vaccineRepository.findByActiveTrueOrderByNameAsc());
+    activeVaccines.sort(
+        Comparator.comparingInt(
+            v -> {
+              int idx =
+                  OFFICIAL_VACCINE_ORDER.indexOf(
+                      v.getCode() != null ? v.getCode().toLowerCase(Locale.ROOT) : "");
+              return idx >= 0 ? idx : Integer.MAX_VALUE;
+            }));
 
     PaiReportFactory factory = factoryProvider.create(format);
 
     // 1. Construir definicion de encabezados (Fila 0 Categorias y Fila 1 Subencabezados)
     List<ReportCategoryBlock> categoryBlocks = new ArrayList<>();
-    categoryBlocks.add(new ReportCategoryBlock("DATOS BÁSICOS", 20, ReportCategoryColors.BASIC_DATA));
+    categoryBlocks.add(new ReportCategoryBlock("DATOS BÁSICOS", 18, ReportCategoryColors.BASIC_DATA));
     categoryBlocks.add(
         new ReportCategoryBlock(
             "DATOS COMPLEMENTARIOS", 24, ReportCategoryColors.COMPLEMENTARY_DATA));
@@ -390,7 +427,7 @@ public class RegistroDiarioExportService {
             ? AgeCalculator.calculate(patient.birthDate(), attentionDay)
             : new AgeCalculator.Age(0, 0, 0, 0);
 
-    // --- DATOS BÁSICOS (20) ---
+    // --- DATOS BÁSICOS (18) ---
     row.add(dose.consecutive() != null ? String.valueOf(dose.consecutive()) : "");
     row.add(formatDate(attentionDay));
     row.add(IdTypeFormatter.toAbbreviation(patient.documentType()));
@@ -409,8 +446,6 @@ public class RegistroDiarioExportService {
     row.add(upper(patient.gender()));
     row.add(upper(patient.sexualOrientation()));
     row.add(text(patient.gestationalAgeAtBirth()));
-    row.add(dose.latitude() != null ? String.valueOf(dose.latitude()) : "");
-    row.add(dose.longitude() != null ? String.valueOf(dose.longitude()) : "");
 
     // --- DATOS COMPLEMENTARIOS (24) ---
     row.add(upper(defaultIfBlank(patient.birthCountry(), "COLOMBIA")));
@@ -425,11 +460,11 @@ public class RegistroDiarioExportService {
     row.add(boolVal(patient.armedConflictVictim()));
     row.add(boolVal(patient.currentlyStudying()));
     row.add(defaultIfBlank(patient.residenceCountry(), "COLOMBIA"));
-    row.add(text(patient.residenceDepartment()));
-    row.add(text(patient.residenceMunicipality()));
-    row.add(text(patient.commune()));
-    row.add(text(patient.area()));
-    row.add(text(patient.address()));
+    row.add(upper(patient.residenceDepartment()));
+    row.add(upper(patient.residenceMunicipality()));
+    row.add(upper(patient.commune()));
+    row.add(upper(patient.area()));
+    row.add(upper(patient.address()));
     row.add(text(patient.landline()));
     row.add(text(patient.cellphone()));
     row.add(text(patient.email()));
@@ -527,7 +562,11 @@ public class RegistroDiarioExportService {
   private List<String> getEnabledFields(VaccineEntity vaccine) {
     List<String> fields = new ArrayList<>();
     String code = vaccine.getCode() != null ? vaccine.getCode().toLowerCase(Locale.ROOT) : "";
-    if (!NO_DOSE_VACCINES.contains(code)) {
+    if (NO_DOSE_VACCINES.contains(code)) {
+      if (vaccine.hasVialCount()) {
+        fields.add("vial_count");
+      }
+    } else {
       fields.add("dose");
     }
     if (vaccine.hasLot()) fields.add("lot_number");
@@ -537,7 +576,9 @@ public class RegistroDiarioExportService {
     if (vaccine.hasDiluent()) fields.add("diluent_lot");
     if (vaccine.hasDropper()) fields.add("dropper");
     if (vaccine.hasPneumococcalType()) fields.add("pneumococcal_type");
-    if (vaccine.hasVialCount()) fields.add("vial_count");
+    if (!NO_DOSE_VACCINES.contains(code) && vaccine.hasVialCount()) {
+      fields.add("vial_count");
+    }
     if (vaccine.hasObservation()) fields.add("observation");
     return fields;
   }

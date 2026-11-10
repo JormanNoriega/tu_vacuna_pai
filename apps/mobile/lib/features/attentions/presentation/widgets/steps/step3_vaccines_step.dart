@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../app/theme/app_theme.dart';
 import '../../../../../core/auth/offline_access.dart';
+import '../../../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../../../core/utils/field_input.dart';
 import '../../../../catalogs/domain/entities/effective_catalog.dart';
 import '../../attention_controller.dart';
@@ -134,13 +135,7 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
           patientCtx,
         );
     if (ineligibilityWarning != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(ineligibilityWarning),
-          backgroundColor: AppColors.danger,
-          duration: const Duration(seconds: 4),
-        ),
-      );
+      AppSnackbar.warning(context, ineligibilityWarning);
       return;
     }
 
@@ -189,9 +184,7 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
   ) async {
     final lot = _lotController.text.trim();
     if (lot.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('El número de lote es obligatorio.')),
-      );
+      AppSnackbar.warning(context, 'El número de lote es obligatorio.');
       return;
     }
 
@@ -202,25 +195,19 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
         syringes.isNotEmpty &&
         (current.selectedSyringeId == null ||
             current.selectedSyringeId!.isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Debe seleccionar la jeringa.')),
-      );
+      AppSnackbar.warning(context, 'Debe seleccionar la jeringa.');
       return;
     }
 
     final syringeLot = _syringeLotController.text.trim();
     if (vaccine.hasSyringeLot && syringeLot.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('El lote de la jeringa es obligatorio.')),
-      );
+      AppSnackbar.warning(context, 'El lote de la jeringa es obligatorio.');
       return;
     }
 
     final diluent = _diluentController.text.trim();
     if (vaccine.hasDiluent && diluent.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('El diluyente es obligatorio.')),
-      );
+      AppSnackbar.warning(context, 'El diluyente es obligatorio.');
       return;
     }
 
@@ -248,11 +235,9 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
       _activeDoseKey = null; // Se suelta/cierra el menú desplegado de la dosis confirmada
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Dosis ${updated.doseDisplayName} confirmada.'),
-        duration: const Duration(seconds: 2),
-      ),
+    AppSnackbar.success(
+      context,
+      'Dosis ${updated.doseDisplayName} confirmada.',
     );
   }
 
@@ -629,26 +614,9 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
                       return InkWell(
                         onTap: isPreviouslyApplied
                             ? () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.info_outline,
-                                          color: Colors.white,
-                                          size: 20,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            'La ${doseOption.displayName} de ${vaccine.name} ya fue aplicada previamente a este paciente.',
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    backgroundColor: const Color(0xFF0F172A),
-                                    duration: const Duration(seconds: 3),
-                                  ),
+                                AppSnackbar.info(
+                                  context,
+                                  'La ${doseOption.displayName} de ${vaccine.name} ya fue aplicada previamente a este paciente.',
                                 );
                               }
                             : () => _onDoseChipTapped(vaccine, doseOption),

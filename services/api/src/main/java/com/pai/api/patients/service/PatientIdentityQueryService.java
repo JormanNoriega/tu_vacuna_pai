@@ -1,5 +1,9 @@
 package com.pai.api.patients.service;
 
+import com.pai.api.catalog.entity.GeoDepartmentEntity;
+import com.pai.api.catalog.entity.GeoMunicipalityEntity;
+import com.pai.api.catalog.repository.GeoDepartmentRepository;
+import com.pai.api.catalog.repository.GeoMunicipalityRepository;
 import com.pai.api.patients.entity.PatientAddressEntity;
 import com.pai.api.patients.entity.PatientAffiliationEntity;
 import com.pai.api.patients.entity.PatientContactEntity;
@@ -21,8 +25,12 @@ import com.pai.api.patients.repository.PatientUserConditionRepository;
 import com.pai.api.reports.domain.PatientIdentity;
 import com.pai.api.reports.service.PatientIdentityQuery;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -45,6 +53,8 @@ public class PatientIdentityQueryService implements PatientIdentityQuery {
   private final PatientMedicalHistoryRepository medicalHistories;
   private final PatientGuardianRepository guardians;
   private final PatientContactRepository contacts;
+  private final GeoDepartmentRepository geoDepartments;
+  private final GeoMunicipalityRepository geoMunicipalities;
 
   public PatientIdentityQueryService(
       PatientRepository patients,
@@ -55,7 +65,9 @@ public class PatientIdentityQueryService implements PatientIdentityQuery {
       PatientUserConditionRepository userConditions,
       PatientMedicalHistoryRepository medicalHistories,
       PatientGuardianRepository guardians,
-      PatientContactRepository contacts) {
+      PatientContactRepository contacts,
+      GeoDepartmentRepository geoDepartments,
+      GeoMunicipalityRepository geoMunicipalities) {
     this.patients = patients;
     this.demographics = demographics;
     this.addresses = addresses;
@@ -65,6 +77,8 @@ public class PatientIdentityQueryService implements PatientIdentityQuery {
     this.medicalHistories = medicalHistories;
     this.guardians = guardians;
     this.contacts = contacts;
+    this.geoDepartments = geoDepartments;
+    this.geoMunicipalities = geoMunicipalities;
   }
 
   @Override
@@ -80,9 +94,41 @@ public class PatientIdentityQueryService implements PatientIdentityQuery {
         demographics.findAllById(patientIds).stream()
             .collect(Collectors.toMap(PatientDemographicEntity::getPatientId, d -> d));
 
+    List<PatientAddressEntity> allAddresses =
+        addresses.findByPatientIdInOrderByCreatedAtAsc(patientIds);
     Map<UUID, List<PatientAddressEntity>> addressMap =
-        addresses.findByPatientIdInOrderByCreatedAtAsc(patientIds).stream()
-            .collect(Collectors.groupingBy(PatientAddressEntity::getPatientId));
+        allAddresses.stream().collect(Collectors.groupingBy(PatientAddressEntity::getPatientId));
+
+    Set<UUID> departmentIds =
+        allAddresses.stream()
+            .map(PatientAddressEntity::getDepartmentId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+
+    Set<UUID> municipalityIds =
+        allAddresses.stream()
+            .map(PatientAddressEntity::getMunicipalityId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+
+    Map<UUID, GeoMunicipalityEntity> municipalityMap =
+        municipalityIds.isEmpty()
+            ? Collections.emptyMap()
+            : geoMunicipalities.findAllById(municipalityIds).stream()
+                .collect(Collectors.toMap(GeoMunicipalityEntity::getId, m -> m));
+
+    Set<UUID> allDepartmentIds = new HashSet<>(departmentIds);
+    for (GeoMunicipalityEntity mun : municipalityMap.values()) {
+      if (mun.getDepartmentId() != null) {
+        allDepartmentIds.add(mun.getDepartmentId());
+      }
+    }
+
+    Map<UUID, String> departmentNames =
+        allDepartmentIds.isEmpty()
+            ? Collections.emptyMap()
+            : geoDepartments.findAllById(allDepartmentIds).stream()
+                .collect(Collectors.toMap(GeoDepartmentEntity::getId, GeoDepartmentEntity::getName));
 
     Map<UUID, PatientAffiliationEntity> affilMap =
         affiliations.findAllById(patientIds).stream()
@@ -115,6 +161,8 @@ public class PatientIdentityQueryService implements PatientIdentityQuery {
                     patient,
                     demoMap.get(patient.getId()),
                     primaryAddress(addressMap.get(patient.getId())),
+                    departmentNames,
+                    municipalityMap,
                     affilMap.get(patient.getId()),
                     specMap.get(patient.getId()),
                     condMap.get(patient.getId()),
@@ -152,6 +200,8 @@ public class PatientIdentityQueryService implements PatientIdentityQuery {
       PatientEntity patient,
       PatientDemographicEntity demo,
       PatientAddressEntity address,
+      Map<UUID, String> departmentNames,
+      Map<UUID, GeoMunicipalityEntity> municipalityMap,
       PatientAffiliationEntity affil,
       PatientSpecialConditionEntity spec,
       PatientUserConditionEntity cond,
@@ -176,6 +226,15 @@ public class PatientIdentityQueryService implements PatientIdentityQuery {
         }
       }
     }
+
+    UUID depId = address != null ? address.getDepartmentId() : null;
+    UUID munId = address != null ? address.getMunicipalityId() : null;
+    GeoMunicipalityEntity munEntity = munId != null ? municipalityMap.get(munId) : null;
+    if (depId == null && munEntity != null) {
+      depId = munEntity.getDepartmentId();
+    }
+    String depName = depId != null ? departmentNames.get(depId) : null;
+    String munName = munEntity != null ? munEntity.getName() : null;
 
     return new PatientIdentity(
         patient.getId(),
@@ -204,8 +263,8 @@ public class PatientIdentityQueryService implements PatientIdentityQuery {
         spec != null && spec.isArmedConflictVictim(),
         spec != null && Boolean.TRUE.equals(spec.getCurrentlyStudying()),
         "COLOMBIA",
-        address != null ? address.getLocality() : null,
-        address != null ? address.getLocality() : null,
+        depName,
+        munName,
         address != null ? address.getLocality() : null,
         address != null ? address.getArea() : null,
         address != null ? address.getStreet() : null,

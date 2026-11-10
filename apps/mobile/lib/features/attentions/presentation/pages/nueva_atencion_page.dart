@@ -386,7 +386,11 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
               NewPatientContact(type: 'EMAIL', value: _email.text.trim()),
           ],
           addresses: [
-            if (_street.text.trim().isNotEmpty || _departmentId != null)
+            if (_street.text.trim().isNotEmpty ||
+                _departmentId != null ||
+                _municipalityId != null ||
+                _locality.text.trim().isNotEmpty ||
+                _area != null)
               NewPatientAddress(
                 street: _street.text.trim().isEmpty
                     ? null
@@ -435,7 +439,20 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
       }
 
       // 2. Asegurar que existe una atención iniciada para el paciente
-      final attentionDateIso = '${formatIsoDate(_attentionDate)}T12:00:00Z';
+      final now = DateTime.now();
+      final isAttentionToday = _attentionDate.year == now.year &&
+          _attentionDate.month == now.month &&
+          _attentionDate.day == now.day;
+      final attentionDateIso = isAttentionToday
+          ? now.toUtc().toIso8601String()
+          : DateTime(
+              _attentionDate.year,
+              _attentionDate.month,
+              _attentionDate.day,
+              12,
+              0,
+              0,
+            ).toUtc().toIso8601String();
       final currentAttention = await widget.controller.ensureAttentionStarted(
         offline: widget.offline,
         observations: _observations.text.trim(),
@@ -455,6 +472,20 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
 
       // 3. Registrar cada dosis configurada en borrador (únicamente las confirmadas)
       for (final staged in _stagedDoses.values.where((d) => d.isCompleted)) {
+        final isDoseToday = staged.applicationDate.year == now.year &&
+            staged.applicationDate.month == now.month &&
+            staged.applicationDate.day == now.day;
+        final applicationDateIso = isDoseToday
+            ? now.toUtc().toIso8601String()
+            : DateTime(
+                staged.applicationDate.year,
+                staged.applicationDate.month,
+                staged.applicationDate.day,
+                12,
+                0,
+                0,
+              ).toUtc().toIso8601String();
+
         final doseOk = await widget.controller.addDose(
           offline: widget.offline,
           vaccineId: staged.vaccineId,
@@ -467,7 +498,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
           longitude: _longitude,
           pneumococcalTypeOptionId: staged.pneumococcalTypeOptionId,
           lotNumber: staged.lotNumber,
-          applicationDate: '${formatIsoDate(staged.applicationDate)}T12:00:00Z',
+          applicationDate: applicationDateIso,
           selectedLaboratoryId: staged.selectedLaboratoryId,
           selectedSyringeId: staged.selectedSyringeId,
           selectedDropperId: staged.selectedDropperId,

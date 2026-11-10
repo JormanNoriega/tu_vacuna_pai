@@ -678,47 +678,55 @@ class _SuperAdminHomeState extends State<_SuperAdminHome> {
       builder: (context, constraints) {
         final horizontalPadding = constraints.maxWidth >= 700 ? 32.0 : 16.0;
         final twoColumns = constraints.maxWidth >= 640;
-        return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            horizontalPadding,
-            20,
-            horizontalPadding,
-            32,
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1120),
-              child: AnimatedBuilder(
-                animation: widget.controller,
-                builder: (context, _) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _SuperHero(userName: widget.userName),
-                      const SizedBox(height: 24),
-                      _SuperStats(
-                        institutions: widget.controller.institutions.length,
-                        admins: widget.controller.admins.length,
-                        activeInstitutions: widget.controller.institutions
-                            .where((institution) => institution.isActive)
-                            .length,
-                        twoColumns: twoColumns,
-                      ),
-                      const SizedBox(height: 32),
-                      Text(
-                        'Acciones rapidas',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 16),
-                      _SuperActions(
-                        onCreateInstitution: _openCreateInstitution,
-                        onCreateAdmin: _openCreateAdmin,
-                        onOpenCatalog: widget.onOpenCatalog,
-                        onOpenUsers: () => widget.onSelectTab(2),
-                      ),
-                    ],
-                  );
-                },
+        return RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () async {
+            await widget.controller.loadInstitutions();
+            await widget.controller.loadAdmins();
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              horizontalPadding,
+              20,
+              horizontalPadding,
+              32,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1120),
+                child: AnimatedBuilder(
+                  animation: widget.controller,
+                  builder: (context, _) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _SuperHero(userName: widget.userName),
+                        const SizedBox(height: 24),
+                        _SuperStats(
+                          institutions: widget.controller.institutions.length,
+                          admins: widget.controller.admins.length,
+                          activeInstitutions: widget.controller.institutions
+                              .where((institution) => institution.isActive)
+                              .length,
+                          twoColumns: twoColumns,
+                        ),
+                        const SizedBox(height: 32),
+                        Text(
+                          'Acciones rapidas',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 16),
+                        _SuperActions(
+                          onCreateInstitution: _openCreateInstitution,
+                          onCreateAdmin: _openCreateAdmin,
+                          onOpenCatalog: widget.onOpenCatalog,
+                          onOpenUsers: () => widget.onSelectTab(2),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -1140,76 +1148,88 @@ class _DashboardContentState extends State<_DashboardContent> {
         final horizontalPadding = constraints.maxWidth >= 700 ? 32.0 : 16.0;
         final twoColumns = constraints.maxWidth >= 640;
         final columns = constraints.maxWidth >= 900 ? 3 : 1;
-        return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            horizontalPadding,
-            28,
-            horizontalPadding,
-            32,
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1120),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Buenos dias',
-                    style: Theme.of(context).textTheme.bodyLarge
-                        ?.copyWith(color: AppColors.slate),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    widget.userName,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 28),
-                  const _SyncBanner(),
-                  const SizedBox(height: 24),
-                  AnimatedBuilder(
-                    animation: listenable,
-                    builder: (context, _) => _StatsGrid(
-                      twoColumns: twoColumns,
-                      patientsAttended:
-                          widget.metricsController?.summary.patientsAttended
-                              .toString() ??
-                          '0',
-                      dosesApplied:
-                          widget.metricsController?.summary.dosesApplied
-                              .toString() ??
-                          '0',
-                      pendingSync:
-                          widget.syncStatusController?.pendingCount
-                              .toString() ??
-                          '0',
-                      showPendingSync: widget.canPerformAttentions,
+        return RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () async {
+            widget.syncStatusController?.refresh();
+            await widget.metricsController?.load(
+              institutionId: widget.institutionId,
+              offline: widget.offline,
+              vaccinatorId: widget.canPerformAttentions ? widget.userId : null,
+            );
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              horizontalPadding,
+              28,
+              horizontalPadding,
+              32,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1120),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Buenos dias',
+                      style: Theme.of(context).textTheme.bodyLarge
+                          ?.copyWith(color: AppColors.slate),
                     ),
-                  ),
-                  const SizedBox(height: 32),
-                  Text(
-                    'Centro de Acción',
-                    style: Theme.of(context).textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  _ActionsGrid(
-                    columns: columns == 1 ? 2 : 4,
-                    permissions: widget.permissions,
-                    onAction: widget.onAction,
-                  ),
-                  if (widget.canPerformAttentions) ...[
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.userName,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 28),
+                    const _SyncBanner(),
+                    const SizedBox(height: 24),
                     AnimatedBuilder(
                       animation: listenable,
-                      builder: (context, _) => _RecentRecordsSection(
-                        records:
-                            widget.metricsController?.recentRecords ?? const [],
-                        onViewAll: () => widget.onAction('Historial'),
-                        onOpenPatientDetail: widget.onOpenPatientDetail,
+                      builder: (context, _) => _StatsGrid(
+                        twoColumns: twoColumns,
+                        patientsAttended:
+                            widget.metricsController?.summary.patientsAttended
+                                .toString() ??
+                            '0',
+                        dosesApplied:
+                            widget.metricsController?.summary.dosesApplied
+                                .toString() ??
+                            '0',
+                        pendingSync:
+                            widget.syncStatusController?.pendingCount
+                                .toString() ??
+                            '0',
+                        showPendingSync: widget.canPerformAttentions,
                       ),
                     ),
+                    const SizedBox(height: 32),
+                    Text(
+                      'Centro de Acción',
+                      style: Theme.of(context).textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    _ActionsGrid(
+                      columns: columns == 1 ? 2 : 4,
+                      permissions: widget.permissions,
+                      onAction: widget.onAction,
+                    ),
+                    if (widget.canPerformAttentions) ...[
+                      const SizedBox(height: 32),
+                      AnimatedBuilder(
+                        animation: listenable,
+                        builder: (context, _) => _RecentRecordsSection(
+                          records:
+                              widget.metricsController?.recentRecords ?? const [],
+                          onViewAll: () => widget.onAction('Historial'),
+                          onOpenPatientDetail: widget.onOpenPatientDetail,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),

@@ -31,5 +31,12 @@ public record UpdatePatientContactRequest(
       UUID municipalityId,
       UUID departmentId,
       UUID countryId,
+
+      @Size(max = 120, message = "La comuna o localidad no puede superar 120 caracteres.")
+      String locality,
+
+      @Size(max = 20, message = "El area no puede superar 20 caracteres.")
+      String area,
+
       boolean primary) {}
 }
