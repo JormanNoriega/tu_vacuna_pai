@@ -43,7 +43,7 @@ class StandaloneExcelExportService {
 
   // Categorías fijas del reporte y cantidad de columnas que abarca cada una
   static const List<MapEntry<String, int>> fixedCategories = [
-    MapEntry('DATOS BÁSICOS', 20),
+    MapEntry('DATOS BÁSICOS', 18),
     MapEntry('DATOS COMPLEMENTARIOS', 24),
     MapEntry('ANTECEDENTES MÉDICOS', 4),
     MapEntry('CONDICIÓN USUARIA', 7),
@@ -102,8 +102,6 @@ class StandaloneExcelExportService {
     'GÉNERO',
     'ORIENTACIÓN SEXUAL',
     'EDAD GESTACIONAL (SEMANAS)',
-    'LATITUD',
-    'LONGITUD',
 
     // --- DATOS COMPLEMENTARIOS (24) ---
     'PAÍS DE NACIMIENTO',
@@ -613,8 +611,6 @@ class StandaloneExcelExportService {
       (patientData['gender']?.toString() ?? '').toUpperCase(),
       (patientData['sexual_orientation']?.toString() ?? '').toUpperCase(),
       patientData['gestational_age']?.toString() ?? '',
-      patientData['latitude']?.toString() ?? '',
-      patientData['longitude']?.toString() ?? '',
       (patientData['birth_country']?.toString() ?? '').toUpperCase(),
       (patientData['migration_status']?.toString() ?? '').toUpperCase(),
       (patientData['birth_place']?.toString() ?? '').toUpperCase(),

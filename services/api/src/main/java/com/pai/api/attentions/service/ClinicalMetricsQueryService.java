@@ -8,6 +8,7 @@ import com.pai.api.reports.domain.PatientIdentity;
 import com.pai.api.reports.dto.RecentRecordResponse;
 import com.pai.api.reports.service.ClinicalMetricsQuery;
 import com.pai.api.reports.service.PatientIdentityQuery;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -107,7 +108,8 @@ public class ClinicalMetricsQueryService implements ClinicalMetricsQuery {
     for (AttentionEntity a : attentionList) {
       String pName = patientNames.getOrDefault(a.getPatientId(), "Paciente");
       String vName = vaccineByAttention.getOrDefault(a.getId(), "Atención de vacunación");
-      records.add(new RecentRecordResponse(a.getId(), a.getPatientId(), pName, vName, a.getAttentionDate()));
+      Instant timestamp = a.getCreatedAt() != null ? a.getCreatedAt() : a.getAttentionDate();
+      records.add(new RecentRecordResponse(a.getId(), a.getPatientId(), pName, vName, timestamp));
     }
     return records;
   }

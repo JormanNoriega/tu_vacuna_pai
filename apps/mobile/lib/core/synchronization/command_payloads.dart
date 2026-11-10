@@ -108,6 +108,9 @@ class CommandPayloads {
             'departmentId': address.departmentId,
           if (_filled(address.municipalityId))
             'municipalityId': address.municipalityId,
+          if (_filled(address.countryId)) 'countryId': address.countryId,
+          if (_filled(address.locality)) 'locality': address.locality,
+          if (_filled(address.area)) 'area': address.area,
           'primary': address.primary,
         },
   ];

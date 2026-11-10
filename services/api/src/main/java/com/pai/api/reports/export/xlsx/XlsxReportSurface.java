@@ -29,7 +29,9 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  */
 final class XlsxReportSurface {
 
-  private static final String SHEET_NAME = "Registro Diario";
+  private static final String SHEET_NAME = "Sheet1";
+  private static final XSSFColor BORDER_COLOR =
+      new XSSFColor(new byte[] {(byte) 0xD9, (byte) 0xD9, (byte) 0xD9}, null);
 
   private final XSSFWorkbook workbook = new XSSFWorkbook();
   private final XSSFSheet sheet = workbook.createSheet(SHEET_NAME);
@@ -42,6 +44,8 @@ final class XlsxReportSurface {
   private int totalColumns = 0;
 
   XlsxReportSurface() {
+    this.sheet.setDisplayGridlines(true);
+    this.sheet.setPrintGridlines(true);
     this.simpleHeaderStyle = createSimpleHeaderStyle();
     this.evenRowStyle = createRowStyle(ReportCategoryColors.ROW_EVEN);
     this.oddRowStyle = createRowStyle(ReportCategoryColors.ROW_ODD);
@@ -52,15 +56,19 @@ final class XlsxReportSurface {
     totalColumns = Math.max(totalColumns, titles.size());
     for (int column = 0; column < titles.size(); column++) {
       Cell cell = row.createCell(column);
-      cell.setCellValue(titles.get(column));
+      String title = titles.get(column);
+      cell.setCellValue(title);
       cell.setCellStyle(simpleHeaderStyle);
+
+      int charCount = title != null ? title.trim().length() : 0;
+      int width = Math.max(charCount + 3, 6);
+      sheet.setColumnWidth(column, width * 256);
     }
   }
 
   void writeDualLevelHeader(
       List<ReportCategoryBlock> categories, List<ReportFieldHeader> fields) {
     Row row0 = sheet.createRow(0);
-    row0.setHeightInPoints(28);
 
     int colIndex = 0;
     for (ReportCategoryBlock category : categories) {
@@ -83,13 +91,17 @@ final class XlsxReportSurface {
     }
 
     Row row1 = sheet.createRow(1);
-    row1.setHeightInPoints(24);
 
     for (int i = 0; i < fields.size(); i++) {
       ReportFieldHeader field = fields.get(i);
       Cell cell = row1.createCell(i);
       cell.setCellValue(field.name());
       cell.setCellStyle(getSubheaderStyle(field.hexColor()));
+
+      String name = field.name();
+      int charCount = name != null ? name.trim().length() : 0;
+      int width = Math.max(charCount + 3, 6);
+      sheet.setColumnWidth(i, width * 256);
     }
 
     totalColumns = Math.max(colIndex, fields.size());
@@ -99,7 +111,6 @@ final class XlsxReportSurface {
 
   void writeDataRow(List<String> cells) {
     Row row = sheet.createRow(rowCursor);
-    row.setHeightInPoints(20);
     CellStyle style = (rowCursor % 2 == 0) ? evenRowStyle : oddRowStyle;
     rowCursor++;
 
@@ -113,9 +124,6 @@ final class XlsxReportSurface {
   }
 
   byte[] toBytes() {
-    for (int i = 0; i < totalColumns; i++) {
-      sheet.setColumnWidth(i, 18 * 256);
-    }
     try (ByteArrayOutputStream out = new ByteArrayOutputStream();
         XSSFWorkbook wb = this.workbook) {
       wb.write(out);
@@ -128,8 +136,13 @@ final class XlsxReportSurface {
   private CellStyle createSimpleHeaderStyle() {
     XSSFCellStyle style = workbook.createCellStyle();
     XSSFFont font = workbook.createFont();
+    font.setFontName("Arial");
+    font.setFontHeightInPoints((short) 10);
     font.setBold(true);
     style.setFont(font);
+    style.setAlignment(HorizontalAlignment.LEFT);
+    style.setVerticalAlignment(VerticalAlignment.CENTER);
+    applyBorders(style);
     return style;
   }
 
@@ -143,6 +156,7 @@ final class XlsxReportSurface {
           style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
           XSSFFont font = workbook.createFont();
+          font.setFontName("Arial");
           font.setBold(true);
           font.setColor(
               new XSSFColor(
@@ -150,7 +164,7 @@ final class XlsxReportSurface {
           font.setFontHeightInPoints((short) 10);
           style.setFont(font);
 
-          style.setAlignment(HorizontalAlignment.CENTER);
+          style.setAlignment(HorizontalAlignment.LEFT);
           style.setVerticalAlignment(VerticalAlignment.CENTER);
           applyBorders(style);
           return style;
@@ -167,13 +181,14 @@ final class XlsxReportSurface {
           style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
           XSSFFont font = workbook.createFont();
+          font.setFontName("Arial");
           font.setBold(true);
-          font.setFontHeightInPoints((short) 9);
+          font.setFontHeightInPoints((short) 10);
           style.setFont(font);
 
-          style.setAlignment(HorizontalAlignment.CENTER);
+          style.setAlignment(HorizontalAlignment.LEFT);
           style.setVerticalAlignment(VerticalAlignment.CENTER);
-          style.setWrapText(true);
+          style.setWrapText(false);
           applyBorders(style);
           return style;
         });
@@ -186,26 +201,25 @@ final class XlsxReportSurface {
     style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
     XSSFFont font = workbook.createFont();
+    font.setFontName("Arial");
     font.setFontHeightInPoints((short) 10);
     style.setFont(font);
 
+    style.setAlignment(HorizontalAlignment.LEFT);
     style.setVerticalAlignment(VerticalAlignment.CENTER);
-    applyLightBorders(style);
+    applyBorders(style);
     return style;
   }
 
   private void applyBorders(XSSFCellStyle style) {
     style.setBorderTop(BorderStyle.THIN);
+    style.setTopBorderColor(BORDER_COLOR);
     style.setBorderBottom(BorderStyle.THIN);
+    style.setBottomBorderColor(BORDER_COLOR);
     style.setBorderLeft(BorderStyle.THIN);
+    style.setLeftBorderColor(BORDER_COLOR);
     style.setBorderRight(BorderStyle.THIN);
-  }
-
-  private void applyLightBorders(XSSFCellStyle style) {
-    style.setBorderTop(BorderStyle.HAIR);
-    style.setBorderBottom(BorderStyle.HAIR);
-    style.setBorderLeft(BorderStyle.HAIR);
-    style.setBorderRight(BorderStyle.HAIR);
+    style.setRightBorderColor(BORDER_COLOR);
   }
 
   private static XSSFColor parseColor(String hex) {

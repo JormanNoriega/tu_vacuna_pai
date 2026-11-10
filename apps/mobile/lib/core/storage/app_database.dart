@@ -952,6 +952,7 @@ class AppDatabase extends _$AppDatabase {
           ..orderBy([
             OrderingTerm.desc(attentionsLocal.attentionDate),
             OrderingTerm.desc(attentionsLocal.completedAt),
+            OrderingTerm.desc(attentionsLocal.updatedAt),
           ])
           ..limit(limit);
 
@@ -970,12 +971,10 @@ class AppDatabase extends _$AppDatabase {
           (!isUuid && rawName != null && rawName.trim().isNotEmpty)
           ? rawName.trim()
           : (cachedVaccine?.name ?? 'Atención de vacunación');
-      final sec = attention.attentionDate ?? attention.completedAt;
-      final dt = sec != null
-          ? (sec < 10000000000
-                ? DateTime.fromMillisecondsSinceEpoch(sec * 1000, isUtc: true)
-                : DateTime.fromMillisecondsSinceEpoch(sec, isUtc: true))
-          : DateTime.now().toUtc();
+      final sec = attention.completedAt ?? attention.attentionDate ?? attention.updatedAt;
+      final dt = sec < 10000000000
+          ? DateTime.fromMillisecondsSinceEpoch(sec * 1000, isUtc: true)
+          : DateTime.fromMillisecondsSinceEpoch(sec, isUtc: true);
 
       return {
         'id': attention.id,

@@ -146,12 +146,12 @@ class RegistroDiarioExportServiceTest {
 
       // Fila 0: Bloques combinados
       assertThat(sheet.getRow(0).getCell(0).getStringCellValue()).isEqualTo("DATOS BÁSICOS");
-      assertThat(sheet.getRow(0).getCell(20).getStringCellValue()).isEqualTo("DATOS COMPLEMENTARIOS");
+      assertThat(sheet.getRow(0).getCell(18).getStringCellValue()).isEqualTo("DATOS COMPLEMENTARIOS");
 
-      // BCG esta despues de los 90 campos fijos del paciente
-      assertThat(sheet.getRow(0).getCell(90).getStringCellValue()).isEqualTo("BCG (TUBERCULOSIS)");
+      // BCG esta despues de los 88 campos fijos del paciente (18 de datos basicos)
+      assertThat(sheet.getRow(0).getCell(88).getStringCellValue()).isEqualTo("BCG (TUBERCULOSIS)");
       // Categoria Enfermera al final
-      int lastCatIndex = 90 + 4; // 90 fijos + 4 campos de BCG (dose, lot, lab, syringe)
+      int lastCatIndex = 88 + 4; // 88 fijos + 4 campos de BCG (dose, lot, lab, syringe)
       assertThat(sheet.getRow(0).getCell(lastCatIndex).getStringCellValue())
           .isEqualTo("DATOS ENFERMERA");
 
@@ -166,9 +166,9 @@ class RegistroDiarioExportServiceTest {
       assertThat(sheet.getRow(2).getCell(4).getStringCellValue()).isEqualTo("JUAN");
       assertThat(sheet.getRow(2).getCell(6).getStringCellValue()).isEqualTo("PÉREZ");
 
-      // Subcampo de BCG: Dosis y Lote (columna 90 y 91)
-      assertThat(sheet.getRow(2).getCell(90).getStringCellValue()).isEqualTo("ÚNICA");
-      assertThat(sheet.getRow(2).getCell(91).getStringCellValue()).isEqualTo("LOTE123");
+      // Subcampo de BCG: Dosis y Lote (columna 88 y 89)
+      assertThat(sheet.getRow(2).getCell(88).getStringCellValue()).isEqualTo("ÚNICA");
+      assertThat(sheet.getRow(2).getCell(89).getStringCellValue()).isEqualTo("LOTE123");
 
       // Subcampo de Enfermera
       assertThat(sheet.getRow(2).getCell(lastCatIndex).getStringCellValue()).isEqualTo("ANA LÓPEZ");
