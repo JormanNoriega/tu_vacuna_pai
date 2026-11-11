@@ -384,11 +384,13 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(syncOutbox);
         await m.createTable(syncOutboxDependencies);
       }
-      if (from < 6) {
+      // Al crear las tablas en V5 se usa su definicion actual, que ya incluye
+      // las columnas de V6 y V7. Solo hay que agregarlas a tablas existentes.
+      if (from >= 5 && from < 6) {
         // V6: etiqueta legible del comprobante en la bandeja de pendientes.
         await m.addColumn(syncOutbox, syncOutbox.summary);
       }
-      if (from < 7) {
+      if (from >= 5 && from < 7) {
         // V7: coordenadas geograficas opcionales de la atencion (latitud y longitud).
         await m.addColumn(attentionsLocal, attentionsLocal.latitude);
         await m.addColumn(attentionsLocal, attentionsLocal.longitude);
