@@ -790,6 +790,11 @@ class AppDatabase extends _$AppDatabase {
             ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
           .get();
 
+  /// Incluye fallos y cuarentenas: no son cambios confirmados por el servidor.
+  Selectable<SyncOutboxData> unresolvedOutboxOperations() => select(syncOutbox)
+    ..where((t) => t.status.isNotValue('COMPLETED'))
+    ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]);
+
   Future<SyncOutboxData?> outboxByOperationId(String operationId) => (select(
     syncOutbox,
   )..where((t) => t.operationId.equals(operationId))).getSingleOrNull();
@@ -971,7 +976,10 @@ class AppDatabase extends _$AppDatabase {
           (!isUuid && rawName != null && rawName.trim().isNotEmpty)
           ? rawName.trim()
           : (cachedVaccine?.name ?? 'Atención de vacunación');
-      final sec = attention.completedAt ?? attention.attentionDate ?? attention.updatedAt;
+      final sec =
+          attention.completedAt ??
+          attention.attentionDate ??
+          attention.updatedAt;
       final dt = sec < 10000000000
           ? DateTime.fromMillisecondsSinceEpoch(sec * 1000, isUtc: true)
           : DateTime.fromMillisecondsSinceEpoch(sec, isUtc: true);

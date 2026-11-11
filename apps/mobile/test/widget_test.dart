@@ -318,42 +318,66 @@ void main() {
     expect(find.textContaining('La ventana offline vencio'), findsOneWidget);
   });
 
-  testWidgets('muestra el banner de modo offline dentro de la ventana', (
-    tester,
-  ) async {
-    final user = AuthUser(
-      id: 'vac-1',
-      email: 'vacunador@hosp-a.com',
-      name: 'Ana Vacunadora',
-      institution: const InstitutionProfile(
-        id: 'inst-1',
-        code: 'HOSP-A',
-        name: 'Hospital A',
-      ),
-      roles: const ['VACCINATOR'],
-      permissions: const ['PATIENT_READ', 'ATTENTION_CREATE'],
-      offlineWindowHours: 72,
-      lastOnlineValidation: DateTime.now().subtract(const Duration(hours: 1)),
-    );
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: DashboardPage(
-          user: user,
-          onSignOut: () {},
-          sessionStatus: SessionStatus.offlineAuthorized,
-          offlineReason: OfflineReason.noNetwork,
+  testWidgets(
+    'muestra el estado sin Internet al tocar el boton y lo oculta online',
+    (tester) async {
+      final user = AuthUser(
+        id: 'vac-1',
+        email: 'vacunador@hosp-a.com',
+        name: 'Ana Vacunadora',
+        institution: const InstitutionProfile(
+          id: 'inst-1',
+          code: 'HOSP-A',
+          name: 'Hospital A',
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+        roles: const ['VACCINATOR'],
+        permissions: const ['PATIENT_READ', 'ATTENTION_CREATE'],
+        offlineWindowHours: 72,
+        lastOnlineValidation: DateTime.now().subtract(const Duration(hours: 1)),
+      );
 
-    expect(find.text('Sin conexion a Internet'), findsOneWidget);
-    expect(find.text('Servidor no disponible'), findsNothing);
-    expect(find.text('Modo solo lectura'), findsNothing);
-  });
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DashboardPage(
+            user: user,
+            onSignOut: () {},
+            sessionStatus: SessionStatus.offlineAuthorized,
+            offlineReason: OfflineReason.noNetwork,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-  testWidgets('distingue el banner cuando el servidor esta no disponible', (
+      expect(find.text('Sin conexión a Internet'), findsNothing);
+      expect(find.byTooltip('Sin conexión a Internet'), findsOneWidget);
+      expect(find.byIcon(Icons.wifi_off_rounded), findsOneWidget);
+      expect(find.text('Servidor no disponible'), findsNothing);
+      expect(find.text('Modo solo lectura'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('connection-status-button')));
+      await tester.pumpAndSettle();
+      expect(find.text('Sin conexión a Internet'), findsOneWidget);
+      expect(
+        find.textContaining('se sincronizarán cuando vuelva la conexión.'),
+        findsOneWidget,
+      );
+
+      // El aviso es flotante: tocar fuera lo cierra sin cambiar de pantalla.
+      await tester.tapAt(const Offset(10, 300));
+      await tester.pumpAndSettle();
+      expect(find.text('Sin conexión a Internet'), findsNothing);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DashboardPage(user: user, onSignOut: () {}),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('connection-status-button')), findsNothing);
+    },
+  );
+
+  testWidgets('explica el servidor no disponible al tocar el boton de estado', (
     tester,
   ) async {
     final user = AuthUser(
@@ -383,8 +407,29 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Servidor no disponible'), findsNothing);
+    expect(find.byTooltip('Servidor no disponible'), findsOneWidget);
+    expect(find.byIcon(Icons.dns_rounded), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('connection-status-button')));
+    await tester.pumpAndSettle();
     expect(find.text('Servidor no disponible'), findsOneWidget);
-    expect(find.text('Sin conexion a Internet'), findsNothing);
+    expect(
+      find.textContaining('cuando el servidor vuelva a estar disponible.'),
+      findsOneWidget,
+    );
+    expect(find.text('Sin conexión a Internet'), findsNothing);
+
+    final notice = find.byKey(const Key('connection-status-notice'));
+    final screenCenter = tester.getCenter(find.byType(Scaffold).first).dx;
+    expect(tester.getCenter(notice).dx, closeTo(screenCenter, 1));
+
+    await tester.pump(const Duration(seconds: 4));
+    expect(find.text('Servidor no disponible'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(find.text('Servidor no disponible'), findsNothing);
+    expect(find.byKey(const Key('connection-status-button')), findsOneWidget);
   });
 
   testWidgets('bloquea la edicion de usuario en modo solo lectura', (

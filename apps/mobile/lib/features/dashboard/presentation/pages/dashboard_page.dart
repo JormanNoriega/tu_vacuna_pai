@@ -74,15 +74,15 @@ class DashboardPage extends StatefulWidget {
   /// Controlador de la ficha del paciente (ver + editar).
   final PatientDetailController? patientDetailController;
 
-  /// Estado de la sesion restaurada. Define si se muestra un banner de modo
-  /// offline y que operaciones de escritura estan permitidas.
+  /// Estado de la sesion restaurada. Define el indicador de conexion, el aviso
+  /// de solo lectura y que operaciones de escritura estan permitidas.
   final SessionStatus sessionStatus;
 
   /// Razon de la ventana offline (noNetwork / backendUnavailable). Solo afecta
-  /// la etiqueta del banner; la autorizacion vive en [sessionStatus].
+  /// el indicador de conexion; la autorizacion vive en [sessionStatus].
   final OfflineReason? offlineReason;
 
-  /// Conectividad del dispositivo para ajustar la etiqueta del banner en
+  /// Conectividad del dispositivo para ajustar el indicador de conexion en
   /// tiempo real. Null en tests (sin listener).
   final NetworkInfo? networkInfo;
 
@@ -103,7 +103,7 @@ class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
   bool _isAttentionSubmitting = false;
 
-  /// Razon visual del banner, ajustable en vivo por la conectividad del
+  /// Razon visual del indicador, ajustable en vivo por la conectividad del
   /// dispositivo (no re-autoriza ni re-valida).
   OfflineReason? _liveReason;
   StreamSubscription<bool>? _connectivitySub;
@@ -421,13 +421,9 @@ class _DashboardPageState extends State<DashboardPage> {
           Expanded(child: content),
         ],
       ),
-      SessionStatus.offlineAuthorized => Column(
-        children: [
-          _OfflineModeBanner(reason: _liveReason ?? OfflineReason.noNetwork),
-          Expanded(child: content),
-        ],
-      ),
-      SessionStatus.signedIn || SessionStatus.signedOut => content,
+      SessionStatus.offlineAuthorized ||
+      SessionStatus.signedIn ||
+      SessionStatus.signedOut => content,
     };
 
     final destinations = _isSuperAdminView
@@ -449,17 +445,25 @@ class _DashboardPageState extends State<DashboardPage> {
           children: [
             Icon(current.selectedIcon, color: AppColors.primary, size: 24),
             const SizedBox(width: 10),
-            Text(
-              current.label,
-              style: const TextStyle(
-                color: AppColors.ink,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
+            Flexible(
+              child: Text(
+                current.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.ink,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
               ),
             ),
           ],
         ),
         actions: [
+          if (widget.sessionStatus == SessionStatus.offlineAuthorized)
+            _ConnectionStatusButton(
+              reason: _liveReason ?? OfflineReason.noNetwork,
+            ),
           if (widget.syncStatusController != null && _canPerformAttentions)
             _SyncStatusBadge(
               controller: widget.syncStatusController!,
@@ -511,21 +515,29 @@ class _SyncStatusBadge extends StatelessWidget {
         final pending = controller.pendingCount;
         final syncing = controller.syncing;
         final active = syncing || pending > 0;
+        if (!isOffline && !active) return const SizedBox.shrink();
         return IconButton(
+          key: const Key('sync-pending-button'),
           tooltip: _tooltip(pending, syncing),
           onPressed: () =>
               showSyncPendingSheet(context, controller, isOffline: isOffline),
           icon: Badge(
             isLabelVisible: pending > 0,
             label: Text('$pending'),
-            child: Icon(
-              syncing
-                  ? Icons.cloud_sync_rounded
-                  : active
-                  ? Icons.cloud_upload_rounded
-                  : Icons.cloud_done_rounded,
-              color: active ? AppColors.primary : AppColors.slate,
-            ),
+            child: syncing
+                ? const SizedBox.square(
+                    dimension: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      semanticsLabel: 'Sincronizando cambios',
+                    ),
+                  )
+                : Icon(
+                    active
+                        ? Icons.cloud_upload_rounded
+                        : Icons.cloud_done_rounded,
+                    color: active ? AppColors.primary : AppColors.slate,
+                  ),
           ),
         );
       },
@@ -719,7 +731,8 @@ class _SuperAdminHomeState extends State<_SuperAdminHome> {
                               .where((institution) => institution.isActive)
                               .length,
                           twoColumns: twoColumns,
-                          isLoading: widget.controller.isLoading ||
+                          isLoading:
+                              widget.controller.isLoading ||
                               widget.controller.adminsLoading,
                         ),
                         const SizedBox(height: 32),
@@ -1147,7 +1160,8 @@ class _DashboardContentState extends State<_DashboardContent> {
     widget.metricsController?.addListener(_onControllerUpdated);
     widget.syncStatusController?.addListener(_onControllerUpdated);
     widget.syncStatusController?.refresh();
-    final hasData = widget.metricsController != null &&
+    final hasData =
+        widget.metricsController != null &&
         (widget.metricsController!.summary != MetricsSummary.empty ||
             widget.metricsController!.recentRecords.isNotEmpty);
     if (!hasData) {
@@ -1228,15 +1242,16 @@ class _DashboardContentState extends State<_DashboardContent> {
 
                         return _StatsGrid(
                           twoColumns: twoColumns,
-                          patientsAttended: widget.metricsController?.summary
-                                  .patientsAttended
+                          patientsAttended:
+                              widget.metricsController?.summary.patientsAttended
                                   .toString() ??
                               '0',
-                          dosesApplied: widget.metricsController?.summary
-                                  .dosesApplied
+                          dosesApplied:
+                              widget.metricsController?.summary.dosesApplied
                                   .toString() ??
                               '0',
-                          pendingSync: widget.syncStatusController?.pendingCount
+                          pendingSync:
+                              widget.syncStatusController?.pendingCount
                                   .toString() ??
                               '0',
                           showPendingSync: widget.canPerformAttentions,
@@ -1265,7 +1280,8 @@ class _DashboardContentState extends State<_DashboardContent> {
                               widget.metricsController?.isLoading ?? false;
 
                           return _RecentRecordsSection(
-                            records: widget.metricsController?.recentRecords ??
+                            records:
+                                widget.metricsController?.recentRecords ??
                                 const [],
                             onViewAll: () => widget.onAction('Historial'),
                             onOpenPatientDetail: widget.onOpenPatientDetail,
@@ -1335,60 +1351,94 @@ class _SyncBanner extends StatelessWidget {
   }
 }
 
-class _OfflineModeBanner extends StatelessWidget {
-  const _OfflineModeBanner({required this.reason});
+/// Estado compacto de conexion. El detalle se abre al tocarlo y se cierra al
+/// tocar fuera, volver atras o tras seis segundos, sin ocupar espacio en la pagina.
+class _ConnectionStatusButton extends StatelessWidget {
+  const _ConnectionStatusButton({required this.reason});
 
   final OfflineReason reason;
 
   @override
   Widget build(BuildContext context) {
     final noNetwork = reason == OfflineReason.noNetwork;
-    final color = noNetwork ? AppColors.primary : AppColors.warning;
     final title = noNetwork
-        ? 'Sin conexion a Internet'
+        ? 'Sin conexión a Internet'
         : 'Servidor no disponible';
     final subtitle = noNetwork
-        ? 'Trabajando con datos locales. La informacion se sincronizara '
-              'cuando haya conexion.'
-        : 'Los datos se guardaran localmente y se sincronizaran cuando el '
-              'servidor vuelva a estar disponible.';
-    final icon = noNetwork ? Icons.cloud_off_rounded : Icons.dns_rounded;
+        ? 'Puedes seguir trabajando. Tus cambios se guardan en este dispositivo '
+              'y se sincronizarán cuando vuelva la conexión.'
+        : 'Puedes seguir trabajando. Tus cambios se guardan en este dispositivo '
+              'y se sincronizarán cuando el servidor vuelva a estar disponible.';
 
-    return Card(
-      margin: const EdgeInsets.all(16),
-      color: color.withValues(alpha: .1),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(icon, color: color),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
+    return IconButton(
+      key: const Key('connection-status-button'),
+      tooltip: title,
+      icon: Icon(
+        noNetwork ? Icons.wifi_off_rounded : Icons.dns_rounded,
+        color: AppColors.warning,
+      ),
+      onPressed: () => _showNotice(context, title, subtitle),
+    );
+  }
+
+  Future<void> _showNotice(
+    BuildContext context,
+    String title,
+    String subtitle,
+  ) async {
+    final navigator = Navigator.of(context);
+    final route = DialogRoute<void>(
+      context: context,
+      barrierColor: Colors.transparent,
+      builder: (context) => Dialog(
+        alignment: Alignment.topCenter,
+        insetPadding: const EdgeInsets.fromLTRB(16, kToolbarHeight + 8, 16, 24),
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        child: SizedBox(
+          key: const Key('connection-status-notice'),
+          width: 300,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.ink,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: AppColors.slate,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: AppColors.slate, fontSize: 13),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
+    final timer = Timer(const Duration(seconds: 6), () {
+      // Cerrar exclusivamente este aviso, nunca una pantalla abierta despues.
+      if (route.isCurrent) {
+        navigator.pop();
+      } else if (route.isActive) {
+        navigator.removeRoute(route);
+      }
+    });
+    try {
+      await navigator.push(route);
+    } finally {
+      timer.cancel();
+    }
   }
 }
 
@@ -1550,10 +1600,7 @@ class _StatsGrid extends StatelessWidget {
           );
 
     if (isLoading) {
-      return ShimmerLoading(
-        key: const ValueKey('stats_skeleton'),
-        child: grid,
-      );
+      return ShimmerLoading(key: const ValueKey('stats_skeleton'), child: grid);
     }
     return grid;
   }
@@ -1849,45 +1896,43 @@ class _RecentRecordsSection extends StatelessWidget {
           child: isLoading
               ? _skeletonRecords()
               : records.isEmpty
-                  ? Container(
-                      key: const ValueKey('records_empty'),
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 24,
-                        horizontal: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(0xFFF1F5F9),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'No hay registros recientes',
-                          style: TextStyle(
-                            color: AppColors.slate,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    )
-                  : Column(
-                      key: const ValueKey('records_list'),
-                      children: [
-                        for (var i = 0; i < records.length; i++) ...[
-                          if (i > 0) const SizedBox(height: 10),
-                          _RecentRecordCard(
-                            record: records[i],
-                            onTap: () => onOpenPatientDetail(
-                              records[i].patientId,
-                            ),
-                          ),
-                        ],
-                      ],
+              ? Container(
+                  key: const ValueKey('records_empty'),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 24,
+                    horizontal: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFFF1F5F9),
+                      width: 1.5,
                     ),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'No hay registros recientes',
+                      style: TextStyle(
+                        color: AppColors.slate,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                )
+              : Column(
+                  key: const ValueKey('records_list'),
+                  children: [
+                    for (var i = 0; i < records.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 10),
+                      _RecentRecordCard(
+                        record: records[i],
+                        onTap: () => onOpenPatientDetail(records[i].patientId),
+                      ),
+                    ],
+                  ],
+                ),
         ),
       ],
     );

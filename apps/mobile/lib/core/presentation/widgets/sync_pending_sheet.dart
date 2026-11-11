@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/app_theme.dart';
@@ -12,18 +14,25 @@ Future<void> showSyncPendingSheet(
   BuildContext context,
   SyncStatusController controller, {
   bool isOffline = false,
-}) {
-  return showModalBottomSheet<void>(
+}) async {
+  final completed = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: AppColors.surface,
+    constraints: const BoxConstraints(maxWidth: 600),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
     builder: (_) =>
         _SyncPendingSheet(controller: controller, isOffline: isOffline),
   );
+  if (completed == true && context.mounted) {
+    AppSnackbar.success(
+      context,
+      'Todos los cambios pendientes se sincronizaron correctamente.',
+    );
+  }
 }
 
 class _SyncPendingSheet extends StatefulWidget {
@@ -39,42 +48,97 @@ class _SyncPendingSheet extends StatefulWidget {
 class _SyncPendingSheetState extends State<_SyncPendingSheet> {
   List<OutboxEntry> _entries = const [];
   bool _loading = true;
-  bool _syncing = false;
+  bool _wasSyncing = false;
+  bool _completed = false;
+  String? _feedback;
+  Timer? _closeTimer;
+
+  bool get _syncing => widget.controller.syncing;
 
   bool get _hasPending => _entries.isNotEmpty;
 
   @override
   void initState() {
     super.initState();
+    _wasSyncing = _syncing;
+    widget.controller.addListener(_onStatusChanged);
     _reload();
   }
 
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onStatusChanged);
+    _closeTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onStatusChanged() {
+    if (!mounted) return;
+    final finished = _wasSyncing && !_syncing;
+    _wasSyncing = _syncing;
+    setState(() {
+      _entries = widget.controller.entries;
+      _loading = false;
+      if (_syncing) _feedback = null;
+      if (_entries.isNotEmpty || _syncing) {
+        _completed = false;
+        _closeTimer?.cancel();
+      }
+    });
+    if (finished) _finishCycle();
+  }
+
+  void _finishCycle() {
+    final outcome = widget.controller.lastOutcome;
+    if (outcome == null) return;
+    if (!outcome.skipped && outcome.isSuccess && !_hasPending) {
+      setState(() => _completed = true);
+      _closeTimer = Timer(const Duration(milliseconds: 800), () {
+        if (!mounted || widget.controller.hasPending || _syncing) return;
+        if (ModalRoute.of(context)?.isCurrent ?? false) {
+          Navigator.of(context).pop(true);
+        }
+      });
+    } else {
+      setState(() {
+        _feedback = outcome.error != null
+            ? (widget.isOffline
+                  ? OfflineMessages.pendingSync
+                  : 'No se pudo completar la sincronización. '
+                        'Tus cambios siguen guardados.')
+            : outcome.skipped
+            ? 'No se inició un nuevo envío. Tus cambios siguen guardados.'
+            : '${_entries.length == 1 ? 'Queda 1 cambio' : 'Quedan ${_entries.length} cambios'} sin sincronizar. '
+                  'Los pendientes se reintentarán; los marcados para revisión '
+                  'necesitan atención.';
+      });
+    }
+  }
+
   Future<void> _reload() async {
-    final entries = await widget.controller.pendingEntries();
+    await widget.controller.refresh();
     if (!mounted) return;
     setState(() {
-      _entries = entries;
+      _entries = widget.controller.entries;
       _loading = false;
     });
   }
 
   Future<void> _sync() async {
+    if (_syncing || _completed) return;
     if (!_hasPending) {
       AppSnackbar.info(context, 'No hay cambios por sincronizar.');
       return;
     }
-    setState(() => _syncing = true);
-    final outcome = await widget.controller.syncNow();
-    if (!mounted) return;
-    setState(() => _syncing = false);
-    await _reload();
-    if (!mounted) return;
-    if (outcome.isSuccess) {
-      AppSnackbar.success(context, 'Sincronizacion completada.');
-    } else if (widget.isOffline) {
-      AppSnackbar.warning(context, OfflineMessages.pendingSync);
-    } else {
-      AppSnackbar.error(context, 'No se pudo sincronizar: ${outcome.error}');
+    try {
+      await widget.controller.syncNow();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _feedback =
+            'No se pudo completar la sincronización. '
+            'Tus cambios siguen guardados.';
+      });
     }
   }
 
@@ -97,16 +161,51 @@ class _SyncPendingSheetState extends State<_SyncPendingSheet> {
           children: [
             _Handle(),
             const SizedBox(height: 8),
-            _Header(controller: widget.controller),
+            _Header(controller: widget.controller, completed: _completed),
             const SizedBox(height: 16),
-            Flexible(child: _buildBody(context)),
-            const SizedBox(height: 16),
-            _Footer(
-              syncing: _syncing,
-              enabled: _hasPending,
-              onSync: _sync,
-              onClose: () => Navigator.of(context).maybePop(),
+            if (_syncing) ...[
+              const LinearProgressIndicator(
+                key: Key('sync-progress'),
+                semanticsLabel: 'Sincronizando cambios',
+              ),
+              const SizedBox(height: 16),
+            ],
+            Flexible(
+              child: AnimatedSwitcher(
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 220),
+                child: _completed
+                    ? const _EmptyState(key: ValueKey('sync-completed'))
+                    : _buildBody(context),
+              ),
             ),
+            if (_feedback != null) ...[
+              const SizedBox(height: 12),
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  _feedback!,
+                  style: const TextStyle(
+                    color: AppColors.warning,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            if (!_completed)
+              _Footer(
+                syncing: _syncing,
+                enabled:
+                    !_loading &&
+                    _entries.any(
+                      (entry) => entry.status == SyncOutboxStatus.pending,
+                    ),
+                needsReview: _hasPending,
+                onSync: _sync,
+                onClose: () => Navigator.of(context).maybePop(),
+              ),
           ],
         ),
       ),
@@ -120,17 +219,21 @@ class _SyncPendingSheetState extends State<_SyncPendingSheet> {
         child: Center(child: CircularProgressIndicator()),
       );
     }
-    if (_entries.isEmpty) return const _EmptyState();
-    return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * 0.45,
-      ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        padding: EdgeInsets.zero,
-        itemCount: _entries.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 8),
-        itemBuilder: (context, index) => _ReceiptTile(entry: _entries[index]),
+    if (_entries.isEmpty && !_syncing) return const _EmptyState();
+    if (_entries.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Text('Confirmando los cambios con el servidor…'),
+      );
+    }
+    return ListView.separated(
+      shrinkWrap: true,
+      padding: EdgeInsets.zero,
+      itemCount: _entries.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 8),
+      itemBuilder: (context, index) => _ReceiptTile(
+        key: ValueKey(_entries[index].operation.operationId),
+        entry: _entries[index],
       ),
     );
   }
@@ -153,9 +256,10 @@ class _Handle extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.controller});
+  const _Header({required this.controller, required this.completed});
 
   final SyncStatusController controller;
+  final bool completed;
 
   @override
   Widget build(BuildContext context) {
@@ -164,7 +268,7 @@ class _Header extends StatelessWidget {
       builder: (context, _) {
         final pending = controller.pendingCount;
         return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               width: 40,
@@ -173,28 +277,49 @@ class _Header extends StatelessWidget {
                 color: AppColors.primarySoft,
                 borderRadius: BorderRadius.circular(11),
               ),
-              child: const Icon(
-                Icons.cloud_upload_rounded,
-                color: AppColors.primary,
-                size: 22,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: controller.syncing
+                    ? const SizedBox.square(
+                        key: ValueKey('syncing'),
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        completed
+                            ? Icons.cloud_done_rounded
+                            : Icons.cloud_upload_rounded,
+                        key: ValueKey(completed),
+                        color: completed
+                            ? AppColors.success
+                            : AppColors.primary,
+                        size: 22,
+                      ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      const Text(
-                        'Pendientes por subir',
-                        style: TextStyle(
+                      Text(
+                        completed
+                            ? 'Todo sincronizado'
+                            : controller.syncing
+                            ? 'Sincronizando cambios…'
+                            : 'Cambios pendientes',
+                        style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
                           color: AppColors.ink,
                         ),
                       ),
-                      const SizedBox(width: 8),
                       if (pending > 0)
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -217,9 +342,16 @@ class _Header extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 3),
-                  const Text(
-                    'Se sincronizan solas cuando vuelva la conexion.',
-                    style: TextStyle(fontSize: 13, color: AppColors.slate),
+                  Text(
+                    controller.syncing
+                        ? 'Espera mientras se confirma el envío.'
+                        : completed
+                        ? 'El servidor ha confirmado todos tus cambios.'
+                        : 'Tus cambios están guardados en este dispositivo.',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.slate,
+                    ),
                   ),
                 ],
               ),
@@ -232,7 +364,7 @@ class _Header extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -279,10 +411,12 @@ class _Footer extends StatelessWidget {
     required this.enabled,
     required this.onSync,
     required this.onClose,
+    required this.needsReview,
   });
 
   final bool syncing;
   final bool enabled;
+  final bool needsReview;
   final VoidCallback onSync;
   final VoidCallback onClose;
 
@@ -305,11 +439,18 @@ class _Footer extends StatelessWidget {
           label: Text(
             syncing
                 ? 'Sincronizando...'
-                : (enabled ? 'Sincronizar ahora' : 'Nada por sincronizar'),
+                : enabled
+                ? 'Sincronizar ahora'
+                : needsReview
+                ? 'Hay cambios que requieren revisión'
+                : 'Nada por sincronizar',
           ),
         ),
         const SizedBox(height: 8),
-        TextButton(onPressed: onClose, child: const Text('Cerrar')),
+        TextButton(
+          onPressed: onClose,
+          child: Text(syncing ? 'Continuar en segundo plano' : 'Cerrar'),
+        ),
       ],
     );
   }
@@ -317,7 +458,7 @@ class _Footer extends StatelessWidget {
 
 /// Un comprobante del talonario: sello + etiqueta + estado.
 class _ReceiptTile extends StatelessWidget {
-  const _ReceiptTile({required this.entry});
+  const _ReceiptTile({required this.entry, super.key});
 
   final OutboxEntry entry;
 
@@ -340,8 +481,8 @@ class _ReceiptTile extends StatelessWidget {
           children: [
             // Sello del comprobante.
             Container(
-              width: 40,
-              height: 40,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: soft,
                 shape: BoxShape.circle,
@@ -401,9 +542,24 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final processing = status == SyncOutboxStatus.processing;
-    final color = processing ? AppColors.primary : AppColors.warning;
-    final soft = processing ? AppColors.primarySoft : AppColors.warningSoft;
-    final text = processing ? 'Subiendo' : 'Pendiente';
+    final needsReview =
+        status == SyncOutboxStatus.failed ||
+        status == SyncOutboxStatus.quarantined;
+    final color = needsReview
+        ? AppColors.danger
+        : processing
+        ? AppColors.primary
+        : AppColors.warning;
+    final soft = needsReview
+        ? AppColors.dangerSoft
+        : processing
+        ? AppColors.primarySoft
+        : AppColors.warningSoft;
+    final text = needsReview
+        ? 'Revisar'
+        : processing
+        ? 'Subiendo'
+        : 'Pendiente';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
