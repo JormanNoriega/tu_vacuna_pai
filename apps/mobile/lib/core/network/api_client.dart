@@ -20,6 +20,41 @@ class ApiClient {
   final http.Client _http;
   final Duration _timeout;
 
+  Future<List<Map<String, dynamic>>> inventoryList(
+    String token,
+    String institutionId,
+    String resource,
+  ) async => _decodeList(
+    await _send(
+      _http.get(
+        Uri.parse('$baseUrl/institutions/$institutionId/inventory/$resource'),
+        headers: _jsonHeaders(token),
+      ),
+    ),
+    fallback: 'No se pudo consultar el inventario. Verifica la conexion.',
+  );
+
+  Future<void> inventoryPost(
+    String token,
+    String institutionId,
+    String resource,
+    Map<String, dynamic> body,
+  ) async {
+    final response = await _send(
+      _http.post(
+        Uri.parse('$baseUrl/institutions/$institutionId/inventory/$resource'),
+        headers: _jsonHeaders(token),
+        body: jsonEncode(body),
+      ),
+    );
+    if (response.statusCode == 204) return;
+    _decodeObject(
+      response,
+      fallback:
+          'No se pudo completar la operacion. Verifica antes de reintentar.',
+    );
+  }
+
   /// Ejecuta la peticion con timeout y convierte los errores de red en un
   /// [ApiException] con mensaje amigable, para que la UI nunca se quede
   /// colgada ni reciba excepciones de transporte sin formato.

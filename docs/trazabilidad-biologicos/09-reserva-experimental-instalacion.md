@@ -1,0 +1,9 @@
+# Registro de instalación y reserva experimental
+
+La migración `V23` agrega registros de instalaciones y compromisos de frascos cerrados de una entrega ya recibida. La reserva es una parte de la custodia existente, no stock nuevo. El servidor bloquea la entrega al reservar o declarar una devolución para impedir comprometer dos veces los mismos frascos. Un identificador de reserva repetido con los mismos datos devuelve la misma reserva; cambiar los datos con ese identificador se rechaza. El cliente debe conservar ese identificador en sus reintentos.
+
+Las incidencias pueden notificarse aunque afecten frascos reservados. La reserva **no se libera** por ello; al calcular nuevos compromisos, el posible solapamiento se trata de forma conservadora. Tampoco se libera por vencimiento, falta de confirmación o cierre de jornada. No existe todavía un procedimiento de liberación o recuperación: no crear reservas con vacunas reales hasta diseñarlo y probarlo.
+
+Los endpoints requieren tanto `app.inventory.api-enabled=true` como `app.inventory.reservations-enabled=true`. Ambos quedan desactivados por defecto. Los permisos y el alcance institucional se verifican en interfaz del servidor y servicio. El identificador de instalación y su etiqueta son solo datos de registro: **no prueban posesión, no evitan clonaciones y no constituyen una autorización offline**. No se implementó descarga de cuota, prueba de posesión, revocación, consumo, sincronización de eventos tardíos ni integración móvil.
+
+La asignación clínica actual no consulta estas tablas y no se bloquea por stock. Antes de habilitar el consumo real quedan por resolver seguridad de claves, identidad y recuperación de instalación, reservas perdidas, contingencia sin cuota, apertura multidosis, transición e idempotencia extremo a extremo, además de la validación sanitaria correspondiente.

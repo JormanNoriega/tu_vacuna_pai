@@ -16,6 +16,7 @@ import '../features/catalogs/application/catalog_warmup.dart';
 import '../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../features/users/presentation/users_controller.dart';
 import '../features/catalogs/presentation/catalog_controller.dart';
+import '../features/inventory/presentation/inventory_controller.dart';
 import '../features/attentions/presentation/attention_controller.dart';
 import '../features/attentions/presentation/history_controller.dart';
 import '../features/patients/presentation/patient_detail_controller.dart';
@@ -30,6 +31,7 @@ class TuVacunaApp extends StatefulWidget {
     this.adminController,
     this.usersController,
     this.catalogController,
+    this.inventoryController,
     this.catalogWarmup,
     this.attentionController,
     this.historyController,
@@ -54,6 +56,7 @@ class TuVacunaApp extends StatefulWidget {
   /// Se inyecta desde [main]; es null en tests y demos.
   final UsersController? usersController;
   final CatalogController? catalogController;
+  final InventoryController? inventoryController;
 
   /// Precarga de catalogos al iniciar sesion online (para el flujo offline).
   /// Se inyecta desde [main]; null en tests y demos.
@@ -132,6 +135,7 @@ class _TuVacunaAppState extends State<TuVacunaApp> {
     widget.adminController?.clearSession();
     widget.usersController?.clearSession();
     widget.catalogController?.clearSession();
+    widget.inventoryController?.clearSession();
     widget.attentionController?.clearSession();
     widget.historyController?.clearSession();
     widget.patientDetailController?.clearSession();
@@ -177,6 +181,7 @@ class _TuVacunaAppState extends State<TuVacunaApp> {
         adminController: widget.adminController,
         usersController: widget.usersController,
         catalogController: widget.catalogController,
+        inventoryController: widget.inventoryController,
         attentionController: widget.attentionController,
         historyController: widget.historyController,
         patientDetailController: widget.patientDetailController,

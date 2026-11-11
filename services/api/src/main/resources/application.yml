@@ -54,6 +54,12 @@ spring:
 # --- Edge Functions de Supabase (aprovisionamiento de identidad) ---
 app:
   auth-functions-url: ${AUTH_FUNCTIONS_URL:https://jfxkrznzhfvecaaixkjv.supabase.co/functions/v1}
+  # Inventario online requiere habilitacion deliberada en el despliegue.
+  # Las superficies experimentales permanecen apagadas aun si se habilita la API base.
+  inventory:
+    api-enabled: ${APP_INVENTORY_API_ENABLED:false}
+    reservations-enabled: ${APP_INVENTORY_RESERVATIONS_ENABLED:false}
+    installation-keys-enabled: ${APP_INVENTORY_INSTALLATION_KEYS_ENABLED:false}
 
 server:
   port: ${SERVER_PORT:8080}

@@ -1,6 +1,6 @@
 # Configuración e inventario de biológicos PAI
 
-**Estado:** diseño funcional preliminar y propuesta técnica; no autoriza implementación, migraciones ni cambios de datos.  
+**Estado:** los documentos iniciales contienen propuestas históricas; la implementación online y sus límites actuales se describen en [flujo operativo](12-flujo-operativo-inventario.md). Las propuestas de consumo offline no están habilitadas.
 **Alcance:** configuración institucional de vacunas, inventario, custodia, asignaciones, jornadas, consumo offline, conservación e informes.
 
 **Prioridad:** jornadas forma parte de la primera versión, aunque su uso es opcional para la atención rutinaria. La adaptación y habilitación de la vista web se dejan para después. Reutilizar los módulos existentes y mantener la atención actual operativa durante la transición.
@@ -13,6 +13,8 @@
 4. [Modelo de datos propuesto](04-modelo-datos.md).
 5. [Informes, fases y decisiones pendientes](05-informes-y-plan.md).
 6. [Auditoría técnica y alcance simplificado](06-auditoria-y-mvp.md).
+7. [Modelo mínimo y asignación offline](07-modelo-minimo-y-dispositivo.md).
+8. [Flujo operativo de inventario y propuesta de carga masiva](12-flujo-operativo-inventario.md).
 
 ## Decisiones centrales
 

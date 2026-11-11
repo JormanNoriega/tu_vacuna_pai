@@ -6,15 +6,18 @@ import '../../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../../core/presentation/widgets/shimmer_loading.dart';
 import '../../../../core/utils/field_input.dart';
 import '../../../auth/domain/entities/auth_user.dart';
+import '../../../inventory/presentation/inventory_controller.dart';
 import '../catalog_controller.dart';
 import '../../domain/entities/catalog_entities.dart';
 import 'vaccine_form_page.dart';
+import 'institution_vaccine_settings_page.dart';
 
 class CatalogPage extends StatefulWidget {
   const CatalogPage({
     required this.user,
     required this.controller,
     required this.offline,
+    this.inventoryController,
     this.embedded = false,
     super.key,
   });
@@ -26,6 +29,7 @@ class CatalogPage extends StatefulWidget {
   final AuthUser user;
   final CatalogController controller;
   final OfflineAccess offline;
+  final InventoryController? inventoryController;
   @override
   State<CatalogPage> createState() => _CatalogPageState();
 }
@@ -95,20 +99,20 @@ class _CatalogPageState extends State<CatalogPage> {
                           ),
                         )
                       : c.filteredVaccines.isEmpty
-                          ? _empty(c)
-                          : RefreshIndicator(
-                              key: const ValueKey('real_list_view'),
-                              onRefresh: () => institutionAdmin
-                                  ? c.loadInstitution(widget.user.institution.id)
-                                  : globalAdmin
-                                  ? c.load()
-                                  : c.loadEffective(),
-                              child: ListView.builder(
-                                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                                itemCount: c.filteredVaccines.length,
-                                itemBuilder: (_, i) => _card(c.filteredVaccines[i]),
-                              ),
-                            ),
+                      ? _empty(c)
+                      : RefreshIndicator(
+                          key: const ValueKey('real_list_view'),
+                          onRefresh: () => institutionAdmin
+                              ? c.loadInstitution(widget.user.institution.id)
+                              : globalAdmin
+                              ? c.load()
+                              : c.loadEffective(),
+                          child: ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                            itemCount: c.filteredVaccines.length,
+                            itemBuilder: (_, i) => _card(c.filteredVaccines[i]),
+                          ),
+                        ),
                 ),
               ),
           ],
@@ -437,22 +441,22 @@ class _CatalogPageState extends State<CatalogPage> {
   }
 
   Widget _skeletonChip({required double width}) => Container(
-        width: width,
-        height: 28,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-        ),
-      );
+    width: width,
+    height: 28,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+    ),
+  );
 
   Widget _skeletonPill({required double width}) => Container(
-        width: width,
-        height: 28,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-        ),
-      );
+    width: width,
+    height: 28,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(8),
+    ),
+  );
 
   Widget _card(Vaccine v) {
     final canManage = globalAdmin || institutionAdmin;
@@ -473,7 +477,9 @@ class _CatalogPageState extends State<CatalogPage> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: canManage ? () => _options(v) : null,
+          onTap: canManage
+              ? () => institutionAdmin ? _institutionSettings(v) : _options(v)
+              : null,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -509,14 +515,15 @@ class _CatalogPageState extends State<CatalogPage> {
                           String mainName = v.name;
                           String? subName;
 
-                          final parenMatch = RegExp(r'^(.*?)\s*(\([^\)]+\))\s*$')
-                              .firstMatch(v.name);
+                          final parenMatch = RegExp(
+                            r'^(.*?)\s*(\([^\)]+\))\s*$',
+                          ).firstMatch(v.name);
                           if (parenMatch != null) {
                             mainName = parenMatch.group(1)!.trim();
                             subName = parenMatch.group(2)!.trim();
                           } else {
-                            final lower =
-                                '${v.name} ${v.code} ${v.category}'.toLowerCase();
+                            final lower = '${v.name} ${v.code} ${v.category}'
+                                .toLowerCase();
                             if (lower.contains('suero')) {
                               subName = '(Suero)';
                             } else if (lower.contains('inmunoglobulina')) {
@@ -564,10 +571,18 @@ class _CatalogPageState extends State<CatalogPage> {
                         },
                       ),
                     ),
+                    if (canManage) ...[
+                      const SizedBox(width: 4),
+                      const Icon(Icons.chevron_right, color: AppColors.slate),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 14),
-                const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
+                const Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: Color(0xFFF1F5F9),
+                ),
                 const SizedBox(height: 14),
 
                 // Fila de Badges / Chips
@@ -609,19 +624,29 @@ class _CatalogPageState extends State<CatalogPage> {
                       ),
                     if (institutionAdmin)
                       _metaChip(
-                        icon: (widget.controller.institutionEnabled[v.id] ?? false)
+                        icon:
+                            (widget.controller.institutionEnabled[v.id] ??
+                                false)
                             ? Icons.check_circle_outline
                             : Icons.remove_circle_outline,
-                        label: (widget.controller.institutionEnabled[v.id] ?? false)
+                        label:
+                            (widget.controller.institutionEnabled[v.id] ??
+                                false)
                             ? 'HABILITADA'
                             : 'DESHABILITADA',
-                        color: (widget.controller.institutionEnabled[v.id] ?? false)
+                        color:
+                            (widget.controller.institutionEnabled[v.id] ??
+                                false)
                             ? AppColors.success
                             : AppColors.warning,
-                        bgColor: (widget.controller.institutionEnabled[v.id] ?? false)
+                        bgColor:
+                            (widget.controller.institutionEnabled[v.id] ??
+                                false)
                             ? AppColors.successSoft
                             : AppColors.warningSoft,
-                        borderColor: (widget.controller.institutionEnabled[v.id] ?? false)
+                        borderColor:
+                            (widget.controller.institutionEnabled[v.id] ??
+                                false)
                             ? AppColors.success.withValues(alpha: 0.3)
                             : AppColors.warning.withValues(alpha: 0.3),
                       ),
@@ -699,6 +724,17 @@ class _CatalogPageState extends State<CatalogPage> {
                     ],
                   ),
                 ],
+                if (institutionAdmin) ...[
+                  const SizedBox(height: 14),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () => _institutionSettings(v),
+                      icon: const Icon(Icons.tune, size: 18),
+                      label: const Text('Configurar vacuna'),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -756,6 +792,23 @@ class _CatalogPageState extends State<CatalogPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _institutionSettings(Vaccine vaccine) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => InstitutionVaccineSettingsPage(
+          controller: widget.controller,
+          vaccine: vaccine,
+          institutionId: widget.user.institution.id,
+          offline: widget.offline,
+          canWrite: widget.user.hasPermission('CATALOG_CONFIG_WRITE'),
+          inventoryController: widget.inventoryController,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    await widget.controller.loadInstitution(widget.user.institution.id);
   }
 
   Future<void> _toggle(Vaccine v) async {

@@ -301,6 +301,22 @@ class CatalogController extends AsyncController {
     return success;
   }
 
+  Future<bool> importSuggested(
+    Vaccine vaccine, {
+    required String institutionId,
+    required OfflineAccess offline,
+  }) async {
+    if (!_ensureWritable(offline, OperationPermission.catalogConfigWrite)) {
+      return false;
+    }
+    var success = false;
+    await execute((token) async {
+      await repository.importSuggestedOptions(token, vaccine, institutionId);
+      success = true;
+    });
+    return success;
+  }
+
   /// Desactiva una opcion. La construccion del payload (DTO) la resuelve el
   /// repositorio; el controller no conoce el wire protocol.
   Future<bool> disableOption(

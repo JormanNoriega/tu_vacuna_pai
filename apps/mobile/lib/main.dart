@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import 'features/inventory/presentation/inventory_controller.dart';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -184,6 +187,13 @@ Future<void> main() async {
       adminController: adminController,
       usersController: usersController,
       catalogController: catalogController,
+      inventoryController: InventoryController(
+        sessionManager: sessionManager,
+        api: apiClient,
+        renewSession: () async {
+          await authRepository.restoreSession();
+        },
+      ),
       catalogWarmup: catalogWarmup,
       attentionController: attentionController,
       historyController: historyController,

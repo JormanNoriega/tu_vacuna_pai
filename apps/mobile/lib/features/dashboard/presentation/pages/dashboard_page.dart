@@ -19,6 +19,8 @@ import '../../../users/presentation/pages/users_page.dart';
 import '../../../users/presentation/users_controller.dart';
 import '../../../catalogs/presentation/catalog_controller.dart';
 import '../../../catalogs/presentation/pages/catalog_page.dart';
+import '../../../inventory/presentation/inventory_controller.dart';
+import '../../../inventory/presentation/inventory_page.dart';
 import '../../../attentions/presentation/attention_controller.dart';
 import '../../../attentions/presentation/history_controller.dart';
 import '../../../attentions/presentation/pages/historial_page.dart';
@@ -39,6 +41,7 @@ class DashboardPage extends StatefulWidget {
     this.adminController,
     this.usersController,
     this.catalogController,
+    this.inventoryController,
     this.attentionController,
     this.historyController,
     this.patientDetailController,
@@ -62,6 +65,7 @@ class DashboardPage extends StatefulWidget {
   /// [user] tiene el permiso USER_MANAGE (ADMIN_INSTITUTION).
   final UsersController? usersController;
   final CatalogController? catalogController;
+  final InventoryController? inventoryController;
 
   /// Controlador del flujo clinico (nueva atencion e historial). Se inyecta
   /// desde [main]; es null en tests y demos.
@@ -293,11 +297,48 @@ class _DashboardPageState extends State<DashboardPage> {
 
     if (_destinations[_selectedIndex].isCatalog &&
         widget.catalogController != null) {
-      return CatalogPage(
-        user: widget.user,
-        controller: widget.catalogController!,
-        offline: _offline,
-        embedded: true,
+      return Column(
+        children: [
+          if (widget.inventoryController != null &&
+              (widget.user.hasPermission('INVENTORY_READ') ||
+                  widget.user.hasPermission('ATTENTION_CREATE')))
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => InventoryPage(
+                        controller: widget.inventoryController!,
+                        institutionId: widget.user.institution.id,
+                        admin: widget.user.hasPermission('INVENTORY_READ'),
+                        canWrite: widget.user.hasPermission('INVENTORY_WRITE'),
+                        online:
+                            widget.sessionStatus == SessionStatus.signedIn &&
+                            _liveReason != OfflineReason.noNetwork,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.inventory_2_outlined),
+                  label: Text(
+                    widget.user.hasPermission('INVENTORY_READ')
+                        ? 'Asignaciones y jornadas'
+                        : 'Mis entregas',
+                  ),
+                ),
+              ),
+            ),
+          Expanded(
+            child: CatalogPage(
+              user: widget.user,
+              controller: widget.catalogController!,
+              offline: _offline,
+              inventoryController: widget.inventoryController,
+              embedded: true,
+            ),
+          ),
+        ],
       );
     }
 
@@ -374,6 +415,7 @@ class _DashboardPageState extends State<DashboardPage> {
       user: widget.user,
       controller: catalogController,
       offline: _offline,
+      inventoryController: widget.inventoryController,
       embedded: true,
     );
   }
@@ -406,6 +448,7 @@ class _DashboardPageState extends State<DashboardPage> {
           user: widget.user,
           controller: catalogController,
           offline: _offline,
+          inventoryController: widget.inventoryController,
         ),
       ),
     );
