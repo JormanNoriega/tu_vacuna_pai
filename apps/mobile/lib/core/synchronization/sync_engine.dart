@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 
 import '../auth/session_manager.dart';
 import '../network/api_client.dart';
@@ -56,7 +57,7 @@ class SyncBackoff {
 ///
 /// No decide permisos ni autorizacion offline (eso es `OfflinePolicy`); solo
 /// transporta lo ya encolado y refleja el resultado.
-class SyncEngine {
+class SyncEngine extends ChangeNotifier {
   SyncEngine({
     required ApiClient apiClient,
     required this.outbox,
@@ -84,26 +85,33 @@ class SyncEngine {
   static const _maxAppliedPullIds = 2000;
 
   bool _running = false;
+  SyncOutcome? _lastOutcome;
 
   bool get isRunning => _running;
+  SyncOutcome? get lastOutcome => _lastOutcome;
 
   /// Ejecuta push y pull en secuencia, sin solaparse.
   Future<SyncOutcome> syncOnce() async {
     if (_running) return const SyncOutcome(skipped: true);
     _running = true;
+    _lastOutcome = null;
+    notifyListeners();
     try {
       await outbox.resetProcessingToPending();
       final token = await _accessToken();
-      if (token == null) return const SyncOutcome(skipped: true);
+      if (token == null) {
+        return _lastOutcome = const SyncOutcome(skipped: true);
+      }
       final pushed = await _push(token);
       final pulled = await _pull(token);
-      return SyncOutcome(pushed: pushed, pulled: pulled);
+      return _lastOutcome = SyncOutcome(pushed: pushed, pulled: pulled);
     } on ApiException catch (error) {
-      return SyncOutcome(error: error.message);
+      return _lastOutcome = SyncOutcome(error: error.message);
     } catch (error) {
-      return SyncOutcome(error: error.toString());
+      return _lastOutcome = SyncOutcome(error: error.toString());
     } finally {
       _running = false;
+      notifyListeners();
     }
   }
 

@@ -128,6 +128,16 @@ class SyncOutboxRepository {
     return Future.wait(rows.map(_toEntry));
   }
 
+  Future<List<OutboxEntry>> unresolvedEntries() async {
+    final rows = await _db.unresolvedOutboxOperations().get();
+    return Future.wait(rows.map(_toEntry));
+  }
+
+  Stream<List<OutboxEntry>> watchUnresolvedEntries() => _db
+      .unresolvedOutboxOperations()
+      .watch()
+      .asyncMap((rows) => Future.wait(rows.map(_toEntry)));
+
   Future<void> clear() => _db.clearOutbox();
 
   Future<OutboxEntry> _toEntry(SyncOutboxData row) async {

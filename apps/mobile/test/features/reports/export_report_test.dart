@@ -334,7 +334,7 @@ void main() {
 
   group('Sync Status Badge & Pending Card Visibility by Role', () {
     testWidgets(
-      'Vacunador (quien realiza atenciones) ve el boton de sync y la tarjeta de pendientes',
+      'Vacunador online sin cambios oculta el boton de sync y conserva su resumen',
       (tester) async {
         final syncController = FakeSyncStatusController();
         await tester.pumpWidget(
@@ -348,7 +348,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.byTooltip('Todo sincronizado.'), findsOneWidget);
+        expect(find.byTooltip('Todo sincronizado.'), findsNothing);
         expect(find.text('Pendientes de sync'), findsOneWidget);
       },
     );
