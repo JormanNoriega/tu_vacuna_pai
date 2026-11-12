@@ -139,45 +139,34 @@ class _InventoryPageState extends State<InventoryPage> {
     }
   }
 
+  Future<void> _shareReport() async {
+    try {
+      final ok = await shareInventoryReport(
+        widget.controller,
+        widget.institutionId,
+      );
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              widget.controller.error ?? 'No se pudo generar el informe.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo compartir el informe.')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: Text(widget.admin ? 'Asignaciones y jornadas' : 'Mis entregas'),
-      actions: [
-        if (widget.admin && widget.online)
-          IconButton(
-            tooltip: 'Generar informe CSV',
-            icon: const Icon(Icons.ios_share),
-            onPressed: widget.controller.isLoading
-                ? null
-                : () async {
-                    try {
-                      final ok = await shareInventoryReport(
-                        widget.controller,
-                        widget.institutionId,
-                      );
-                      if (!ok && context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              widget.controller.error ??
-                                  'No se pudo generar el informe.',
-                            ),
-                          ),
-                        );
-                      }
-                    } catch (_) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('No se pudo compartir el informe.'),
-                          ),
-                        );
-                      }
-                    }
-                  },
-          ),
-      ],
     ),
     body: !widget.online
         ? const Center(
@@ -212,6 +201,19 @@ class _InventoryPageState extends State<InventoryPage> {
                         ),
                       ),
                     if (widget.admin) ...[
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton.icon(
+                          onPressed: c.isLoading ? null : _shareReport,
+                          icon: const Icon(Icons.file_download_outlined),
+                          label: const Text('Generar informe CSV'),
+                        ),
+                      ),
+                      Text(
+                        'Incluye existencias, movimientos, entregas, jornadas y novedades.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                       const SizedBox(height: 20),
                       Text(
                         'Jornadas',

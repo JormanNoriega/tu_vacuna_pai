@@ -292,6 +292,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Crear lote'), findsNothing);
+    expect(find.text('Generar informe CSV'), findsOneWidget);
     await tester.tap(find.byTooltip('Acciones del lote'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Entregar frascos'));
