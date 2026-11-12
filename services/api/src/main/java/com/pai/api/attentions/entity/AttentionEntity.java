@@ -1,5 +1,10 @@
 package com.pai.api.attentions.entity;
 
+import com.pai.api.attentions.state.AttentionState;
+import com.pai.api.attentions.state.CancelledState;
+import com.pai.api.attentions.state.CompletedState;
+import com.pai.api.attentions.state.DraftState;
+import com.pai.api.attentions.state.InProgressState;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -24,7 +29,20 @@ public class AttentionEntity {
     DRAFT,
     IN_PROGRESS,
     COMPLETED,
-    CANCELLED
+    CANCELLED;
+
+    public AttentionState toState() {
+      if (this == IN_PROGRESS) {
+        return InProgressState.INSTANCE;
+      }
+      if (this == COMPLETED) {
+        return CompletedState.INSTANCE;
+      }
+      if (this == CANCELLED) {
+        return CancelledState.INSTANCE;
+      }
+      return DraftState.INSTANCE;
+    }
   }
 
   @Id
@@ -100,46 +118,6 @@ public class AttentionEntity {
     this.updatedAt = now;
   }
 
-  public boolean isEditable() {
-    return status == Status.DRAFT || status == Status.IN_PROGRESS;
-  }
-
-  public boolean acceptsDoses() {
-    return isEditable();
-  }
-
-  public void updateDetails(Instant attentionDate, String observations, Instant now) {
-    this.attentionDate = attentionDate;
-    this.observations = observations;
-    this.updatedAt = now;
-  }
-
-  /** Aplica los datos de registro/cierre: esquema completo y PAIWEB. */
-  public void applyRegistrationDetails(
-      Boolean completeScheme,
-      Boolean paiwebRegistered,
-      String paiwebNotRegisteredReason,
-      Instant now) {
-    if (completeScheme != null) {
-      this.completeScheme = completeScheme;
-    }
-    if (paiwebRegistered != null) {
-      this.paiwebRegistered = paiwebRegistered;
-    }
-    this.paiwebNotRegisteredReason = this.paiwebRegistered ? null : paiwebNotRegisteredReason;
-    this.updatedAt = now;
-  }
-
-  public void complete(Instant now) {
-    this.status = Status.COMPLETED;
-    this.updatedAt = now;
-  }
-
-  public void cancel(Instant now) {
-    this.status = Status.CANCELLED;
-    this.updatedAt = now;
-  }
-
   public UUID getId() {
     return id;
   }
@@ -196,6 +174,10 @@ public class AttentionEntity {
     return createdAt;
   }
 
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
+
   public Double getLatitude() {
     return latitude;
   }
@@ -209,7 +191,57 @@ public class AttentionEntity {
     this.longitude = longitude;
   }
 
-  public Instant getUpdatedAt() {
-    return updatedAt;
+  public AttentionState getState() {
+    return status != null ? status.toState() : DraftState.INSTANCE;
+  }
+
+  public boolean isEditable() {
+    return getState().isEditable();
+  }
+
+  public boolean acceptsDoses() {
+    return getState().acceptsDoses();
+  }
+
+  public void prepareForDose(Instant now) {
+    getState().onRegisterDose(this, now);
+  }
+
+  public void validateCanUpdate() {
+    getState().onUpdate(this, Instant.now());
+  }
+
+  public void updateDetails(Instant attentionDate, String observations, Instant now) {
+    this.attentionDate = attentionDate;
+    this.observations = observations;
+    this.updatedAt = now;
+  }
+
+  public void applyRegistrationDetails(
+      Boolean completeScheme,
+      Boolean paiwebRegistered,
+      String paiwebNotRegisteredReason,
+      Instant now) {
+    if (completeScheme != null) {
+      this.completeScheme = completeScheme;
+    }
+    if (paiwebRegistered != null) {
+      this.paiwebRegistered = paiwebRegistered;
+    }
+    this.paiwebNotRegisteredReason = this.paiwebRegistered ? null : paiwebNotRegisteredReason;
+    this.updatedAt = now;
+  }
+
+  public void complete(Instant now) {
+    getState().onComplete(this, now);
+  }
+
+  public void cancel(Instant now) {
+    getState().onCancel(this, now);
+  }
+
+  public void transitionTo(Status newStatus, Instant now) {
+    this.status = newStatus;
+    this.updatedAt = now;
   }
 }

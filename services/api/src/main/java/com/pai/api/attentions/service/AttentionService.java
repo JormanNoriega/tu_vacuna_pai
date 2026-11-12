@@ -167,7 +167,7 @@ public class AttentionService {
   public AttentionResponse update(UUID actorId, UUID attentionId, UpdateAttentionRequest request) {
     AuthorizedUser actor = identity.resolve(actorId);
     AttentionEntity attention = requireScoped(actor, attentionId);
-    requireEditable(attention);
+    attention.validateCanUpdate();
 
     if (attention.getVersion() != request.version()) {
       throw new OptimisticCatalogException("La atencion fue modificada por otro usuario.");
@@ -216,7 +216,6 @@ public class AttentionService {
         () -> {
           AuthorizedUser actor = identity.resolve(actorId);
           AttentionEntity attention = requireScoped(actor, attentionId);
-          requireEditable(attention);
           attention.complete(Instant.now());
           attentions.save(attention);
           return new IdempotencyCoordinator.WriteResult<>(attention.getId(), response(attention));
@@ -227,10 +226,6 @@ public class AttentionService {
   public AttentionResponse cancel(UUID actorId, UUID attentionId, CancelAttentionRequest request) {
     AuthorizedUser actor = identity.resolve(actorId);
     AttentionEntity attention = requireScoped(actor, attentionId);
-    if (attention.getStatus() == AttentionEntity.Status.CANCELLED) {
-      throw new InvalidClinicalStateException("La atencion ya esta anulada.");
-    }
-
     attention.cancel(Instant.now());
     attentions.save(attention);
 
@@ -271,10 +266,7 @@ public class AttentionService {
         () -> {
           AuthorizedUser actor = identity.resolve(actorId);
           AttentionEntity attention = requireScoped(actor, attentionId);
-          if (!attention.acceptsDoses()) {
-            throw new InvalidClinicalStateException(
-                "No se pueden registrar dosis en una atencion completada o anulada.");
-          }
+          attention.prepareForDose(Instant.now());
           UUID institutionId = attention.getInstitutionId();
 
           VaccineCatalogPolicy.DoseSelection selection =
@@ -374,13 +366,6 @@ public class AttentionService {
         .findByIdAndInstitutionId(attentionId, institutionId)
         .orElseThrow(() -> new AttentionNotFoundException(
             "La atencion no existe o no pertenece a tu institucion."));
-  }
-
-  private void requireEditable(AttentionEntity attention) {
-    if (!attention.isEditable()) {
-      throw new InvalidClinicalStateException(
-          "La atencion no se puede modificar en su estado actual (" + attention.getStatus() + ").");
-    }
   }
 
   private AttentionResponse response(AttentionEntity attention) {

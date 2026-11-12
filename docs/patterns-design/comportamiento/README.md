@@ -13,7 +13,7 @@ En esta categoría se documentan los patrones GoF orientados al comportamiento d
 | **Chain of Responsibility** | Evita el acoplamiento del emisor a sus receptores encadenando los objetos de atención. Permite cortocircuitar y filtrar solicitudes por etapas. | [Cadena de admisión de operaciones de sincronización (`SyncPushService`, `SyncAdmissionChain`)](./chain-of-responsibility/README.md). |
 | **Command** | Encapsula una solicitud como un objeto, permitiendo parametrizar clientes con distintas peticiones, colas y operaciones reversibles. | Manejo de comandos outbox/inbox en sincronización offline (`SyncCommandHandler`, `SyncPushService`). |
 | **Strategy** | Define una familia de algoritmos, encapsula cada uno y los hace intercambiables en tiempo de ejecución. | Estrategias de cifrado de base de datos local y políticas de resolución de conflictos. |
-| **State** | Permite a un objeto alterar su comportamiento cuando su estado interno cambia. | Máquina de estados de la sesión (`SessionStatus`: `signedIn`, `offlineGrace`, `offlineLocked`, `signedOut`) y estados de la atención clínica. |
+| **State** | Permite a un objeto alterar su comportamiento cuando su estado interno cambia. | [Máquina de estados del ciclo de vida clínico (`AttentionEntity`, `AttentionState`)](./state/README.md). |
 | **Observer** | Define una dependencia uno-a-muchos para que cuando un objeto cambie de estado, todos sus dependientes sean notificados automáticamente. | Reactividad en Flutter (`ChangeNotifier`, `ValueNotifier`, `NetworkInfo` stream listeners). |
 | **Template Method** | Define el esqueleto de un algoritmo en una operación, difiriendo algunos pasos a las subclases. | Flujo de procesamiento y validación de exportación de reportes clínicos. |
 
