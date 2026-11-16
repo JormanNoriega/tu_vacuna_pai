@@ -7,6 +7,37 @@ import 'package:tu_vacuna_pai/core/network/api_client.dart';
 import 'package:tu_vacuna_pai/core/network/api_exception.dart';
 
 void main() {
+  test('inventoryObject consulta historial con GET y token', () async {
+    final client = MockClient((request) async {
+      expect(request.method, 'GET');
+      expect(
+        request.url.path,
+        '/api/v1/institutions/inst-1/inventory/assignments/entrega-1/historical-custody-review',
+      );
+      expect(request.headers['Authorization'], 'Bearer token-123');
+      return http.Response(
+        jsonEncode({
+          'assignmentId': 'entrega-1',
+          'receipts': [],
+          'events': [],
+          'reviewReasons': [],
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+    final api = ApiClient(
+      baseUrl: 'http://localhost/api/v1',
+      httpClient: client,
+    );
+    final result = await api.inventoryObject(
+      'token-123',
+      'inst-1',
+      'assignments/entrega-1/historical-custody-review',
+    );
+    expect(result['assignmentId'], 'entrega-1');
+  });
+
   group('ApiClient.fetchMe', () {
     test('envia el Bearer token y parsea el perfil', () async {
       final mockClient = MockClient((request) async {

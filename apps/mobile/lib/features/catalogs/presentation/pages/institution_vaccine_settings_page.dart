@@ -501,7 +501,7 @@ class _InstitutionVaccineSettingsPageState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Existencias disponibles',
+          'Existencias en depósito',
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 4),
@@ -561,7 +561,7 @@ class _InstitutionVaccineSettingsPageState
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Saldo disponible',
+                    'Saldo registrado',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
@@ -579,8 +579,9 @@ class _InstitutionVaccineSettingsPageState
               contentPadding: const EdgeInsets.symmetric(horizontal: 12),
               title: Text('Lote ${lot['lotNumber'] ?? '—'}'),
               subtitle: Text(
-                '${lot['manufacturer'] ?? 'Fabricante no indicado'} · Vence ${lot['expiresOn'] ?? 'sin fecha'}',
+                '${lot['manufacturer'] ?? 'Fabricante no indicado'} · Vence ${lot['expiresOn'] ?? 'sin fecha'}\n${lot['dosesPerVial'] ?? '—'} dosis nominales por frasco',
               ),
+              isThreeLine: true,
               trailing: Text(
                 '${lot['availableVials'] ?? 0} frascos',
                 style: Theme.of(context).textTheme.labelLarge,
@@ -588,7 +589,7 @@ class _InstitutionVaccineSettingsPageState
             ),
           const SizedBox(height: 4),
           Text(
-            'Este saldo corresponde a frascos de vacuna, no a jeringas físicas.',
+            'El saldo está expresado en frascos y no confirma su aptitud sanitaria.',
             style: Theme.of(context).textTheme.bodySmall
                 ?.copyWith(color: AppColors.slate),
           ),

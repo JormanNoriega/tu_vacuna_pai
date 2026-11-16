@@ -34,6 +34,20 @@ class ApiClient {
     fallback: 'No se pudo consultar el inventario. Verifica la conexion.',
   );
 
+  Future<Map<String, dynamic>> inventoryObject(
+    String token,
+    String institutionId,
+    String resource,
+  ) async => _decodeObject(
+    await _send(
+      _http.get(
+        Uri.parse('$baseUrl/institutions/$institutionId/inventory/$resource'),
+        headers: _jsonHeaders(token),
+      ),
+    ),
+    fallback: 'No se pudo consultar el inventario. Verifica la conexion.',
+  );
+
   Future<void> inventoryPost(
     String token,
     String institutionId,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tu_vacuna_pai/core/auth/offline_policy.dart';
 import 'package:tu_vacuna_pai/core/network/api_exception.dart';
@@ -17,6 +19,11 @@ class _Controller extends AsyncController {
 
   Future<void> runThatThrows() => execute((_) async {
     throw const ApiException('boom', statusCode: 500);
+  });
+
+  Future<void> runAwaiting(Future<void> gate) => execute((token) async {
+    executedTokens.add(token);
+    await gate;
   });
 
   @override
@@ -77,6 +84,40 @@ void main() {
       final c = _Controller(sessionManager: FakeSessionManager('t'));
       c.setError('validacion offline');
       expect(c.error, 'validacion offline');
+    });
+
+    test('una respuesta tardia tras dispose no notifica ni lanza', () async {
+      final gate = Completer<void>();
+      final c = _Controller(sessionManager: FakeSessionManager('t'));
+      final pending = c.runAwaiting(gate.future);
+      c.dispose();
+      expect(c.isDisposed, isTrue);
+
+      gate.complete();
+      await expectLater(pending, completes);
+      expect(c.isLoading, isFalse);
+      expect(c.executedTokens, ['t']);
+    });
+
+    test('dispose es idempotente', () {
+      final c = _Controller(sessionManager: FakeSessionManager('t'));
+      c.dispose();
+      expect(c.dispose, returnsNormally);
+    });
+
+    test('no inicia nuevas ejecuciones tras dispose', () async {
+      final c = _Controller(sessionManager: FakeSessionManager('t'));
+      c.dispose();
+      await expectLater(c.run(), completes);
+      expect(c.executedTokens, isEmpty);
+      expect(c.isLoading, isFalse);
+    });
+
+    test('setError y clearError tras dispose no lanzan', () {
+      final c = _Controller(sessionManager: FakeSessionManager('t'));
+      c.dispose();
+      expect(() => c.setError('tarde'), returnsNormally);
+      expect(() => c.clearError(), returnsNormally);
     });
   });
 }
