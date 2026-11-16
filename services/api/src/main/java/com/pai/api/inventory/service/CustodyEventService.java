@@ -43,13 +43,30 @@ public class CustodyEventService {
       default -> throw new IllegalArgumentException("Tipo de novedad invalido.");
     };
     String detail = requiredText(note);
-    var rows = db.query("SELECT lot_id, vial_count, status FROM app.inventory_assignments "
+    var rows = db.query("SELECT lot_id, received_vials, status FROM app.inventory_assignments "
             + "WHERE institution_id = ? AND id = ? AND vaccinator_id = ? FOR UPDATE",
-        (rs, n) -> new Assignment(rs.getObject("lot_id", UUID.class), rs.getInt("vial_count"), rs.getString("status")),
+        (rs, n) -> new Assignment(rs.getObject("lot_id", UUID.class), rs.getInt("received_vials"), rs.getString("status")),
         institutionId, assignmentId, actor);
     if (rows.isEmpty()) throw new IllegalArgumentException("Entrega no encontrada para el vacunador.");
     Assignment assignment = rows.getFirst();
-    if (!assignment.status().equals("RECEIVED")) throw new IllegalArgumentException("Primero confirma la recepcion de la entrega.");
+    if (!assignment.status().equals("RECEIVED") && !assignment.status().equals("PARTIALLY_RECEIVED")
+        && !assignment.status().equals("CLOSED_WITH_DIFFERENCE"))
+      throw new IllegalArgumentException("Primero confirma la recepcion de la entrega.");
+    var priorEvents = db.query("SELECT assignment_id, reported_by, vial_count, status, report_note "
+            + "FROM app.inventory_custody_events WHERE institution_id = ? AND id = ?",
+        (rs, n) -> new Reported(rs.getObject("assignment_id", UUID.class),
+            rs.getObject("reported_by", UUID.class), rs.getInt("vial_count"),
+            rs.getString("status"), rs.getString("report_note")), institutionId, id);
+    if (!priorEvents.isEmpty()) {
+      var prior = priorEvents.getFirst();
+      boolean sameKind = status.equals(prior.status())
+          || (status.equals("RETURN_PENDING") && (prior.status().equals("RETURN_AVAILABLE")
+              || prior.status().equals("RETURN_QUARANTINED")));
+      if (!Objects.equals(prior.assignment(), assignmentId) || !Objects.equals(prior.actor(), actor)
+          || prior.vials() != vials || !sameKind || !Objects.equals(prior.note(), detail))
+        throw new IllegalArgumentException("Identificador de novedad usado con datos diferentes.");
+      return;
+    }
     Long recorded = db.queryForObject("SELECT COALESCE(SUM(vial_count), 0) FROM app.inventory_custody_events "
         + "WHERE institution_id = ? AND assignment_id = ?", Long.class, institutionId, assignmentId);
     // Una incidencia puede afectar frascos comprometidos y siempre debe poder
@@ -121,5 +138,6 @@ public class CustodyEventService {
     return value.trim();
   }
   private record Assignment(UUID lot, int vials, String status) {}
+  private record Reported(UUID assignment, UUID actor, int vials, String status, String note) {}
   private record Pending(UUID assignment, UUID lot, int vials, String status, String confirmationNote) {}
 }

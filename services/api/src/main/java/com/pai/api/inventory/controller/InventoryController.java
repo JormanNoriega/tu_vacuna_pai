@@ -7,6 +7,8 @@ import com.pai.api.shared.security.ActorResolver;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
@@ -55,6 +57,12 @@ public class InventoryController {
       @NotNull Instant occurredAt, @NotBlank @Size(max = 1000) String note, UUID campaignId) {}
 
   public record ReceiveRequest(@Positive int vials) {}
+  public record PartialReceiveRequest(@NotNull UUID id, @NotNull @PositiveOrZero Integer vials,
+      @Size(max = 1000) String note) {}
+  public record ResolveDifferenceRequest(@NotNull UUID id, @NotBlank String kind,
+      @NotNull @Positive Integer vials, @NotBlank @Size(max = 1000) String note) {}
+  public record RegularizeDepotRequest(@NotNull UUID id, @NotNull @Positive Integer vials,
+      @NotBlank @Size(max = 1000) String note, @AssertTrue boolean physicalAndSuitable) {}
 
   public record CreatedId(UUID id) {}
 
@@ -90,6 +98,13 @@ public class InventoryController {
     return service.listMovements(ActorResolver.actorId(auth), institutionId);
   }
 
+  @GetMapping("/pending-follow-ups")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'INVENTORY_READ')")
+  public List<InventoryService.PendingFollowUp> pendingFollowUps(Authentication auth,
+      @PathVariable UUID institutionId) {
+    return service.listPendingFollowUps(ActorResolver.actorId(auth), institutionId);
+  }
+
   @PostMapping("/entries")
   @PreAuthorize("@authorization.hasPermission(authentication, 'INVENTORY_WRITE')")
   public ResponseEntity<CreatedId> entry(Authentication auth, @PathVariable UUID institutionId,
@@ -106,6 +121,20 @@ public class InventoryController {
     return service.listAssignments(ActorResolver.actorId(auth), institutionId);
   }
 
+  @GetMapping("/assignments/{assignmentId}/historical-custody-review")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'INVENTORY_READ')")
+  public InventoryService.HistoricalReview historicalCustodyReview(Authentication auth,
+      @PathVariable UUID institutionId, @PathVariable UUID assignmentId) {
+    return service.reviewHistoricalCustody(ActorResolver.actorId(auth), institutionId, assignmentId);
+  }
+
+  @GetMapping("/assignments/{assignmentId}/conciliation")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'INVENTORY_READ')")
+  public InventoryService.DeliveryConciliation conciliation(Authentication auth,
+      @PathVariable UUID institutionId, @PathVariable UUID assignmentId) {
+    return service.reviewConciliation(ActorResolver.actorId(auth), institutionId, assignmentId);
+  }
+
   @GetMapping("/my-assignments")
   @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
   public List<InventoryService.AssignmentView> myAssignments(Authentication auth,
@@ -118,6 +147,46 @@ public class InventoryController {
   public VialTransfer.Assignment receive(Authentication auth, @PathVariable UUID institutionId,
       @PathVariable UUID assignmentId, @Valid @RequestBody ReceiveRequest request) {
     return service.receive(ActorResolver.actorId(auth), institutionId, assignmentId, request.vials());
+  }
+
+  @PostMapping("/assignments/{assignmentId}/receipts")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
+  public InventoryService.ReceiptResult receivePartial(Authentication auth, @PathVariable UUID institutionId,
+      @PathVariable UUID assignmentId, @Valid @RequestBody PartialReceiveRequest request) {
+    return service.receivePartial(ActorResolver.actorId(auth), institutionId, assignmentId,
+        request.id(), request.vials(), request.note());
+  }
+
+  @GetMapping("/assignments/{assignmentId}/difference-resolutions")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'INVENTORY_READ')")
+  public List<InventoryService.DifferenceResolution> differenceResolutions(Authentication auth,
+      @PathVariable UUID institutionId, @PathVariable UUID assignmentId) {
+    return service.listDifferenceResolutions(ActorResolver.actorId(auth), institutionId, assignmentId);
+  }
+
+  @PostMapping("/assignments/{assignmentId}/difference-resolutions")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'INVENTORY_WRITE')")
+  public InventoryService.DifferenceResolution resolveDifference(Authentication auth,
+      @PathVariable UUID institutionId, @PathVariable UUID assignmentId,
+      @Valid @RequestBody ResolveDifferenceRequest request) {
+    return service.resolveDifference(ActorResolver.actorId(auth), institutionId, assignmentId,
+        request.id(), request.kind(), request.vials(), request.note());
+  }
+
+  @GetMapping("/difference-resolutions/{resolutionId}/depot-regularizations")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'INVENTORY_READ')")
+  public List<InventoryService.DepotRegularization> depotRegularizations(Authentication auth,
+      @PathVariable UUID institutionId, @PathVariable UUID resolutionId) {
+    return service.listDepotRegularizations(ActorResolver.actorId(auth), institutionId, resolutionId);
+  }
+
+  @PostMapping("/difference-resolutions/{resolutionId}/depot-regularizations")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'INVENTORY_WRITE')")
+  public InventoryService.DepotRegularization regularizeDepot(Authentication auth,
+      @PathVariable UUID institutionId, @PathVariable UUID resolutionId,
+      @Valid @RequestBody RegularizeDepotRequest request) {
+    return service.regularizeDepot(ActorResolver.actorId(auth), institutionId, resolutionId,
+        request.id(), request.vials(), request.note(), request.physicalAndSuitable());
   }
 
   @PostMapping("/assignments")
