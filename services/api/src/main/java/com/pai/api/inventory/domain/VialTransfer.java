@@ -15,6 +15,8 @@ public final class VialTransfer {
 
   public enum Status {
     IN_TRANSIT,
+    PARTIALLY_RECEIVED,
+    CLOSED_WITH_DIFFERENCE,
     RECEIVED
   }
 

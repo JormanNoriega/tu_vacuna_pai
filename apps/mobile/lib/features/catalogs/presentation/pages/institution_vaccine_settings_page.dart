@@ -175,6 +175,8 @@ class _InstitutionVaccineSettingsPageState
     if (!mounted) return;
     if (ok) {
       setState(() {});
+      await _loadDoses();
+      if (!mounted) return;
       AppSnackbar.success(
         context,
         value ? 'Vacuna habilitada.' : 'Vacuna deshabilitada.',
@@ -210,7 +212,7 @@ class _InstitutionVaccineSettingsPageState
   }
 
   Future<String?> _editValue({required String title, String? initial}) async {
-    final text = TextEditingController(text: initial);
+    var text = initial ?? '';
     final form = GlobalKey<FormState>();
     final result = await showDialog<String>(
       context: context,
@@ -219,7 +221,8 @@ class _InstitutionVaccineSettingsPageState
         content: Form(
           key: form,
           child: TextFormField(
-            controller: text,
+            initialValue: text,
+            onChanged: (value) => text = value,
             autofocus: true,
             maxLength: 200,
             decoration: const InputDecoration(labelText: 'Nombre o texto'),
@@ -228,7 +231,7 @@ class _InstitutionVaccineSettingsPageState
                 : null,
             onFieldSubmitted: (_) {
               if (form.currentState!.validate()) {
-                Navigator.pop(dialogContext, text.text.trim());
+                Navigator.pop(dialogContext, text.trim());
               }
             },
           ),
@@ -241,7 +244,7 @@ class _InstitutionVaccineSettingsPageState
           FilledButton(
             onPressed: () {
               if (form.currentState!.validate()) {
-                Navigator.pop(dialogContext, text.text.trim());
+                Navigator.pop(dialogContext, text.trim());
               }
             },
             child: const Text('Guardar'),
@@ -249,7 +252,6 @@ class _InstitutionVaccineSettingsPageState
         ],
       ),
     );
-    text.dispose();
     return result;
   }
 
@@ -465,16 +467,19 @@ class _InstitutionVaccineSettingsPageState
           ],
         ),
         const Divider(height: 28),
-        SwitchListTile.adaptive(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Habilitada en esta institución'),
-          subtitle: Text(
-            enabled
-                ? 'Disponible para las atenciones nuevas.'
-                : 'No aparecerá en nuevas atenciones.',
+        Material(
+          type: MaterialType.transparency,
+          child: SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Habilitada en esta institución'),
+            subtitle: Text(
+              enabled
+                  ? 'Disponible para las atenciones nuevas.'
+                  : 'No aparecerá en nuevas atenciones.',
+            ),
+            value: enabled,
+            onChanged: widget.canWrite ? _toggleEnabled : null,
           ),
-          value: enabled,
-          onChanged: widget.canWrite ? _toggleEnabled : null,
         ),
       ],
     ),
@@ -496,7 +501,7 @@ class _InstitutionVaccineSettingsPageState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Existencias disponibles',
+          'Existencias en depósito',
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 4),
@@ -556,7 +561,7 @@ class _InstitutionVaccineSettingsPageState
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Saldo disponible',
+                    'Saldo registrado',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
@@ -574,8 +579,9 @@ class _InstitutionVaccineSettingsPageState
               contentPadding: const EdgeInsets.symmetric(horizontal: 12),
               title: Text('Lote ${lot['lotNumber'] ?? '—'}'),
               subtitle: Text(
-                '${lot['manufacturer'] ?? 'Fabricante no indicado'} · Vence ${lot['expiresOn'] ?? 'sin fecha'}',
+                '${lot['manufacturer'] ?? 'Fabricante no indicado'} · Vence ${lot['expiresOn'] ?? 'sin fecha'}\n${lot['dosesPerVial'] ?? '—'} dosis nominales por frasco',
               ),
+              isThreeLine: true,
               trailing: Text(
                 '${lot['availableVials'] ?? 0} frascos',
                 style: Theme.of(context).textTheme.labelLarge,
@@ -583,7 +589,7 @@ class _InstitutionVaccineSettingsPageState
             ),
           const SizedBox(height: 4),
           Text(
-            'Este saldo corresponde a frascos de vacuna, no a jeringas físicas.',
+            'El saldo está expresado en frascos y no confirma su aptitud sanitaria.',
             style: Theme.of(context).textTheme.bodySmall
                 ?.copyWith(color: AppColors.slate),
           ),
@@ -597,8 +603,10 @@ class _InstitutionVaccineSettingsPageState
     children: [
       Text('Dosis del esquema', style: Theme.of(context).textTheme.titleLarge),
       const SizedBox(height: 4),
-      const Text(
-        'Opciones del catálogo clínico, solo lectura. No representan existencias físicas.',
+      Text(
+        'Opciones del catálogo clínico · Solo lectura',
+        style: Theme.of(context).textTheme.bodyMedium
+            ?.copyWith(color: AppColors.slate),
       ),
       const SizedBox(height: 12),
       if (_dosesError != null)
@@ -611,15 +619,43 @@ class _InstitutionVaccineSettingsPageState
           Icons.info_outline,
         )
       else
-        for (final dose in _doses!)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.medication_outlined),
-            title: Text(dose.displayName),
-            subtitle: dose.isDefault
-                ? const Text('Seleccionada por defecto')
-                : null,
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(14),
           ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final dose in _doses!)
+                    Chip(
+                      avatar: dose.isDefault
+                          ? const Icon(Icons.check_circle_outline, size: 18)
+                          : null,
+                      label: Text(
+                        dose.isDefault
+                            ? '${dose.displayName} · Por defecto'
+                            : dose.displayName,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Estas dosis no representan existencias físicas.',
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: AppColors.slate),
+              ),
+            ],
+          ),
+        ),
     ],
   );
 

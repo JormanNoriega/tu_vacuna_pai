@@ -1,6 +1,7 @@
 package com.pai.api.attentions.repository;
 
 import com.pai.api.attentions.entity.AttentionEntity;
+import com.pai.api.attentions.state.AttentionState;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -49,7 +50,7 @@ public interface AttentionRepository extends JpaRepository<AttentionEntity, UUID
       """)
   long countDistinctPatientsByInstitutionId(
       @Param("institutionId") UUID institutionId,
-      @Param("excluded") AttentionEntity.Status excluded);
+      @Param("excluded") AttentionState excluded);
 
   /**
    * Pacientes distintos con al menos una atencion no anulada atendidos por un profesional especifico.
@@ -62,24 +63,24 @@ public interface AttentionRepository extends JpaRepository<AttentionEntity, UUID
   long countDistinctPatientsByInstitutionIdAndProfessionalId(
       @Param("institutionId") UUID institutionId,
       @Param("professionalId") UUID professionalId,
-      @Param("excluded") AttentionEntity.Status excluded);
+      @Param("excluded") AttentionState excluded);
 
   /**
    * Ultimas 5 atenciones no anuladas de la institucion para la seccion de ultimos registros del home.
    */
   List<AttentionEntity> findTop5ByInstitutionIdAndStatusNotOrderByAttentionDateDesc(
-      UUID institutionId, AttentionEntity.Status excluded);
+      UUID institutionId, AttentionState excluded);
 
   /**
    * Ultimas 5 atenciones no anuladas realizadas por el profesional para el home del vacunador.
    */
   List<AttentionEntity> findTop5ByInstitutionIdAndProfessionalIdAndStatusNotOrderByAttentionDateDesc(
-      UUID institutionId, UUID professionalId, AttentionEntity.Status excluded);
+      UUID institutionId, UUID professionalId, AttentionState excluded);
 
   /**
    * Ultimas 5 atenciones no anuladas realizadas por el profesional ordenadas por fecha de atencion y creacion.
    */
   List<AttentionEntity>
       findTop5ByInstitutionIdAndProfessionalIdAndStatusNotOrderByAttentionDateDescCreatedAtDesc(
-          UUID institutionId, UUID professionalId, AttentionEntity.Status excluded);
+          UUID institutionId, UUID professionalId, AttentionState excluded);
 }

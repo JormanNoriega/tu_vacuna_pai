@@ -21,11 +21,30 @@ abstract class AsyncController extends ChangeNotifier {
 
   final SessionManager sessionManager;
 
+  bool _disposed = false;
   bool _isLoading = false;
   String? _error;
 
   bool get isLoading => _isLoading;
   String? get error => _error;
+
+  /// True cuando [dispose] ya se ejecutó.
+  bool get isDisposed => _disposed;
+
+  @override
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    super.dispose();
+  }
+
+  /// Ignora notificaciones posteriores a [dispose]. Una respuesta tardía de una
+  /// pantalla ya cerrada no debe lanzar "used after being disposed".
+  @override
+  void notifyListeners() {
+    if (_disposed) return;
+    super.notifyListeners();
+  }
 
   /// Ejecuta una accion autenticada envolviendo loading y mapeo de errores.
   ///
@@ -33,6 +52,7 @@ abstract class AsyncController extends ChangeNotifier {
   /// accion. Los errores [OfflinePolicyException] y [ApiException] se traducen
   /// con [mapOfflineError] y [mapApiError] respectivamente.
   Future<void> execute(Future<void> Function(String token) action) async {
+    if (_disposed) return;
     _isLoading = true;
     _error = null;
     notifyListeners();

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/auth/offline_access.dart';
+import '../../../auth/domain/entities/session_restore_result.dart';
 import '../../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../../core/presentation/widgets/shimmer_loading.dart';
 import '../../../../core/utils/field_input.dart';
@@ -36,9 +37,45 @@ class CatalogPage extends StatefulWidget {
 
 class _CatalogPageState extends State<CatalogPage> {
   final _searchController = TextEditingController();
+  InventoryController? _stockController;
+  bool _stockLoaded = false;
+  Future<void>? _stockRequest;
+
+  Future<void> _loadStock() async {
+    final controller = _stockController;
+    if (controller == null || widget.offline.status != SessionStatus.signedIn) {
+      return;
+    }
+    if (_stockRequest != null) return _stockRequest;
+    if (mounted) setState(() => _stockLoaded = false);
+    final request = controller.loadLots(widget.user.institution.id);
+    _stockRequest = request;
+    await request;
+    _stockRequest = null;
+    if (mounted) setState(() => _stockLoaded = controller.error == null);
+  }
+
+  @override
+  void didUpdateWidget(covariant CatalogPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.offline.status != SessionStatus.signedIn &&
+        widget.offline.status == SessionStatus.signedIn) {
+      _loadStock();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    final inventory = widget.inventoryController;
+    if (inventory != null && widget.user.hasPermission('INVENTORY_READ')) {
+      _stockController = InventoryController(
+        sessionManager: inventory.sessionManager,
+        api: inventory.api,
+        renewSession: inventory.renewSession,
+      );
+      _loadStock();
+    }
     if (institutionAdmin) {
       widget.controller.loadInstitution(widget.user.institution.id);
       widget.controller.loadAvailable(widget.user.institution.id);
@@ -54,6 +91,9 @@ class _CatalogPageState extends State<CatalogPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    // AsyncController ignora notificaciones posteriores a dispose, así que una
+    // consulta de existencias en curso no impide liberar el controlador.
+    _stockController?.dispose();
     super.dispose();
   }
 
@@ -73,19 +113,30 @@ class _CatalogPageState extends State<CatalogPage> {
       animation: widget.controller,
       builder: (context, _) {
         final c = widget.controller;
-        return Column(
-          children: [
-            _search(c),
-            _summary(c),
-            if (institutionAdmin && c.hasAvailableVaccines) ...[
-              _availableSection(c),
-              const Divider(height: 1),
-            ],
-            if (c.error != null)
-              _error(c)
-            else
-              Expanded(
-                child: AnimatedSwitcher(
+        return RefreshIndicator(
+          onRefresh: () async {
+            if (institutionAdmin) {
+              await c.loadInstitution(widget.user.institution.id);
+            } else if (globalAdmin) {
+              await c.load();
+            } else {
+              await c.loadEffective();
+            }
+            await _loadStock();
+          },
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              _search(c),
+              _summary(c),
+              if (institutionAdmin && c.hasAvailableVaccines) ...[
+                _availableSection(c),
+                const Divider(height: 1),
+              ],
+              if (c.error != null)
+                _error(c)
+              else
+                AnimatedSwitcher(
                   duration: const Duration(milliseconds: 300),
                   switchInCurve: Curves.easeIn,
                   switchOutCurve: Curves.easeOut,
@@ -93,6 +144,8 @@ class _CatalogPageState extends State<CatalogPage> {
                       ? ShimmerLoading(
                           key: const ValueKey('skeleton_view'),
                           child: ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
                             padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
                             itemCount: 6,
                             itemBuilder: (context, index) => _skeletonCard(),
@@ -100,22 +153,17 @@ class _CatalogPageState extends State<CatalogPage> {
                         )
                       : c.filteredVaccines.isEmpty
                       ? _empty(c)
-                      : RefreshIndicator(
+                      : ListView.builder(
                           key: const ValueKey('real_list_view'),
-                          onRefresh: () => institutionAdmin
-                              ? c.loadInstitution(widget.user.institution.id)
-                              : globalAdmin
-                              ? c.load()
-                              : c.loadEffective(),
-                          child: ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                            itemCount: c.filteredVaccines.length,
-                            itemBuilder: (_, i) => _card(c.filteredVaccines[i]),
-                          ),
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                          itemCount: c.filteredVaccines.length,
+                          itemBuilder: (_, i) => _card(c.filteredVaccines[i]),
                         ),
                 ),
-              ),
-          ],
+            ],
+          ),
         );
       },
     ),
@@ -585,6 +633,42 @@ class _CatalogPageState extends State<CatalogPage> {
                 ),
                 const SizedBox(height: 14),
 
+                if (institutionAdmin && _stockController != null) ...[
+                  ListenableBuilder(
+                    listenable: _stockController!,
+                    builder: (context, _) {
+                      final stock = _stockController!;
+                      if (widget.offline.status != SessionStatus.signedIn) {
+                        return const Text(
+                          'Saldo en depósito: requiere conexión',
+                        );
+                      }
+                      if (!_stockLoaded) {
+                        return Text(
+                          stock.error == null
+                              ? 'Consultando saldo en depósito…'
+                              : 'Saldo en depósito no disponible',
+                        );
+                      }
+                      final lots = stock.lots
+                          .where((lot) => lot['vaccineId'] == v.id)
+                          .toList();
+                      if (lots.any((lot) => lot['availableVials'] is! num)) {
+                        return const Text('Saldo en depósito no disponible');
+                      }
+                      final total = lots.fold<int>(
+                        0,
+                        (sum, lot) =>
+                            sum + (lot['availableVials'] as num).toInt(),
+                      );
+                      return Text(
+                        '$total frascos en depósito · ${lots.length} lotes',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 // Fila de Badges / Chips
                 Wrap(
                   spacing: 8,
@@ -753,7 +837,7 @@ class _CatalogPageState extends State<CatalogPage> {
       v.hasPneumococcalType ||
       v.hasVialCount ||
       v.hasObservation;
-  Widget _error(CatalogController c) => Expanded(
+  Widget _error(CatalogController c) => SizedBox(
     child: Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -809,6 +893,7 @@ class _CatalogPageState extends State<CatalogPage> {
     );
     if (!mounted) return;
     await widget.controller.loadInstitution(widget.user.institution.id);
+    await _loadStock();
   }
 
   Future<void> _toggle(Vaccine v) async {

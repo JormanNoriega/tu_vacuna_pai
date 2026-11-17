@@ -117,15 +117,19 @@ class InventoryMobileE2eTest {
         .run()) {
       var db = context.getBean(JdbcTemplate.class);
       db.execute("CREATE SCHEMA app");
+      db.execute("CREATE TABLE app.institutions (id UUID PRIMARY KEY)");
+      db.update("INSERT INTO app.institutions VALUES (?)", INST);
       db.execute("CREATE TABLE app.vaccines (id UUID PRIMARY KEY, name VARCHAR)");
       db.execute("CREATE TABLE app.users (id UUID PRIMARY KEY, institution_id UUID, status VARCHAR)");
       db.execute("CREATE TABLE app.roles (id UUID PRIMARY KEY, code VARCHAR)");
       db.execute("CREATE TABLE app.user_roles (user_id UUID, role_id UUID)");
       db.execute("CREATE TABLE app.inventory_lots (id UUID PRIMARY KEY, institution_id UUID, vaccine_id UUID, manufacturer VARCHAR, lot_number VARCHAR, expires_on DATE, doses_per_vial INT, available_vials INT DEFAULT 0 CHECK (available_vials >= 0), created_by UUID)");
-      db.execute("CREATE TABLE app.inventory_assignments (id UUID PRIMARY KEY, institution_id UUID, lot_id UUID, vaccinator_id UUID, vial_count INT, status VARCHAR, dispatched_by UUID, dispatched_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, received_at TIMESTAMP WITH TIME ZONE, campaign_id UUID)");
+      db.execute("CREATE TABLE app.inventory_assignments (id UUID PRIMARY KEY, institution_id UUID, lot_id UUID, vaccinator_id UUID, vial_count INT, received_vials INT DEFAULT 0 NOT NULL, resolved_vials INT DEFAULT 0 NOT NULL, status VARCHAR, dispatched_by UUID, dispatched_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, received_at TIMESTAMP WITH TIME ZONE, campaign_id UUID)");
+      db.execute("CREATE TABLE app.inventory_receipts (id UUID PRIMARY KEY, institution_id UUID, assignment_id UUID, lot_id UUID, received_by UUID, vials INT, difference_note VARCHAR, received_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP)");
       db.execute("CREATE TABLE app.inventory_campaigns (id UUID PRIMARY KEY, institution_id UUID, name VARCHAR, location VARCHAR, starts_on DATE, ends_on DATE, status VARCHAR, created_by UUID, finished_by UUID, finished_at TIMESTAMP WITH TIME ZONE)");
       db.execute("CREATE TABLE app.inventory_campaign_participants (institution_id UUID, campaign_id UUID, vaccinator_id UUID, added_by UUID, PRIMARY KEY(campaign_id, vaccinator_id))");
       db.execute("CREATE TABLE app.inventory_movements (id UUID PRIMARY KEY, institution_id UUID, lot_id UUID, assignment_id UUID, kind VARCHAR, vial_count INT, occurred_at TIMESTAMP WITH TIME ZONE, recorded_by UUID, note VARCHAR)");
+      db.execute("CREATE TABLE app.inventory_lot_creation_operations (lot_id UUID PRIMARY KEY, institution_id UUID, kind VARCHAR, movement_id UUID UNIQUE, created_by UUID)");
       db.execute("CREATE TABLE app.inventory_custody_events (id UUID PRIMARY KEY, institution_id UUID, lot_id UUID, "
           + "assignment_id UUID, vial_count INT, status VARCHAR, reported_by UUID, report_note VARCHAR, "
           + "reported_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, confirmed_by UUID, "

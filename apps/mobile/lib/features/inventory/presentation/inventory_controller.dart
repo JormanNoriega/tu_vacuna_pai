@@ -22,6 +22,7 @@ class InventoryController extends AsyncController {
 
   @override
   Future<void> execute(Future<void> Function(String token) action) async {
+    if (isDisposed) return;
     final session = await sessionManager.loadSession();
     if (session != null &&
         !session.expiresAt.isAfter(DateTime.now()) &&
@@ -100,6 +101,51 @@ class InventoryController extends AsyncController {
   Future<void> loadMovements(String institution) => execute((token) async {
     movements = await api.inventoryList(token, institution, 'movements');
   });
+
+  /// Solo lectura: null representa un fallo, no una lista vacía.
+  Future<List<Map<String, dynamic>>?> loadPendingFollowUps(
+    String institution,
+  ) async {
+    List<Map<String, dynamic>>? result;
+    await execute((token) async {
+      result = await api.inventoryList(
+        token,
+        institution,
+        'pending-follow-ups',
+      );
+    });
+    return result;
+  }
+
+  Future<Map<String, dynamic>?> loadHistoricalCustodyReview(
+    String institution,
+    String assignmentId,
+  ) async {
+    Map<String, dynamic>? result;
+    await execute((token) async {
+      result = await api.inventoryObject(
+        token,
+        institution,
+        'assignments/${Uri.encodeComponent(assignmentId)}/historical-custody-review',
+      );
+    });
+    return result;
+  }
+
+  Future<Map<String, dynamic>?> loadConciliation(
+    String institution,
+    String assignmentId,
+  ) async {
+    Map<String, dynamic>? result;
+    await execute((token) async {
+      result = await api.inventoryObject(
+        token,
+        institution,
+        'assignments/${Uri.encodeComponent(assignmentId)}/conciliation',
+      );
+    });
+    return result;
+  }
 
   Future<void> loadFormOptions(String institution, {required bool isLot}) =>
       execute((token) async {

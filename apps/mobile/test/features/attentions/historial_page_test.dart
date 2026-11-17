@@ -14,7 +14,6 @@ import 'package:tu_vacuna_pai/features/patients/domain/entities/patient.dart';
 import 'package:tu_vacuna_pai/features/patients/domain/repositories/patients_repository.dart';
 import 'package:tu_vacuna_pai/features/patients/domain/use_cases/patient_profile_use_cases.dart';
 import 'package:tu_vacuna_pai/features/patients/domain/use_cases/search_patient.dart';
-import 'package:tu_vacuna_pai/features/patients/presentation/pages/patient_detail_page.dart';
 import 'package:tu_vacuna_pai/features/patients/presentation/patient_detail_controller.dart';
 import 'package:tu_vacuna_pai/features/attentions/presentation/history_controller.dart';
 import 'package:tu_vacuna_pai/features/attentions/presentation/pages/historial_page.dart';

@@ -73,6 +73,39 @@ class InventoryControllerTest {
   private String base() { return "/api/v1/institutions/" + institution + "/inventory"; }
 
   @Test
+  void pendingFollowUpsRequireInventoryRead() throws Exception {
+    authorize("ATTENTION_CREATE");
+    assertThatThrownBy(() -> controller.pendingFollowUps(auth, institution)).isInstanceOf(AccessDeniedException.class);
+    authorize("INVENTORY_READ");
+    UUID id = UUID.randomUUID();
+    when(service.listPendingFollowUps(actor, institution)).thenReturn(List.of(
+        new InventoryService.PendingFollowUp(id, UUID.randomUUID(), UUID.randomUUID(), "Vacuna", "L1",
+            "RETURN_PENDING", 3, 0, 3, actor, Instant.parse("2026-01-01T00:00:00Z"), "Conteo")));
+    mvc.perform(get(base() + "/pending-follow-ups").principal(auth))
+        .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(id.toString()))
+        .andExpect(jsonPath("$[0].kind").value("RETURN_PENDING"))
+        .andExpect(jsonPath("$[0].availableVials").doesNotExist());
+    verify(service).listPendingFollowUps(actor, institution);
+  }
+
+  @Test
+  void historicalReviewRequiresInventoryReadAndUsesAuthenticatedScope() throws Exception {
+    UUID assignment = UUID.randomUUID();
+    authorize("ATTENTION_CREATE");
+    assertThatThrownBy(() -> controller.historicalCustodyReview(auth, institution, assignment))
+        .isInstanceOf(AccessDeniedException.class);
+    authorize("INVENTORY_READ");
+    when(service.reviewHistoricalCustody(actor, institution, assignment))
+        .thenReturn(new InventoryService.HistoricalReview(assignment, UUID.randomUUID(), actor,
+            10, 8, 0, "PARTIALLY_RECEIVED", false, List.of(), List.of(), java.util.Set.of("RECEIPT_TOTAL_MISMATCH")));
+    mvc.perform(get(base() + "/assignments/" + assignment + "/historical-custody-review").principal(auth))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.reviewReasons[0]").value("RECEIPT_TOTAL_MISMATCH"))
+        .andExpect(jsonPath("$.availableVials").doesNotExist());
+    verify(service).reviewHistoricalCustody(actor, institution, assignment);
+  }
+
+  @Test
   void newLotWithEntryValidatesAndRequiresWritePermission() throws Exception {
     UUID lot = UUID.randomUUID();
     UUID vaccine = UUID.randomUUID();
@@ -155,6 +188,73 @@ class InventoryControllerTest {
     assertThatThrownBy(() -> controller.receive(auth, institution, UUID.randomUUID(),
         new InventoryController.ReceiveRequest(1))).isInstanceOf(AccessDeniedException.class);
     verifyNoInteractions(service);
+  }
+
+  @Test
+  void depotRegularizationRequiresWriteAndPhysicalConfirmation() throws Exception {
+    UUID resolution = UUID.randomUUID();
+    UUID id = UUID.randomUUID();
+    authorize("ATTENTION_CREATE");
+    assertThatThrownBy(() -> controller.regularizeDepot(auth, institution, resolution,
+        new InventoryController.RegularizeDepotRequest(id, 1, "Conteo", true)))
+        .isInstanceOf(AccessDeniedException.class);
+    authorize("INVENTORY_WRITE");
+    when(service.regularizeDepot(actor, institution, resolution, id, 1, "Conteo", true))
+        .thenReturn(new InventoryService.DepotRegularization(id, resolution, 1, "Conteo", actor, Instant.now()));
+    String path = base() + "/difference-resolutions/" + resolution + "/depot-regularizations";
+    mvc.perform(post(path).principal(auth).contentType(MediaType.APPLICATION_JSON)
+        .content("{\"id\":\"" + id + "\",\"vials\":1,\"note\":\"Conteo\",\"physicalAndSuitable\":false}"))
+        .andExpect(status().isBadRequest());
+    mvc.perform(post(path).principal(auth).contentType(MediaType.APPLICATION_JSON)
+        .content("{\"id\":\"" + id + "\",\"vials\":1,\"note\":\"Conteo\",\"physicalAndSuitable\":true}"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.vialCount").value(1));
+    verify(service).regularizeDepot(actor, institution, resolution, id, 1, "Conteo", true);
+    verifyNoMoreInteractions(service);
+  }
+
+  @Test
+  void differenceResolutionRequiresWriteAndRejectsMissingEvidence() throws Exception {
+    UUID assignment = UUID.randomUUID();
+    UUID id = UUID.randomUUID();
+    authorize("ATTENTION_CREATE");
+    assertThatThrownBy(() -> controller.resolveDifference(auth, institution, assignment,
+        new InventoryController.ResolveDifferenceRequest(id, "LOST", 1, "Acta")))
+        .isInstanceOf(AccessDeniedException.class);
+    authorize("INVENTORY_WRITE");
+    when(service.resolveDifference(actor, institution, assignment, id, "LOST", 1, "Acta"))
+        .thenReturn(new InventoryService.DifferenceResolution(id, assignment, "LOST", 1, "Acta", actor, Instant.now(), 0));
+    mvc.perform(post(base() + "/assignments/" + assignment + "/difference-resolutions").principal(auth)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"id\":\"" + id + "\",\"kind\":\"LOST\",\"vials\":1,\"note\":\"Acta\"}"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.kind").value("LOST"));
+    mvc.perform(post(base() + "/assignments/" + assignment + "/difference-resolutions").principal(auth)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"id\":\"" + id + "\",\"kind\":\"LOST\",\"vials\":1,\"note\":\" \"}"))
+        .andExpect(status().isBadRequest());
+    verify(service).resolveDifference(actor, institution, assignment, id, "LOST", 1, "Acta");
+    verifyNoMoreInteractions(service);
+  }
+
+  @Test
+  void partialReceiptRequiresPermissionAndValidatesIdentityAndCount() throws Exception {
+    UUID assignment = UUID.randomUUID();
+    UUID receipt = UUID.randomUUID();
+    authorize("INVENTORY_WRITE");
+    assertThatThrownBy(() -> controller.receivePartial(auth, institution, assignment,
+        new InventoryController.PartialReceiveRequest(receipt, 2, "Faltante")))
+        .isInstanceOf(AccessDeniedException.class);
+    authorize("ATTENTION_CREATE");
+    when(service.receivePartial(actor, institution, assignment, receipt, 2, "Faltante"))
+        .thenReturn(new InventoryService.ReceiptResult(receipt, assignment, 2, 2, 1, "PARTIALLY_RECEIVED"));
+    mvc.perform(post(base() + "/assignments/" + assignment + "/receipts").principal(auth)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"id\":\"" + receipt + "\",\"vials\":2,\"note\":\"Faltante\"}"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.pendingDifference").value(1));
+    mvc.perform(post(base() + "/assignments/" + assignment + "/receipts").principal(auth)
+        .contentType(MediaType.APPLICATION_JSON).content("{\"id\":\"" + receipt + "\"}"))
+        .andExpect(status().isBadRequest());
+    verify(service).receivePartial(actor, institution, assignment, receipt, 2, "Faltante");
+    verifyNoMoreInteractions(service);
   }
 
   @Test

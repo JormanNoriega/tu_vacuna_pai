@@ -181,6 +181,12 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
             const _DashboardDestination(
+              icon: Icons.local_shipping_outlined,
+              selectedIcon: Icons.local_shipping,
+              label: 'Entregas y jornadas',
+              requiredPermissions: ['INVENTORY_READ', 'ATTENTION_CREATE'],
+            ),
+            const _DashboardDestination(
               icon: Icons.admin_panel_settings_outlined,
               selectedIcon: Icons.admin_panel_settings_rounded,
               label: 'Administracion',
@@ -295,51 +301,25 @@ class _DashboardPageState extends State<DashboardPage> {
       );
     }
 
+    if (_destinations[_selectedIndex].label == 'Entregas y jornadas') {
+      final controller = widget.inventoryController;
+      if (controller == null) {
+        return const Center(child: Text('Entregas no disponibles.'));
+      }
+      return InventoryPage(
+        controller: controller,
+        institutionId: widget.user.institution.id,
+        admin: widget.user.hasPermission('INVENTORY_READ'),
+        canWrite: widget.user.hasPermission('INVENTORY_WRITE'),
+        online:
+            widget.sessionStatus == SessionStatus.signedIn &&
+            _liveReason != OfflineReason.noNetwork,
+        embedded: true,
+      );
+    }
     if (_destinations[_selectedIndex].isCatalog &&
         widget.catalogController != null) {
-      return Column(
-        children: [
-          if (widget.inventoryController != null &&
-              (widget.user.hasPermission('INVENTORY_READ') ||
-                  widget.user.hasPermission('ATTENTION_CREATE')))
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => InventoryPage(
-                        controller: widget.inventoryController!,
-                        institutionId: widget.user.institution.id,
-                        admin: widget.user.hasPermission('INVENTORY_READ'),
-                        canWrite: widget.user.hasPermission('INVENTORY_WRITE'),
-                        online:
-                            widget.sessionStatus == SessionStatus.signedIn &&
-                            _liveReason != OfflineReason.noNetwork,
-                      ),
-                    ),
-                  ),
-                  icon: const Icon(Icons.inventory_2_outlined),
-                  label: Text(
-                    widget.user.hasPermission('INVENTORY_READ')
-                        ? 'Asignaciones y jornadas'
-                        : 'Mis entregas',
-                  ),
-                ),
-              ),
-            ),
-          Expanded(
-            child: CatalogPage(
-              user: widget.user,
-              controller: widget.catalogController!,
-              offline: _offline,
-              inventoryController: widget.inventoryController,
-              embedded: true,
-            ),
-          ),
-        ],
-      );
+      return _catalogContent();
     }
 
     return _DashboardContent(

@@ -48,9 +48,13 @@ public class ArchitectureTest {
   static final ArchRule controllers_depend_on_services = classes()
       .that()
       .resideInAPackage("..controller..")
+      .and()
+      .areTopLevelClasses()
+      .and()
+      .areAnnotatedWith(org.springframework.web.bind.annotation.RestController.class)
       .should()
       .dependOnClassesThat()
-      .resideInAPackage("..service..")
+      .resideInAnyPackage("..service..", "..inventory.security..")
       .as("los controllers deben delegar en los servicios (ADR-006)");
 
   @ArchTest

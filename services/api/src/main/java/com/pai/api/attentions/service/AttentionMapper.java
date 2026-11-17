@@ -26,7 +26,7 @@ public class AttentionMapper {
         attention.getInstitutionId(),
         attention.getAttentionDate(),
         attention.getConsecutive(),
-        attention.getStatus().name(),
+        attention.getStatus().code(),
         attention.getObservations(),
         attention.isCompleteScheme(),
         attention.isPaiwebRegistered(),

@@ -2,6 +2,7 @@ package com.pai.api.attentions.service;
 
 import com.pai.api.attentions.entity.AppliedDoseEntity;
 import com.pai.api.attentions.entity.AttentionEntity;
+import com.pai.api.attentions.state.CancelledState;
 import com.pai.api.attentions.repository.AppliedDoseRepository;
 import com.pai.api.attentions.repository.AttentionRepository;
 import com.pai.api.reports.domain.PatientIdentity;
@@ -43,7 +44,7 @@ public class ClinicalMetricsQueryService implements ClinicalMetricsQuery {
   @Transactional(readOnly = true)
   public long patientsAttended(UUID institutionId) {
     return attentions.countDistinctPatientsByInstitutionId(
-        institutionId, AttentionEntity.Status.CANCELLED);
+        institutionId, CancelledState.INSTANCE);
   }
 
   @Override
@@ -56,7 +57,7 @@ public class ClinicalMetricsQueryService implements ClinicalMetricsQuery {
   @Transactional(readOnly = true)
   public long patientsAttendedByProfessional(UUID institutionId, UUID professionalId) {
     return attentions.countDistinctPatientsByInstitutionIdAndProfessionalId(
-        institutionId, professionalId, AttentionEntity.Status.CANCELLED);
+        institutionId, professionalId, CancelledState.INSTANCE);
   }
 
   @Override
@@ -77,7 +78,7 @@ public class ClinicalMetricsQueryService implements ClinicalMetricsQuery {
     List<AttentionEntity> attentionList =
         attentions
             .findTop5ByInstitutionIdAndProfessionalIdAndStatusNotOrderByAttentionDateDescCreatedAtDesc(
-                institutionId, professionalId, AttentionEntity.Status.CANCELLED);
+                institutionId, professionalId, CancelledState.INSTANCE);
 
     if (attentionList.isEmpty()) {
       return List.of();

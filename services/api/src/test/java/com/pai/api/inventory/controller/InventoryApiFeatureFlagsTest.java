@@ -36,6 +36,7 @@ class InventoryApiFeatureFlagsTest {
   private ApplicationContextRunner runner() {
     return new ApplicationContextRunner()
         .withInitializer(new ConfigDataApplicationContextInitializer())
+        .withPropertyValues("app.inventory.api-enabled=false")
         .withUserConfiguration(Config.class);
   }
 
@@ -74,3 +75,6 @@ class InventoryApiFeatureFlagsTest {
         });
   }
 }
+
+
+

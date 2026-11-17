@@ -29,3 +29,7 @@ opencode.jsonc
 apps/mobile/.dart_tool/
 apps/mobile/build/
 apps/mobile/.flutter-plugins-dependencies
+
+# ===== Agent skills =====
+.agents/
+skills-lock.json

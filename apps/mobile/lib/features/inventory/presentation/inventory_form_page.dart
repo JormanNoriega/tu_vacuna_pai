@@ -172,6 +172,10 @@ class _InventoryFormPageState extends State<InventoryFormPage> {
                     Text(
                       '${widget.lot!['availableVials']} frascos en depósito. La entrega queda en tránsito hasta su confirmación.',
                     ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Verifica el vencimiento y las condiciones de conservación antes de entregar. El saldo registrado no confirma que el lote sea apto.',
+                    ),
                     const SizedBox(height: 20),
                     DropdownButtonFormField<String>(
                       initialValue: _campaignId,
