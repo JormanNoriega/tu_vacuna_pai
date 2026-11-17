@@ -227,10 +227,6 @@ public class AttentionService {
   public AttentionResponse cancel(UUID actorId, UUID attentionId, CancelAttentionRequest request) {
     AuthorizedUser actor = identity.resolve(actorId);
     AttentionEntity attention = requireScoped(actor, attentionId);
-    if (attention.getStatus() == AttentionEntity.Status.CANCELLED) {
-      throw new InvalidClinicalStateException("La atencion ya esta anulada.");
-    }
-
     attention.cancel(Instant.now());
     attentions.save(attention);
 
@@ -379,7 +375,7 @@ public class AttentionService {
   private void requireEditable(AttentionEntity attention) {
     if (!attention.isEditable()) {
       throw new InvalidClinicalStateException(
-          "La atencion no se puede modificar en su estado actual (" + attention.getStatus() + ").");
+          "La atencion no se puede modificar en su estado actual (" + attention.getStatus().code() + ").");
     }
   }
 

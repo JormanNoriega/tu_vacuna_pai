@@ -2,12 +2,15 @@ package com.pai.api.attentions.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import com.pai.api.attentions.exception.InvalidClinicalStateException;
+import com.pai.api.attentions.state.AttentionState;
+import com.pai.api.attentions.state.DraftState;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -19,13 +22,6 @@ import java.util.UUID;
 @Entity
 @Table(name = "attentions", schema = "app")
 public class AttentionEntity {
-
-  public enum Status {
-    DRAFT,
-    IN_PROGRESS,
-    COMPLETED,
-    CANCELLED
-  }
 
   @Id
   private UUID id;
@@ -47,9 +43,9 @@ public class AttentionEntity {
   @Column(name = "client_operation_id")
   private UUID clientOperationId;
 
-  @Enumerated(EnumType.STRING)
+  @Convert(converter = AttentionStateConverter.class)
   @Column(nullable = false)
-  private Status status;
+  private AttentionState status;
 
   private String observations;
 
@@ -95,20 +91,21 @@ public class AttentionEntity {
     this.attentionDate = attentionDate;
     this.consecutive = consecutive;
     this.clientOperationId = clientOperationId;
-    this.status = Status.DRAFT;
+    this.status = DraftState.INSTANCE;
     this.createdAt = now;
     this.updatedAt = now;
   }
 
   public boolean isEditable() {
-    return status == Status.DRAFT || status == Status.IN_PROGRESS;
+    return status.isEditable();
   }
 
   public boolean acceptsDoses() {
-    return isEditable();
+    return status.acceptsDoses();
   }
 
   public void updateDetails(Instant attentionDate, String observations, Instant now) {
+    requireEditable();
     this.attentionDate = attentionDate;
     this.observations = observations;
     this.updatedAt = now;
@@ -120,6 +117,7 @@ public class AttentionEntity {
       Boolean paiwebRegistered,
       String paiwebNotRegisteredReason,
       Instant now) {
+    requireEditable();
     if (completeScheme != null) {
       this.completeScheme = completeScheme;
     }
@@ -131,13 +129,24 @@ public class AttentionEntity {
   }
 
   public void complete(Instant now) {
-    this.status = Status.COMPLETED;
-    this.updatedAt = now;
+    setState(status.complete(), now);
   }
 
   public void cancel(Instant now) {
-    this.status = Status.CANCELLED;
+    setState(status.cancel(), now);
+  }
+
+  private void setState(AttentionState nextState, Instant now) {
+    Objects.requireNonNull(nextState, "nextState");
+    Objects.requireNonNull(now, "now");
+    this.status = nextState;
     this.updatedAt = now;
+  }
+
+  private void requireEditable() {
+    if (!isEditable()) {
+      throw new InvalidClinicalStateException("La atencion no se puede modificar en su estado actual.");
+    }
   }
 
   public UUID getId() {
@@ -168,7 +177,7 @@ public class AttentionEntity {
     return clientOperationId;
   }
 
-  public Status getStatus() {
+  public AttentionState getStatus() {
     return status;
   }
 
@@ -205,6 +214,7 @@ public class AttentionEntity {
   }
 
   public void setLocation(Double latitude, Double longitude) {
+    requireEditable();
     this.latitude = latitude;
     this.longitude = longitude;
   }

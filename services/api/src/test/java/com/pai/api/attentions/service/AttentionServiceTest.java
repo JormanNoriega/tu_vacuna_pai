@@ -107,7 +107,7 @@ class AttentionServiceTest {
         Instant.now());
   }
 
-  private AttentionEntity attention(AttentionEntity.Status status) {
+  private AttentionEntity attention(String status) {
     AttentionEntity attention = new AttentionEntity(
         UUID.randomUUID(),
         PATIENT_ID,
@@ -117,9 +117,9 @@ class AttentionServiceTest {
         1L,
         null,
         Instant.now());
-    if (status == AttentionEntity.Status.COMPLETED) {
+    if ("COMPLETED".equals(status)) {
       attention.complete(Instant.now());
-    } else if (status == AttentionEntity.Status.CANCELLED) {
+    } else if ("CANCELLED".equals(status)) {
       attention.cancel(Instant.now());
     }
     return attention;
@@ -190,7 +190,7 @@ class AttentionServiceTest {
 
   @Test
   void update_savesAndAuditsWhenVersionMatches() {
-    AttentionEntity draft = attention(AttentionEntity.Status.DRAFT);
+    AttentionEntity draft = attention("DRAFT");
     when(identity.resolve(ACTOR_ID)).thenReturn(actor());
     when(attentions.findByIdAndInstitutionId(draft.getId(), INSTITUTION_ID))
         .thenReturn(Optional.of(draft));
@@ -211,7 +211,7 @@ class AttentionServiceTest {
 
   @Test
   void update_rejectsVersionMismatch() {
-    AttentionEntity draft = attention(AttentionEntity.Status.DRAFT);
+    AttentionEntity draft = attention("DRAFT");
     when(identity.resolve(ACTOR_ID)).thenReturn(actor());
     when(attentions.findByIdAndInstitutionId(draft.getId(), INSTITUTION_ID))
         .thenReturn(Optional.of(draft));
@@ -227,7 +227,7 @@ class AttentionServiceTest {
 
   @Test
   void update_rejectsCompletedAttention() {
-    AttentionEntity completed = attention(AttentionEntity.Status.COMPLETED);
+    AttentionEntity completed = attention("COMPLETED");
     when(identity.resolve(ACTOR_ID)).thenReturn(actor());
     when(attentions.findByIdAndInstitutionId(completed.getId(), INSTITUTION_ID))
         .thenReturn(Optional.of(completed));
@@ -253,7 +253,7 @@ class AttentionServiceTest {
 
   @Test
   void registerDose_rejectedWhenAttentionCancelled() {
-    AttentionEntity cancelled = attention(AttentionEntity.Status.CANCELLED);
+    AttentionEntity cancelled = attention("CANCELLED");
     when(identity.resolve(ACTOR_ID)).thenReturn(actor());
     when(attentions.findByIdAndInstitutionId(cancelled.getId(), INSTITUTION_ID))
         .thenReturn(Optional.of(cancelled));
@@ -283,7 +283,7 @@ class AttentionServiceTest {
 
   @Test
   void registerDose_snapshotsCatalogValuesAndPersists() {
-    AttentionEntity draft = attention(AttentionEntity.Status.DRAFT);
+    AttentionEntity draft = attention("DRAFT");
     UUID vaccineId = UUID.randomUUID();
     UUID doseOptionId = UUID.randomUUID();
     when(identity.resolve(ACTOR_ID)).thenReturn(actor());
@@ -333,7 +333,7 @@ class AttentionServiceTest {
 
   @Test
   void cancelDose_rejectsAlreadyCancelledDose() {
-    AttentionEntity draft = attention(AttentionEntity.Status.DRAFT);
+    AttentionEntity draft = attention("DRAFT");
     AppliedDoseEntity applied = dose(draft.getId());
     applied.cancel("dosis aplicada por error", ACTOR_ID, Instant.now());
     when(identity.resolve(ACTOR_ID)).thenReturn(actor());
@@ -351,7 +351,7 @@ class AttentionServiceTest {
   @Test
   void listByPatient_isScopedToInstitution() {
     when(identity.resolve(ACTOR_ID)).thenReturn(actor());
-    AttentionEntity first = attention(AttentionEntity.Status.COMPLETED);
+    AttentionEntity first = attention("COMPLETED");
     when(attentions.findByInstitutionIdAndPatientIdOrderByAttentionDateDesc(
             INSTITUTION_ID, PATIENT_ID))
         .thenReturn(List.of(first));
@@ -368,7 +368,7 @@ class AttentionServiceTest {
 
   @Test
   void complete_transitionsDraftToCompleted() {
-    AttentionEntity draft = attention(AttentionEntity.Status.DRAFT);
+    AttentionEntity draft = attention("DRAFT");
     when(identity.resolve(ACTOR_ID)).thenReturn(actor());
     when(attentions.findByIdAndInstitutionId(draft.getId(), INSTITUTION_ID))
         .thenReturn(Optional.of(draft));
