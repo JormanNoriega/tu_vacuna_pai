@@ -35,7 +35,12 @@ class InventoryControllerTest {
   @EnableMethodSecurity
   static class Config {
     @Bean InventoryService service() { return mock(InventoryService.class); }
-    @Bean InventoryController controller(InventoryService service) { return new InventoryController(service); }
+    @Bean com.pai.api.inventory.service.InventoryReceiptWorkflow receiptWorkflow() {
+      return mock(com.pai.api.inventory.service.InventoryReceiptWorkflow.class);
+    }
+    @Bean InventoryController controller(InventoryService service, com.pai.api.inventory.service.InventoryReceiptWorkflow workflow) {
+      return new InventoryController(service, workflow);
+    }
     @Bean(name = "authorization") AuthorizationService authorization() { return new AuthorizationService(); }
   }
 
@@ -244,7 +249,8 @@ class InventoryControllerTest {
         new InventoryController.PartialReceiveRequest(receipt, 2, "Faltante")))
         .isInstanceOf(AccessDeniedException.class);
     authorize("ATTENTION_CREATE");
-    when(service.receivePartial(actor, institution, assignment, receipt, 2, "Faltante"))
+    var workflow=context.getBean(com.pai.api.inventory.service.InventoryReceiptWorkflow.class);
+    when(workflow.receive(actor, institution, assignment, receipt, 2, "Faltante"))
         .thenReturn(new InventoryService.ReceiptResult(receipt, assignment, 2, 2, 1, "PARTIALLY_RECEIVED"));
     mvc.perform(post(base() + "/assignments/" + assignment + "/receipts").principal(auth)
         .contentType(MediaType.APPLICATION_JSON)
@@ -253,7 +259,7 @@ class InventoryControllerTest {
     mvc.perform(post(base() + "/assignments/" + assignment + "/receipts").principal(auth)
         .contentType(MediaType.APPLICATION_JSON).content("{\"id\":\"" + receipt + "\"}"))
         .andExpect(status().isBadRequest());
-    verify(service).receivePartial(actor, institution, assignment, receipt, 2, "Faltante");
+    verify(workflow).receive(actor, institution, assignment, receipt, 2, "Faltante");
     verifyNoMoreInteractions(service);
   }
 

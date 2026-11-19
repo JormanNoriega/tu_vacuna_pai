@@ -44,7 +44,12 @@ class _CampaignFormPageState extends State<CampaignFormPage> {
     }
     request ??= {
       'id': id,
-      'name': name.text.trim(),
+      'name': name.text.trim().isEmpty
+          ? 'Jornada · ${location.text.trim()}'.substring(
+              0,
+              ('Jornada · ${location.text.trim()}').length.clamp(0, 200),
+            )
+          : name.text.trim(),
       'location': location.text.trim(),
       'startsOn': dates!.start.toIso8601String().substring(0, 10),
       'endsOn': dates!.end.toIso8601String().substring(0, 10),
@@ -57,7 +62,7 @@ class _CampaignFormPageState extends State<CampaignFormPage> {
     );
     if (!mounted) return;
     setState(() => busy = false);
-    if (ok) Navigator.pop(context, true);
+    if (ok) Navigator.pop(context, {...request!, 'status': 'ACTIVE'});
   }
 
   @override
@@ -71,22 +76,17 @@ class _CampaignFormPageState extends State<CampaignFormPage> {
           padding: const EdgeInsets.all(16),
           children: [
             const Text(
-              'La jornada organiza la actividad; crearla no mueve existencias.',
+              'Primero define el lugar y las fechas. Después elige vacunadores y asigna sus vacunas.',
             ),
-            TextFormField(
-              controller: name,
-              enabled: request == null,
-              maxLength: 200,
-              decoration: const InputDecoration(
-                labelText: 'Nombre de la jornada',
-              ),
-              validator: requiredText,
-            ),
+            const SizedBox(height: 24),
             TextFormField(
               controller: location,
               enabled: request == null,
               maxLength: 200,
-              decoration: const InputDecoration(labelText: 'Lugar'),
+              decoration: const InputDecoration(
+                labelText: 'Lugar',
+                hintText: 'Ej.: Centro de salud o barrio',
+              ),
               validator: requiredText,
             ),
             const SizedBox(height: 16),
@@ -94,21 +94,57 @@ class _CampaignFormPageState extends State<CampaignFormPage> {
               onPressed: request != null
                   ? null
                   : () async {
-                      final selected = await showDateRangePicker(
+                      final selected = await showDatePicker(
                         context: context,
                         firstDate: DateTime(2020),
                         lastDate: DateTime(2100),
-                        initialDateRange: dates,
+                        initialDate: dates?.start ?? DateTime.now(),
                       );
                       if (selected != null && mounted) {
-                        setState(() => dates = selected);
+                        setState(
+                          () => dates = DateTimeRange(
+                            start: selected,
+                            end: selected,
+                          ),
+                        );
                       }
                     },
               icon: const Icon(Icons.date_range),
               label: Text(
                 dates == null
-                    ? 'Seleccionar fechas'
-                    : '${dates!.start.toIso8601String().substring(0, 10)} — ${dates!.end.toIso8601String().substring(0, 10)}',
+                    ? 'Seleccionar fecha'
+                    : dates!.start == dates!.end
+                    ? '${dates!.start.day}/${dates!.start.month}/${dates!.start.year}'
+                    : '${dates!.start.day}/${dates!.start.month}/${dates!.start.year} — ${dates!.end.day}/${dates!.end.month}/${dates!.end.year}',
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: request != null
+                    ? null
+                    : () async {
+                        final selected = await showDateRangePicker(
+                          context: context,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2100),
+                          initialDateRange: dates,
+                        );
+                        if (selected != null && mounted) {
+                          setState(() => dates = selected);
+                        }
+                      },
+                child: const Text('¿La jornada dura varios días?'),
+              ),
+            ),
+            const SizedBox(height: 24),
+            TextFormField(
+              controller: name,
+              enabled: request == null,
+              maxLength: 200,
+              decoration: const InputDecoration(
+                labelText: 'Nombre de la jornada (opcional)',
+                helperText: 'Si lo dejas vacío, usaremos el lugar.',
               ),
             ),
             if (widget.controller.error != null && request != null) ...[
@@ -127,7 +163,7 @@ class _CampaignFormPageState extends State<CampaignFormPage> {
                 busy
                     ? 'Guardando…'
                     : request == null
-                    ? 'Crear jornada'
+                    ? 'Guardar y elegir vacunadores'
                     : 'Reintentar misma operación',
               ),
             ),

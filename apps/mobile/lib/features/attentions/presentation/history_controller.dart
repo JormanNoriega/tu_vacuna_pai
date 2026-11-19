@@ -5,6 +5,8 @@ import '../../patients/domain/entities/patient.dart';
 import '../../patients/domain/use_cases/search_patient.dart';
 import '../domain/entities/attention.dart';
 import '../domain/use_cases/attentions_use_cases.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/storage/app_database.dart';
 
 /// Controlador del historial de atenciones de un paciente. Separado del flujo
 /// de nueva atencion: su estado de carga/error es independiente y no se
@@ -15,11 +17,40 @@ class HistoryController extends AsyncController {
     required this.searchPatient,
     required this.listPatientAttentions,
     required this.listReferenceCatalogs,
+    this.api,
+    this.database,
   });
 
   final SearchPatient searchPatient;
   final ListPatientAttentions listPatientAttentions;
   final ListReferenceCatalogs listReferenceCatalogs;
+  final ApiClient? api;
+  final AppDatabase? database;
+
+  Future<Map<String, dynamic>> recentPage({
+    required bool admin,
+    required String institutionId,
+    required String userId,
+    required DateTime from,
+    required DateTime to,
+    required int page,
+  }) async {
+    if (!admin) {
+      if (database == null) {
+        throw StateError('Almacenamiento local no disponible');
+      }
+      return database!.attentionHistoryLocal(
+        institutionId,
+        userId,
+        from: from,
+        to: to,
+        page: page,
+      );
+    }
+    final token = (await sessionManager.loadSession())?.accessToken;
+    if (token == null || api == null) throw const SessionExpiredException();
+    return api!.fetchAttentionHistory(token, from: from, to: to, page: page);
+  }
 
   Patient? _patient;
   List<Attention> _history = const [];

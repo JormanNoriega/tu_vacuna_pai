@@ -28,6 +28,25 @@ class FakeInventoryController extends InventoryController {
   bool shouldFail = false;
 
   @override
+  Future<void> loadVaccinators(String institution) =>
+      loadFormOptions(institution, isLot: false);
+
+  @override
+  Future<void> loadLots(String institution) async {
+    lots = [
+      {
+        'id': 'lote-1',
+        'vaccineName': 'Vacuna',
+        'lotNumber': 'L1',
+        'manufacturer': 'Fabricante',
+        'expiresOn': '2028-01-01',
+        'availableVials': 5,
+      },
+    ];
+    clearError();
+  }
+
+  @override
   Future<void> loadFormOptions(
     String institution, {
     required bool isLot,
@@ -65,6 +84,7 @@ class FakeInventoryController extends InventoryController {
     assignments = [
       {
         'id': 'entrega-1',
+        'vaccinatorId': 'vacunador-1',
         'vaccineName': 'Vacuna',
         'lotNumber': 'L1',
         'vialCount': 3,
@@ -348,11 +368,11 @@ void main() {
       });
       controller.notifyListeners();
       await tester.pump();
-      await tester.drag(find.byType(ListView).first, const Offset(0, -400));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Opciones de la entrega'));
+      await tester.tap(find.text('Ana Pérez · Vacuna'));
       await tester.pumpAndSettle();
       expect(find.text('Revisar diferencia'), findsOneWidget);
+      await tester.ensureVisible(find.text('Ver historial'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Ver historial'));
       await tester.pumpAndSettle();
       expect(find.text('Historial de la entrega'), findsOneWidget);
@@ -484,6 +504,8 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Más opciones'));
     await tester.pumpAndSettle();
     expect(find.text('Ver seguimiento pendiente'), findsOneWidget);
     await tester.tap(find.text('Ver seguimiento pendiente'));
@@ -639,14 +661,16 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Generar informe CSV'), findsOneWidget);
-    expect(find.text('Lotes con saldo en depósito'), findsOneWidget);
+    expect(find.text('Nueva entrega'), findsOneWidget);
+    expect(find.text('Lotes con saldo en depósito'), findsNothing);
     expect(find.text('Brigada'), findsNothing);
     await tester.tap(find.text('Jornadas'));
     await tester.pumpAndSettle();
     expect(find.text('Brigada'), findsOneWidget);
     expect(find.text('Lotes con saldo en depósito'), findsNothing);
     await tester.tap(find.text('Entregas').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Más opciones'));
     await tester.pumpAndSettle();
     expect(find.text('Generar informe CSV'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -784,15 +808,15 @@ void main() {
       ),
     );
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Nombre de la jornada'),
+      find.widgetWithText(TextFormField, 'Nombre de la jornada (opcional)'),
       'Jornada',
     );
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Lugar'),
       'Centro',
     );
-    await tester.ensureVisible(find.text('Crear jornada'));
-    await tester.tap(find.text('Crear jornada'));
+    await tester.ensureVisible(find.text('Guardar y elegir vacunadores'));
+    await tester.tap(find.text('Guardar y elegir vacunadores'));
     await tester.pump();
     expect(find.text('Selecciona las fechas de la jornada.'), findsOneWidget);
     expect(controller.postedBodies, isEmpty);
@@ -890,7 +914,7 @@ void main() {
     },
   );
 
-  testWidgets('el administrador navega desde el lote a registrar una entrega', (
+  testWidgets('el administrador empieza una entrega por el vacunador', (
     tester,
   ) async {
     final controller = FakeInventoryController();
@@ -907,15 +931,13 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Crear lote'), findsNothing);
-    expect(find.text('Generar informe CSV'), findsOneWidget);
-    await tester.tap(find.text('Entregar'));
+    expect(find.text('Lotes con saldo en depósito'), findsNothing);
+    await tester.tap(find.text('Nueva entrega'));
     await tester.pumpAndSettle();
     expect(find.text('Vacunador'), findsOneWidget);
-    expect(find.textContaining('La entrega queda en tránsito'), findsOneWidget);
-    expect(
-      find.textContaining('El saldo registrado no confirma'),
-      findsOneWidget,
-    );
+    expect(find.text('¿Quién recibe?'), findsOneWidget);
+    expect(find.text('¿Qué vacunas le entregas?'), findsOneWidget);
+    expect(find.text('Jornada (opcional)'), findsNothing);
   });
 
   testWidgets(
@@ -936,6 +958,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Crear lote'), findsNothing);
       expect(find.text('Entregar'), findsNothing);
+      expect(find.text('Nueva entrega'), findsNothing);
     },
   );
 

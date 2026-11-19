@@ -2,6 +2,11 @@
 
 ## Estado y alcance
 
+Actualización de implementación local: existe una primera integración declarativa
+de custodia, vínculo clínico explícito y finalización de transferencias. Ver
+[Custodia y cierre](15-custodia-y-cierre-integrado.md). No equivale al consumo por
+frasco ni al cierre sanitario integral descritos como objetivo en este plan.
+
 Este documento recoge la dirección funcional acordada y las propuestas pendientes de detalle. **Es un plan, no una descripción de funcionalidades ya implementadas ni una autorización para activarlas.** Para el flujo online existente y sus límites, consultar [flujo operativo actual](12-flujo-operativo-inventario.md) y [puesta en marcha controlada](11-puesta-en-marcha-controlada.md).
 
 La aplicación clínica debe seguir operativa durante la transición. Antes de implementar, contrastar este plan con el código, datos y permisos existentes, y diseñar una migración que conserve el historial. La validación automatizada no sustituye la revisión con responsables PAI ni la prueba con usuarios autorizados.

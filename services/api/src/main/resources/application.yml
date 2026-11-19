@@ -58,6 +58,7 @@ app:
   # Las superficies experimentales permanecen apagadas aun si se habilita la API base.
   inventory:
     api-enabled: ${APP_INVENTORY_API_ENABLED:false}
+    custody-workflow-enabled: ${APP_INVENTORY_CUSTODY_WORKFLOW_ENABLED:false}
     reservations-enabled: ${APP_INVENTORY_RESERVATIONS_ENABLED:false}
     installation-keys-enabled: ${APP_INVENTORY_INSTALLATION_KEYS_ENABLED:false}
 

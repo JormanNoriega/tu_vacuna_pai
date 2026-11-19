@@ -22,9 +22,15 @@ class InventoryApiFeatureFlagsTest {
   @Configuration
   @EnableMethodSecurity
   @Import({InventoryController.class, CampaignController.class, CustodyEventController.class,
-      InstallationReservationController.class, InstallationKeyController.class})
+      InstallationReservationController.class, InstallationKeyController.class, CustodyWorkflowController.class})
   static class Config {
     @Bean InventoryService inventoryService() { return mock(InventoryService.class); }
+    @Bean com.pai.api.inventory.service.InventoryReceiptWorkflow receiptWorkflow() {
+      return mock(com.pai.api.inventory.service.InventoryReceiptWorkflow.class);
+    }
+    @Bean com.pai.api.inventory.service.CustodyWorkflowService workflowService() {
+      return mock(com.pai.api.inventory.service.CustodyWorkflowService.class);
+    }
     @Bean CampaignService campaignService() { return mock(CampaignService.class); }
     @Bean CustodyEventService custodyEventService() { return mock(CustodyEventService.class); }
     @Bean InstallationReservationService reservationService() { return mock(InstallationReservationService.class); }
@@ -46,6 +52,7 @@ class InventoryApiFeatureFlagsTest {
       assertThat(context).doesNotHaveBean(InventoryController.class);
       assertThat(context).doesNotHaveBean(CampaignController.class);
       assertThat(context).doesNotHaveBean(CustodyEventController.class);
+      assertThat(context).doesNotHaveBean(CustodyWorkflowController.class);
       assertThat(context).doesNotHaveBean(InstallationReservationController.class);
       assertThat(context).doesNotHaveBean(InstallationKeyController.class);
     });
@@ -57,6 +64,7 @@ class InventoryApiFeatureFlagsTest {
       assertThat(context).hasSingleBean(InventoryController.class);
       assertThat(context).hasSingleBean(CampaignController.class);
       assertThat(context).hasSingleBean(CustodyEventController.class);
+      assertThat(context).hasSingleBean(CustodyWorkflowController.class);
       assertThat(context).doesNotHaveBean(InstallationReservationController.class);
       assertThat(context).doesNotHaveBean(InstallationKeyController.class);
     });

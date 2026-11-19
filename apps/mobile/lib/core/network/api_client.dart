@@ -116,6 +116,25 @@ class ApiClient {
     );
   }
 
+  Future<Map<String, dynamic>> fetchAttentionHistory(
+    String token, {
+    required DateTime from,
+    required DateTime to,
+    required int page,
+  }) async {
+    final uri = Uri.parse('$baseUrl/attention-history').replace(
+      queryParameters: {
+        'from': from.toUtc().toIso8601String(),
+        'to': to.toUtc().toIso8601String(),
+        'page': '$page',
+      },
+    );
+    return _decodeObject(
+      await _send(_http.get(uri, headers: _jsonHeaders(token))),
+      fallback: 'No se pudo consultar el historial.',
+    );
+  }
+
   /// Resumen de metricas para el reporte "Registro Diario" en un rango de fechas.
   Future<Map<String, dynamic>> fetchRegistroDiarioSummary(
     String accessToken, {

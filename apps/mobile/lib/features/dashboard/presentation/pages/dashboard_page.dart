@@ -21,6 +21,7 @@ import '../../../catalogs/presentation/catalog_controller.dart';
 import '../../../catalogs/presentation/pages/catalog_page.dart';
 import '../../../inventory/presentation/inventory_controller.dart';
 import '../../../inventory/presentation/inventory_page.dart';
+import '../../../inventory/presentation/custody_page.dart';
 import '../../../attentions/presentation/attention_controller.dart';
 import '../../../attentions/presentation/history_controller.dart';
 import '../../../attentions/presentation/pages/historial_page.dart';
@@ -289,6 +290,11 @@ class _DashboardPageState extends State<DashboardPage> {
         controller: widget.historyController!,
         patientDetailController: widget.patientDetailController!,
         offline: _offline,
+        institutionId: widget.user.institution.id,
+        userId: widget.user.id,
+        isAdmin:
+            widget.user.hasRole('ADMIN_INSTITUTION') ||
+            widget.user.hasPermission('USER_MANAGE'),
       );
     }
 
@@ -326,6 +332,11 @@ class _DashboardPageState extends State<DashboardPage> {
       userName: widget.user.name,
       userId: widget.user.id,
       permissions: widget.user.permissions,
+      canManageDeliveries:
+          widget.user.hasRole('ADMIN_INSTITUTION') &&
+          !widget.user.hasRole('VACCINATOR') &&
+          widget.user.hasPermission('INVENTORY_READ') &&
+          widget.inventoryController != null,
       canPerformAttentions: _canPerformAttentions,
       onAction: _openQuickAction,
       onOpenPatientDetail: _openPatientDetail,
@@ -358,6 +369,48 @@ class _DashboardPageState extends State<DashboardPage> {
   /// Resuelve las acciones de "Acciones frecuentes" llevando al destino
   /// correspondiente del dashboard (o avisando si aun no existe).
   void _openQuickAction(String label) {
+    if (label == 'Entregas' ||
+        label == 'Jornadas' ||
+        label == 'Custodia y cierre') {
+      // Revalidar también al ejecutar: ocultar una tarjeta no autoriza una ruta.
+      if (!widget.user.hasRole('ADMIN_INSTITUTION') ||
+          widget.user.hasRole('VACCINATOR') ||
+          !widget.user.hasPermission('INVENTORY_READ') ||
+          widget.inventoryController == null) {
+        return;
+      }
+      if (label == 'Custodia y cierre') {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => CustodyPage(
+              controller: widget.inventoryController!,
+              institutionId: widget.user.institution.id,
+              admin: true,
+              canWrite: widget.user.hasPermission('INVENTORY_WRITE'),
+              online:
+                  widget.sessionStatus == SessionStatus.signedIn &&
+                  _liveReason != OfflineReason.noNetwork,
+            ),
+          ),
+        );
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => InventoryPage(
+            controller: widget.inventoryController!,
+            institutionId: widget.user.institution.id,
+            admin: true,
+            canWrite: widget.user.hasPermission('INVENTORY_WRITE'),
+            online:
+                widget.sessionStatus == SessionStatus.signedIn &&
+                _liveReason != OfflineReason.noNetwork,
+            initialTab: label == 'Jornadas' ? 1 : 0,
+          ),
+        ),
+      );
+      return;
+    }
     final index = _destinations.indexWhere(
       (destination) => switch (label) {
         'Nueva atencion' || 'Nueva Atención' => destination.isNewAttention,
@@ -1156,6 +1209,7 @@ class _DashboardContent extends StatefulWidget {
     required this.institutionId,
     required this.offline,
     this.canPerformAttentions = true,
+    this.canManageDeliveries = false,
     this.metricsController,
     this.syncStatusController,
   });
@@ -1164,6 +1218,7 @@ class _DashboardContent extends StatefulWidget {
   final String userId;
   final List<String> permissions;
   final bool canPerformAttentions;
+  final bool canManageDeliveries;
   final ValueChanged<String> onAction;
   final ValueChanged<String> onOpenPatientDetail;
   final String institutionId;
@@ -1292,6 +1347,7 @@ class _DashboardContentState extends State<_DashboardContent> {
                     _ActionsGrid(
                       columns: columns == 1 ? 2 : 4,
                       permissions: widget.permissions,
+                      canManageDeliveries: widget.canManageDeliveries,
                       onAction: widget.onAction,
                     ),
                     if (widget.canPerformAttentions) ...[
@@ -1634,11 +1690,13 @@ class _ActionsGrid extends StatelessWidget {
     required this.columns,
     required this.permissions,
     required this.onAction,
+    this.canManageDeliveries = false,
   });
 
   final int columns;
   final List<String> permissions;
   final ValueChanged<String> onAction;
+  final bool canManageDeliveries;
 
   @override
   Widget build(BuildContext context) {
@@ -1688,9 +1746,38 @@ class _ActionsGrid extends StatelessWidget {
           iconColor: const Color(0xFFD97706),
           actionKey: 'Exportar',
         ),
+      if (canManageDeliveries) ...[
+        (
+          icon: Icons.fact_check_outlined,
+          label: 'Custodia y cierre',
+          description: 'Conteos y conciliación',
+          isPrimary: false,
+          iconBgColor: AppColors.primarySoft,
+          iconColor: AppColors.primary,
+          actionKey: 'Custodia y cierre',
+        ),
+        (
+          icon: Icons.local_shipping_outlined,
+          label: 'Entregas',
+          description: 'Entregar y seguir recepciones',
+          isPrimary: false,
+          iconBgColor: AppColors.primarySoft,
+          iconColor: AppColors.primary,
+          actionKey: 'Entregas',
+        ),
+        (
+          icon: Icons.event_outlined,
+          label: 'Jornadas',
+          description: 'Lugar, equipo y vacunas',
+          isPrimary: false,
+          iconBgColor: AppColors.primarySoft,
+          iconColor: AppColors.primary,
+          actionKey: 'Jornadas',
+        ),
+      ],
     ];
 
-    final effectiveColumns = columns == 2 ? 2 : actions.length;
+    final effectiveColumns = columns == 2 ? 2 : actions.length.clamp(1, 4);
 
     return GridView.count(
       crossAxisCount: effectiveColumns,
