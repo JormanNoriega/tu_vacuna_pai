@@ -61,7 +61,10 @@ class InventoryMobileE2eTest {
   @SpringBootConfiguration
   @EnableAutoConfiguration
   @EnableTransactionManagement
-  @Import({InventoryController.class, CampaignController.class, CustodyEventController.class, InventoryService.class, CampaignService.class, CustodyEventService.class, DataScope.class, PermissionGuard.class,
+  @Import({InventoryController.class, CampaignController.class, CustodyEventController.class, InventoryService.class, CampaignService.class, CustodyEventService.class,
+      com.pai.api.inventory.service.InventoryReceiptWorkflow.class,
+      com.pai.api.inventory.service.CustodyWorkflowService.class,
+      com.pai.api.inventory.controller.CustodyWorkflowController.class, DataScope.class, PermissionGuard.class,
       AuthorizationService.class, SecurityConfig.class, ActiveUserAuthenticationConverter.class,
       JsonSerializer.class, GlobalExceptionHandler.class, FixtureCatalog.class})
   static class TestApplication {

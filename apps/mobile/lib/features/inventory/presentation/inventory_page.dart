@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 
 import 'inventory_controller.dart';
-import 'inventory_form_page.dart';
 import 'campaign_form_page.dart';
+import 'campaign_detail_page.dart';
+import 'delivery_form_page.dart';
+import 'delivery_detail_page.dart';
+import 'delivery_ui.dart';
+import 'custody_page.dart';
 import 'custody_event_form_page.dart';
 import 'inventory_report.dart';
 import 'receipt_form_page.dart';
-import 'difference_resolution_page.dart';
 import 'pending_follow_ups_page.dart';
-import 'historical_custody_review_page.dart';
-import 'delivery_conciliation_page.dart';
 
-/// Inventario fisico online; el catalogo clinico sigue siendo independiente.
+// THESIS: dos tareas explícitas, entregar a una persona u organizar una jornada.
+// OWN-WORLD: Material claro, listas y jerarquía; azul reservado para acciones.
+// STORY: elegir tarea, preparar entrega, consultar su detalle cuando haga falta.
+// FIRST VIEWPORT: selector, acción primaria y registros; sin catálogo de lotes.
+// FORM: flujo operativo fijado por el usuario; administración por divulgación.
 class InventoryPage extends StatefulWidget {
   const InventoryPage({
     super.key,
@@ -21,6 +26,7 @@ class InventoryPage extends StatefulWidget {
     required this.online,
     required this.canWrite,
     this.embedded = false,
+    this.initialTab = 0,
   });
   final InventoryController controller;
   final String institutionId;
@@ -28,6 +34,7 @@ class InventoryPage extends StatefulWidget {
   final bool online;
   final bool canWrite;
   final bool embedded;
+  final int initialTab;
 
   @override
   State<InventoryPage> createState() => _InventoryPageState();
@@ -35,125 +42,100 @@ class InventoryPage extends StatefulWidget {
 
 class _InventoryPageState extends State<InventoryPage> {
   int _tab = 0;
+  bool _refreshing = false;
+  String? _error;
+  final _names = <String, String>{};
+  int _request = 0;
+  List<Map<String, dynamic>> _assignments = [];
+  List<Map<String, dynamic>> _campaignRecords = [];
+  List<Map<String, dynamic>> _events = [];
+
   @override
   void initState() {
     super.initState();
+    _tab = widget.admin && widget.initialTab == 1 ? 1 : 0;
     if (widget.online) _load();
   }
 
   @override
   void didUpdateWidget(covariant InventoryPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!oldWidget.online && widget.online) _load();
+    if (oldWidget.institutionId != widget.institutionId ||
+        oldWidget.admin != widget.admin) {
+      _request++;
+      _refreshing = false;
+      _error = null;
+      _assignments = [];
+      _campaignRecords = [];
+      _events = [];
+      _names.clear();
+      _tab = 0;
+      if (widget.online) _load();
+    } else if (!oldWidget.online && widget.online) {
+      _load();
+    }
   }
 
-  Future<void> _load() =>
-      widget.controller.load(widget.institutionId, admin: widget.admin);
+  Future<void> _load() async {
+    if (_refreshing || !widget.online) return;
+    final request = ++_request;
+    final institution = widget.institutionId;
+    final admin = widget.admin;
+    setState(() {
+      _refreshing = true;
+      _error = null;
+    });
+    final c = widget.controller;
+    await c.load(institution, admin: admin);
+    if (!mounted || request != _request) return;
+    final loadError = c.error;
+    final assignments = List<Map<String, dynamic>>.of(c.assignments);
+    final campaigns = List<Map<String, dynamic>>.of(c.campaigns);
+    final events = List<Map<String, dynamic>>.of(c.custodyEvents);
+    if (loadError == null && admin) {
+      await c.loadVaccinators(institution);
+      if (!mounted || request != _request) return;
+      for (final p in c.vaccinators) {
+        _names[p['id'] as String] = '${p['fullName']}';
+      }
+    }
+    setState(() {
+      _refreshing = false;
+      _assignments = assignments;
+      _campaignRecords = campaigns;
+      _events = events;
+      // Un fallo del directorio no debe ocultar entregas ya consultadas.
+      _error = loadError;
+    });
+  }
 
-  Future<void> _openForm({
-    required bool isLot,
-    Map<String, dynamic>? lot,
-  }) async {
-    await Navigator.of(context).push<bool>(
+  Future<void> _open(Widget page) async {
+    await Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => page));
+    if (mounted && widget.online) await _load();
+  }
+
+  Future<void> _createCampaign() async {
+    final campaign = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(
-        builder: (_) => InventoryFormPage(
+        builder: (_) => CampaignFormPage(
           controller: widget.controller,
           institutionId: widget.institutionId,
-          isLot: isLot,
-          lot: lot,
         ),
       ),
     );
-    if (mounted) await _load();
-  }
-
-  Future<void> _openCustodyForm(
-    Map<String, dynamic> record, {
-    required bool confirmation,
-  }) async {
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => CustodyEventFormPage(
+    if (!mounted) return;
+    if (campaign != null) {
+      await _open(
+        CampaignDetailPage(
           controller: widget.controller,
           institutionId: widget.institutionId,
-          record: record,
-          confirmation: confirmation,
-        ),
-      ),
-    );
-    if (mounted) await _load();
-  }
-
-  String _eventStatus(String? status) => switch (status) {
-    'RETURN_PENDING' => 'Devolución pendiente de recepción',
-    'RETURN_AVAILABLE' => 'Recibida y reincorporada',
-    'RETURN_QUARANTINED' => 'Recibida en cuarentena',
-    'INCIDENT_LOST' => 'Pérdida declarada',
-    'INCIDENT_QUARANTINED' => 'Inmovilización declarada',
-    _ => 'Estado no reconocido',
-  };
-
-  String _assignmentStatus(String? status) => switch (status) {
-    'RECEIVED' => 'Recibida',
-    'IN_TRANSIT' => 'En tránsito',
-    'PARTIALLY_RECEIVED' => 'Diferencia pendiente',
-    'CLOSED_WITH_DIFFERENCE' => 'Entrega cerrada con diferencia',
-    _ => 'Estado no reconocido',
-  };
-
-  Future<void> _reviewDifference(Map<String, dynamic> assignment) async {
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => DifferenceResolutionPage(
-          controller: widget.controller,
-          institutionId: widget.institutionId,
-          assignment: assignment,
+          campaign: campaign,
           canWrite: widget.canWrite,
+          chooseTeamOnOpen: true,
         ),
-      ),
-    );
-    if (mounted) await _load();
-  }
-
-  Future<void> _receive(Map<String, dynamic> assignment) async {
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => ReceiptFormPage(
-          controller: widget.controller,
-          institutionId: widget.institutionId,
-          assignment: assignment,
-        ),
-      ),
-    );
-    if (mounted) await _load();
-  }
-
-  Future<void> _finishCampaign(Map<String, dynamic> campaign) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Finalizar jornada'),
-        content: const Text(
-          'Finalizar la jornada no devuelve vacunas ni cierra las entregas o custodias pendientes.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Finalizar'),
-          ),
-        ],
-      ),
-    );
-    if (confirm != true || !mounted) return;
-    if (await widget.controller.post(
-      widget.institutionId,
-      'campaigns/${campaign['id']}/finish',
-      {},
-    )) {
+      );
+    } else {
       await _load();
     }
   }
@@ -182,6 +164,20 @@ class _InventoryPageState extends State<InventoryPage> {
     }
   }
 
+  void _details(Map<String, dynamic> a) => _open(
+    DeliveryDetailPage(
+      controller: widget.controller,
+      institutionId: widget.institutionId,
+      assignment: a,
+      admin: widget.admin,
+      canWrite: widget.canWrite,
+      vaccinatorName: _names[a['vaccinatorId']],
+    ),
+  );
+
+  bool get _blocked =>
+      _refreshing || widget.controller.isLoading || !widget.online;
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: widget.embedded
@@ -198,361 +194,287 @@ class _InventoryPageState extends State<InventoryPage> {
               ),
             ),
           )
-        : ListenableBuilder(
-            listenable: widget.controller,
-            builder: (context, _) {
-              final c = widget.controller;
-              return Column(
-                children: [
-                  if (widget.admin)
-                    SegmentedButton<int>(
-                      segments: const [
-                        ButtonSegment(value: 0, label: Text('Entregas')),
-                        ButtonSegment(value: 1, label: Text('Jornadas')),
-                      ],
-                      selected: {_tab},
-                      onSelectionChanged: (value) =>
-                          setState(() => _tab = value.first),
-                    ),
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: _load,
-                      child: ListView(
-                        padding: const EdgeInsets.all(16),
-                        children: [
-                          Text(
-                            widget.admin
-                                ? 'Entrega frascos a vacunadores, organiza jornadas y revisa devoluciones. Para agregar existencias, entra a la configuración de cada vacuna.'
-                                : 'Consulta los frascos que te entregaron y confirma solo los que recibiste físicamente. Requiere conexión.',
+        : SafeArea(
+            child: ListenableBuilder(
+              listenable: widget.controller,
+              builder: (context, _) => Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 960),
+                  child: Column(
+                    children: [
+                      if (widget.admin)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: SegmentedButton<int>(
+                              segments: const [
+                                ButtonSegment(
+                                  value: 0,
+                                  icon: Icon(Icons.local_shipping_outlined),
+                                  label: Text('Entregas'),
+                                ),
+                                ButtonSegment(
+                                  value: 1,
+                                  icon: Icon(Icons.event_outlined),
+                                  label: Text('Jornadas'),
+                                ),
+                              ],
+                              selected: {_tab},
+                              onSelectionChanged: (v) =>
+                                  setState(() => _tab = v.first),
+                            ),
                           ),
-                          if (c.isLoading) const LinearProgressIndicator(),
-                          if (c.error != null)
-                            ListTile(
-                              title: Text(c.error!),
-                              trailing: TextButton(
-                                onPressed: _load,
-                                child: const Text('Reintentar'),
-                              ),
-                            ),
-                          if (widget.admin && _tab == 0) ...[
-                            const SizedBox(height: 12),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: OutlinedButton.icon(
-                                onPressed: c.isLoading
-                                    ? null
-                                    : () => Navigator.of(context).push(
-                                        MaterialPageRoute<void>(
-                                          builder: (_) => PendingFollowUpsPage(
-                                            controller: c,
-                                            institutionId: widget.institutionId,
-                                            online: widget.online,
-                                            canRead: widget.admin,
-                                          ),
-                                        ),
-                                      ),
-                                icon: const Icon(Icons.fact_check_outlined),
-                                label: const Text('Ver seguimiento pendiente'),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: OutlinedButton.icon(
-                                onPressed: c.isLoading ? null : _shareReport,
-                                icon: const Icon(Icons.file_download_outlined),
-                                label: const Text('Generar informe CSV'),
-                              ),
-                            ),
-                            Text(
-                              'Incluye existencias, movimientos, entregas, jornadas y novedades.',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                          if (widget.admin && _tab == 1) ...[
-                            const SizedBox(height: 20),
-                            Text(
-                              'Jornadas',
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            const Text(
-                              'Opcional: organiza una actividad de vacunación. Crear una jornada no mueve frascos.',
-                            ),
-                            if (widget.canWrite)
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: TextButton.icon(
-                                  onPressed: c.isLoading
-                                      ? null
-                                      : () async {
-                                          await Navigator.of(context).push(
-                                            MaterialPageRoute<bool>(
-                                              builder: (_) => CampaignFormPage(
-                                                controller: c,
-                                                institutionId:
-                                                    widget.institutionId,
-                                              ),
-                                            ),
-                                          );
-                                          if (mounted) await _load();
-                                        },
-                                  icon: const Icon(Icons.add),
-                                  label: const Text('Nueva jornada'),
+                        ),
+                      Expanded(
+                        child: RefreshIndicator(
+                          onRefresh: _load,
+                          child: ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.all(24),
+                            children: [
+                              _heading(context),
+                              const SizedBox(height: 24),
+                              if (_refreshing) const LinearProgressIndicator(),
+                              if (_error != null) ...[
+                                Text(
+                                  _error!,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
                                 ),
-                              ),
-                            if (!c.isLoading &&
-                                c.error == null &&
-                                c.campaigns.isEmpty)
-                              const ListTile(
-                                title: Text('No hay jornadas registradas.'),
-                              ),
-                            for (final campaign in c.campaigns)
-                              ListTile(
-                                title: Text('${campaign['name']}'),
-                                subtitle: Text(
-                                  '${campaign['location']} · ${campaign['startsOn']} — ${campaign['endsOn']}\n${campaign['status'] == 'ACTIVE' ? 'Activa' : 'Finalizada'}',
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: TextButton(
+                                    onPressed: _refreshing ? null : _load,
+                                    child: const Text('Reintentar'),
+                                  ),
                                 ),
-                                isThreeLine: true,
-                                trailing:
-                                    widget.canWrite &&
-                                        campaign['status'] == 'ACTIVE'
-                                    ? TextButton(
-                                        onPressed: c.isLoading
-                                            ? null
-                                            : () => _finishCampaign(campaign),
-                                        child: const Text('Finalizar'),
-                                      )
-                                    : null,
-                              ),
-                          ],
-                          if (widget.admin && _tab == 0) ...[
-                            const SizedBox(height: 20),
-                            Text(
-                              'Lotes con saldo en depósito',
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            const Text(
-                              'Elige un lote para entregar frascos a un vacunador. Verifica su vencimiento y conservación.',
-                            ),
-                            if (!c.isLoading &&
-                                c.error == null &&
-                                c.lots.isEmpty)
-                              const ListTile(
-                                title: Text(
-                                  'Aún no hay lotes. Agrega existencias desde la configuración de la vacuna.',
-                                ),
-                              ),
-                            for (final lot in c.lots)
-                              ListTile(
-                                title: Text(
-                                  '${lot['vaccineName']} · ${lot['lotNumber']}',
-                                ),
-                                subtitle: Text(
-                                  '${lot['manufacturer']} · Vence ${lot['expiresOn']}\n${lot['availableVials']} frascos en depósito',
-                                ),
-                                isThreeLine: true,
-                                trailing: widget.canWrite
-                                    ? TextButton(
-                                        onPressed: c.isLoading
-                                            ? null
-                                            : () => _openForm(
-                                                isLot: false,
-                                                lot: lot,
-                                              ),
-                                        child: const Text('Entregar'),
-                                      )
-                                    : null,
-                              ),
-                          ],
-                          if (_tab == 0) ...[
-                            const SizedBox(height: 20),
-                            Text(
-                              widget.admin ? 'Entregas' : 'Mis entregas',
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            Text(
-                              widget.admin
-                                  ? 'Frascos entregados a vacunadores y su estado de recepción.'
-                                  : 'Revisa y confirma los frascos recibidos.',
-                            ),
-                            if (!c.isLoading &&
-                                c.error == null &&
-                                c.assignments.isEmpty)
-                              const ListTile(
-                                title: Text('No hay entregas registradas.'),
-                              ),
-                            for (final a in c.assignments)
-                              ListTile(
-                                title: Text(
-                                  '${a['vaccineName']} · ${a['lotNumber']}',
-                                ),
-                                subtitle: Text(
-                                  '${a['vialCount']} frascos · ${_assignmentStatus(a['status'] as String?)}${a['status'] == 'PARTIALLY_RECEIVED' || a['status'] == 'CLOSED_WITH_DIFFERENCE' ? '\nRecibidos: ${a['receivedVials']} · Resueltos: ${a['resolvedVials'] ?? 0} · Pendientes: ${(a['vialCount'] as num).toInt() - (a['receivedVials'] as num).toInt() - ((a['resolvedVials'] as num?)?.toInt() ?? 0)}${a['differenceNote'] != null ? '\nMotivo: ${a['differenceNote']}' : ''}' : ''}${a['campaignName'] != null ? '\nJornada: ${a['campaignName']}' : ''}',
-                                ),
-                                trailing: widget.admin
-                                    ? PopupMenuButton<String>(
-                                        tooltip: 'Opciones de la entrega',
-                                        enabled: !c.isLoading,
-                                        onSelected: (value) {
-                                          if (value == 'history') {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute<void>(
-                                                builder: (_) =>
-                                                    HistoricalCustodyReviewPage(
-                                                      controller: c,
-                                                      institutionId:
-                                                          widget.institutionId,
-                                                      assignmentId:
-                                                          a['id'] as String,
-                                                      online: widget.online,
-                                                      canRead: widget.admin,
-                                                    ),
-                                              ),
-                                            );
-                                          } else if (value == 'conciliation') {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute<void>(
-                                                builder: (_) =>
-                                                    DeliveryConciliationPage(
-                                                      controller: c,
-                                                      institutionId:
-                                                          widget.institutionId,
-                                                      assignmentId:
-                                                          a['id'] as String,
-                                                      online: widget.online,
-                                                      canRead: widget.admin,
-                                                    ),
-                                              ),
-                                            );
-                                          } else if (value == 'difference') {
-                                            _reviewDifference(a);
-                                          }
-                                        },
-                                        itemBuilder: (_) => [
-                                          const PopupMenuItem(
-                                            value: 'conciliation',
-                                            child: Text('Ver conciliación'),
-                                          ),
-                                          const PopupMenuItem(
-                                            value: 'history',
-                                            child: Text('Ver historial'),
-                                          ),
-                                          if (a['status'] ==
-                                                  'PARTIALLY_RECEIVED' ||
-                                              a['status'] ==
-                                                  'CLOSED_WITH_DIFFERENCE')
-                                            const PopupMenuItem(
-                                              value: 'difference',
-                                              child: Text('Revisar diferencia'),
-                                            ),
-                                        ],
-                                      )
-                                    : !widget.admin &&
-                                          a['status'] == 'PARTIALLY_RECEIVED' &&
-                                          (a['receivedVials'] as num) > 0
-                                    ? PopupMenuButton<String>(
-                                        tooltip: 'Acciones de la entrega',
-                                        enabled: !c.isLoading,
-                                        onSelected: (value) {
-                                          if (value == 'receive') {
-                                            _receive(a);
-                                          } else {
-                                            _openCustodyForm(
-                                              a,
-                                              confirmation: false,
-                                            );
-                                          }
-                                        },
-                                        itemBuilder: (_) => const [
-                                          PopupMenuItem(
-                                            value: 'receive',
-                                            child: Text(
-                                              'Recepción complementaria',
-                                            ),
-                                          ),
-                                          PopupMenuItem(
-                                            value: 'declare',
-                                            child: Text(
-                                              'Declarar devolución o novedad',
-                                            ),
-                                          ),
-                                        ],
-                                      )
-                                    : !widget.admin &&
-                                          (a['status'] == 'IN_TRANSIT' ||
-                                              a['status'] ==
-                                                  'PARTIALLY_RECEIVED')
-                                    ? TextButton(
-                                        onPressed: c.isLoading
-                                            ? null
-                                            : () => _receive(a),
-                                        child: const Text('Recibir'),
-                                      )
-                                    : !widget.admin &&
-                                          (a['status'] == 'RECEIVED' ||
-                                              (a['status'] ==
-                                                      'CLOSED_WITH_DIFFERENCE' &&
-                                                  (a['receivedVials'] as num) >
-                                                      0))
-                                    ? TextButton(
-                                        onPressed: c.isLoading
-                                            ? null
-                                            : () => _openCustodyForm(
-                                                a,
-                                                confirmation: false,
-                                              ),
-                                        child: const Text('Declarar'),
-                                      )
-                                    : null,
-                              ),
-                            const SizedBox(height: 20),
-                            Text(
-                              'Devoluciones y novedades',
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            const Text(
-                              'Las cantidades declaradas no demuestran disponibilidad clínica.',
-                            ),
-                            if (!c.isLoading &&
-                                c.error == null &&
-                                c.custodyEvents.isEmpty)
-                              const ListTile(
-                                title: Text(
-                                  'No hay devoluciones ni novedades registradas.',
-                                ),
-                              ),
-                            for (final event in c.custodyEvents)
-                              ListTile(
-                                title: Text(
-                                  '${event['vaccineName']} · ${event['lotNumber']}',
-                                ),
-                                subtitle: Text(
-                                  '${event['vialCount']} frascos · ${_eventStatus(event['status'] as String?)}\n${event['reportNote']}',
-                                ),
-                                isThreeLine: true,
-                                trailing:
-                                    widget.admin &&
-                                        widget.canWrite &&
-                                        event['status'] == 'RETURN_PENDING'
-                                    ? TextButton(
-                                        onPressed: c.isLoading
-                                            ? null
-                                            : () => _openCustodyForm(
-                                                event,
-                                                confirmation: true,
-                                              ),
-                                        child: const Text('Revisar'),
-                                      )
-                                    : null,
-                              ),
-                          ],
-                        ],
+                              ],
+                              if (!_refreshing && _error == null)
+                                if (widget.admin && _tab == 1)
+                                  ..._campaigns()
+                                else
+                                  ..._deliveries(),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              );
-            },
+                ),
+              ),
+            ),
           ),
   );
+
+  Widget _heading(BuildContext context) {
+    final jornadas = widget.admin && _tab == 1;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                jornadas
+                    ? 'Organiza una jornada'
+                    : widget.admin
+                    ? 'Entrega vacunas'
+                    : 'Mis entregas',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+            ),
+            if (widget.admin)
+              PopupMenuButton<String>(
+                tooltip: 'Más opciones',
+                enabled: !_blocked,
+                onSelected: (value) {
+                  if (value == 'csv') {
+                    _shareReport();
+                  } else {
+                    _open(
+                      PendingFollowUpsPage(
+                        controller: widget.controller,
+                        institutionId: widget.institutionId,
+                        online: widget.online,
+                        canRead: true,
+                      ),
+                    );
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'follow',
+                    child: Text('Ver seguimiento pendiente'),
+                  ),
+                  PopupMenuItem(
+                    value: 'csv',
+                    child: Text('Generar informe CSV'),
+                  ),
+                ],
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          jornadas
+              ? 'Define lugar y fecha, elige al equipo y asigna vacunas a cada vacunador.'
+              : widget.admin
+              ? 'Elige un vacunador y los frascos que recibirá. No necesitas crear una jornada.'
+              : 'Confirma los frascos que recibiste físicamente.',
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: _blocked || _error != null
+              ? null
+              : () => _open(
+                  CustodyPage(
+                    controller: widget.controller,
+                    institutionId: widget.institutionId,
+                    admin: widget.admin,
+                    canWrite: widget.canWrite,
+                    online: widget.online,
+                  ),
+                ),
+          icon: const Icon(Icons.fact_check_outlined),
+          label: Text(
+            widget.admin ? 'Custodia y cierre' : 'Mi custodia y conteos',
+          ),
+        ),
+        if (widget.admin && widget.canWrite) ...[
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: _blocked || _error != null
+                ? null
+                : jornadas
+                ? _createCampaign
+                : () => _open(
+                    DeliveryFormPage(
+                      controller: widget.controller,
+                      institutionId: widget.institutionId,
+                    ),
+                  ),
+            icon: const Icon(Icons.add),
+            label: Text(jornadas ? 'Nueva jornada' : 'Nueva entrega'),
+          ),
+        ],
+      ],
+    );
+  }
+
+  List<Widget> _campaigns() => [
+    Text(
+      'Jornadas registradas',
+      style: Theme.of(context).textTheme.titleMedium,
+    ),
+    const SizedBox(height: 8),
+    if (_campaignRecords.isEmpty)
+      const DeliveryEmptyState(
+        title: 'Aún no hay jornadas',
+        message: 'Crea una jornada para organizar lugar, fechas y equipo. Las entregas se preparan dentro de ella.',
+      ),
+    for (final campaign in _campaignRecords)
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text('${campaign['name']}'),
+        subtitle: Text(
+          '${campaign['location']} · ${campaignDates(campaign)}\n${campaign['status'] == 'ACTIVE' ? 'Activa' : 'Finalizada'}',
+        ),
+        isThreeLine: true,
+        trailing: const Icon(Icons.chevron_right),
+        onTap: _blocked
+            ? null
+            : () => _open(
+                CampaignDetailPage(
+                  controller: widget.controller,
+                  institutionId: widget.institutionId,
+                  campaign: campaign,
+                  canWrite: widget.canWrite,
+                ),
+              ),
+      ),
+  ];
+
+  List<Widget> _deliveries() => [
+    Text(
+      'Entregas registradas',
+      style: Theme.of(context).textTheme.titleMedium,
+    ),
+    const SizedBox(height: 8),
+    if (_assignments.isEmpty)
+      DeliveryEmptyState(
+        title: 'Aún no hay entregas',
+        message: widget.admin
+            ? 'Empieza con Nueva entrega. Si es para una jornada, abre esa jornada y asigna desde su equipo.'
+            : 'Las vacunas que te entreguen aparecerán aquí.',
+      ),
+    for (final a in _assignments)
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(
+          widget.admin
+              ? '${_names[a['vaccinatorId']] ?? 'Vacunador por verificar'} · ${a['vaccineName']}'
+              : '${a['vaccineName']} · ${a['lotNumber']}',
+        ),
+        subtitle: Text(
+          '${a['vialCount']} frascos · ${deliveryStatus(a['status'])}\n${a['campaignName'] ?? 'Entrega directa · Sin jornada'}',
+        ),
+        isThreeLine: true,
+        trailing:
+            !widget.admin &&
+                (a['status'] == 'IN_TRANSIT' ||
+                    a['status'] == 'PARTIALLY_RECEIVED')
+            ? TextButton(
+                onPressed: _blocked
+                    ? null
+                    : () => _open(
+                        ReceiptFormPage(
+                          controller: widget.controller,
+                          institutionId: widget.institutionId,
+                          assignment: a,
+                        ),
+                      ),
+                child: const Text('Recibir'),
+              )
+            : const Icon(Icons.chevron_right),
+        onTap: _blocked ? null : () => _details(a),
+      ),
+    if (_events.isNotEmpty) ...[
+      const Divider(height: 32),
+      ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        title: const Text('Devoluciones y novedades'),
+        subtitle: Text('${_events.length} registradas'),
+        children: [
+          for (final event in _events)
+            ListTile(
+              title: Text('${event['vaccineName']} · ${event['lotNumber']}'),
+              subtitle: Text(
+                '${event['vialCount']} frascos · ${custodyEventStatus(event['status'])}',
+              ),
+              trailing:
+                  widget.admin &&
+                      widget.canWrite &&
+                      event['status'] == 'RETURN_PENDING'
+                  ? TextButton(
+                      onPressed: _blocked
+                          ? null
+                          : () => _open(
+                              CustodyEventFormPage(
+                                controller: widget.controller,
+                                institutionId: widget.institutionId,
+                                record: event,
+                                confirmation: true,
+                              ),
+                            ),
+                      child: const Text('Revisar'),
+                    )
+                  : null,
+            ),
+        ],
+      ),
+    ],
+  ];
 }

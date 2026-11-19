@@ -18,12 +18,18 @@ class HistorialPage extends StatefulWidget {
     required this.controller,
     required this.patientDetailController,
     required this.offline,
+    this.institutionId = '',
+    this.userId = '',
+    this.isAdmin = false,
     super.key,
   });
 
   final HistoryController controller;
   final PatientDetailController patientDetailController;
   final OfflineAccess offline;
+  final String institutionId;
+  final String userId;
+  final bool isAdmin;
 
   @override
   State<HistorialPage> createState() => _HistorialPageState();
@@ -98,9 +104,24 @@ class _HistorialPageState extends State<HistorialPage> {
             Text('Historial', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 4),
             const Text(
-              'Consulta las atenciones y dosis aplicadas de un paciente.',
+              'Consulta las atenciones recientes o busca un paciente.',
               style: TextStyle(color: AppColors.slate, height: 1.4),
             ),
+            if (widget.institutionId.isNotEmpty &&
+                widget.userId.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _RecentHistory(
+                controller: widget.controller,
+                institutionId: widget.institutionId,
+                userId: widget.userId,
+                isAdmin: widget.isAdmin,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Buscar por paciente',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ],
             const SizedBox(height: 16),
             Container(
               decoration: BoxDecoration(
@@ -170,67 +191,65 @@ class _HistorialPageState extends State<HistorialPage> {
               child: _searching
                   ? _skeletonHistory()
                   : patient == null
-                      ? const EmptyState(
-                          key: ValueKey('empty_prompt'),
-                          icon: Icons.folder_shared_outlined,
-                          title: 'Busca un paciente',
-                          message:
-                              'Ingresa un documento para ver sus atenciones y dosis '
-                              'aplicadas.',
-                        )
-                      : Column(
-                          key: const ValueKey('history_content'),
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _PatientHeader(
-                              patientName: patient.fullName,
-                              documentType: patient.documentType,
-                              documentNumber: patient.documentNumber,
-                              onOpenProfile: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => PatientDetailPage(
-                                    controller: widget.patientDetailController,
-                                    offline: widget.offline,
-                                    patientId: patient.id,
-                                  ),
-                                ),
+                  ? const EmptyState(
+                      key: ValueKey('empty_prompt'),
+                      icon: Icons.folder_shared_outlined,
+                      title: 'Busca un paciente',
+                      message:
+                          'Ingresa un documento para ver sus atenciones y dosis '
+                          'aplicadas.',
+                    )
+                  : Column(
+                      key: const ValueKey('history_content'),
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _PatientHeader(
+                          patientName: patient.fullName,
+                          documentType: patient.documentType,
+                          documentNumber: patient.documentNumber,
+                          onOpenProfile: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => PatientDetailPage(
+                                controller: widget.patientDetailController,
+                                offline: widget.offline,
+                                patientId: patient.id,
                               ),
                             ),
-                            const SizedBox(height: 20),
-                            Row(
-                              children: [
-                                Text(
-                                  'ATENCIONES',
-                                  style: AppTextStyles.overline.copyWith(
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                                const Spacer(),
-                                if (controller.history.isNotEmpty)
-                                  StatusPill(
-                                    label: '${controller.history.length}',
-                                    tone: StatusTone.neutral,
-                                  ),
-                              ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Text(
+                              'ATENCIONES',
+                              style: AppTextStyles.overline.copyWith(
+                                color: AppColors.primary,
+                              ),
                             ),
-                            const SizedBox(height: 12),
-                            if (controller.history.isEmpty)
-                              const EmptyState(
-                                icon: Icons.assignment_outlined,
-                                title: 'Sin atenciones registradas',
-                                message:
-                                    'Este paciente aun no tiene dosis aplicadas.',
-                              )
-                            else
-                              for (var i = 0;
-                                  i < controller.history.length;
-                                  i++)
-                                _AttentionTimelineItem(
-                                  attention: controller.history[i],
-                                  isLast: i == controller.history.length - 1,
-                                ),
+                            const Spacer(),
+                            if (controller.history.isNotEmpty)
+                              StatusPill(
+                                label: '${controller.history.length}',
+                                tone: StatusTone.neutral,
+                              ),
                           ],
                         ),
+                        const SizedBox(height: 12),
+                        if (controller.history.isEmpty)
+                          const EmptyState(
+                            icon: Icons.assignment_outlined,
+                            title: 'Sin atenciones registradas',
+                            message:
+                                'Este paciente aun no tiene dosis aplicadas.',
+                          )
+                        else
+                          for (var i = 0; i < controller.history.length; i++)
+                            _AttentionTimelineItem(
+                              attention: controller.history[i],
+                              isLast: i == controller.history.length - 1,
+                            ),
+                      ],
+                    ),
             ),
           ],
         );
@@ -351,7 +370,9 @@ class _HistorialPageState extends State<HistorialPage> {
                 Expanded(
                   child: Container(
                     width: 2,
-                    color: isLast ? Colors.transparent : const Color(0xFFE2E8F0),
+                    color: isLast
+                        ? Colors.transparent
+                        : const Color(0xFFE2E8F0),
                   ),
                 ),
               ],
@@ -450,6 +471,242 @@ class _HistorialPageState extends State<HistorialPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _RecentHistory extends StatefulWidget {
+  const _RecentHistory({
+    required this.controller,
+    required this.institutionId,
+    required this.userId,
+    required this.isAdmin,
+  });
+
+  final HistoryController controller;
+  final String institutionId;
+  final String userId;
+  final bool isAdmin;
+
+  @override
+  State<_RecentHistory> createState() => _RecentHistoryState();
+}
+
+class _RecentHistoryState extends State<_RecentHistory> {
+  late DateTimeRange _range;
+  List<Map<String, dynamic>> _items = [];
+  int _page = 0;
+  int _request = 0;
+  bool _loading = false;
+  bool _hasNext = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    _range = DateTimeRange(
+      start: today.subtract(const Duration(days: 29)),
+      end: today,
+    );
+    _load(0);
+  }
+
+  Future<void> _load(int page) async {
+    final request = ++_request;
+    setState(() {
+      _loading = true;
+      _error = null;
+      _items = [];
+      _hasNext = false;
+      _page = page;
+    });
+    try {
+      final end = DateTime(
+        _range.end.year,
+        _range.end.month,
+        _range.end.day + 1,
+      );
+      final result = await widget.controller.recentPage(
+        admin: widget.isAdmin,
+        institutionId: widget.institutionId,
+        userId: widget.userId,
+        from: _range.start,
+        to: end,
+        page: page,
+      );
+      if (!mounted || request != _request) return;
+      setState(() {
+        _items = (result['items'] as List)
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList();
+        _hasNext = result['hasNext'] == true;
+      });
+    } catch (_) {
+      if (!mounted || request != _request) return;
+      setState(
+        () => _error = widget.isAdmin
+            ? 'No se pudo consultar el servidor. Verifica tu conexión e intenta de nuevo.'
+            : 'No se pudo consultar el historial local. Intenta de nuevo.',
+      );
+    } finally {
+      if (mounted && request == _request) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _chooseRange() async {
+    final now = DateTime.now();
+    final selected = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(now.year, now.month, now.day),
+      initialDateRange: _range,
+      helpText: 'Selecciona el rango de atenciones',
+    );
+    if (!mounted || selected == null) return;
+    if (selected.end.difference(selected.start).inDays > 365) {
+      AppSnackbar.warning(context, 'Selecciona un rango máximo de 366 días.');
+      return;
+    }
+    setState(() => _range = selected);
+    await _load(0);
+  }
+
+  String _date(DateTime date) =>
+      '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Atenciones recientes',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          widget.isAdmin
+              ? 'Atenciones sincronizadas de la institución.'
+              : 'Tus atenciones guardadas en este dispositivo.',
+          style: const TextStyle(color: AppColors.slate),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: _loading ? null : _chooseRange,
+          icon: const Icon(Icons.date_range),
+          label: Text('${_date(_range.start)} – ${_date(_range.end)}'),
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: _loading ? null : () => _load(_page),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Actualizar'),
+          ),
+        ),
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (_error != null) ...[
+          Text(_error!, style: const TextStyle(color: AppColors.danger)),
+          TextButton(
+            onPressed: () => _load(_page),
+            child: const Text('Reintentar'),
+          ),
+        ] else if (_items.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Text('No hay atenciones en este rango de fechas.'),
+          )
+        else
+          for (var index = 0; index < _items.length; index++) ...[
+            if (DateTime.tryParse('${_items[index]['date']}')
+                case final parsed?)
+              if (index == 0 ||
+                  DateUtils.dateOnly(parsed.toLocal()) !=
+                      DateUtils.dateOnly(
+                        DateTime.parse('${_items[index - 1]['date']}')
+                            .toLocal(),
+                      )) ...[
+                Padding(
+                  padding: const EdgeInsets.only(top: 16, bottom: 8),
+                  child: Text(
+                    _date(parsed.toLocal()),
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+              ],
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${_items[index]['patientName'] ?? 'Paciente'}',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    Text('${_items[index]['document'] ?? ''}'),
+                    Text(
+                      widget.isAdmin
+                          ? 'Atendió: ${_items[index]['professionalName'] ?? 'No disponible'}'
+                          : 'Atendió: tú',
+                    ),
+                    Text(
+                      'Estado: ${switch (_items[index]['status']) {
+                        'COMPLETED' => 'Completada',
+                        'CANCELLED' => 'Anulada',
+                        'DRAFT' => 'Borrador',
+                        'IN_PROGRESS' => 'En curso',
+                        _ => _items[index]['status'] ?? 'No disponible',
+                      }}',
+                    ),
+                    if (_items[index]['consecutive'] != null)
+                      Text('Consecutivo: ${_items[index]['consecutive']}'),
+                    if ((_items[index]['observations'] as String?)
+                            ?.isNotEmpty ==
+                        true)
+                      Text('Observaciones: ${_items[index]['observations']}'),
+                    if (!widget.isAdmin && _items[index]['syncState'] != null)
+                      Text('Sincronización: ${switch (_items[index]['syncState']) {
+                        'SYNCED' => 'Sincronizada',
+                        'PENDING_SYNC' || 'LOCAL_ONLY' => 'Pendiente',
+                        'SYNCING' => 'En curso',
+                        'FAILED' || 'QUARANTINED' => 'Requiere revisión',
+                        _ => 'No disponible',
+                      }}'),
+                    for (final dose in (_items[index]['doses'] as List? ?? []))
+                      Text(
+                        '• ${dose['vaccine'] ?? 'Vacuna'}'
+                        '${dose['label'] == null ? '' : ' · ${dose['label']}'}'
+                        '${dose['lot'] == null ? '' : ' · Lote ${dose['lot']}'}'
+                        '${dose['status'] == 'CANCELLED' ? ' · Anulada' : ''}',
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        if (!_loading)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              TextButton(
+                onPressed: _page > 0 ? () => _load(_page - 1) : null,
+                child: const Text('Anterior'),
+              ),
+              Text('Página ${_page + 1}'),
+              TextButton(
+                onPressed: _hasNext ? () => _load(_page + 1) : null,
+                child: const Text('Siguiente'),
+              ),
+            ],
+          ),
+      ],
     );
   }
 }

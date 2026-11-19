@@ -20,6 +20,9 @@ class InventoryController extends AsyncController {
   List<Map<String, dynamic>> custodyEvents = const [];
   List<Map<String, dynamic>> movements = const [];
 
+  /// Un 5xx o un fallo de red no demuestra si una escritura se confirmó.
+  int? lastPostStatus;
+
   @override
   Future<void> execute(Future<void> Function(String token) action) async {
     if (isDisposed) return;
@@ -102,6 +105,38 @@ class InventoryController extends AsyncController {
     movements = await api.inventoryList(token, institution, 'movements');
   });
 
+  Future<void> loadVaccinators(String institution) => execute((token) async {
+    vaccinators =
+        (await api.listUsersByInstitution(
+              token,
+              institutionId: institution,
+              roles: const ['VACCINATOR'],
+            ))
+            .where(
+              (u) =>
+                  u['status'] == 'ACTIVE' &&
+                  (u['roles'] as List<dynamic>? ?? const []).contains(
+                    'VACCINATOR',
+                  ),
+            )
+            .toList();
+  });
+
+  Future<List<Map<String, dynamic>>?> loadCampaignParticipants(
+    String institution,
+    String campaignId,
+  ) async {
+    List<Map<String, dynamic>>? result;
+    await execute((token) async {
+      result = await api.inventoryList(
+        token,
+        institution,
+        'campaigns/${Uri.encodeComponent(campaignId)}/participants',
+      );
+    });
+    return result;
+  }
+
   /// Solo lectura: null representa un fallo, no una lista vacía.
   Future<List<Map<String, dynamic>>?> loadPendingFollowUps(
     String institution,
@@ -147,6 +182,22 @@ class InventoryController extends AsyncController {
     return result;
   }
 
+  Future<Map<String, dynamic>?> loadCustodyWorkflow(
+    String institution,
+    String assignmentId, {
+    required bool admin,
+  }) async {
+    Map<String, dynamic>? result;
+    await execute((token) async {
+      result = await api.inventoryObject(
+        token,
+        institution,
+        '${admin ? 'assignments' : 'my-assignments'}/${Uri.encodeComponent(assignmentId)}/custody-workflow',
+      );
+    });
+    return result;
+  }
+
   Future<void> loadFormOptions(String institution, {required bool isLot}) =>
       execute((token) async {
         if (isLot) {
@@ -185,8 +236,14 @@ class InventoryController extends AsyncController {
     Map<String, dynamic> body,
   ) async {
     var success = false;
+    lastPostStatus = null;
     await execute((token) async {
-      await api.inventoryPost(token, institution, resource, body);
+      try {
+        await api.inventoryPost(token, institution, resource, body);
+      } on ApiException catch (e) {
+        lastPostStatus = e.statusCode;
+        rethrow;
+      }
       success = true;
     });
     return success;

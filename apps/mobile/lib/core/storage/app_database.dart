@@ -926,6 +926,81 @@ class AppDatabase extends _$AppDatabase {
   /// Ultimos registros de atencion de la institucion (offline).
   /// Exclusivo para quien realiza atenciones; requiere [vaccinatorId] para
   /// asegurar que cada profesional solo vea sus propias atenciones.
+  Future<Map<String, dynamic>> attentionHistoryLocal(
+    String institutionId,
+    String vaccinatorId, {
+    required DateTime from,
+    required DateTime to,
+    required int page,
+  }) async {
+    if (institutionId.isEmpty || vaccinatorId.isEmpty || page < 0) {
+      return {'items': <Map<String, dynamic>>[], 'hasNext': false};
+    }
+    final fromSeconds = from.toUtc().millisecondsSinceEpoch ~/ 1000;
+    final toSeconds = to.toUtc().millisecondsSinceEpoch ~/ 1000;
+    final query =
+        select(attentionsLocal).join([
+            innerJoin(
+              patientsLocal,
+              patientsLocal.id.equalsExp(attentionsLocal.patientId),
+            ),
+          ])
+          ..where(
+            attentionsLocal.institutionId.equals(institutionId) &
+                patientsLocal.institutionId.equals(institutionId) &
+                attentionsLocal.vaccinatorId.equals(vaccinatorId) &
+                attentionsLocal.attentionDate.isBiggerOrEqualValue(
+                  fromSeconds,
+                ) &
+                attentionsLocal.attentionDate.isSmallerThanValue(toSeconds),
+          )
+          ..orderBy([
+            OrderingTerm.desc(attentionsLocal.attentionDate),
+            OrderingTerm.desc(attentionsLocal.id),
+          ])
+          ..limit(21, offset: page * 20);
+    final rows = await query.get();
+    final shown = rows.take(20).toList();
+    final ids = shown.map((r) => r.readTable(attentionsLocal).id).toList();
+    final doseRows = ids.isEmpty
+        ? <AppliedDosesLocalData>[]
+        : await (select(appliedDosesLocal)
+                ..where((d) => d.attentionId.isIn(ids))
+                ..orderBy([(d) => OrderingTerm.asc(d.appliedAt)]))
+              .get();
+    return {
+      'hasNext': rows.length > 20,
+      'items': shown.map((row) {
+        final a = row.readTable(attentionsLocal);
+        final p = row.readTable(patientsLocal);
+        return {
+          'id': a.id,
+          'patientId': a.patientId,
+          'patientName': '${p.firstName} ${p.lastName}'.trim(),
+          'document': '${p.documentType} ${p.documentNumber}',
+          'date': DateTime.fromMillisecondsSinceEpoch(
+            a.attentionDate! * 1000,
+            isUtc: true,
+          ).toIso8601String(),
+          'status': a.status,
+          'observations': a.observations,
+          'syncState': a.syncState,
+          'doses': doseRows
+              .where((d) => d.attentionId == a.id)
+              .map(
+                (d) => {
+                  'vaccine': d.vaccineNameSnapshot,
+                  'label': d.doseLabelSnapshot,
+                  'lot': d.lot,
+                  'status': d.status,
+                },
+              )
+              .toList(),
+        };
+      }).toList(),
+    };
+  }
+
   Future<List<Map<String, dynamic>>> recentRecordsLocal(
     String institutionId, {
     String? vaccinatorId,

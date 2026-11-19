@@ -16,6 +16,8 @@
 7. [Modelo mínimo y asignación offline](07-modelo-minimo-y-dispositivo.md).
 8. [Flujo operativo de inventario y propuesta de carga masiva](12-flujo-operativo-inventario.md).
 9. [Plan de inventario, entregas, conciliación y consumo](13-plan-inventario-entregas-consumo.md).
+10. [Interfaz guiada: entrega directa y organización de jornadas](14-flujo-entregas-jornadas.md).
+11. [Custodia y cierre: módulo integrado inicial y límites de habilitación](15-custodia-y-cierre-integrado.md).
 
 ## Decisiones centrales
 

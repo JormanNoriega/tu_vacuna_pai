@@ -2,6 +2,7 @@ package com.pai.api.inventory.controller;
 
 import com.pai.api.inventory.domain.VialTransfer;
 import com.pai.api.inventory.service.InventoryService;
+import com.pai.api.inventory.service.InventoryReceiptWorkflow;
 import com.pai.api.shared.exceptions.ErrorResponse;
 import com.pai.api.shared.security.ActorResolver;
 import jakarta.validation.Valid;
@@ -35,9 +36,11 @@ import org.springframework.web.bind.annotation.RestController;
 @ConditionalOnProperty(name = "app.inventory.api-enabled", havingValue = "true")
 public class InventoryController {
   private final InventoryService service;
+  private final InventoryReceiptWorkflow receiptWorkflow;
 
-  public InventoryController(InventoryService service) {
+  public InventoryController(InventoryService service, InventoryReceiptWorkflow receiptWorkflow) {
     this.service = service;
+    this.receiptWorkflow = receiptWorkflow;
   }
 
   public record CreateLotRequest(@NotNull UUID id, @NotNull UUID vaccineId,
@@ -153,7 +156,7 @@ public class InventoryController {
   @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
   public InventoryService.ReceiptResult receivePartial(Authentication auth, @PathVariable UUID institutionId,
       @PathVariable UUID assignmentId, @Valid @RequestBody PartialReceiveRequest request) {
-    return service.receivePartial(ActorResolver.actorId(auth), institutionId, assignmentId,
+    return receiptWorkflow.receive(ActorResolver.actorId(auth), institutionId, assignmentId,
         request.id(), request.vials(), request.note());
   }
 

@@ -127,6 +127,39 @@ class InventoryServiceTest {
   }
 
   @Test
+  void operationalReceiptAndFinalizationCommitTogetherWithoutOfflineOrStockEffects() {
+    db.execute("CREATE TABLE app.inventory_transfer_finalizations (id UUID PRIMARY KEY,institution_id UUID,"
+        + "lot_id UUID,assignment_id UUID UNIQUE,kind VARCHAR,recorded_by UUID,note VARCHAR,"
+        + "recorded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP)");
+    var workflow = new InventoryReceiptWorkflow(service,new CustodyWorkflowService(db,guard,new DataScope(),true));
+    UUID assignment=UUID.randomUUID(),receipt=UUID.randomUUID();
+    tx.executeWithoutResult(s->service.recordEntry(actor,institution,UUID.randomUUID(),lot,5,now,"Entrada"));
+    tx.executeWithoutResult(s->service.dispatch(actor,institution,UUID.randomUUID(),assignment,lot,vaccinator,5,now,"Entrega"));
+    var first=tx.execute(s->workflow.receive(vaccinator,institution,assignment,receipt,5,""));
+    var retry=tx.execute(s->workflow.receive(vaccinator,institution,assignment,receipt,5,""));
+    assertThat(first).isEqualTo(retry);
+    assertThat(count("inventory_transfer_finalizations")).isEqualTo(1);
+    assertThat(count("inventory_receipts")).isEqualTo(1);
+    assertThat(count("inventory_movements")).isEqualTo(2);
+    assertThat(service.listLots(actor,institution).getFirst().availableVials()).isZero();
+  }
+
+  @Test
+  void receiptRollsBackIfIntegratedFinalizationCannotBeStored() {
+    db.execute("CREATE TABLE app.inventory_transfer_finalizations (id UUID PRIMARY KEY,institution_id UUID,"
+        + "lot_id UUID,assignment_id UUID UNIQUE,kind VARCHAR,recorded_by UUID,note VARCHAR CHECK(length(note)=0))");
+    var workflow = new InventoryReceiptWorkflow(service,new CustodyWorkflowService(db,guard,new DataScope(),true));
+    UUID assignment=UUID.randomUUID(),receipt=UUID.randomUUID();
+    tx.executeWithoutResult(s->service.recordEntry(actor,institution,UUID.randomUUID(),lot,5,now,"Entrada"));
+    tx.executeWithoutResult(s->service.dispatch(actor,institution,UUID.randomUUID(),assignment,lot,vaccinator,5,now,"Entrega"));
+    assertThatThrownBy(()->tx.execute(s->workflow.receive(vaccinator,institution,assignment,receipt,5,"")))
+        .isInstanceOf(DataIntegrityViolationException.class);
+    assertThat(count("inventory_receipts")).isZero();
+    assertThat(db.queryForObject("SELECT status FROM app.inventory_assignments WHERE id=?",String.class,assignment))
+        .isEqualTo("IN_TRANSIT");
+  }
+
+  @Test
   void candidateReceiptCustodyAndAutomaticFinalizationCommitAndRetryTogether() {
     var orchestrator = candidateOrchestrator();
     UUID assignment = UUID.randomUUID(), receipt = UUID.randomUUID(), custodyId = UUID.randomUUID(), closing = UUID.randomUUID();

@@ -149,6 +149,8 @@ Future<void> main() async {
   );
   final historyController = HistoryController(
     sessionManager: sessionManager,
+    api: apiClient,
+    database: appDatabase,
     searchPatient: SearchPatient(patientsRepository),
     listPatientAttentions: ListPatientAttentions(attentionsRepository),
     listReferenceCatalogs: ListReferenceCatalogs(catalogRepository),

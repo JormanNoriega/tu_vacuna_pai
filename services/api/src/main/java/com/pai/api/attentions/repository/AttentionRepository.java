@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,6 +18,31 @@ import org.springframework.data.repository.query.Param;
  * de datos).
  */
 public interface AttentionRepository extends JpaRepository<AttentionEntity, UUID> {
+
+  @Query("""
+      SELECT a FROM AttentionEntity a
+      WHERE a.institutionId = :institutionId
+        AND a.attentionDate >= :from AND a.attentionDate < :to
+      ORDER BY a.attentionDate DESC, a.id DESC
+      """)
+  Slice<AttentionEntity> historyPage(
+      @Param("institutionId") UUID institutionId,
+      @Param("from") Instant from,
+      @Param("to") Instant to,
+      Pageable pageable);
+
+  @Query("""
+      SELECT a FROM AttentionEntity a
+      WHERE a.institutionId = :institutionId AND a.professionalId = :professionalId
+        AND a.attentionDate >= :from AND a.attentionDate < :to
+      ORDER BY a.attentionDate DESC, a.id DESC
+      """)
+  Slice<AttentionEntity> personalHistoryPage(
+      @Param("institutionId") UUID institutionId,
+      @Param("professionalId") UUID professionalId,
+      @Param("from") Instant from,
+      @Param("to") Instant to,
+      Pageable pageable);
 
   Optional<AttentionEntity> findByIdAndInstitutionId(UUID id, UUID institutionId);
 

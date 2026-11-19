@@ -25,6 +25,8 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
 
   List<UserEntity> findByInstitutionId(UUID institutionId);
 
+  List<UserEntity> findByInstitutionIdAndIdIn(UUID institutionId, Collection<UUID> ids);
+
   /**
    * Carga un usuario solo si pertenece a la institucion indicada. Devuelve
    * vacio cuando el usuario no existe o esta fuera del alcance, de modo que
