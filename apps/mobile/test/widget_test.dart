@@ -130,7 +130,7 @@ void main() {
         name: 'Hospital A',
       ),
       roles: const ['ADMIN_INSTITUTION'],
-      permissions: const ['USER_MANAGE', 'PATIENT_READ'],
+      permissions: const ['USER_MANAGE', 'PATIENT_READ', 'INVENTORY_READ'],
       offlineWindowHours: 72,
       lastOnlineValidation: DateTime.now(),
     );
@@ -150,6 +150,24 @@ void main() {
     expect(find.text('Exportar'), findsOneWidget);
     expect(find.text('Inventario'), findsWidgets);
     expect(find.text('Nueva Atención'), findsNothing);
+
+    final navBar = find.byKey(const Key('dashboard-nav-bar'));
+    expect(
+      find.descendant(
+        of: navBar,
+        matching: find.byIcon(Icons.local_shipping_outlined),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.descendant(of: navBar, matching: find.text('Entregas')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.text('Entregas')),
+      findsOneWidget,
+    );
+    expect(find.text('Entregas no disponibles.'), findsOneWidget);
 
     // Navegar a la pestaña Administracion muestra la gestion de usuarios.
     await tester.tap(
@@ -213,6 +231,26 @@ void main() {
       ),
       findsNothing,
     );
+    final navBar = find.byKey(const Key('dashboard-nav-bar'));
+    expect(
+      find.descendant(
+        of: navBar,
+        matching: find.byIcon(Icons.medication_liquid_outlined),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.descendant(of: navBar, matching: find.text('Recibidos')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.text('Recibidos'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Recibidos no disponibles.'), findsOneWidget);
   });
 
   testWidgets('ADMIN_INSTITUTION edita el estado y los roles de un vacunador', (

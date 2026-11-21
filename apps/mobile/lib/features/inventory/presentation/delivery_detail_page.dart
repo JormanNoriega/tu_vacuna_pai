@@ -121,7 +121,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'El destinatario entra con su cuenta, abre Entregas y jornadas y pulsa Recibir en esta entrega. Debe contar los frascos recibidos e indicar cualquier diferencia. El administrador no confirma en su nombre.',
+                  'El destinatario entra con su cuenta, abre Recibidos y pulsa Recibir en esta entrega. Debe contar los frascos recibidos e indicar cualquier diferencia. El administrador no confirma en su nombre.',
                 ),
                 const SizedBox(height: 16),
               ],
