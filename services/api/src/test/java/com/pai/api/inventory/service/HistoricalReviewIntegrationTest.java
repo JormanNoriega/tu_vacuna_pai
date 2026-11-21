@@ -64,7 +64,10 @@ class HistoricalReviewIntegrationTest {
     var target = new InventoryService(db, guard, new DataScope());
     var factory = new ProxyFactory(target);
     factory.setProxyTargetClass(true);
-    factory.addAdvice(new TransactionInterceptor(manager, new AnnotationTransactionAttributeSource()));
+    TransactionInterceptor interceptor = new TransactionInterceptor();
+    interceptor.setTransactionManager(manager);
+    interceptor.setTransactionAttributeSource(new AnnotationTransactionAttributeSource());
+    factory.addAdvice(interceptor);
     service = (InventoryService) factory.getProxy();
   }
 
