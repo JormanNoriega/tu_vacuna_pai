@@ -10,7 +10,6 @@ import com.pai.api.catalog.entity.GeoMunicipalityEntity;
 import com.pai.api.catalog.repository.GeoDepartmentRepository;
 import com.pai.api.catalog.repository.GeoMunicipalityRepository;
 import com.pai.api.patients.entity.PatientAddressEntity;
-import com.pai.api.patients.entity.PatientDemographicEntity;
 import com.pai.api.patients.entity.PatientEntity;
 import com.pai.api.patients.entity.PatientEntity.Sex;
 import com.pai.api.patients.repository.PatientAddressRepository;

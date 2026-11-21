@@ -27,7 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AttentionHistoryService {
-  private static final int PAGE_SIZE = 20;
+  private static final int PAGE_SIZE = 10;
   private final AttentionRepository attentions;
   private final AppliedDoseRepository doses;
   private final UserRepository users;

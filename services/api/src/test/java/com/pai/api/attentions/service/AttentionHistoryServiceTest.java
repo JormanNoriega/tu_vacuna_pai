@@ -41,7 +41,7 @@ class AttentionHistoryServiceTest {
     when(attentions.historyPage(eq(institution), eq(from), eq(to), any()))
         .thenReturn(new SliceImpl<>(List.of()));
     service.history(actor, from, to, 2);
-    verify(attentions).historyPage(institution, from, to, PageRequest.of(2, 20));
+    verify(attentions).historyPage(institution, from, to, PageRequest.of(2, 10));
   }
 
   @Test
@@ -53,7 +53,7 @@ class AttentionHistoryServiceTest {
     when(attentions.personalHistoryPage(eq(institution), eq(user), eq(from), eq(to), any()))
         .thenReturn(new SliceImpl<>(List.of()));
     service.history(actor, from, to, 0);
-    verify(attentions).personalHistoryPage(institution, user, from, to, PageRequest.of(0, 20));
+    verify(attentions).personalHistoryPage(institution, user, from, to, PageRequest.of(0, 10));
   }
 
   @Test

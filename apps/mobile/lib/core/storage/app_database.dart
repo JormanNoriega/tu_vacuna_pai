@@ -958,9 +958,9 @@ class AppDatabase extends _$AppDatabase {
             OrderingTerm.desc(attentionsLocal.attentionDate),
             OrderingTerm.desc(attentionsLocal.id),
           ])
-          ..limit(21, offset: page * 20);
+          ..limit(11, offset: page * 10);
     final rows = await query.get();
-    final shown = rows.take(20).toList();
+    final shown = rows.take(10).toList();
     final ids = shown.map((r) => r.readTable(attentionsLocal).id).toList();
     final doseRows = ids.isEmpty
         ? <AppliedDosesLocalData>[]
@@ -968,8 +968,20 @@ class AppDatabase extends _$AppDatabase {
                 ..where((d) => d.attentionId.isIn(ids))
                 ..orderBy([(d) => OrderingTerm.asc(d.appliedAt)]))
               .get();
+    final vaccineIds = doseRows
+        .map((dose) => dose.vaccineId)
+        .whereType<String>()
+        .toSet();
+    final vaccineRows = vaccineIds.isEmpty
+        ? <VaccinesCacheData>[]
+        : await (select(
+            vaccinesCache,
+          )..where((vaccine) => vaccine.id.isIn(vaccineIds))).get();
+    final vaccineNames = {
+      for (final vaccine in vaccineRows) vaccine.id: vaccine.name,
+    };
     return {
-      'hasNext': rows.length > 20,
+      'hasNext': rows.length > 10,
       'items': shown.map((row) {
         final a = row.readTable(attentionsLocal);
         final p = row.readTable(patientsLocal);
@@ -985,17 +997,20 @@ class AppDatabase extends _$AppDatabase {
           'status': a.status,
           'observations': a.observations,
           'syncState': a.syncState,
-          'doses': doseRows
-              .where((d) => d.attentionId == a.id)
-              .map(
-                (d) => {
-                  'vaccine': d.vaccineNameSnapshot,
-                  'label': d.doseLabelSnapshot,
-                  'lot': d.lot,
-                  'status': d.status,
-                },
-              )
-              .toList(),
+          'doses': doseRows.where((d) => d.attentionId == a.id).map((d) {
+            final snapshot = d.vaccineNameSnapshot.trim();
+            final isUuid = RegExp(
+              r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+            ).hasMatch(snapshot);
+            return {
+              'vaccine': isUuid
+                  ? (vaccineNames[d.vaccineId] ?? 'Atención de vacunación')
+                  : snapshot,
+              'label': d.doseLabelSnapshot,
+              'lot': d.lot,
+              'status': d.status,
+            };
+          }).toList(),
         };
       }).toList(),
     };

@@ -34,8 +34,9 @@ class HistoryController extends AsyncController {
     required DateTime from,
     required DateTime to,
     required int page,
+    required bool offline,
   }) async {
-    if (!admin) {
+    if (!admin && offline) {
       if (database == null) {
         throw StateError('Almacenamiento local no disponible');
       }
@@ -49,7 +50,23 @@ class HistoryController extends AsyncController {
     }
     final token = (await sessionManager.loadSession())?.accessToken;
     if (token == null || api == null) throw const SessionExpiredException();
-    return api!.fetchAttentionHistory(token, from: from, to: to, page: page);
+    try {
+      return await api!.fetchAttentionHistory(
+        token,
+        from: from,
+        to: to,
+        page: page,
+      );
+    } catch (_) {
+      if (admin || database == null) rethrow;
+      return database!.attentionHistoryLocal(
+        institutionId,
+        userId,
+        from: from,
+        to: to,
+        page: page,
+      );
+    }
   }
 
   Patient? _patient;

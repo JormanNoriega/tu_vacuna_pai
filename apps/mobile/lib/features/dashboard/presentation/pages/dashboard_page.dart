@@ -181,11 +181,16 @@ class _DashboardPageState extends State<DashboardPage> {
                 'CATALOG_CONFIG_READ',
               ],
             ),
-            const _DashboardDestination(
-              icon: Icons.local_shipping_outlined,
-              selectedIcon: Icons.local_shipping,
-              label: 'Entregas y jornadas',
-              requiredPermissions: ['INVENTORY_READ', 'ATTENTION_CREATE'],
+            _DashboardDestination(
+              icon: _showsDeliveries
+                  ? Icons.local_shipping_outlined
+                  : Icons.medication_liquid_outlined,
+              selectedIcon: _showsDeliveries
+                  ? Icons.local_shipping
+                  : Icons.medication_liquid,
+              label: _showsDeliveries ? 'Entregas' : 'Recibidos',
+              requiredPermissions: const ['INVENTORY_READ', 'ATTENTION_CREATE'],
+              isDeliveryTab: true,
             ),
             const _DashboardDestination(
               icon: Icons.admin_panel_settings_outlined,
@@ -231,6 +236,10 @@ class _DashboardPageState extends State<DashboardPage> {
   ];
 
   bool get _isSuperAdmin => widget.user.hasRole('SUPER_ADMIN');
+
+  bool get _showsDeliveries =>
+      widget.user.hasRole('ADMIN_INSTITUTION') ||
+      (widget.user.hasPermission('INVENTORY_READ') && !_canPerformAttentions);
 
   bool get _isSuperAdminView => _isSuperAdmin && widget.adminController != null;
 
@@ -307,10 +316,16 @@ class _DashboardPageState extends State<DashboardPage> {
       );
     }
 
-    if (_destinations[_selectedIndex].label == 'Entregas y jornadas') {
+    if (_destinations[_selectedIndex].isDeliveryTab) {
       final controller = widget.inventoryController;
       if (controller == null) {
-        return const Center(child: Text('Entregas no disponibles.'));
+        return Center(
+          child: Text(
+            _showsDeliveries
+                ? 'Entregas no disponibles.'
+                : 'Recibidos no disponibles.',
+          ),
+        );
       }
       return InventoryPage(
         controller: controller,
@@ -1178,6 +1193,7 @@ class _DashboardDestination {
     this.isUsersManagement = false,
     this.isNewAttention = false,
     this.isHistory = false,
+    this.isDeliveryTab = false,
   });
 
   final IconData icon;
@@ -1195,6 +1211,7 @@ class _DashboardDestination {
 
   /// True cuando el destino es el historial de atenciones del paciente.
   final bool isHistory;
+  final bool isDeliveryTab;
 
   bool get isCatalog => label == 'Inventario';
 }

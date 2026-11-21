@@ -126,7 +126,10 @@ class DisposablePostgresInventoryTest {
     var transactionManager = new DataSourceTransactionManager(source);
     var proxy = new ProxyFactory(new InventoryService(pausingDb, guard, new DataScope()));
     proxy.setProxyTargetClass(true);
-    proxy.addAdvice(new TransactionInterceptor(transactionManager, new AnnotationTransactionAttributeSource()));
+    TransactionInterceptor interceptor = new TransactionInterceptor();
+    interceptor.setTransactionManager(transactionManager);
+    interceptor.setTransactionAttributeSource(new AnnotationTransactionAttributeSource());
+    proxy.addAdvice(interceptor);
     var transactionalReview = (InventoryService) proxy.getProxy();
     UUID concurrentReceipt = UUID.randomUUID();
     pausingDb.pauseAfterAssignment = true;
