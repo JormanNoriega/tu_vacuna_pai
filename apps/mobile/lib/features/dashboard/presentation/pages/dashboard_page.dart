@@ -109,6 +109,7 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
   bool _isAttentionSubmitting = false;
+  String? _inventorySubAction;
 
   /// Razon visual del indicador, ajustable en vivo por la conectividad del
   /// dispositivo (no re-autoriza ni re-valida).
@@ -386,6 +387,26 @@ class _DashboardPageState extends State<DashboardPage> {
   /// Resuelve las acciones de "Acciones frecuentes" llevando al destino
   /// correspondiente del dashboard (o avisando si aun no existe).
   void _openQuickAction(String label) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 960 &&
+        (_isSuperAdminView ||
+            widget.user.hasRole('ADMIN_INSTITUTION') ||
+            widget.user.hasPermission('USER_MANAGE'));
+
+    if (label == 'Configuracion Vacunas' ||
+        label == 'Ajustes Inventario' ||
+        label == 'Inventario' ||
+        label == 'Ver inventario') {
+      if (isDesktop) {
+        final subAction = label == 'Configuracion Vacunas'
+            ? 'configuracion'
+            : (label == 'Ajustes Inventario' ? 'ajustes' : 'catalogo');
+        _selectDesktopSection('inventario', subAction: subAction);
+        return;
+      }
+      _openCatalog();
+      return;
+    }
+
     if (label == 'Entregas' ||
         label == 'Jornadas' ||
         label == 'Custodia y cierre' ||
@@ -427,10 +448,6 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ),
       );
-      return;
-    }
-    if (label == 'Configuracion Vacunas' || label == 'Ajustes Inventario') {
-      _openCatalog();
       return;
     }
     final index = _destinations.indexWhere(
@@ -482,10 +499,15 @@ class _DashboardPageState extends State<DashboardPage> {
     return 'inicio';
   }
 
-  void _selectDesktopSection(String section) {
+  void _selectDesktopSection(String section, {String? subAction}) {
     if (section == 'inicio') {
       _selectTab(0);
       return;
+    }
+    if (section == 'inventario') {
+      setState(() {
+        _inventorySubAction = subAction ?? 'catalogo';
+      });
     }
     if (_isSuperAdminView) {
       final index = switch (section) {
@@ -520,6 +542,8 @@ class _DashboardPageState extends State<DashboardPage> {
       offline: _offline,
       inventoryController: widget.inventoryController,
       embedded: true,
+      initialSubAction: _inventorySubAction,
+      onSubActionHandled: () => _inventorySubAction = null,
     );
   }
 

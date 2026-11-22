@@ -65,9 +65,39 @@ class AdminWebSidebar extends StatefulWidget {
   State<AdminWebSidebar> createState() => _AdminWebSidebarState();
 }
 
-class _AdminWebSidebarState extends State<AdminWebSidebar> {
-  bool _isHovered = false;
+class _AdminWebSidebarState extends State<AdminWebSidebar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animController;
+  late final Animation<double> _animation;
   final Set<String> _expandedSubmenus = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
+    _animation = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeInOutCubic,
+    );
+    _expandedSubmenus.add(widget.selectedSection);
+  }
+
+  @override
+  void didUpdateWidget(AdminWebSidebar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedSection != oldWidget.selectedSection) {
+      _expandedSubmenus.add(widget.selectedSection);
+    }
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
 
   List<AdminSidebarItem> get _items {
     if (widget.isSuperAdmin) {
@@ -201,164 +231,153 @@ class _AdminWebSidebarState extends State<AdminWebSidebar> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isExpanded = _isHovered;
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) {
-        setState(() {
-          _isHovered = false;
-          _expandedSubmenus.clear();
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeInOutCubic,
-        clipBehavior: Clip.antiAlias,
-        width: isExpanded ? 270 : 72,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          border: const Border(
-            right: BorderSide(color: AppColors.border, width: 1),
-          ),
-          boxShadow: [
-            if (isExpanded)
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 16,
-                offset: const Offset(4, 0),
-              ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // Cabecera del sidebar: Logo e Isotipo
-            _buildHeader(isExpanded),
-            const Divider(height: 1, color: AppColors.border),
-
-            // Lista de ítems y submenús
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                children: [
-                  for (final item in _items) _buildItemTile(item, isExpanded),
-                ],
-              ),
-            ),
-
-            const Divider(height: 1, color: AppColors.border),
-            // Pie de página: Usuario y botón de salir
-            _buildFooter(isExpanded),
-          ],
-        ),
-      ),
-    );
+  void _onEnter() {
+    _animController.forward();
   }
 
-  Widget _buildHeader(bool isExpanded) {
-    return Container(
-      height: 72,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      alignment: Alignment.centerLeft,
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
+  void _onExit() {
+    _animController.reverse();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => _onEnter(),
+      onExit: (_) => _onExit(),
+      child: AnimatedBuilder(
+        animation: _animation,
+        builder: (context, child) {
+          final width = 72.0 + (198.0 * _animation.value);
+          return Container(
+            width: width,
             decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.surface,
+              border: const Border(
+                right: BorderSide(color: AppColors.border, width: 1),
+              ),
+              boxShadow: [
+                if (_animation.value > 0.05)
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06 * _animation.value),
+                    blurRadius: 16,
+                    offset: const Offset(4, 0),
+                  ),
+              ],
             ),
-            child: const Icon(
-              Icons.vaccines_rounded,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          if (isExpanded) ...[
-            const SizedBox(width: 12),
-            Expanded(
-              child: ClipRect(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Tu Vacuna PAI',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: AppColors.ink,
-                        letterSpacing: -0.2,
+            child: ClipRect(
+              child: OverflowBox(
+                minWidth: 270,
+                maxWidth: 270,
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: 270,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Cabecera del sidebar: Logo e Isotipo
+                      _buildHeader(),
+                      const Divider(height: 1, color: AppColors.border),
+
+                      // Lista de ítems y submenús
+                      Expanded(
+                        child: ListView(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          children: [
+                            for (final item in _items) _buildItemTile(item),
+                          ],
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      widget.roleName,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
-                        letterSpacing: 0.8,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+
+                      const Divider(height: 1, color: AppColors.border),
+                      // Pie de página: Usuario y botón de salir
+                      _buildFooter(),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ],
-        ],
+          );
+        },
       ),
     );
   }
-                  const Text(
-                    'Tu Vacuna PAI',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: AppColors.ink,
-                      letterSpacing: -0.2,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    widget.roleName,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
-                      letterSpacing: 0.8,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+
+  Widget _buildHeader() {
+    return Container(
+      height: 72,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 71,
+            child: Center(
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.vaccines_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
             ),
-          ],
+          ),
+          Expanded(
+            child: FadeTransition(
+              opacity: _animation,
+              child: ClipRect(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 4, right: 12),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Tu Vacuna PAI',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: AppColors.ink,
+                          letterSpacing: -0.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        widget.roleName,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                          letterSpacing: 0.8,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildItemTile(AdminSidebarItem item, bool isExpanded) {
+  Widget _buildItemTile(AdminSidebarItem item) {
     final isSelected = widget.selectedSection == item.id;
     final isSubmenuOpen = _expandedSubmenus.contains(item.id);
 
-    if (!isExpanded) {
-      // Estado colapsado: Solo icono centrado con Tooltip
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        child: Tooltip(
-          message: item.label,
-          preferBelow: false,
-          waitDuration: const Duration(milliseconds: 300),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
           child: InkWell(
             onTap: () {
               widget.onSelectSection(item.id);
@@ -368,215 +387,188 @@ class _AdminWebSidebarState extends State<AdminWebSidebar> {
             },
             borderRadius: BorderRadius.circular(10),
             child: Container(
-              height: 48,
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primarySoft : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                isSelected ? item.selectedIcon : item.icon,
-                color: isSelected ? AppColors.primary : AppColors.slate,
-                size: 22,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Estado expandido: Fila con icono, nombre y flecha si tiene sub-opciones
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          InkWell(
-            onTap: () {
-              widget.onSelectSection(item.id);
-              if (item.hasSubItems) {
-                _toggleSubmenu(item.id);
-              }
-            },
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
               height: 44,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
                 color: isSelected ? AppColors.primarySoft : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 children: [
-                  Icon(
-                    isSelected ? item.selectedIcon : item.icon,
-                    color: isSelected ? AppColors.primary : AppColors.slate,
-                    size: 22,
+                  SizedBox(
+                    width: 51,
+                    child: Center(
+                      child: Icon(
+                        isSelected ? item.selectedIcon : item.icon,
+                        color: isSelected ? AppColors.primary : AppColors.slate,
+                        size: 22,
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      item.label,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.w500,
-                        color: isSelected ? AppColors.primary : AppColors.ink,
+                    child: FadeTransition(
+                      opacity: _animation,
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              item.label,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight:
+                                    isSelected ? FontWeight.bold : FontWeight.w500,
+                                color: isSelected ? AppColors.primary : AppColors.ink,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (item.hasSubItems)
+                            IconButton(
+                              icon: Icon(
+                                isSubmenuOpen
+                                    ? Icons.keyboard_arrow_down_rounded
+                                    : Icons.keyboard_arrow_right_rounded,
+                                size: 20,
+                                color: isSelected ? AppColors.primary : AppColors.hint,
+                              ),
+                              padding: const EdgeInsets.only(right: 8),
+                              constraints: const BoxConstraints(),
+                              onPressed: () => _toggleSubmenu(item.id),
+                            ),
+                        ],
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (item.hasSubItems)
-                    IconButton(
-                      icon: Icon(
-                        isSubmenuOpen
-                            ? Icons.keyboard_arrow_down_rounded
-                            : Icons.keyboard_arrow_right_rounded,
-                        size: 20,
-                        color: isSelected ? AppColors.primary : AppColors.hint,
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () => _toggleSubmenu(item.id),
-                    ),
                 ],
               ),
             ),
           ),
+        ),
 
-          // Sub-opciones desplegables
-          if (item.hasSubItems && isSubmenuOpen)
-            Padding(
-              padding: const EdgeInsets.only(left: 36, top: 4, bottom: 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (final subItem in item.subItems)
-                    InkWell(
-                      onTap: () {
-                        widget.onSelectSection(item.id);
-                        widget.onAction(subItem.actionKey);
-                      },
-                      borderRadius: BorderRadius.circular(8),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 8,
-                          horizontal: 8,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              subItem.icon ?? Icons.arrow_right_rounded,
-                              size: 16,
-                              color: AppColors.slate,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                subItem.label,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.slate,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+        // Sub-opciones desplegables
+        if (item.hasSubItems && isSubmenuOpen)
+          FadeTransition(
+            opacity: _animation,
+            child: SizeTransition(
+              sizeFactor: _animation,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 60, top: 2, bottom: 4, right: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final subItem in item.subItems)
+                      InkWell(
+                        onTap: () => widget.onAction(subItem.actionKey),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 7,
+                            horizontal: 8,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                subItem.icon ?? Icons.arrow_right_rounded,
+                                size: 16,
+                                color: AppColors.slate,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  subItem.label,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.slate,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 
-  Widget _buildFooter(bool isExpanded) {
-    if (!isExpanded) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Tooltip(
-          message: 'Cerrar sesión',
-          child: IconButton(
-            icon: const Icon(Icons.logout_rounded, color: AppColors.slate),
-            onPressed: widget.onSignOut,
-          ),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: AppColors.primarySoft,
-              child: Text(
-                widget.userName.isNotEmpty
-                    ? widget.userName[0].toUpperCase()
-                    : 'A',
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
+  Widget _buildFooter() {
+    return Container(
+      height: 64,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: SizedBox(
+              width: 51,
+              child: Center(
+                child: Tooltip(
+                  message: 'Cerrar sesión',
+                  child: IconButton(
+                    icon: const Icon(Icons.logout_rounded, color: AppColors.slate),
+                    onPressed: widget.onSignOut,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+          ),
+          Expanded(
+            child: FadeTransition(
+              opacity: _animation,
+              child: Row(
                 children: [
-                  Text(
-                    widget.userName,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: AppColors.ink,
+                  Expanded(
+                    child: ClipRect(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            widget.userName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: AppColors.ink,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            widget.institutionName,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.slate,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  Text(
-                    widget.institutionName,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.slate,
+                  IconButton(
+                    icon: const Icon(
+                      Icons.logout_rounded,
+                      color: AppColors.danger,
+                      size: 20,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    padding: const EdgeInsets.only(right: 12),
+                    constraints: const BoxConstraints(),
+                    onPressed: widget.onSignOut,
                   ),
                 ],
               ),
             ),
-            Tooltip(
-              message: 'Cerrar sesión',
-              child: IconButton(
-                icon: const Icon(
-                  Icons.logout_rounded,
-                  color: AppColors.danger,
-                  size: 20,
-                ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                onPressed: widget.onSignOut,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

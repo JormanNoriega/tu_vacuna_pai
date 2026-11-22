@@ -35,8 +35,8 @@ class AdminWebDashboardView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controllers = [
-      if (metricsController != null) metricsController!,
-      if (syncStatusController != null) syncStatusController!,
+      ?metricsController,
+      ?syncStatusController,
     ];
     final listenable = Listenable.merge(controllers);
 
@@ -205,36 +205,6 @@ class AdminWebDashboardView extends StatelessWidget {
         final headerActions = Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.successSoft,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppColors.success.withValues(alpha: 0.25),
-                ),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.cloud_done_rounded,
-                    color: AppColors.success,
-                    size: 18,
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    'En línea y Sincronizado',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.success,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
             Tooltip(
               message: 'Actualizar métricas',
               child: IconButton.filledTonal(
@@ -294,49 +264,52 @@ class AdminWebDashboardView extends StatelessWidget {
         subtext: 'Población acumulada en IPS',
       ),
       (
-        label: 'Dosis Aplicadas',
-        value: doses,
-        icon: Icons.vaccines_outlined,
+        label: 'Dosis Aplicadas Hoy',
+        value: '28 Dosis',
+        icon: Icons.today_rounded,
         color: AppColors.success,
         bgColor: AppColors.successSoft,
-        subtext: 'Biológicos registrados en PAI',
+        subtext: 'Jornada activa en IPS',
       ),
       (
-        label: 'Biológicos Disponibles',
-        value: '18 Tipos',
-        icon: Icons.inventory_2_outlined,
+        label: 'Total Dosis PAI',
+        value: doses,
+        icon: Icons.vaccines_outlined,
         color: const Color(0xFF6366F1),
         bgColor: const Color(0xFFEEF2FF),
-        subtext: 'Esquema regular completo',
+        subtext: 'Histórico registrado en PAI',
+      ),
+      (
+        label: 'Vacunadores Activos',
+        value: '6 en Turno',
+        icon: Icons.badge_outlined,
+        color: const Color(0xFF0D9488),
+        bgColor: const Color(0xFFCCFBF1),
+        subtext: 'Personal en sede y campo',
+      ),
+      (
+        label: 'Alertas de Inventario',
+        value: '2 en Riesgo',
+        icon: Icons.warning_amber_rounded,
+        color: AppColors.warning,
+        bgColor: AppColors.warningSoft,
+        subtext: 'Biológicos con bajo saldo',
       ),
       (
         label: 'Pendientes Sincronización',
         value: pendingSync,
         icon: Icons.sync_rounded,
-        color: AppColors.warning,
-        bgColor: AppColors.warningSoft,
-        subtext: 'Cambios pendientes en outbox',
+        color: const Color(0xFF64748B),
+        bgColor: const Color(0xFFF1F5F9),
+        subtext: 'Registros en outbox local',
       ),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = constraints.maxWidth >= 1100
-            ? 4
+            ? 3
             : (constraints.maxWidth >= 650 ? 2 : 1);
-
-        if (columns == 4) {
-          return Row(
-            children: [
-              for (int i = 0; i < kpis.length; i++) ...[
-                if (i > 0) const SizedBox(width: 16),
-                Expanded(
-                  child: _buildKpiCard(context, kpis[i], isLoading: isLoading),
-                ),
-              ],
-            ],
-          );
-        }
 
         return Wrap(
           spacing: 16,
@@ -344,9 +317,7 @@ class AdminWebDashboardView extends StatelessWidget {
           children: [
             for (final kpi in kpis)
               SizedBox(
-                width: columns == 2
-                    ? (constraints.maxWidth - 16) / 2
-                    : constraints.maxWidth,
+                width: (constraints.maxWidth - ((columns - 1) * 16)) / columns,
                 child: _buildKpiCard(context, kpi, isLoading: isLoading),
               ),
           ],

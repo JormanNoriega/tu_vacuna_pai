@@ -8,18 +8,16 @@ class AdminParametersCard extends StatelessWidget {
   const AdminParametersCard({
     super.key,
     required this.institutionName,
-    this.coldChainTemp = 4.2,
-    this.paiwebOnline = true,
     this.targetDoses = 500,
     this.appliedDoses = 342,
+    this.todayDoses = 28,
     this.activeVaccinators = 6,
   });
 
   final String institutionName;
-  final double coldChainTemp;
-  final bool paiwebOnline;
   final int targetDoses;
   final int appliedDoses;
+  final int todayDoses;
   final int activeVaccinators;
 
   @override
@@ -28,8 +26,6 @@ class AdminParametersCard extends StatelessWidget {
         ? (appliedDoses / targetDoses).clamp(0.0, 1.0)
         : 0.0;
     final percentage = (progress * 100).toInt();
-
-    final isTempSafe = coldChainTemp >= 2.0 && coldChainTemp <= 8.0;
 
     return Card(
       elevation: 0,
@@ -122,47 +118,7 @@ class AdminParametersCard extends StatelessWidget {
             const Divider(height: 1, color: AppColors.border),
             const SizedBox(height: 20),
 
-            // Módulo 1: Cadena de Frío y PAIWEB
-            Row(
-              children: [
-                Expanded(
-                  child: _buildParameterItem(
-                    context: context,
-                    icon: Icons.ac_unit_rounded,
-                    iconColor: isTempSafe
-                        ? const Color(0xFF0284C7)
-                        : AppColors.danger,
-                    bgColor: isTempSafe
-                        ? const Color(0xFFE0F2FE)
-                        : AppColors.dangerSoft,
-                    label: 'Red de Frío',
-                    value: '${coldChainTemp.toStringAsFixed(1)} °C',
-                    subtext: isTempSafe
-                        ? 'Rango Seguro (+2° a +8°C)'
-                        : 'Alerta de Temperatura',
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: _buildParameterItem(
-                    context: context,
-                    icon: Icons.cloud_sync_rounded,
-                    iconColor: paiwebOnline
-                        ? AppColors.success
-                        : AppColors.warning,
-                    bgColor: paiwebOnline
-                        ? AppColors.successSoft
-                        : AppColors.warningSoft,
-                    label: 'Servicio PAIWEB',
-                    value: paiwebOnline ? 'En línea' : 'Sin conexión',
-                    subtext: 'Sincronización directa',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-
-            // Módulo 2: Meta mensual de vacunación
+            // Módulo 1: Meta mensual de vacunación
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -216,30 +172,30 @@ class AdminParametersCard extends StatelessWidget {
             ),
             const SizedBox(height: 18),
 
-            // Módulo 3: Parámetros del personal y alertas
+            // Módulo 2: Actividad Diaria y Personal Activo
             Row(
               children: [
                 Expanded(
                   child: _buildParameterItem(
                     context: context,
-                    icon: Icons.badge_outlined,
+                    icon: Icons.today_rounded,
                     iconColor: AppColors.primary,
                     bgColor: AppColors.primarySoft,
-                    label: 'Vacunadores en Campo',
-                    value: '$activeVaccinators activos',
-                    subtext: 'Jornadas institucionales',
+                    label: 'Dosis Aplicadas Hoy',
+                    value: '$todayDoses dosis',
+                    subtext: 'Jornada activa en IPS',
                   ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: _buildParameterItem(
                     context: context,
-                    icon: Icons.health_and_safety_outlined,
-                    iconColor: AppColors.success,
-                    bgColor: AppColors.successSoft,
-                    label: 'Bioseguridad & Stock',
-                    value: '100% Óptimo',
-                    subtext: 'Sin lotes en riesgo',
+                    icon: Icons.badge_outlined,
+                    iconColor: const Color(0xFF6366F1),
+                    bgColor: const Color(0xFFEEF2FF),
+                    label: 'Vacunadores Activos',
+                    value: '$activeVaccinators en turno',
+                    subtext: 'Personal en sede y campo',
                   ),
                 ),
               ],
