@@ -391,7 +391,7 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
     final list = <String>[];
     for (int i = 1; i <= v.maxDoses; i++) {
       if (i <= 3) {
-        list.add('${i}ª Dosis');
+        list.add('$iª Dosis');
       } else {
         list.add('Refuerzo ${i - 3}');
       }
@@ -2583,34 +2583,6 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
                 setState(() => _activeFilter = _CatalogFilter.all);
               },
               child: const Text('Restablecer Filtros'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorState(CatalogController c) {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 44),
-            const SizedBox(height: 12),
-            Text(c.error!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.ink)),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(minimumSize: const Size(0, 42)),
-              onPressed: c.load,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Reintentar'),
             ),
           ],
         ),

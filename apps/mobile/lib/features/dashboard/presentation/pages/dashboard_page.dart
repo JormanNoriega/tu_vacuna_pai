@@ -36,6 +36,7 @@ import '../../../reports/presentation/export_report_controller.dart';
 import '../../../reports/presentation/pages/export_report_page.dart';
 import '../widgets/admin_web_dashboard_view.dart';
 import '../widgets/admin_web_sidebar.dart';
+import '../widgets/admin_web_statistics_view.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
@@ -110,6 +111,7 @@ class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
   bool _isAttentionSubmitting = false;
   String? _inventorySubAction;
+  String? _desktopCustomSection;
 
   /// Razon visual del indicador, ajustable en vivo por la conectividad del
   /// dispositivo (no re-autoriza ni re-valida).
@@ -392,6 +394,13 @@ class _DashboardPageState extends State<DashboardPage> {
             widget.user.hasRole('ADMIN_INSTITUTION') ||
             widget.user.hasPermission('USER_MANAGE'));
 
+    if (label.startsWith('Estadisticas')) {
+      if (isDesktop) {
+        _selectDesktopSection('estadisticas');
+        return;
+      }
+    }
+
     if (label == 'Configuracion Vacunas' ||
         label == 'Ajustes Inventario' ||
         label == 'Inventario' ||
@@ -479,6 +488,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   String get _currentDesktopSection {
+    if (_desktopCustomSection != null) return _desktopCustomSection!;
     if (_selectedIndex == 0) return 'inicio';
     if (_isSuperAdminView) {
       return switch (_selectedIndex) {
@@ -500,6 +510,17 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   void _selectDesktopSection(String section, {String? subAction}) {
+    if (section == 'estadisticas') {
+      setState(() {
+        _desktopCustomSection = 'estadisticas';
+      });
+      return;
+    }
+    if (_desktopCustomSection != null) {
+      setState(() {
+        _desktopCustomSection = null;
+      });
+    }
     if (section == 'inicio') {
       _selectTab(0);
       return;
@@ -548,6 +569,9 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   void _selectTab(int index) {
+    if (_desktopCustomSection != null) {
+      setState(() => _desktopCustomSection = null);
+    }
     if (_selectedIndex == index) return;
     setState(() => _selectedIndex = index);
     if (index == 0) {
@@ -600,16 +624,21 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildDesktopAdminLayout() {
-    final desktopBody = _selectedIndex == 0
-        ? AdminWebDashboardView(
-            userName: widget.user.name,
+    final desktopBody = _desktopCustomSection == 'estadisticas'
+        ? AdminWebStatisticsView(
             institutionName: widget.user.institution.name,
-            institutionId: widget.user.institution.id,
             onRefresh: () async => _reloadMetrics(),
-            metricsController: widget.metricsController,
-            syncStatusController: widget.syncStatusController,
           )
-        : _buildContent();
+        : (_selectedIndex == 0
+            ? AdminWebDashboardView(
+                userName: widget.user.name,
+                institutionName: widget.user.institution.name,
+                institutionId: widget.user.institution.id,
+                onRefresh: () async => _reloadMetrics(),
+                metricsController: widget.metricsController,
+                syncStatusController: widget.syncStatusController,
+              )
+            : _buildContent());
 
     final bodyWithBanner = switch (widget.sessionStatus) {
       SessionStatus.offlineLocked => Column(

@@ -206,6 +206,24 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
         ],
       ),
       AdminSidebarItem(
+        id: 'estadisticas',
+        label: 'Estadísticas',
+        icon: Icons.analytics_outlined,
+        selectedIcon: Icons.analytics_rounded,
+        subItems: [
+          AdminSidebarSubItem(
+            label: 'Indicadores y Cobertura',
+            actionKey: 'Estadisticas Indicadores',
+            icon: Icons.pie_chart_outline_rounded,
+          ),
+          AdminSidebarSubItem(
+            label: 'Tendencias y Rendimiento',
+            actionKey: 'Estadisticas Tendencias',
+            icon: Icons.trending_up_rounded,
+          ),
+        ],
+      ),
+      AdminSidebarItem(
         id: 'administracion',
         label: 'Administración',
         icon: Icons.admin_panel_settings_outlined,
