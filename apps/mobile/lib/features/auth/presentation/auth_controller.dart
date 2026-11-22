@@ -88,6 +88,42 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  /// Permite iniciar sesión inmediatamente como Administrador Institucional
+  /// para pruebas locales de la vista de PC / Web sin requerir backend encendido.
+  void signInAsAdminDemo() {
+    _user = AuthUser(
+      id: 'demo-admin-brayan-id',
+      email: 'brayan.admin@tuvacunapai.gov.co',
+      name: 'Brayan Administrador',
+      institution: const InstitutionProfile(
+        id: 'inst-hosp-central',
+        code: 'HOSP-CENTRAL-01',
+        name: 'Hospital Universitario Central',
+      ),
+      roles: const ['ADMIN_INSTITUTION'],
+      permissions: const [
+        'PATIENT_READ',
+        'PATIENT_WRITE',
+        'CATALOG_READ',
+        'CATALOG_GLOBAL_READ',
+        'CATALOG_CONFIG_READ',
+        'CATALOG_CONFIG_WRITE',
+        'INVENTORY_READ',
+        'INVENTORY_WRITE',
+        'USER_READ',
+        'USER_MANAGE',
+        'ATTENTION_READ',
+        'MERGE_RESOLVE',
+      ],
+      offlineWindowHours: 72,
+      lastOnlineValidation: DateTime.now(),
+    );
+    _status = SessionStatus.signedIn;
+    _offlineReason = null;
+    _error = null;
+    notifyListeners();
+  }
+
   Future<void> signOut() async {
     try {
       await _signOut();

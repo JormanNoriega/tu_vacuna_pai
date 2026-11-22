@@ -329,6 +329,10 @@ class AppDatabase extends _$AppDatabase {
           raw.execute('PRAGMA cipher_memory_security = OFF');
         },
       ),
+      web: DriftWebOptions(
+        sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+        driftWorker: Uri.parse('drift_worker.js'),
+      ),
     );
     return AppDatabase(connection);
   }

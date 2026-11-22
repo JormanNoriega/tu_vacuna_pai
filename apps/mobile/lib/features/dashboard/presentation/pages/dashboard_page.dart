@@ -34,6 +34,8 @@ import '../../domain/entities/recent_record_item.dart';
 import '../metrics_controller.dart';
 import '../../../reports/presentation/export_report_controller.dart';
 import '../../../reports/presentation/pages/export_report_page.dart';
+import '../widgets/admin_web_dashboard_view.dart';
+import '../widgets/admin_web_sidebar.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
@@ -386,7 +388,8 @@ class _DashboardPageState extends State<DashboardPage> {
   void _openQuickAction(String label) {
     if (label == 'Entregas' ||
         label == 'Jornadas' ||
-        label == 'Custodia y cierre') {
+        label == 'Custodia y cierre' ||
+        label == 'Conciliacion') {
       // Revalidar también al ejecutar: ocultar una tarjeta no autoriza una ruta.
       if (!widget.user.hasRole('ADMIN_INSTITUTION') ||
           widget.user.hasRole('VACCINATOR') ||
@@ -394,7 +397,7 @@ class _DashboardPageState extends State<DashboardPage> {
           widget.inventoryController == null) {
         return;
       }
-      if (label == 'Custodia y cierre') {
+      if (label == 'Custodia y cierre' || label == 'Conciliacion') {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => CustodyPage(
@@ -426,6 +429,10 @@ class _DashboardPageState extends State<DashboardPage> {
       );
       return;
     }
+    if (label == 'Configuracion Vacunas' || label == 'Ajustes Inventario') {
+      _openCatalog();
+      return;
+    }
     final index = _destinations.indexWhere(
       (destination) => switch (label) {
         'Nueva atencion' || 'Nueva Atención' => destination.isNewAttention,
@@ -451,6 +458,54 @@ class _DashboardPageState extends State<DashboardPage> {
               ExportReportPage(user: widget.user, controller: controller),
         ),
       );
+    }
+  }
+
+  String get _currentDesktopSection {
+    if (_selectedIndex == 0) return 'inicio';
+    if (_isSuperAdminView) {
+      return switch (_selectedIndex) {
+        1 => 'instituciones',
+        2 => 'administracion',
+        3 => 'inventario',
+        _ => 'inicio',
+      };
+    }
+    if (_selectedIndex < 0 || _selectedIndex >= _destinations.length) {
+      return 'inicio';
+    }
+    final current = _destinations[_selectedIndex];
+    if (current.isHistory) return 'historial';
+    if (current.isCatalog) return 'inventario';
+    if (current.isDeliveryTab) return 'entregas';
+    if (current.isUsersManagement) return 'administracion';
+    return 'inicio';
+  }
+
+  void _selectDesktopSection(String section) {
+    if (section == 'inicio') {
+      _selectTab(0);
+      return;
+    }
+    if (_isSuperAdminView) {
+      final index = switch (section) {
+        'instituciones' => 1,
+        'administracion' || 'usuarios' => 2,
+        'inventario' => 3,
+        _ => 0,
+      };
+      _selectTab(index);
+      return;
+    }
+    final index = _destinations.indexWhere((d) => switch (section) {
+      'historial' => d.isHistory,
+      'inventario' => d.isCatalog,
+      'entregas' => d.isDeliveryTab,
+      'administracion' => d.isUsersManagement,
+      _ => false,
+    });
+    if (index >= 0) {
+      _selectTab(index);
     }
   }
 
@@ -504,6 +559,68 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isDesktopAdmin = constraints.maxWidth >= 960 &&
+            (_isSuperAdminView ||
+                widget.user.hasRole('ADMIN_INSTITUTION') ||
+                widget.user.hasPermission('USER_MANAGE'));
+
+        if (isDesktopAdmin) {
+          return _buildDesktopAdminLayout();
+        }
+
+        return _buildMobileLayout();
+      },
+    );
+  }
+
+  Widget _buildDesktopAdminLayout() {
+    final desktopBody = _selectedIndex == 0
+        ? AdminWebDashboardView(
+            userName: widget.user.name,
+            institutionName: widget.user.institution.name,
+            institutionId: widget.user.institution.id,
+            onRefresh: () async => _reloadMetrics(),
+            metricsController: widget.metricsController,
+            syncStatusController: widget.syncStatusController,
+          )
+        : _buildContent();
+
+    final bodyWithBanner = switch (widget.sessionStatus) {
+      SessionStatus.offlineLocked => Column(
+          children: [
+            const _OfflineLockedBanner(),
+            Expanded(child: desktopBody),
+          ],
+        ),
+      SessionStatus.offlineAuthorized ||
+      SessionStatus.signedIn ||
+      SessionStatus.signedOut =>
+        desktopBody,
+    };
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Row(
+        children: [
+          AdminWebSidebar(
+            selectedSection: _currentDesktopSection,
+            onSelectSection: _selectDesktopSection,
+            onAction: _openQuickAction,
+            onSignOut: widget.onSignOut,
+            userName: widget.user.name,
+            institutionName: widget.user.institution.name,
+            roleName: _isSuperAdmin ? 'SUPER ADMIN' : 'ADMINISTRADOR',
+            isSuperAdmin: _isSuperAdminView,
+          ),
+          Expanded(child: bodyWithBanner),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout() {
     final content = _buildContent();
     final body = switch (widget.sessionStatus) {
       SessionStatus.offlineLocked => Column(

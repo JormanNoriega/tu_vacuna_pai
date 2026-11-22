@@ -161,6 +161,33 @@ class _LoginPageState extends State<LoginPage> {
                                   )
                                 : const Text('Iniciar sesion'),
                           ),
+                          const SizedBox(height: 14),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(
+                                color: AppColors.primary,
+                                width: 1.5,
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(
+                              Icons.admin_panel_settings_rounded,
+                              color: AppColors.primary,
+                            ),
+                            label: const Text(
+                              'Ingresar como Administrador (Prueba PC)',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            onPressed: widget.controller.isLoading
+                                ? null
+                                : widget.controller.signInAsAdminDemo,
+                          ),
                           const SizedBox(height: 24),
                           const Text(
                             'Las cuentas son creadas por el administrador de tu institucion. No hay registro publico.',
