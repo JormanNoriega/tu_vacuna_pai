@@ -11,6 +11,7 @@ import 'custody_event_form_page.dart';
 import 'inventory_report.dart';
 import 'receipt_form_page.dart';
 import 'pending_follow_ups_page.dart';
+import 'widgets/admin_web_delivery_view.dart';
 
 // THESIS: dos tareas explícitas, entregar a una persona u organizar una jornada.
 // OWN-WORLD: Material claro, listas y jerarquía; azul reservado para acciones.
@@ -27,14 +28,20 @@ class InventoryPage extends StatefulWidget {
     required this.canWrite,
     this.embedded = false,
     this.initialTab = 0,
+    this.institutionName,
+    this.initialSubAction,
+    this.onSubActionHandled,
   });
   final InventoryController controller;
   final String institutionId;
+  final String? institutionName;
   final bool admin;
   final bool online;
   final bool canWrite;
   final bool embedded;
   final int initialTab;
+  final String? initialSubAction;
+  final VoidCallback? onSubActionHandled;
 
   @override
   State<InventoryPage> createState() => _InventoryPageState();
@@ -179,12 +186,26 @@ class _InventoryPageState extends State<InventoryPage> {
       _refreshing || widget.controller.isLoading || !widget.online;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: widget.embedded
-        ? null
-        : AppBar(
-            title: Text(widget.admin ? 'Entregas y jornadas' : 'Mis entregas'),
-          ),
+  Widget build(BuildContext context) {
+    final isDesktop = (MediaQuery.sizeOf(context).width >= 960 || widget.embedded) && widget.admin;
+    if (isDesktop) {
+      return AdminWebDeliveryView(
+        controller: widget.controller,
+        institutionId: widget.institutionId,
+        institutionName: widget.institutionName ?? 'Institución PAI',
+        canWrite: widget.canWrite,
+        online: widget.online,
+        initialSubAction: widget.initialSubAction,
+        onSubActionHandled: widget.onSubActionHandled,
+      );
+    }
+
+    return Scaffold(
+      appBar: widget.embedded
+          ? null
+          : AppBar(
+              title: Text(widget.admin ? 'Entregas y jornadas' : 'Mis entregas'),
+            ),
     body: !widget.online
         ? const Center(
             child: Padding(
@@ -268,6 +289,7 @@ class _InventoryPageState extends State<InventoryPage> {
             ),
           ),
   );
+  }
 
   Widget _heading(BuildContext context) {
     final jornadas = widget.admin && _tab == 1;

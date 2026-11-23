@@ -111,6 +111,7 @@ class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
   bool _isAttentionSubmitting = false;
   String? _inventorySubAction;
+  String? _deliverySubAction;
   String? _desktopCustomSection;
 
   /// Razon visual del indicador, ajustable en vivo por la conectividad del
@@ -335,12 +336,15 @@ class _DashboardPageState extends State<DashboardPage> {
       return InventoryPage(
         controller: controller,
         institutionId: widget.user.institution.id,
+        institutionName: widget.user.institution.name,
         admin: widget.user.hasPermission('INVENTORY_READ'),
         canWrite: widget.user.hasPermission('INVENTORY_WRITE'),
         online:
             widget.sessionStatus == SessionStatus.signedIn &&
             _liveReason != OfflineReason.noNetwork,
         embedded: true,
+        initialSubAction: _deliverySubAction,
+        onSubActionHandled: () => _deliverySubAction = null,
       );
     }
     if (_destinations[_selectedIndex].isCatalog &&
@@ -420,6 +424,16 @@ class _DashboardPageState extends State<DashboardPage> {
         label == 'Jornadas' ||
         label == 'Custodia y cierre' ||
         label == 'Conciliacion') {
+      if (isDesktop) {
+        final subAction = switch (label) {
+          'Jornadas' => 'jornadas',
+          'Custodia y cierre' => 'custodia',
+          'Conciliacion' => 'conciliacion',
+          _ => 'entregas',
+        };
+        _selectDesktopSection('entregas', subAction: subAction);
+        return;
+      }
       // Revalidar también al ejecutar: ocultar una tarjeta no autoriza una ruta.
       if (!widget.user.hasRole('ADMIN_INSTITUTION') ||
           widget.user.hasRole('VACCINATOR') ||
@@ -528,6 +542,11 @@ class _DashboardPageState extends State<DashboardPage> {
     if (section == 'inventario') {
       setState(() {
         _inventorySubAction = subAction ?? 'catalogo';
+      });
+    }
+    if (section == 'entregas') {
+      setState(() {
+        _deliverySubAction = subAction ?? 'entregas';
       });
     }
     if (_isSuperAdminView) {
