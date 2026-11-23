@@ -22,6 +22,7 @@ class Step1BasicDataStep extends StatefulWidget {
     required this.attentionDate,
     required this.onAttentionDateChanged,
     required this.documentType,
+    this.excludesCitizenshipCard = false,
     required this.onDocumentTypeChanged,
     required this.documentNumberController,
     required this.firstNameController,
@@ -43,6 +44,7 @@ class Step1BasicDataStep extends StatefulWidget {
   final DateTime attentionDate;
   final ValueChanged<DateTime> onAttentionDateChanged;
   final String documentType;
+  final bool excludesCitizenshipCard;
   final ValueChanged<String> onDocumentTypeChanged;
   final TextEditingController documentNumberController;
   final TextEditingController firstNameController;
@@ -75,11 +77,22 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(covariant Step1BasicDataStep oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.documentType != widget.documentType) {
+      _debounceTimer?.cancel();
+      _lastCheckedId = null;
+    }
+  }
+
   void _onDocumentNumberChanged(String value) {
     _debounceTimer?.cancel();
     final trimmed = value.trim();
+    final documentType = widget.documentType;
 
     if (widget.isExistingPatient ||
+        documentType.isEmpty ||
         trimmed.length < 4 ||
         trimmed == _lastCheckedId) {
       return;
@@ -93,14 +106,18 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
       try {
         await widget.controller.findPatients(
           offline: widget.offline,
-          documentType: widget.documentType,
+          documentType: documentType,
           documentNumber: trimmed,
         );
       } finally {
         if (mounted) setState(() => _searching = false);
       }
 
-      if (!mounted) return;
+      if (!mounted ||
+          widget.documentType != documentType ||
+          widget.documentNumberController.text.trim() != trimmed) {
+        return;
+      }
       if (widget.controller.searchResults.isNotEmpty) {
         final found = widget.controller.searchResults.firstWhere(
           (p) =>
@@ -377,7 +394,10 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
                   child: InputDecorator(
                     decoration: InputDecoration(
                       label: requiredFieldLabel('Fecha de Atención'),
-                      prefixIcon: const Icon(Icons.calendar_today_outlined, size: 20),
+                      prefixIcon: const Icon(
+                        Icons.calendar_today_outlined,
+                        size: 20,
+                      ),
                     ),
                     child: Text(
                       formatDisplayDate(widget.attentionDate),
@@ -392,13 +412,19 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
 
                 // Tipo de Documento
                 DropdownButtonFormField<String>(
-                  initialValue: widget.documentType,
+                  key: ValueKey(widget.documentType),
+                  initialValue: widget.documentType.isEmpty
+                      ? null
+                      : widget.documentType,
                   isExpanded: true,
                   decoration: InputDecoration(
                     label: requiredFieldLabel('Tipo de Documento'),
                   ),
                   items: [
-                    for (final opt in _documentTypes())
+                    for (final opt in _documentTypes().where(
+                      (opt) =>
+                          !widget.excludesCitizenshipCard || opt.code != 'CC',
+                    ))
                       DropdownMenuItem(
                         value: opt.code,
                         child: Text('${opt.code} - ${opt.label}'),
@@ -419,7 +445,9 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
                 // Número de Identificación
                 TextFormField(
                   controller: widget.documentNumberController,
-                  enabled: !widget.isExistingPatient,
+                  enabled:
+                      !widget.isExistingPatient &&
+                      widget.documentType.isNotEmpty,
                   keyboardType: documentKeyboardType(widget.documentType),
                   inputFormatters: [
                     ...documentInputFormatters(widget.documentType),
@@ -537,7 +565,7 @@ class _Step1BasicDataStepState extends State<Step1BasicDataStep>
                                 : 'Seleccione la fecha de nacimiento',
                             style: TextStyle(
                               color: widget.birthDate != null
-                                   ? AppColors.ink
+                                  ? AppColors.ink
                                   : AppColors.hint,
                               fontSize: 15,
                             ),

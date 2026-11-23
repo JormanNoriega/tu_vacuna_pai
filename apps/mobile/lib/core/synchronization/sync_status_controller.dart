@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'sync_engine.dart';
 import 'sync_operation.dart';
 import 'sync_outbox.dart';
+import 'sync_status.dart';
 
 /// Proyeccion observable del estado de sincronizacion para la UI.
 ///

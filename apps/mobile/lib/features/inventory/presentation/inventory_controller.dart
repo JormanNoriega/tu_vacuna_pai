@@ -10,6 +10,20 @@ class InventoryController extends AsyncController {
     this.renewSession,
   });
   final ApiClient api;
+
+  /// Comprueba recepción vigente con frascos sin comprometer registrados.
+  /// No representa saldo clínico de dosis ni prueba existencias físicas.
+  Future<bool> hasReceivedLot(String institutionId, String vaccineId) async {
+    final session = await sessionManager.loadSession();
+    if (session == null) throw const SessionExpiredException();
+    final lots = await api.inventoryList(
+      session.accessToken,
+      institutionId,
+      'vaccines/${Uri.encodeComponent(vaccineId)}/my-uncommitted-received-lots',
+    );
+    return lots.isNotEmpty;
+  }
+
   final Future<void> Function()? renewSession;
   Future<void>? _renewing;
   List<Map<String, dynamic>> lots = const [];

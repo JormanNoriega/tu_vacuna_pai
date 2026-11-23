@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../app/theme/app_theme.dart';
 import '../../../core/utils/uuid.dart';
 import 'inventory_controller.dart';
 import 'delivery_ui.dart';
@@ -161,6 +162,38 @@ class _DeliveryFormPageState extends State<DeliveryFormPage> {
     return null;
   }
 
+  InputDecoration _fieldDecoration({
+    required String labelText,
+    String? hintText,
+    Widget? prefixIcon,
+  }) {
+    return InputDecoration(
+      labelText: labelText,
+      hintText: hintText,
+      prefixIcon: prefixIcon,
+      filled: true,
+      fillColor: const Color(0xFFF8FAFC),
+      labelStyle: const TextStyle(color: AppColors.slate, fontSize: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF1E60EC), width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFDC2626)),
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (_busy || !_form.currentState!.validate()) return;
     if (!_locked) {
@@ -268,9 +301,22 @@ class _DeliveryFormPageState extends State<DeliveryFormPage> {
         if (!didPop && !_busy) _confirmExit();
       },
       child: Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
         appBar: AppBar(
           title: Text(
             widget.campaign == null ? 'Entrega directa' : 'Asignar vacunas',
+            style: const TextStyle(
+              color: Color(0xFF0F172A),
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+            ),
+          ),
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(1),
+            child: Divider(height: 1, color: Color(0xFFE2E8F0)),
           ),
         ),
         body: _loading
@@ -283,155 +329,481 @@ class _DeliveryFormPageState extends State<DeliveryFormPage> {
                     child: Form(
                       key: _form,
                       child: ListView(
-                        padding: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                         children: [
                           if (_error != null && !_locked) ...[
-                            Text(
-                              _error!,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF2F2),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFFECACA)),
                               ),
-                            ),
-                            TextButton(
-                              onPressed: _load,
-                              child: const Text('Reintentar carga'),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                          if (widget.campaign != null) ...[
-                            Text(
-                              '${widget.campaign!['name']}',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            Text(
-                              '${widget.campaign!['location']} · ${campaignDates(widget.campaign!)}',
-                            ),
-                            const SizedBox(height: 24),
-                          ],
-                          Text(
-                            '¿Quién recibe?',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 12),
-                          if (widget.vaccinator != null)
-                            Text(
-                              '${widget.vaccinator!['name'] ?? widget.vaccinator!['fullName']}',
-                            )
-                          else
-                            DropdownButtonFormField<String>(
-                              initialValue: _personId,
-                              isExpanded: true,
-                              decoration: const InputDecoration(
-                                labelText: 'Vacunador',
-                              ),
-                              items: _people
-                                  .map(
-                                    (p) => DropdownMenuItem(
-                                      value: p['id'] as String,
-                                      child: Text(
-                                        '${p['fullName']}',
-                                        overflow: TextOverflow.ellipsis,
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 20),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      _error!,
+                                      style: const TextStyle(
+                                        color: Color(0xFFDC2626),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
+                                  ),
+                                  TextButton(
+                                    onPressed: _load,
+                                    child: const Text('Reintentar'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          if (widget.campaign != null) ...[
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: const Color(0xFFBFDBFE)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(
+                                      Icons.event_available_rounded,
+                                      color: Color(0xFF1E60EC),
+                                      size: 22,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${widget.campaign!['name']}',
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${widget.campaign!['location']} · ${campaignDates(widget.campaign!)}',
+                                          style: const TextStyle(
+                                            fontSize: 12.5,
+                                            color: AppColors.slate,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+
+                          // 1. Destinatario
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEFF6FF),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(
+                                        Icons.person_outline_rounded,
+                                        color: Color(0xFF1E60EC),
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: const [
+                                          Text(
+                                            '¿Quién recibe?',
+                                            style: TextStyle(
+                                              fontSize: 16.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF0F172A),
+                                            ),
+                                          ),
+                                          SizedBox(height: 2),
+                                          Text(
+                                            'Profesional de salud a cargo de la custodia',
+                                            style: TextStyle(
+                                              fontSize: 12.5,
+                                              color: AppColors.slate,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                if (widget.vaccinator != null)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF8FAFC),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.check_circle_outline_rounded, size: 18, color: Color(0xFF059669)),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          '${widget.vaccinator!['name'] ?? widget.vaccinator!['fullName']}',
+                                          style: const TextStyle(
+                                            fontSize: 14.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   )
-                                  .toList(),
-                              onChanged: _locked || saved > 0
-                                  ? null
-                                  : (v) => setState(() => _personId = v),
-                              validator: (v) => v == null
-                                  ? 'Elige al vacunador que recibirá los frascos.'
-                                  : null,
+                                else
+                                  DropdownButtonFormField<String>(
+                                    initialValue: _personId,
+                                    isExpanded: true,
+                                    decoration: _fieldDecoration(
+                                      labelText: 'Vacunador',
+                                      prefixIcon: const Icon(Icons.badge_outlined, size: 20, color: AppColors.slate),
+                                    ),
+                                    items: _people
+                                        .map(
+                                          (p) => DropdownMenuItem(
+                                            value: p['id'] as String,
+                                            child: Text(
+                                              '${p['fullName']}',
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: _locked || saved > 0
+                                        ? null
+                                        : (v) => setState(() => _personId = v),
+                                    validator: (v) => v == null
+                                        ? 'Elige al vacunador que recibirá los frascos.'
+                                        : null,
+                                  ),
+                                if (widget.vaccinator == null && _people.isEmpty)
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 8),
+                                    child: Text(
+                                      'No hay vacunadores activos disponibles.',
+                                      style: TextStyle(color: Color(0xFFDC2626), fontSize: 13),
+                                    ),
+                                  ),
+                              ],
                             ),
-                          if (widget.vaccinator == null && _people.isEmpty)
-                            const Text(
-                              'No hay vacunadores activos disponibles.',
-                            ),
-                          const SizedBox(height: 32),
-                          Text(
-                            '¿Qué vacunas le entregas?',
-                            style: Theme.of(context).textTheme.titleLarge,
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Selecciona cada lote y la cantidad de frascos completos. Verifica su conservación antes de entregarlo.',
+
+                          const SizedBox(height: 24),
+
+                          // 2. Encabezado de Vacunas
+                          Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.vaccines_outlined,
+                                  color: Color(0xFF1E60EC),
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: const [
+                                    Text(
+                                      '¿Qué vacunas le entregas?',
+                                      style: TextStyle(
+                                        fontSize: 16.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'Selecciona cada lote y la cantidad de frascos completos. Verifica su conservación antes de entregarlo.',
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        color: AppColors.slate,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
+
+                          const SizedBox(height: 14),
+
                           if (_lots.isEmpty)
                             const DeliveryEmptyState(
                               title: 'No hay lotes disponibles para entregar',
-                              message: 'Registra existencias desde Inventario. Los lotes sin saldo o vencidos no se pueden seleccionar aquí.',
+                              message:
+                                  'Registra existencias desde Inventario. Los lotes sin saldo o vencidos no se pueden seleccionar aquí.',
                             )
                           else ...[
                             for (final line in _lines) _lineFields(line),
                             if (!_locked)
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: TextButton.icon(
-                                  onPressed: _lines.length >= _lots.length
-                                      ? null
-                                      : () => setState(
-                                          () => _lines.add(_DeliveryLine()),
-                                        ),
-                                  icon: const Icon(Icons.add),
-                                  label: const Text(
-                                    'Añadir otra vacuna o lote',
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 20),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: OutlinedButton.icon(
+                                    onPressed: _lines.length >= _lots.length
+                                        ? null
+                                        : () => setState(
+                                            () => _lines.add(_DeliveryLine()),
+                                          ),
+                                    icon: const Icon(Icons.add_rounded, size: 18),
+                                    label: const Text(
+                                      'Añadir otra vacuna o lote',
+                                      style: TextStyle(fontWeight: FontWeight.w700),
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: const Color(0xFF1E60EC),
+                                      side: const BorderSide(color: Color(0xFFBFDBFE)),
+                                      backgroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
                           ],
-                          const SizedBox(height: 24),
-                          TextFormField(
-                            controller: _note,
-                            enabled: !_locked,
-                            maxLength: 1000,
-                            minLines: 2,
-                            maxLines: 3,
-                            decoration: const InputDecoration(
-                              labelText: 'Motivo de la entrega',
-                              hintText: 'Ej.: vacunación rutinaria del turno de mañana',
-                            ),
-                            validator: (v) => v == null || v.trim().isEmpty
-                                ? 'Indica el motivo o soporte de la entrega.'
-                                : null,
-                          ),
-                          const SizedBox(height: 24),
-                          if (_error != null && _locked) ...[
-                            Text(
-                              _error!,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '$saved de ${_lines.length} lotes confirmados. Reintenta solo los pendientes con los mismos identificadores. Si sales, revisa las entregas antes de registrar otra.',
-                            ),
-                            if (_definitiveFailure)
-                              TextButton(
-                                onPressed: _correctRejected,
-                                child: const Text(
-                                  'Corregir pendientes rechazados',
+
+                          // 3. Motivo de la entrega
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 3),
                                 ),
+                              ],
+                            ),
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEFF6FF),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(
+                                        Icons.edit_note_rounded,
+                                        color: Color(0xFF1E60EC),
+                                        size: 22,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: const [
+                                          Text(
+                                            'Motivo de la entrega',
+                                            style: TextStyle(
+                                              fontSize: 16.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF0F172A),
+                                            ),
+                                          ),
+                                          SizedBox(height: 2),
+                                          Text(
+                                            'Justificación o soporte administrativo del suministro',
+                                            style: TextStyle(
+                                              fontSize: 12.5,
+                                              color: AppColors.slate,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  controller: _note,
+                                  enabled: !_locked,
+                                  maxLength: 1000,
+                                  minLines: 2,
+                                  maxLines: 3,
+                                  decoration: _fieldDecoration(
+                                    labelText: 'Motivo de la entrega',
+                                    hintText: 'Ej.: vacunación rutinaria del turno de mañana',
+                                  ),
+                                  validator: (v) => v == null || v.trim().isEmpty
+                                      ? 'Indica el motivo o soporte de la entrega.'
+                                      : null,
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          if (_error != null && _locked) ...[
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF2F2),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: const Color(0xFFFECACA)),
                               ),
-                            const SizedBox(height: 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: const [
+                                      Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 20),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Error al registrar entregas',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFFDC2626),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    _error!,
+                                    style: const TextStyle(
+                                      color: Color(0xFFDC2626),
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '$saved de ${_lines.length} lotes confirmados. Reintenta solo los pendientes con los mismos identificadores. Si sales, revisa las entregas antes de registrar otra.',
+                                    style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569)),
+                                  ),
+                                  if (_definitiveFailure) ...[
+                                    const SizedBox(height: 8),
+                                    TextButton(
+                                      onPressed: _correctRejected,
+                                      child: const Text('Corregir pendientes rechazados'),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
                           ],
-                          FilledButton(
-                            onPressed:
-                                _busy ||
-                                    _lots.isEmpty ||
-                                    (_error != null && !_locked)
-                                ? null
-                                : _submit,
-                            child: Text(
-                              _busy
-                                  ? 'Registrando $saved de ${_lines.length}…'
-                                  : _locked
-                                  ? 'Reintentar pendientes'
-                                  : 'Revisar entrega',
+
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: FilledButton(
+                              onPressed:
+                                  _busy ||
+                                      _lots.isEmpty ||
+                                      (_error != null && !_locked)
+                                  ? null
+                                  : _submit,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF1E60EC),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: Text(
+                                _busy
+                                    ? 'Registrando $saved de ${_lines.length}…'
+                                    : _locked
+                                    ? 'Reintentar pendientes'
+                                    : 'Revisar entrega',
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 12),
-                          const Text(
-                            'Cada lote se registra por separado. La recepción la confirma el vacunador.',
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9).withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: Row(
+                              children: const [
+                                Icon(Icons.shield_outlined, size: 16, color: Color(0xFF64748B)),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Cada lote se registra por separado. La recepción la confirma el vacunador.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -446,37 +818,85 @@ class _DeliveryFormPageState extends State<DeliveryFormPage> {
   Widget _lineFields(_DeliveryLine line) {
     final lot = _lot(line.lotId);
     final locked = _locked || line.saved;
-    return Padding(
+    final index = _lines.indexOf(line);
+
+    return Container(
       key: ValueKey(line.key),
-      padding: const EdgeInsets.only(top: 24),
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 12,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          Row(
             children: [
-              Text(
-                'Vacuna ${_lines.indexOf(line) + 1}',
-                style: Theme.of(context).textTheme.titleMedium,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFDBEAFE)),
+                ),
+                child: Text(
+                  'Vacuna ${index + 1}',
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E60EC),
+                  ),
+                ),
               ),
-              if (line.saved) const Chip(label: Text('Entrega registrada')),
+              if (line.saved) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFDF5),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFFA7F3D0)),
+                  ),
+                  child: const Text(
+                    'Entrega registrada',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF047857),
+                    ),
+                  ),
+                ),
+              ],
+              const Spacer(),
               if (!locked && _lines.length > 1)
                 IconButton(
                   tooltip: 'Quitar vacuna',
+                  visualDensity: VisualDensity.compact,
                   onPressed: () => setState(() {
                     _lines.remove(line);
                     line.dispose();
                   }),
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF94A3B8)),
                 ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
           DropdownButtonFormField<String>(
             initialValue: line.lotId,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Vacuna y lote'),
+            decoration: _fieldDecoration(
+              labelText: 'Vacuna y lote',
+              prefixIcon: const Icon(Icons.vaccines_rounded, size: 20, color: AppColors.slate),
+            ),
             items: _lots
                 .where(
                   (lot) =>
@@ -498,10 +918,28 @@ class _DeliveryFormPageState extends State<DeliveryFormPage> {
                 v == null ? 'Selecciona una vacuna y su lote.' : null,
           ),
           if (lot != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                '${lot['availableVials']} frascos en depósito · Vence ${inventoryDate(lot['expiresOn'])}',
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFDBEAFE)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.inventory_2_outlined, size: 14, color: Color(0xFF1E60EC)),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${lot['availableVials']} frascos en depósito · Vence ${inventoryDate(lot['expiresOn'])}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1E40AF),
+                    ),
+                  ),
+                ],
               ),
             ),
           const SizedBox(height: 12),
@@ -510,7 +948,10 @@ class _DeliveryFormPageState extends State<DeliveryFormPage> {
             enabled: !locked,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: const InputDecoration(labelText: 'Frascos completos'),
+            decoration: _fieldDecoration(
+              labelText: 'Frascos completos',
+              prefixIcon: const Icon(Icons.format_list_numbered_rounded, size: 20, color: AppColors.slate),
+            ),
             validator: (v) {
               final n = int.tryParse(v ?? '');
               if (n == null || n < 1 || n > 2147483647) {
@@ -522,8 +963,6 @@ class _DeliveryFormPageState extends State<DeliveryFormPage> {
               return null;
             },
           ),
-          const SizedBox(height: 20),
-          const Divider(),
         ],
       ),
     );

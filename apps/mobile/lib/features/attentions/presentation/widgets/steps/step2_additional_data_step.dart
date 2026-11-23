@@ -73,6 +73,7 @@ class Step2AdditionalDataStep extends StatefulWidget {
     required this.lastMenstrualDateController,
     required this.previousPregnanciesController,
     required this.birthPlaceDeliveryController,
+    this.guardianRequired = false,
     required this.guardianRelationship,
     required this.onGuardianRelationshipChanged,
     required this.guardianDocumentType,
@@ -161,6 +162,7 @@ class Step2AdditionalDataStep extends StatefulWidget {
   final TextEditingController birthPlaceDeliveryController;
 
   // Cuidador
+  final bool guardianRequired;
   final String guardianRelationship;
   final ValueChanged<String> onGuardianRelationshipChanged;
   final String guardianDocumentType;
@@ -185,7 +187,8 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
   @override
   void initState() {
     super.initState();
-    _hasGuardian = widget.guardianDocumentController.text.isNotEmpty ||
+    _hasGuardian =
+        widget.guardianDocumentController.text.isNotEmpty ||
         widget.guardianFirstNameController.text.isNotEmpty ||
         widget.guardianLastNameController.text.isNotEmpty ||
         widget.guardianCellphoneController.text.isNotEmpty;
@@ -499,10 +502,7 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                       child: Text('Seleccione escolaridad'),
                     ),
                     for (final opt in _effectiveEducationLevels)
-                      DropdownMenuItem<String>(
-                        value: opt,
-                        child: Text(opt),
-                      ),
+                      DropdownMenuItem<String>(value: opt, child: Text(opt)),
                   ],
                   onChanged: (val) {
                     setState(() {
@@ -627,7 +627,9 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                     keyboardType: TextInputType.number,
                     inputFormatters: digitsOnlyFormatters(max: 2),
                     decoration: InputDecoration(
-                      label: requiredFieldLabel('Edad Gestacional al Nacer (Semanas)'),
+                      label: requiredFieldLabel(
+                        'Edad Gestacional al Nacer (Semanas)',
+                      ),
                       helperText:
                           'Obligatoria para menores de 1 año (0-45 sem).',
                     ),
@@ -1078,22 +1080,26 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                     children: [
                       Row(
                         children: [
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '¿Desea agregar datos del cuidador?',
-                                  style: TextStyle(
+                                  widget.guardianRequired
+                                      ? 'Representante o responsable'
+                                      : '¿Desea agregar datos del cuidador?',
+                                  style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.ink,
                                   ),
                                 ),
-                                SizedBox(height: 4),
+                                const SizedBox(height: 4),
                                 Text(
-                                  'Madre, tutor o responsable del paciente',
-                                  style: TextStyle(
+                                  widget.guardianRequired
+                                      ? 'Obligatorio para pacientes menores de 18 años'
+                                      : 'Madre, tutor o responsable del paciente',
+                                  style: const TextStyle(
                                     fontSize: 13,
                                     color: AppColors.slate,
                                   ),
@@ -1101,22 +1107,23 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                               ],
                             ),
                           ),
-                          Switch(
-                            value: _hasGuardian,
-                            activeTrackColor: AppColors.primary,
-                            onChanged: (val) {
-                              setState(() => _hasGuardian = val);
-                              if (!val) {
-                                widget.guardianDocumentController.clear();
-                                widget.guardianFirstNameController.clear();
-                                widget.guardianLastNameController.clear();
-                                widget.guardianCellphoneController.clear();
-                              }
-                            },
-                          ),
+                          if (!widget.guardianRequired)
+                            Switch(
+                              value: _hasGuardian,
+                              activeTrackColor: AppColors.primary,
+                              onChanged: (val) {
+                                setState(() => _hasGuardian = val);
+                                if (!val) {
+                                  widget.guardianDocumentController.clear();
+                                  widget.guardianFirstNameController.clear();
+                                  widget.guardianLastNameController.clear();
+                                  widget.guardianCellphoneController.clear();
+                                }
+                              },
+                            ),
                         ],
                       ),
-                      if (_hasGuardian) ...[
+                      if (widget.guardianRequired || _hasGuardian) ...[
                         const SizedBox(height: 14),
                         const Divider(color: AppColors.border, height: 1),
                         const SizedBox(height: 16),
@@ -1190,7 +1197,7 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                             hintText: 'Ej: 1234567890',
                           ),
                           validator: (val) {
-                            if (_hasGuardian) {
+                            if (widget.guardianRequired || _hasGuardian) {
                               if (val == null || val.trim().isEmpty) {
                                 return 'Número de identificación del cuidador requerido';
                               }
@@ -1210,7 +1217,7 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                             hintText: 'Ej: María',
                           ),
                           validator: (val) {
-                            if (_hasGuardian) {
+                            if (widget.guardianRequired || _hasGuardian) {
                               if (val == null || val.trim().isEmpty) {
                                 return 'Primer nombre del cuidador requerido';
                               }
@@ -1230,7 +1237,7 @@ class _Step2AdditionalDataStepState extends State<Step2AdditionalDataStep>
                             hintText: 'Ej: Pérez Gómez',
                           ),
                           validator: (val) {
-                            if (_hasGuardian) {
+                            if (widget.guardianRequired || _hasGuardian) {
                               if (val == null || val.trim().isEmpty) {
                                 return 'Apellidos del cuidador requeridos';
                               }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/theme/app_theme.dart';
 import 'inventory_controller.dart';
 import 'campaign_form_page.dart';
 import 'campaign_detail_page.dart';
@@ -187,7 +188,7 @@ class _InventoryPageState extends State<InventoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = (MediaQuery.sizeOf(context).width >= 960 || widget.embedded) && widget.admin;
+    final isDesktop = MediaQuery.sizeOf(context).width >= 960 && widget.admin;
     if (isDesktop) {
       return AdminWebDeliveryView(
         controller: widget.controller,
@@ -201,10 +202,25 @@ class _InventoryPageState extends State<InventoryPage> {
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: widget.embedded
           ? null
           : AppBar(
-              title: Text(widget.admin ? 'Entregas y jornadas' : 'Mis entregas'),
+              title: Text(
+                widget.admin ? 'Entregas y jornadas' : 'Mis entregas',
+                style: const TextStyle(
+                  color: Color(0xFF0F172A),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                ),
+              ),
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              bottom: const PreferredSize(
+                preferredSize: Size.fromHeight(1),
+                child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+              ),
             ),
     body: !widget.online
         ? const Center(
@@ -226,20 +242,54 @@ class _InventoryPageState extends State<InventoryPage> {
                     children: [
                       if (widget.admin)
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                           child: SizedBox(
                             width: double.infinity,
                             child: SegmentedButton<int>(
+                              style: ButtonStyle(
+                                backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+                                  if (states.contains(WidgetState.selected)) {
+                                    return const Color(0xFFEFF6FF);
+                                  }
+                                  return Colors.white;
+                                }),
+                                foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+                                  if (states.contains(WidgetState.selected)) {
+                                    return const Color(0xFF1E60EC);
+                                  }
+                                  return const Color(0xFF64748B);
+                                }),
+                                iconColor: WidgetStateProperty.resolveWith<Color>((states) {
+                                  if (states.contains(WidgetState.selected)) {
+                                    return const Color(0xFF1E60EC);
+                                  }
+                                  return const Color(0xFF64748B);
+                                }),
+                                side: WidgetStateProperty.all(
+                                  const BorderSide(color: Color(0xFFE2E8F0)),
+                                ),
+                                shape: WidgetStateProperty.all(
+                                  RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                              ),
                               segments: const [
                                 ButtonSegment(
                                   value: 0,
-                                  icon: Icon(Icons.local_shipping_outlined),
-                                  label: Text('Entregas'),
+                                  icon: Icon(Icons.local_shipping_outlined, size: 18),
+                                  label: Text(
+                                    'Entregas',
+                                    style: TextStyle(fontWeight: FontWeight.w700),
+                                  ),
                                 ),
                                 ButtonSegment(
                                   value: 1,
-                                  icon: Icon(Icons.event_outlined),
-                                  label: Text('Jornadas'),
+                                  icon: Icon(Icons.event_note_outlined, size: 18),
+                                  label: Text(
+                                    'Jornadas',
+                                    style: TextStyle(fontWeight: FontWeight.w700),
+                                  ),
                                 ),
                               ],
                               selected: {_tab},
@@ -253,7 +303,7 @@ class _InventoryPageState extends State<InventoryPage> {
                           onRefresh: _load,
                           child: ListView(
                             physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.all(24),
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
                             children: [
                               _heading(context),
                               const SizedBox(height: 24),
@@ -293,6 +343,17 @@ class _InventoryPageState extends State<InventoryPage> {
 
   Widget _heading(BuildContext context) {
     final jornadas = widget.admin && _tab == 1;
+    final titleText = jornadas
+        ? 'Organiza una jornada'
+        : widget.admin
+        ? 'Entrega vacunas'
+        : 'Mis entregas';
+    final subtitleText = jornadas
+        ? 'Define lugar y fecha, elige al equipo y asigna vacunas a cada vacunador.'
+        : widget.admin
+        ? 'Elige un vacunador y los frascos que recibirá. No necesitas crear una jornada.'
+        : 'Confirma los frascos que recibiste físicamente.';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -300,12 +361,13 @@ class _InventoryPageState extends State<InventoryPage> {
           children: [
             Expanded(
               child: Text(
-                jornadas
-                    ? 'Organiza una jornada'
-                    : widget.admin
-                    ? 'Entrega vacunas'
-                    : 'Mis entregas',
-                style: Theme.of(context).textTheme.headlineSmall,
+                titleText,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                  letterSpacing: -0.4,
+                ),
               ),
             ),
             if (widget.admin)
@@ -339,47 +401,129 @@ class _InventoryPageState extends State<InventoryPage> {
               ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(
-          jornadas
-              ? 'Define lugar y fecha, elige al equipo y asigna vacunas a cada vacunador.'
-              : widget.admin
-              ? 'Elige un vacunador y los frascos que recibirá. No necesitas crear una jornada.'
-              : 'Confirma los frascos que recibiste físicamente.',
+          subtitleText,
+          style: const TextStyle(
+            fontSize: 13.5,
+            color: AppColors.slate,
+            height: 1.4,
+          ),
         ),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: _blocked || _error != null
-              ? null
-              : () => _open(
-                  CustodyPage(
-                    controller: widget.controller,
-                    institutionId: widget.institutionId,
-                    admin: widget.admin,
-                    canWrite: widget.canWrite,
-                    online: widget.online,
+        const SizedBox(height: 16),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _blocked || _error != null
+                ? null
+                : () => _open(
+                    CustodyPage(
+                      controller: widget.controller,
+                      institutionId: widget.institutionId,
+                      admin: widget.admin,
+                      canWrite: widget.canWrite,
+                      online: widget.online,
+                    ),
                   ),
-                ),
-          icon: const Icon(Icons.fact_check_outlined),
-          label: Text(
-            widget.admin ? 'Custodia y cierre' : 'Mi custodia y conteos',
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.fact_check_outlined,
+                      color: Color(0xFF2563EB),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.admin ? 'Custodia y cierre' : 'Mi custodia y conteos',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          widget.admin
+                              ? 'Control de frascos en custodia y arqueo'
+                              : 'Revisa tu balance de frascos y conteos físicos',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: AppColors.slate,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: Color(0xFF94A3B8),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
         if (widget.admin && widget.canWrite) ...[
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: _blocked || _error != null
-                ? null
-                : jornadas
-                ? _createCampaign
-                : () => _open(
-                    DeliveryFormPage(
-                      controller: widget.controller,
-                      institutionId: widget.institutionId,
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: FilledButton.icon(
+              onPressed: _blocked || _error != null
+                  ? null
+                  : jornadas
+                  ? _createCampaign
+                  : () => _open(
+                      DeliveryFormPage(
+                        controller: widget.controller,
+                        institutionId: widget.institutionId,
+                      ),
                     ),
-                  ),
-            icon: const Icon(Icons.add),
-            label: Text(jornadas ? 'Nueva jornada' : 'Nueva entrega'),
+              icon: const Icon(Icons.add_rounded, size: 20),
+              label: Text(
+                jornadas ? 'Nueva jornada' : 'Nueva entrega',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF1E60EC),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 0,
+              ),
+            ),
           ),
         ],
       ],
@@ -387,116 +531,574 @@ class _InventoryPageState extends State<InventoryPage> {
   }
 
   List<Widget> _campaigns() => [
-    Text(
-      'Jornadas registradas',
-      style: Theme.of(context).textTheme.titleMedium,
+    Row(
+      children: [
+        const Text(
+          'Jornadas registradas',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF0F172A),
+          ),
+        ),
+        if (_campaignRecords.isNotEmpty) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${_campaignRecords.length}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF2563EB),
+              ),
+            ),
+          ),
+        ],
+      ],
     ),
-    const SizedBox(height: 8),
+    const SizedBox(height: 12),
     if (_campaignRecords.isEmpty)
       const DeliveryEmptyState(
+        icon: Icons.event_note_outlined,
         title: 'Aún no hay jornadas',
         message: 'Crea una jornada para organizar lugar, fechas y equipo. Las entregas se preparan dentro de ella.',
       ),
-    for (final campaign in _campaignRecords)
-      ListTile(
-        contentPadding: EdgeInsets.zero,
-        title: Text('${campaign['name']}'),
-        subtitle: Text(
-          '${campaign['location']} · ${campaignDates(campaign)}\n${campaign['status'] == 'ACTIVE' ? 'Activa' : 'Finalizada'}',
-        ),
-        isThreeLine: true,
-        trailing: const Icon(Icons.chevron_right),
-        onTap: _blocked
-            ? null
-            : () => _open(
-                CampaignDetailPage(
-                  controller: widget.controller,
-                  institutionId: widget.institutionId,
-                  campaign: campaign,
-                  canWrite: widget.canWrite,
-                ),
-              ),
-      ),
+    for (var i = 0; i < _campaignRecords.length; i++) ...[
+      if (i > 0) const SizedBox(height: 10),
+      _buildCampaignCard(_campaignRecords[i]),
+    ],
   ];
 
+  Widget _buildCampaignCard(Map<String, dynamic> campaign) {
+    final isActive = campaign['status'] == 'ACTIVE';
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _blocked
+              ? null
+              : () => _open(
+                  CampaignDetailPage(
+                    controller: widget.controller,
+                    institutionId: widget.institutionId,
+                    campaign: campaign,
+                    canWrite: widget.canWrite,
+                  ),
+                ),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: isActive ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.event_available_rounded,
+                    color: isActive ? const Color(0xFF059669) : const Color(0xFF64748B),
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${campaign['name']}',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isActive ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: isActive ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0),
+                              ),
+                            ),
+                            child: Text(
+                              isActive ? 'Activa' : 'Finalizada',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isActive ? const Color(0xFF047857) : const Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_outlined, size: 14, color: AppColors.slate),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              '${campaign['location']} · ${campaignDates(campaign)}',
+                              style: const TextStyle(fontSize: 12.5, color: AppColors.slate),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFF94A3B8)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   List<Widget> _deliveries() => [
-    Text(
-      'Entregas registradas',
-      style: Theme.of(context).textTheme.titleMedium,
+    Row(
+      children: [
+        const Text(
+          'Entregas registradas',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF0F172A),
+          ),
+        ),
+        if (_assignments.isNotEmpty) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${_assignments.length}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF2563EB),
+              ),
+            ),
+          ),
+        ],
+      ],
     ),
-    const SizedBox(height: 8),
+    const SizedBox(height: 12),
     if (_assignments.isEmpty)
       DeliveryEmptyState(
+        icon: Icons.local_shipping_outlined,
         title: 'Aún no hay entregas',
         message: widget.admin
             ? 'Empieza con Nueva entrega. Si es para una jornada, abre esa jornada y asigna desde su equipo.'
             : 'Las vacunas que te entreguen aparecerán aquí.',
       ),
-    for (final a in _assignments)
-      ListTile(
-        contentPadding: EdgeInsets.zero,
-        title: Text(
-          widget.admin
-              ? '${_names[a['vaccinatorId']] ?? 'Vacunador por verificar'} · ${a['vaccineName']}'
-              : '${a['vaccineName']} · ${a['lotNumber']}',
-        ),
-        subtitle: Text(
-          '${a['vialCount']} frascos · ${deliveryStatus(a['status'])}\n${a['campaignName'] ?? 'Entrega directa · Sin jornada'}',
-        ),
-        isThreeLine: true,
-        trailing:
-            !widget.admin &&
-                (a['status'] == 'IN_TRANSIT' ||
-                    a['status'] == 'PARTIALLY_RECEIVED')
-            ? TextButton(
-                onPressed: _blocked
-                    ? null
-                    : () => _open(
-                        ReceiptFormPage(
-                          controller: widget.controller,
-                          institutionId: widget.institutionId,
-                          assignment: a,
-                        ),
-                      ),
-                child: const Text('Recibir'),
-              )
-            : const Icon(Icons.chevron_right),
-        onTap: _blocked ? null : () => _details(a),
-      ),
+    for (var i = 0; i < _assignments.length; i++) ...[
+      if (i > 0) const SizedBox(height: 10),
+      _buildDeliveryCard(_assignments[i]),
+    ],
     if (_events.isNotEmpty) ...[
-      const Divider(height: 32),
-      ExpansionTile(
-        tilePadding: EdgeInsets.zero,
-        title: const Text('Devoluciones y novedades'),
-        subtitle: Text('${_events.length} registradas'),
-        children: [
-          for (final event in _events)
-            ListTile(
-              title: Text('${event['vaccineName']} · ${event['lotNumber']}'),
-              subtitle: Text(
-                '${event['vialCount']} frascos · ${custodyEventStatus(event['status'])}',
+      const SizedBox(height: 24),
+      Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            leading: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(10),
               ),
-              trailing:
-                  widget.admin &&
-                      widget.canWrite &&
-                      event['status'] == 'RETURN_PENDING'
-                  ? TextButton(
-                      onPressed: _blocked
-                          ? null
-                          : () => _open(
-                              CustodyEventFormPage(
-                                controller: widget.controller,
-                                institutionId: widget.institutionId,
-                                record: event,
-                                confirmation: true,
+              child: const Icon(
+                Icons.assignment_return_outlined,
+                color: Color(0xFFDC2626),
+                size: 20,
+              ),
+            ),
+            title: const Text(
+              'Devoluciones y novedades',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            subtitle: Text(
+              '${_events.length} registradas',
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: AppColors.slate,
+              ),
+            ),
+            children: [
+              for (var i = 0; i < _events.length; i++) ...[
+                if (i > 0) const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${_events[i]['vaccineName']} · ${_events[i]['lotNumber']}',
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF0F172A),
                               ),
                             ),
-                      child: const Text('Revisar'),
-                    )
-                  : null,
-            ),
-        ],
+                            const SizedBox(height: 2),
+                            Text(
+                              '${_events[i]['vialCount']} frascos · ${custodyEventStatus(_events[i]['status'])}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.slate,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (widget.admin &&
+                          widget.canWrite &&
+                          _events[i]['status'] == 'RETURN_PENDING')
+                        FilledButton.tonal(
+                          onPressed: _blocked
+                              ? null
+                              : () => _open(
+                                  CustodyEventFormPage(
+                                    controller: widget.controller,
+                                    institutionId: widget.institutionId,
+                                    record: _events[i],
+                                    confirmation: true,
+                                  ),
+                                ),
+                          style: FilledButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          ),
+                          child: const Text('Revisar'),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     ],
   ];
+
+  Widget _buildDeliveryCard(Map<String, dynamic> a) {
+    final status = a['status']?.toString();
+    final isPending = status == 'IN_TRANSIT' || status == 'PARTIALLY_RECEIVED';
+    final isReceived = status == 'RECEIVED';
+
+    final (statusLabel, statusBg, statusFg, statusBorder) = switch (status) {
+      'RECEIVED' => (
+        'Recibida',
+        const Color(0xFFECFDF5),
+        const Color(0xFF047857),
+        const Color(0xFFA7F3D0),
+      ),
+      'IN_TRANSIT' => (
+        'Pendiente de recepción',
+        const Color(0xFFFFFBEB),
+        const Color(0xFFB45309),
+        const Color(0xFFFDE68A),
+      ),
+      'PARTIALLY_RECEIVED' => (
+        'Diferencia pendiente',
+        const Color(0xFFFFF7ED),
+        const Color(0xFFC2410C),
+        const Color(0xFFFED7AA),
+      ),
+      'CLOSED_WITH_DIFFERENCE' => (
+        'Diferencia resuelta',
+        const Color(0xFFEFF6FF),
+        const Color(0xFF1D4ED8),
+        const Color(0xFFBFDBFE),
+      ),
+      _ => (
+        deliveryStatus(status),
+        const Color(0xFFF1F5F9),
+        const Color(0xFF475569),
+        const Color(0xFFE2E8F0),
+      ),
+    };
+
+    final avatarBg = isReceived
+        ? const Color(0xFFECFDF5)
+        : isPending
+            ? const Color(0xFFFFFBEB)
+            : const Color(0xFFEFF6FF);
+
+    final avatarFg = isReceived
+        ? const Color(0xFF059669)
+        : isPending
+            ? const Color(0xFFD97706)
+            : const Color(0xFF2563EB);
+
+    final avatarIcon = isReceived
+        ? Icons.check_circle_outline_rounded
+        : isPending
+            ? Icons.inventory_2_outlined
+            : Icons.vaccines_outlined;
+
+    final titleText = widget.admin
+        ? '${_names[a['vaccinatorId']] ?? 'Vacunador por verificar'} · ${a['vaccineName']}'
+        : '${a['vaccineName']} · ${a['lotNumber']}';
+
+    final campaignText =
+        a['campaignName']?.toString() ?? 'Entrega directa · Sin jornada';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _blocked ? null : () => _details(a),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: avatarBg,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(avatarIcon, color: avatarFg, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            titleText,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: statusBg,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: statusBorder),
+                            ),
+                            child: Text(
+                              statusLabel,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: statusFg,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.vaccines_rounded,
+                            size: 14,
+                            color: AppColors.slate,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            '${a['vialCount']} frascos',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF334155),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.event_note_rounded,
+                            size: 14,
+                            color: Color(0xFF94A3B8),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              campaignText,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.slate,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (!widget.admin && isPending)
+                      FilledButton(
+                        onPressed: _blocked
+                            ? null
+                            : () => _open(
+                                ReceiptFormPage(
+                                  controller: widget.controller,
+                                  institutionId: widget.institutionId,
+                                  assignment: a,
+                                ),
+                              ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_rounded, size: 16),
+                            SizedBox(width: 4),
+                            Text(
+                              'Recibir',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.chevron_right_rounded,
+                          size: 18,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

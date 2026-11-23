@@ -17,6 +17,7 @@ class Step3VaccinesStep extends StatefulWidget {
   const Step3VaccinesStep({
     required this.controller,
     required this.offline,
+    this.hasReceivedLot,
     required this.attentionDate,
     this.birthDate,
     this.sex,
@@ -32,6 +33,7 @@ class Step3VaccinesStep extends StatefulWidget {
 
   final AttentionController controller;
   final OfflineAccess offline;
+  final Future<bool> Function(String vaccineId)? hasReceivedLot;
   final DateTime attentionDate;
   final DateTime? birthDate;
   final String? sex;
@@ -64,8 +66,9 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
             widget.ethnicity != 'NO_APLICA');
 
     final appliedKeys = <String>{};
-    for (final staged
-        in widget.stagedDoses.values.where((d) => d.isCompleted)) {
+    for (final staged in widget.stagedDoses.values.where(
+      (d) => d.isCompleted,
+    )) {
       appliedKeys.add(
         '${staged.vaccineName.toLowerCase()}_${staged.doseDisplayName.toLowerCase()}',
       );
@@ -126,7 +129,33 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
     _customObservationController.text = dose.customObservation ?? '';
   }
 
-  void _onDoseChipTapped(EffectiveVaccine vaccine, EffectiveOption doseOption) {
+  Future<bool> _checkReceivedLot(EffectiveVaccine vaccine) async {
+    final check = widget.hasReceivedLot;
+    if (check == null) return true;
+    try {
+      final received = await check(vaccine.vaccineId);
+      if (!received && mounted) {
+        AppSnackbar.warning(
+          context,
+          '${vaccine.name}: sin stock asignado vigente.',
+        );
+      }
+      return received && mounted;
+    } catch (_) {
+      if (mounted) {
+        AppSnackbar.warning(
+          context,
+          'No se pudo verificar el inventario. Intenta de nuevo.',
+        );
+      }
+      return false;
+    }
+  }
+
+  Future<void> _onDoseChipTapped(
+    EffectiveVaccine vaccine,
+    EffectiveOption doseOption,
+  ) async {
     final patientCtx = _buildPatientContext();
     final ineligibilityWarning =
         VaccineEligibilityEngine.getDoseIneligibilityWarning(
@@ -149,6 +178,8 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
       setState(() => _activeDoseKey = null);
       return;
     }
+
+    if (!await _checkReceivedLot(vaccine) || !mounted) return;
 
     // Si tenía otra dosis abierta sin confirmar, descartar ese borrador
     if (_activeDoseKey != null &&
@@ -212,6 +243,10 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
     }
 
     setState(() => _isConfirmingDose = true);
+    if (!await _checkReceivedLot(vaccine) || !mounted) {
+      if (mounted) setState(() => _isConfirmingDose = false);
+      return;
+    }
 
     // Breve pausa para dar feedback táctil y visual del loader en el botón
     await Future.delayed(const Duration(milliseconds: 300));
@@ -232,7 +267,8 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
 
     setState(() {
       _isConfirmingDose = false;
-      _activeDoseKey = null; // Se suelta/cierra el menú desplegado de la dosis confirmada
+      _activeDoseKey =
+          null; // Se suelta/cierra el menú desplegado de la dosis confirmada
     });
 
     AppSnackbar.success(
@@ -633,12 +669,12 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
                               color: isPreviouslyApplied
                                   ? AppColors.success.withValues(alpha: 0.6)
                                   : (isActive
-                                      ? AppColors.primary
-                                      : (isCompleted
-                                          ? AppColors.success.withValues(
-                                              alpha: 0.5,
-                                            )
-                                          : AppColors.border)),
+                                        ? AppColors.primary
+                                        : (isCompleted
+                                              ? AppColors.success.withValues(
+                                                  alpha: 0.5,
+                                                )
+                                              : AppColors.border)),
                               width: isActive ? 1.5 : 1,
                             ),
                           ),
@@ -658,10 +694,10 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
                                   fontSize: 13,
                                   fontWeight:
                                       isActive ||
-                                      isCompleted ||
-                                      isPreviouslyApplied
-                                          ? FontWeight.w600
-                                          : FontWeight.normal,
+                                          isCompleted ||
+                                          isPreviouslyApplied
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
                                 ),
                               ),
                             ],

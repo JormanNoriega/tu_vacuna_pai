@@ -6,6 +6,7 @@ import '../../../../core/device/location_service.dart';
 import '../../../../core/presentation/offline_messages.dart';
 import '../../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../auth/domain/entities/auth_user.dart';
+import '../../../auth/domain/entities/session_restore_result.dart';
 import '../../../catalogs/domain/entities/catalog_entities.dart';
 import '../../../patients/domain/entities/new_patient.dart';
 import '../../../patients/domain/entities/patient.dart';
@@ -27,6 +28,7 @@ class NuevaAtencionPage extends StatefulWidget {
     required this.user,
     required this.controller,
     required this.offline,
+    this.hasReceivedLot,
     this.onFinished,
     this.onSubmittingChanged,
     super.key,
@@ -35,6 +37,7 @@ class NuevaAtencionPage extends StatefulWidget {
   final AuthUser user;
   final AttentionController controller;
   final OfflineAccess offline;
+  final Future<bool> Function(String vaccineId)? hasReceivedLot;
   final VoidCallback? onFinished;
   final ValueChanged<bool>? onSubmittingChanged;
 
@@ -43,6 +46,40 @@ class NuevaAtencionPage extends StatefulWidget {
 }
 
 class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
+  Future<bool> Function(String vaccineId)? get _onlineReceiptCheck =>
+      widget.offline.status == SessionStatus.signedIn
+      ? widget.hasReceivedLot
+      : null;
+
+  Future<bool> _validateReceivedLots() async {
+    final check = _onlineReceiptCheck;
+    if (check == null) return true;
+    final doses = _stagedDoses.values.where((dose) => dose.isCompleted);
+    final vaccineIds = doses.map((dose) => dose.vaccineId).toSet();
+    try {
+      for (final id in vaccineIds) {
+        if (!await check(id)) {
+          if (mounted) {
+            final name = doses
+                .firstWhere((dose) => dose.vaccineId == id)
+                .vaccineName;
+            AppSnackbar.warning(context, '$name: sin stock asignado vigente.');
+          }
+          return false;
+        }
+      }
+      return mounted;
+    } catch (_) {
+      if (mounted) {
+        AppSnackbar.warning(
+          context,
+          'No se pudo verificar el inventario. Intenta de nuevo.',
+        );
+      }
+      return false;
+    }
+  }
+
   final PageController _pageController = PageController();
   int _currentStep = 0;
   static const int _totalSteps = 4;
@@ -244,6 +281,20 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
     }
   }
 
+  bool get _requiresGuardian {
+    final birth = _birthDate;
+    if (_isExistingPatient || birth == null) return false;
+    final adultBirthday = DateTime(birth.year + 18, birth.month, birth.day);
+    return DateUtils.dateOnly(_attentionDate).isBefore(adultBirthday);
+  }
+
+  void _clearIncompatibleDocument() {
+    if (_requiresGuardian && _documentType == 'CC') {
+      _documentType = '';
+      _documentNumber.clear();
+    }
+  }
+
   Future<void> _handleNext() async {
     // Validación Paso 1
     if (_currentStep == 0) {
@@ -263,7 +314,20 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
 
     // Validación Paso 2
     if (_currentStep == 1) {
-      if (!(_step2FormKey.currentState?.validate() ?? false)) {
+      final valid = _step2FormKey.currentState?.validate() ?? false;
+      if (_requiresGuardian &&
+          [
+            _guardianDocument,
+            _guardianFirstName,
+            _guardianLastName,
+          ].any((field) => field.text.trim().isEmpty)) {
+        AppSnackbar.warning(
+          context,
+          'Registra el responsable del menor antes de continuar.',
+        );
+        return;
+      }
+      if (!valid) {
         return;
       }
       if (_sex == null || _sex!.isEmpty) {
@@ -295,6 +359,8 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
         );
         return;
       }
+      if (!await _validateReceivedLots() || !mounted || _currentStep != 2)
+        return;
       _goToStep(3);
       return;
     }
@@ -318,6 +384,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
     widget.onSubmittingChanged?.call(true);
 
     try {
+      if (!await _validateReceivedLots() || !mounted) return;
       // 1. Si es paciente nuevo, registrarlo
       Patient? currentPatient = widget.controller.patient;
 
@@ -468,7 +535,8 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
 
       // 2. Asegurar que existe una atención iniciada para el paciente
       final now = DateTime.now();
-      final isAttentionToday = _attentionDate.year == now.year &&
+      final isAttentionToday =
+          _attentionDate.year == now.year &&
           _attentionDate.month == now.month &&
           _attentionDate.day == now.day;
       final attentionDateIso = isAttentionToday
@@ -500,7 +568,8 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
 
       // 3. Registrar cada dosis configurada en borrador (únicamente las confirmadas)
       for (final staged in _stagedDoses.values.where((d) => d.isCompleted)) {
-        final isDoseToday = staged.applicationDate.year == now.year &&
+        final isDoseToday =
+            staged.applicationDate.year == now.year &&
             staged.applicationDate.month == now.month &&
             staged.applicationDate.day == now.day;
         final applicationDateIso = isDoseToday
@@ -760,9 +829,12 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
                     controller: widget.controller,
                     offline: widget.offline,
                     attentionDate: _attentionDate,
-                    onAttentionDateChanged: (d) =>
-                        setState(() => _attentionDate = d),
+                    onAttentionDateChanged: (d) => setState(() {
+                      _attentionDate = d;
+                      _clearIncompatibleDocument();
+                    }),
                     documentType: _documentType,
+                    excludesCitizenshipCard: _requiresGuardian,
                     onDocumentTypeChanged: (t) =>
                         setState(() => _documentType = t),
                     documentNumberController: _documentNumber,
@@ -771,7 +843,10 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
                     lastNameController: _lastName,
                     secondLastNameController: _secondLastName,
                     birthDate: _birthDate,
-                    onBirthDateChanged: (b) => setState(() => _birthDate = b),
+                    onBirthDateChanged: (b) => setState(() {
+                      _birthDate = b;
+                      _clearIncompatibleDocument();
+                    }),
                     completeScheme: _completeScheme,
                     onCompleteSchemeChanged: (s) =>
                         setState(() => _completeScheme = s),
@@ -861,6 +936,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
                     lastMenstrualDateController: _lastMenstrualDate,
                     previousPregnanciesController: _previousPregnancies,
                     birthPlaceDeliveryController: _birthPlaceDelivery,
+                    guardianRequired: _requiresGuardian,
                     guardianRelationship: _guardianRelationship,
                     onGuardianRelationshipChanged: (val) =>
                         setState(() => _guardianRelationship = val),
@@ -875,6 +951,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
 
                   // Paso 3
                   Step3VaccinesStep(
+                    hasReceivedLot: _onlineReceiptCheck,
                     controller: widget.controller,
                     offline: widget.offline,
                     attentionDate: _attentionDate,
