@@ -155,6 +155,7 @@ class SyncOutboxRepository {
       ),
       status: SyncOutboxStatus.fromValue(row.status),
       retryCount: row.retryCount,
+      error: row.lastError,
       createdAt: DateTime.fromMillisecondsSinceEpoch(
         row.createdAt * 1000,
         isUtc: true,

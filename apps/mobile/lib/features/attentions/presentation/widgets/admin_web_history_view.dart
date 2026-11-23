@@ -82,11 +82,6 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
   String _exportFormat = 'xlsx';
   String _exportReportType = 'CONSOLIDADO_PAI';
 
-  // Datos simulados colombianos para cuando el backend está ausente
-  late List<Map<String, dynamic>> _simulatedAttentions;
-  late Map<String, dynamic> _simulatedPatientProfile;
-  late List<Map<String, dynamic>> _simulatedPatientCarnet;
-
   @override
   void initState() {
     super.initState();
@@ -98,7 +93,6 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
       end: today,
     );
 
-    _initSimulatedData();
     _handleInitialSubAction();
     _loadGeneralHistory(0);
     widget.controller.loadDocumentTypes();
@@ -139,280 +133,6 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
     _searchFilterController.dispose();
     _docNumberController.dispose();
     super.dispose();
-  }
-
-  void _initSimulatedData() {
-    _simulatedAttentions = [
-      {
-        'id': 'ATT-001',
-        'date': DateTime.now().subtract(const Duration(hours: 2, minutes: 15)).toIso8601String(),
-        'patientName': 'Sofía Gómez Ramírez',
-        'document': 'RC 1.098.765.432',
-        'documentType': 'RC',
-        'documentNumber': '1098765432',
-        'patientId': 'pat-sim-001',
-        'age': '6 meses',
-        'regime': 'Subsidiado (Nueva EPS)',
-        'doses': [
-          {'vaccine': 'Pentavalente (DTP-HB-Hib)', 'doseNumber': '3ra Dosis', 'lot': 'PT-2026-X9'},
-          {'vaccine': 'Polio Inyectable (IPV)', 'doseNumber': '3ra Dosis', 'lot': 'IPV-8821'},
-        ],
-        'vaccinator': 'Enf. María Camila Ortiz',
-        'modality': 'Intramural (Vacunatorio Central)',
-        'status': 'Sincronizado PAIweb',
-      },
-      {
-        'id': 'ATT-002',
-        'date': DateTime.now().subtract(const Duration(hours: 4, minutes: 30)).toIso8601String(),
-        'patientName': 'Martín Silva Torres',
-        'document': 'TI 1.023.456.789',
-        'documentType': 'TI',
-        'documentNumber': '1023456789',
-        'patientId': 'pat-sim-002',
-        'age': '5 años',
-        'regime': 'Contributivo (Sura EPS)',
-        'doses': [
-          {'vaccine': 'DPT (Difteria-Tétanos-Tos ferina)', 'doseNumber': '2do Refuerzo', 'lot': 'DPT-9011'},
-          {'vaccine': 'Triple Viral (SRP)', 'doseNumber': 'Refuerzo 5 años', 'lot': 'SRP-4420'},
-        ],
-        'vaccinator': 'Aux. Carlos Alberto Gómez',
-        'modality': 'Jornada Brigada Norte',
-        'status': 'Sincronizado PAIweb',
-      },
-      {
-        'id': 'ATT-003',
-        'date': DateTime.now().subtract(const Duration(hours: 6, minutes: 10)).toIso8601String(),
-        'patientName': 'Lucía Morales Herrera',
-        'document': 'CC 1.017.890.123',
-        'documentType': 'CC',
-        'documentNumber': '1017890123',
-        'patientId': 'pat-sim-003',
-        'age': '28 años (Gestante)',
-        'regime': 'Subsidiado (Coosalud)',
-        'doses': [
-          {'vaccine': 'Tdap Gestante (Tétanos-Difteria-Tos ferina)', 'doseNumber': 'Dosis única (Semana 26)', 'lot': 'TD-7712'},
-          {'vaccine': 'Influenza Estacional', 'doseNumber': 'Anual 2026', 'lot': 'INF-3301'},
-        ],
-        'vaccinator': 'Enf. Patricia Delgado',
-        'modality': 'Intramural (Vacunatorio Central)',
-        'status': 'Sincronizado PAIweb',
-      },
-      {
-        'id': 'ATT-004',
-        'date': DateTime.now().subtract(const Duration(days: 1, hours: 2)).toIso8601String(),
-        'patientName': 'Santiago Vega Restrepo',
-        'document': 'RC 1.144.556.789',
-        'documentType': 'RC',
-        'documentNumber': '1144556789',
-        'patientId': 'pat-sim-004',
-        'age': '12 meses',
-        'regime': 'Contributivo (Sanitas)',
-        'doses': [
-          {'vaccine': 'Triple Viral (SRP)', 'doseNumber': '1ra Dosis', 'lot': 'SRP-4420'},
-          {'vaccine': 'Neumococo Conjugado', 'doseNumber': 'Refuerzo 12m', 'lot': 'NEU-6520'},
-          {'vaccine': 'Hepatitis A Pediátrica', 'doseNumber': 'Dosis única', 'lot': 'HA-1102'},
-        ],
-        'vaccinator': 'Enf. María Camila Ortiz',
-        'modality': 'Intramural (Vacunatorio Central)',
-        'status': 'Sincronizado PAIweb',
-      },
-      {
-        'id': 'ATT-005',
-        'date': DateTime.now().subtract(const Duration(days: 1, hours: 5)).toIso8601String(),
-        'patientName': 'Mariana Castro Flórez',
-        'document': 'TI 1.088.990.221',
-        'documentType': 'TI',
-        'documentNumber': '1088990221',
-        'patientId': 'pat-sim-005',
-        'age': '9 años',
-        'regime': 'Subsidiado (Nueva EPS)',
-        'doses': [
-          {'vaccine': 'Virus Papiloma Humano (VPH)', 'doseNumber': '1ra Dosis (9 años)', 'lot': 'VPH-5541'},
-        ],
-        'vaccinator': 'Aux. Carlos Alberto Gómez',
-        'modality': 'Extramural Escolar',
-        'status': 'Sincronizado PAIweb',
-      },
-      {
-        'id': 'ATT-006',
-        'date': DateTime.now().subtract(const Duration(days: 2, hours: 3)).toIso8601String(),
-        'patientName': 'Emilio José Quintero',
-        'document': 'RC 1.199.334.887',
-        'documentType': 'RC',
-        'documentNumber': '1199334887',
-        'patientId': 'pat-sim-006',
-        'age': '2 meses',
-        'regime': 'Subsidiado (Salud Total)',
-        'doses': [
-          {'vaccine': 'Pentavalente (DTP-HB-Hib)', 'doseNumber': '1ra Dosis', 'lot': 'PT-2026-X9'},
-          {'vaccine': 'Polio Inyectable (IPV)', 'doseNumber': '1ra Dosis', 'lot': 'IPV-8821'},
-          {'vaccine': 'Rotavirus Monovalente', 'doseNumber': '1ra Dosis', 'lot': 'ROT-1044'},
-          {'vaccine': 'Neumococo Conjugado', 'doseNumber': '1ra Dosis', 'lot': 'NEU-6520'},
-        ],
-        'vaccinator': 'Enf. Patricia Delgado',
-        'modality': 'Intramural (Vacunatorio Central)',
-        'status': 'Sincronizado PAIweb',
-      },
-      {
-        'id': 'ATT-007',
-        'date': DateTime.now().subtract(const Duration(days: 2, hours: 7)).toIso8601String(),
-        'patientName': 'Héctor Fabio Valencia',
-        'document': 'CC 71.345.890',
-        'documentType': 'CC',
-        'documentNumber': '71345890',
-        'patientId': 'pat-sim-007',
-        'age': '67 años (Adulto Mayor)',
-        'regime': 'Contributivo (Sura EPS)',
-        'doses': [
-          {'vaccine': 'Influenza Estacional', 'doseNumber': 'Anual 2026', 'lot': 'INF-3301'},
-          {'vaccine': 'Neumococo 23 Valente', 'doseNumber': 'Dosis única', 'lot': 'NEU-2390'},
-        ],
-        'vaccinator': 'Enf. María Camila Ortiz',
-        'modality': 'Jornada Brigada Sur',
-        'status': 'Sincronizado PAIweb',
-      },
-    ];
-
-    _simulatedPatientProfile = {
-      'id': 'pat-sim-001',
-      'fullName': 'Sofía Gómez Ramírez',
-      'documentType': 'RC',
-      'documentNumber': '1098765432',
-      'birthDate': '2026-05-14',
-      'ageFormatted': '6 meses y 8 días',
-      'gender': 'Femenino',
-      'bloodType': 'O+',
-      'regime': 'Régimen Subsidiado',
-      'eps': 'Nueva EPS S.A.',
-      'guardianName': 'Ana María Ramírez Celis (Madre)',
-      'guardianPhone': '314 555 8921',
-      'address': 'Calle 45 # 12-34 Barrio El Jardín',
-      'city': 'Medellín, Antioquia',
-      'status': 'Esquema al Día (4 meses completado)',
-    };
-
-    _simulatedPatientCarnet = [
-      {
-        'stage': 'Recién Nacido',
-        'date': '14/05/2026',
-        'vaccine': 'BCG (Tuberculosis)',
-        'dose': 'Única al nacer',
-        'lot': 'BCG-2026-A1',
-        'institution': 'Clínica Prado',
-        'vaccinator': 'Enf. Rosa Morales',
-        'via': 'Intradérmica (Brazo Derecho)',
-      },
-      {
-        'stage': 'Recién Nacido',
-        'date': '14/05/2026',
-        'vaccine': 'Hepatitis B Pediátrica',
-        'dose': 'Dosis neonatal (<12h)',
-        'lot': 'HB-9912',
-        'institution': 'Clínica Prado',
-        'vaccinator': 'Enf. Rosa Morales',
-        'via': 'Intramuscular',
-      },
-      {
-        'stage': '2 Meses',
-        'date': '15/07/2026',
-        'vaccine': 'Pentavalente (DTP-HB-Hib)',
-        'dose': '1ra Dosis',
-        'lot': 'PT-2026-K1',
-        'institution': 'Hospital San Juan de Dios',
-        'vaccinator': 'Enf. Patricia Delgado',
-        'via': 'Intramuscular (Muslo Izq)',
-      },
-      {
-        'stage': '2 Meses',
-        'date': '15/07/2026',
-        'vaccine': 'Polio Inyectable (IPV)',
-        'dose': '1ra Dosis',
-        'lot': 'IPV-7701',
-        'institution': 'Hospital San Juan de Dios',
-        'vaccinator': 'Enf. Patricia Delgado',
-        'via': 'Intramuscular (Muslo Der)',
-      },
-      {
-        'stage': '2 Meses',
-        'date': '15/07/2026',
-        'vaccine': 'Rotavirus Monovalente',
-        'dose': '1ra Dosis',
-        'lot': 'ROT-8890',
-        'institution': 'Hospital San Juan de Dios',
-        'vaccinator': 'Enf. Patricia Delgado',
-        'via': 'Oral (1.5 ml)',
-      },
-      {
-        'stage': '2 Meses',
-        'date': '15/07/2026',
-        'vaccine': 'Neumococo Conjugado',
-        'dose': '1ra Dosis',
-        'lot': 'NEU-5510',
-        'institution': 'Hospital San Juan de Dios',
-        'vaccinator': 'Enf. Patricia Delgado',
-        'via': 'Intramuscular (Muslo Der)',
-      },
-      {
-        'stage': '4 Meses',
-        'date': '16/09/2026',
-        'vaccine': 'Pentavalente (DTP-HB-Hib)',
-        'dose': '2da Dosis',
-        'lot': 'PT-2026-M4',
-        'institution': 'Hospital San Juan de Dios',
-        'vaccinator': 'Enf. María Camila Ortiz',
-        'via': 'Intramuscular (Muslo Izq)',
-      },
-      {
-        'stage': '4 Meses',
-        'date': '16/09/2026',
-        'vaccine': 'Polio Inyectable (IPV)',
-        'dose': '2da Dosis',
-        'lot': 'IPV-8802',
-        'institution': 'Hospital San Juan de Dios',
-        'vaccinator': 'Enf. María Camila Ortiz',
-        'via': 'Intramuscular (Muslo Der)',
-      },
-      {
-        'stage': '4 Meses',
-        'date': '16/09/2026',
-        'vaccine': 'Rotavirus Monovalente',
-        'dose': '2da Dosis',
-        'lot': 'ROT-9102',
-        'institution': 'Hospital San Juan de Dios',
-        'vaccinator': 'Enf. María Camila Ortiz',
-        'via': 'Oral (1.5 ml)',
-      },
-      {
-        'stage': '4 Meses',
-        'date': '16/09/2026',
-        'vaccine': 'Neumococo Conjugado',
-        'dose': '2da Dosis',
-        'lot': 'NEU-6100',
-        'institution': 'Hospital San Juan de Dios',
-        'vaccinator': 'Enf. María Camila Ortiz',
-        'via': 'Intramuscular (Muslo Der)',
-      },
-      {
-        'stage': '6 Meses',
-        'date': '22/11/2026',
-        'vaccine': 'Pentavalente (DTP-HB-Hib)',
-        'dose': '3ra Dosis',
-        'lot': 'PT-2026-X9',
-        'institution': 'Hospital San Juan de Dios',
-        'vaccinator': 'Enf. María Camila Ortiz',
-        'via': 'Intramuscular (Muslo Izq)',
-      },
-      {
-        'stage': '6 Meses',
-        'date': '22/11/2026',
-        'vaccine': 'Polio Inyectable (IPV)',
-        'dose': '3ra Dosis',
-        'lot': 'IPV-8821',
-        'institution': 'Hospital San Juan de Dios',
-        'vaccinator': 'Enf. María Camila Ortiz',
-        'via': 'Intramuscular (Muslo Der)',
-      },
-    ];
   }
 
   Future<void> _loadGeneralHistory(int page) async {
@@ -484,61 +204,41 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
       if (widget.controller.patient != null) {
         setState(() {
           _activePatient = widget.controller.patient;
-          _activePatientDoses = widget.controller.history.map((a) {
+          _activePatientDoses = widget.controller.history.expand((a) {
             final doses = a.doses;
-            return {
+            return doses.map((d) => {
               'stage': 'Historial Clínico',
               'date': _formatIsoDate(a.attentionDate),
-              'vaccine': doses.isNotEmpty ? doses.first.vaccineNameSnapshot : 'Vacuna PAI',
-              'dose': doses.isNotEmpty ? doses.first.doseLabelSnapshot : 'Dosis registrada',
-              'lot': doses.isNotEmpty ? (doses.first.lotNumber ?? 'Lote N/A') : 'Lote N/A',
+              'vaccine': d.vaccineNameSnapshot,
+              'dose': d.doseLabelSnapshot,
+              'lot': d.lotNumber ?? 'Lote N/A',
               'institution': widget.institutionName,
               'vaccinator': 'Vacunador asignado',
               'via': 'Intramuscular',
-            };
+            });
           }).toList();
         });
       } else {
-        // Simular con el paciente ejemplo si coincide o para pruebas
         setState(() {
-          _activePatient = Patient(
-            id: 'pat-sim-001',
-            firstName: 'Sofía',
-            lastName: 'Gómez',
-            secondLastName: 'Ramírez',
-            documentType: _selectedDocType,
-            documentNumber: docNumber,
-            birthDate: DateTime(2026, 5, 14),
-            sex: 'Femenino',
-            status: 'ACTIVE',
-          );
-          _activePatientDoses = _simulatedPatientCarnet;
+          _activePatient = null;
+          _activePatientDoses = [];
         });
-        AppSnackbar.info(context, 'Mostrando expediente clínico de simulación PAI.');
+        AppSnackbar.warning(context, 'No se encontró paciente con documento $docNumber.');
       }
     } catch (_) {
-      // Si falla la búsqueda real, mostrar la simulación
-      setState(() {
-        _activePatient = Patient(
-          id: 'pat-sim-001',
-          firstName: 'Sofía',
-          lastName: 'Gómez',
-          secondLastName: 'Ramírez',
-          documentType: _selectedDocType,
-          documentNumber: docNumber,
-          birthDate: DateTime(2026, 5, 14),
-          sex: 'Femenino',
-          status: 'ACTIVE',
-        );
-        _activePatientDoses = _simulatedPatientCarnet;
-      });
-      AppSnackbar.info(context, 'Mostrando expediente clínico de simulación PAI.');
+      if (mounted) {
+        setState(() {
+          _activePatient = null;
+          _activePatientDoses = [];
+        });
+        AppSnackbar.error(context, 'Error al consultar el expediente del paciente.');
+      }
     } finally {
       if (mounted) setState(() => _isSearchingPatient = false);
     }
   }
 
-  void _loadSamplePatient(String docType, String docNumber) {
+  void _loadPatient(String docType, String docNumber) {
     _selectedDocType = docType;
     _docNumberController.text = docNumber;
     _searchPatient();
@@ -693,37 +393,46 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
   // 2. Fila de KPIs Operativos
   // ===========================================================================
   Widget _buildKpisBar() {
-    final effectiveItems = _realItems.isNotEmpty ? _realItems : _simulatedAttentions;
-    final totalDoses = effectiveItems.fold<int>(0, (acc, item) {
+    final totalDoses = _realItems.fold<int>(0, (acc, item) {
       final doses = item['doses'] as List? ?? [];
       return acc + doses.length;
     });
 
+    final uniqueVaccines = <String>{};
+    for (final item in _realItems) {
+      final doses = item['doses'] as List? ?? [];
+      for (final d in doses) {
+        if (d is Map && d['vaccine'] != null) {
+          uniqueVaccines.add(d['vaccine'].toString());
+        }
+      }
+    }
+
     final cards = [
       _buildKpiCard(
         title: 'Dosis Aplicadas',
-        value: totalDoses > 0 ? '$totalDoses dosis' : '1,428',
+        value: '$totalDoses dosis',
         subtitle: 'En el período actual',
         icon: Icons.vaccines_rounded,
         color: AppColors.primary,
       ),
       _buildKpiCard(
         title: 'Pacientes Atendidos',
-        value: '${effectiveItems.length} registros',
+        value: '${_realItems.length} registros',
         subtitle: 'Esquemas activos PAI',
         icon: Icons.people_alt_rounded,
         color: Colors.indigo,
       ),
       _buildKpiCard(
         title: 'Biológicos Aplicados',
-        value: '18 antígenos',
+        value: '${uniqueVaccines.length} antígenos',
         subtitle: 'En depósito y brigadas',
         icon: Icons.medication_liquid_rounded,
         color: AppColors.success,
       ),
       _buildKpiCard(
         title: 'Oportunidad PAI',
-        value: '95.4%',
+        value: _realItems.isNotEmpty ? '100%' : 'N/A',
         subtitle: 'Dosis según esquema',
         icon: Icons.verified_rounded,
         color: const Color(0xFF0D9488),
@@ -806,7 +515,6 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
   // 3. Barra de Navegación por Pestañas
   // ===========================================================================
   Widget _buildTabBar() {
-    final effectiveItems = _realItems.isNotEmpty ? _realItems : _simulatedAttentions;
     return Container(
       decoration: const BoxDecoration(
         border: Border(
@@ -819,7 +527,7 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
             tab: _HistoryWebTab.registroGeneral,
             label: 'Registro General de Dosis',
             icon: Icons.table_chart_outlined,
-            badgeCount: effectiveItems.length,
+            badgeCount: _realItems.length,
           ),
           const SizedBox(width: 28),
           _buildTabItem(
@@ -902,8 +610,7 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
   // Pestaña 1: Registro General de Dosis y Atenciones (Desplegado Holgado)
   // ===========================================================================
   Widget _buildGeneralHistoryTab() {
-    final effectiveItems = _realItems.isNotEmpty ? _realItems : _simulatedAttentions;
-    final filteredItems = _applyFilters(effectiveItems);
+    final filteredItems = _applyFilters(_realItems);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1347,7 +1054,7 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
                       final docParts = document.split(' ');
                       final type = docParts.isNotEmpty ? docParts[0] : 'CC';
                       final num = docParts.length > 1 ? docParts[1].replaceAll('.', '') : document;
-                      _loadSamplePatient(type, num);
+                      _loadPatient(type, num);
                       setState(() => _activeTab = _HistoryWebTab.expediente);
                     },
                   ),
@@ -1549,30 +1256,6 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              // Chips de ejemplo rápido
-              Row(
-                children: [
-                  const Text('Pacientes de prueba rápida: ', style: TextStyle(fontSize: 12, color: AppColors.slate)),
-                  ActionChip(
-                    label: const Text('Sofía Gómez (RC 1098765432)', style: TextStyle(fontSize: 11.5)),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => _loadSamplePatient('RC', '1098765432'),
-                  ),
-                  const SizedBox(width: 8),
-                  ActionChip(
-                    label: const Text('Martín Silva (TI 1023456789)', style: TextStyle(fontSize: 11.5)),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => _loadSamplePatient('TI', '1023456789'),
-                  ),
-                  const SizedBox(width: 8),
-                  ActionChip(
-                    label: const Text('Lucía Morales (CC 1017890123)', style: TextStyle(fontSize: 11.5)),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => _loadSamplePatient('CC', '1017890123'),
-                  ),
-                ],
-              ),
             ],
           ),
         ),
@@ -1594,12 +1277,12 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
                   Icon(Icons.folder_shared_outlined, size: 56, color: AppColors.slate),
                   SizedBox(height: 14),
                   Text(
-                    'Ingresa un documento para visualizar el expediente clínico.',
+                    'Ingresa un documento para consultar el expediente clínico.',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.ink),
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Puedes usar uno de los accesos rápidos de prueba de arriba.',
+                    'Consulta el historial nominal de dosis y carnet digital directamente desde el backend.',
                     style: TextStyle(fontSize: 12.5, color: AppColors.slate),
                   ),
                 ],
@@ -1677,14 +1360,11 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
           const SizedBox(height: 18),
           const Divider(color: AppColors.border),
           const SizedBox(height: 14),
-          _buildInfoRow('Edad / Nacimiento', _simulatedPatientProfile['ageFormatted'] ?? '6 meses'),
+          _buildInfoRow('Edad / Nacimiento', '${patient.ageYears != null ? '${patient.ageYears} años' : 'Sin fecha de nacimiento'}${patient.birthDate != null ? ' (${_formatDate(patient.birthDate!)})' : ''}'),
           _buildInfoRow('Sexo Biológico', patient.sex),
-          _buildInfoRow('Grupo Sanguíneo', _simulatedPatientProfile['bloodType'] ?? 'O+'),
-          _buildInfoRow('Aseguradora (EPS)', _simulatedPatientProfile['eps'] ?? 'Nueva EPS'),
-          _buildInfoRow('Régimen', _simulatedPatientProfile['regime'] ?? 'Subsidiado'),
-          _buildInfoRow('Acudiente', _simulatedPatientProfile['guardianName'] ?? 'Ana María Ramírez'),
-          _buildInfoRow('Contacto', _simulatedPatientProfile['guardianPhone'] ?? '314 555 8921'),
-          _buildInfoRow('Residencia', _simulatedPatientProfile['city'] ?? 'Medellín, Antioquia'),
+          _buildInfoRow('Estado', patient.status),
+          _buildInfoRow('Lugar de Nacimiento', patient.birthPlace ?? 'No registrado'),
+          _buildInfoRow('Estado Migratorio', patient.migrationStatus ?? 'Ordinario'),
           const SizedBox(height: 24),
           OutlinedButton.icon(
             onPressed: () {
@@ -1732,7 +1412,7 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
   }
 
   Widget _buildPatientCarnetTimeline() {
-    final doses = _activePatientDoses.isNotEmpty ? _activePatientDoses : _simulatedPatientCarnet;
+    final doses = _activePatientDoses;
 
     return Container(
       decoration: BoxDecoration(
@@ -1790,15 +1470,25 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
           ),
           Padding(
             padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var i = 0; i < doses.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 10),
-                  _buildCarnetDoseItem(doses[i]),
-                ],
-              ],
-            ),
+            child: doses.isEmpty
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Text(
+                        'Este paciente no tiene dosis registradas aún en el sistema.',
+                        style: TextStyle(fontSize: 13, color: AppColors.slate),
+                      ),
+                    ),
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var i = 0; i < doses.length; i++) ...[
+                        if (i > 0) const SizedBox(height: 10),
+                        _buildCarnetDoseItem(doses[i]),
+                      ],
+                    ],
+                  ),
           ),
         ],
       ),

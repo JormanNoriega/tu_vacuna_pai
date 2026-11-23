@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -37,6 +39,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class SyncPushService {
+
+  private static final Logger log = LoggerFactory.getLogger(SyncPushService.class);
 
   private final IdentityService identity;
   private final Map<String, SyncCommandHandler> handlers;
@@ -85,9 +89,12 @@ public class SyncPushService {
       if (result.accepted()) {
         accepted.add(operationId);
         outcomes.put(operationId, true);
+        log.info("Operacion de sincronizacion ACEPTADA: id={}, tipo={}", operationId, operation.commandType());
       } else {
         rejected.add(result.rejection());
         outcomes.put(operationId, false);
+        log.warn("Operacion de sincronizacion RECHAZADA: id={}, tipo={}, motivo={}, detalle={}",
+            operationId, operation.commandType(), result.rejection().reason(), result.rejection().error());
       }
     }
 
