@@ -76,6 +76,7 @@ class OutboxEntry {
     required this.status,
     required this.retryCount,
     this.createdAt,
+    this.error,
   });
 
   final SyncOperation operation;
@@ -84,4 +85,7 @@ class OutboxEntry {
 
   /// Momento en que se encolo el comprobante (para la bandeja de pendientes).
   final DateTime? createdAt;
+
+  /// Motivo o detalle de error persistido si el registro fallo o esta en cuarentena.
+  final String? error;
 }

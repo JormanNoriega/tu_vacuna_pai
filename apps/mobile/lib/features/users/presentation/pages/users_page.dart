@@ -6,6 +6,7 @@ import '../../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../../core/presentation/widgets/shimmer_loading.dart';
 import '../../domain/entities/vaccinator.dart';
 import '../users_controller.dart';
+import '../widgets/admin_web_users_view.dart';
 import 'create_vaccinator_page.dart';
 
 /// Gestion de usuarios de la institucion del ADMIN_INSTITUTION. Muestra los
@@ -15,11 +16,13 @@ class UsersPage extends StatefulWidget {
     required this.controller,
     required this.institutionId,
     required this.offline,
+    this.institutionName,
     super.key,
   });
 
   final UsersController controller;
   final String institutionId;
+  final String? institutionName;
 
   /// Estado de sesion actual: se propaga a las escrituras para aplicar la
   /// politica offline.
@@ -78,6 +81,18 @@ class _UsersPageState extends State<UsersPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 960;
+    if (isDesktop) {
+      return AdminWebUsersView(
+        controller: widget.controller,
+        institutionId: widget.institutionId,
+        institutionName: widget.institutionName ?? 'Institución PAI',
+        offline: widget.offline,
+        onOpenCreateVaccinator: _openCreateVaccinator,
+        onOpenEditUser: _openEditUser,
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
       child: Center(

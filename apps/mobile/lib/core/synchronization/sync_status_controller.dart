@@ -74,6 +74,18 @@ class SyncStatusController extends ChangeNotifier {
     return outcome;
   }
 
+  /// Reencola comprobantes en estado de revision (fallidos o en cuarentena)
+  /// para permitir un nuevo intento manual cuando el servidor vuelve a estar disponible.
+  Future<SyncOutcome> retryFailed() async {
+    final failed = await outbox.operationsByStatus(SyncOutboxStatus.failed);
+    final quarantined =
+        await outbox.operationsByStatus(SyncOutboxStatus.quarantined);
+    for (final entry in [...failed, ...quarantined]) {
+      await outbox.requeue(entry.operation.operationId);
+    }
+    return syncNow();
+  }
+
   @override
   void dispose() {
     _disposed = true;

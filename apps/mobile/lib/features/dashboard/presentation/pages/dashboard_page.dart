@@ -34,6 +34,9 @@ import '../../domain/entities/recent_record_item.dart';
 import '../metrics_controller.dart';
 import '../../../reports/presentation/export_report_controller.dart';
 import '../../../reports/presentation/pages/export_report_page.dart';
+import '../widgets/admin_web_dashboard_view.dart';
+import '../widgets/admin_web_sidebar.dart';
+import '../widgets/admin_web_statistics_view.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
@@ -107,6 +110,10 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
   bool _isAttentionSubmitting = false;
+  String? _inventorySubAction;
+  String? _deliverySubAction;
+  String? _historySubAction;
+  String? _desktopCustomSection;
 
   /// Razon visual del indicador, ajustable en vivo por la conectividad del
   /// dispositivo (no re-autoriza ni re-valida).
@@ -300,10 +307,14 @@ class _DashboardPageState extends State<DashboardPage> {
         patientDetailController: widget.patientDetailController!,
         offline: _offline,
         institutionId: widget.user.institution.id,
+        institutionName: widget.user.institution.name,
         userId: widget.user.id,
         isAdmin:
             widget.user.hasRole('ADMIN_INSTITUTION') ||
             widget.user.hasPermission('USER_MANAGE'),
+        exportReportController: widget.exportReportController,
+        initialSubAction: _historySubAction,
+        onSubActionHandled: () => _historySubAction = null,
       );
     }
 
@@ -312,6 +323,7 @@ class _DashboardPageState extends State<DashboardPage> {
       return UsersPage(
         controller: widget.usersController!,
         institutionId: widget.user.institution.id,
+        institutionName: widget.user.institution.name,
         offline: _offline,
       );
     }
@@ -330,12 +342,15 @@ class _DashboardPageState extends State<DashboardPage> {
       return InventoryPage(
         controller: controller,
         institutionId: widget.user.institution.id,
+        institutionName: widget.user.institution.name,
         admin: widget.user.hasPermission('INVENTORY_READ'),
         canWrite: widget.user.hasPermission('INVENTORY_WRITE'),
         online:
             widget.sessionStatus == SessionStatus.signedIn &&
             _liveReason != OfflineReason.noNetwork,
         embedded: true,
+        initialSubAction: _deliverySubAction,
+        onSubActionHandled: () => _deliverySubAction = null,
       );
     }
     if (_destinations[_selectedIndex].isCatalog &&
@@ -384,9 +399,47 @@ class _DashboardPageState extends State<DashboardPage> {
   /// Resuelve las acciones de "Acciones frecuentes" llevando al destino
   /// correspondiente del dashboard (o avisando si aun no existe).
   void _openQuickAction(String label) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 960 &&
+        (_isSuperAdminView ||
+            widget.user.hasRole('ADMIN_INSTITUTION') ||
+            widget.user.hasPermission('USER_MANAGE'));
+
+    if (label.startsWith('Estadisticas')) {
+      if (isDesktop) {
+        _selectDesktopSection('estadisticas');
+        return;
+      }
+    }
+
+    if (label == 'Configuracion Vacunas' ||
+        label == 'Ajustes Inventario' ||
+        label == 'Inventario' ||
+        label == 'Ver inventario') {
+      if (isDesktop) {
+        final subAction = label == 'Configuracion Vacunas'
+            ? 'configuracion'
+            : (label == 'Ajustes Inventario' ? 'ajustes' : 'catalogo');
+        _selectDesktopSection('inventario', subAction: subAction);
+        return;
+      }
+      _openCatalog();
+      return;
+    }
+
     if (label == 'Entregas' ||
         label == 'Jornadas' ||
-        label == 'Custodia y cierre') {
+        label == 'Custodia y cierre' ||
+        label == 'Conciliacion') {
+      if (isDesktop) {
+        final subAction = switch (label) {
+          'Jornadas' => 'jornadas',
+          'Custodia y cierre' => 'custodia',
+          'Conciliacion' => 'conciliacion',
+          _ => 'entregas',
+        };
+        _selectDesktopSection('entregas', subAction: subAction);
+        return;
+      }
       // Revalidar también al ejecutar: ocultar una tarjeta no autoriza una ruta.
       if (!widget.user.hasRole('ADMIN_INSTITUTION') ||
           widget.user.hasRole('VACCINATOR') ||
@@ -394,7 +447,7 @@ class _DashboardPageState extends State<DashboardPage> {
           widget.inventoryController == null) {
         return;
       }
-      if (label == 'Custodia y cierre') {
+      if (label == 'Custodia y cierre' || label == 'Conciliacion') {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => CustodyPage(
@@ -439,7 +492,17 @@ class _DashboardPageState extends State<DashboardPage> {
       setState(() => _selectedIndex = index);
       return;
     }
+    if (label == 'Buscar paciente' || label == 'Historial') {
+      if (isDesktop) {
+        _selectDesktopSection('historial', subAction: 'busqueda');
+        return;
+      }
+    }
     if (label == 'Exportar datos' || label == 'Exportar') {
+      if (isDesktop) {
+        _selectDesktopSection('historial', subAction: 'exportar');
+        return;
+      }
       final controller = widget.exportReportController;
       if (controller == null) {
         AppSnackbar.info(context, 'Modulo de exportacion no disponible.');
@@ -454,6 +517,81 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  String get _currentDesktopSection {
+    if (_desktopCustomSection != null) return _desktopCustomSection!;
+    if (_selectedIndex == 0) return 'inicio';
+    if (_isSuperAdminView) {
+      return switch (_selectedIndex) {
+        1 => 'instituciones',
+        2 => 'administracion',
+        3 => 'inventario',
+        _ => 'inicio',
+      };
+    }
+    if (_selectedIndex < 0 || _selectedIndex >= _destinations.length) {
+      return 'inicio';
+    }
+    final current = _destinations[_selectedIndex];
+    if (current.isHistory) return 'historial';
+    if (current.isCatalog) return 'inventario';
+    if (current.isDeliveryTab) return 'entregas';
+    if (current.isUsersManagement) return 'administracion';
+    return 'inicio';
+  }
+
+  void _selectDesktopSection(String section, {String? subAction}) {
+    if (section == 'estadisticas') {
+      setState(() {
+        _desktopCustomSection = 'estadisticas';
+      });
+      return;
+    }
+    if (_desktopCustomSection != null) {
+      setState(() {
+        _desktopCustomSection = null;
+      });
+    }
+    if (section == 'inicio') {
+      _selectTab(0);
+      return;
+    }
+    if (section == 'inventario') {
+      setState(() {
+        _inventorySubAction = subAction ?? 'catalogo';
+      });
+    }
+    if (section == 'entregas') {
+      setState(() {
+        _deliverySubAction = subAction ?? 'entregas';
+      });
+    }
+    if (section == 'historial') {
+      setState(() {
+        _historySubAction = subAction ?? 'general';
+      });
+    }
+    if (_isSuperAdminView) {
+      final index = switch (section) {
+        'instituciones' => 1,
+        'administracion' || 'usuarios' => 2,
+        'inventario' => 3,
+        _ => 0,
+      };
+      _selectTab(index);
+      return;
+    }
+    final index = _destinations.indexWhere((d) => switch (section) {
+      'historial' => d.isHistory,
+      'inventario' => d.isCatalog,
+      'entregas' => d.isDeliveryTab,
+      'administracion' => d.isUsersManagement,
+      _ => false,
+    });
+    if (index >= 0) {
+      _selectTab(index);
+    }
+  }
+
   Widget _catalogContent() {
     final catalogController = widget.catalogController;
     if (catalogController == null) {
@@ -465,10 +603,15 @@ class _DashboardPageState extends State<DashboardPage> {
       offline: _offline,
       inventoryController: widget.inventoryController,
       embedded: true,
+      initialSubAction: _inventorySubAction,
+      onSubActionHandled: () => _inventorySubAction = null,
     );
   }
 
   void _selectTab(int index) {
+    if (_desktopCustomSection != null) {
+      setState(() => _desktopCustomSection = null);
+    }
     if (_selectedIndex == index) return;
     setState(() => _selectedIndex = index);
     if (index == 0) {
@@ -504,6 +647,73 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isDesktopAdmin = constraints.maxWidth >= 960 &&
+            (_isSuperAdminView ||
+                widget.user.hasRole('ADMIN_INSTITUTION') ||
+                widget.user.hasPermission('USER_MANAGE'));
+
+        if (isDesktopAdmin) {
+          return _buildDesktopAdminLayout();
+        }
+
+        return _buildMobileLayout();
+      },
+    );
+  }
+
+  Widget _buildDesktopAdminLayout() {
+    final desktopBody = _desktopCustomSection == 'estadisticas'
+        ? AdminWebStatisticsView(
+            institutionName: widget.user.institution.name,
+            onRefresh: () async => _reloadMetrics(),
+          )
+        : (_selectedIndex == 0
+            ? AdminWebDashboardView(
+                userName: widget.user.name,
+                institutionName: widget.user.institution.name,
+                institutionId: widget.user.institution.id,
+                onRefresh: () async => _reloadMetrics(),
+                metricsController: widget.metricsController,
+                syncStatusController: widget.syncStatusController,
+              )
+            : _buildContent());
+
+    final bodyWithBanner = switch (widget.sessionStatus) {
+      SessionStatus.offlineLocked => Column(
+          children: [
+            const _OfflineLockedBanner(),
+            Expanded(child: desktopBody),
+          ],
+        ),
+      SessionStatus.offlineAuthorized ||
+      SessionStatus.signedIn ||
+      SessionStatus.signedOut =>
+        desktopBody,
+    };
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Row(
+        children: [
+          AdminWebSidebar(
+            selectedSection: _currentDesktopSection,
+            onSelectSection: _selectDesktopSection,
+            onAction: _openQuickAction,
+            onSignOut: widget.onSignOut,
+            userName: widget.user.name,
+            institutionName: widget.user.institution.name,
+            roleName: _isSuperAdmin ? 'SUPER ADMIN' : 'ADMINISTRADOR',
+            isSuperAdmin: _isSuperAdminView,
+          ),
+          Expanded(child: bodyWithBanner),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout() {
     final content = _buildContent();
     final body = switch (widget.sessionStatus) {
       SessionStatus.offlineLocked => Column(

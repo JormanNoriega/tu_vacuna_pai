@@ -200,11 +200,11 @@ class SyncEngine extends ChangeNotifier {
     switch (reason) {
       case 'DEPENDENCY_NOT_FOUND':
       case 'DEPENDENCY_FAILED':
-        await outbox.requeue(operationId, error: reason);
+        await outbox.requeue(operationId, error: error ?? reason);
       case 'DUPLICATE_BUSINESS_IDENTITY':
       case 'PERMISSION_DENIED':
       case 'USER_NOT_ACTIVE':
-        await outbox.markQuarantined(operationId, error: reason);
+        await outbox.markQuarantined(operationId, error: error ?? reason);
         if (entry != null) {
           await _markAggregateState(
             entry.operation,

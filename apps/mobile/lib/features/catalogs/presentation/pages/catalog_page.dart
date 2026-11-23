@@ -12,6 +12,7 @@ import '../catalog_controller.dart';
 import '../../domain/entities/catalog_entities.dart';
 import 'vaccine_form_page.dart';
 import 'institution_vaccine_settings_page.dart';
+import '../widgets/admin_web_catalog_view.dart';
 
 class CatalogPage extends StatefulWidget {
   const CatalogPage({
@@ -20,6 +21,8 @@ class CatalogPage extends StatefulWidget {
     required this.offline,
     this.inventoryController,
     this.embedded = false,
+    this.initialSubAction,
+    this.onSubActionHandled,
     super.key,
   });
 
@@ -31,6 +34,8 @@ class CatalogPage extends StatefulWidget {
   final CatalogController controller;
   final OfflineAccess offline;
   final InventoryController? inventoryController;
+  final String? initialSubAction;
+  final VoidCallback? onSubActionHandled;
   @override
   State<CatalogPage> createState() => _CatalogPageState();
 }
@@ -99,8 +104,49 @@ class _CatalogPageState extends State<CatalogPage> {
 
   bool get globalAdmin => widget.user.hasRole('SUPER_ADMIN');
   bool get institutionAdmin => widget.user.hasRole('ADMIN_INSTITUTION');
+
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    final isDesktop = (MediaQuery.sizeOf(context).width >= 960 || widget.embedded) &&
+        (institutionAdmin || globalAdmin);
+
+    if (isDesktop) {
+      return AnimatedBuilder(
+        animation: Listenable.merge([
+          widget.controller,
+          ?_stockController,
+        ]),
+        builder: (context, _) => AdminWebCatalogView(
+          user: widget.user,
+          controller: widget.controller,
+          offline: widget.offline,
+          onRefresh: () async {
+            if (institutionAdmin) {
+              await widget.controller.loadInstitution(widget.user.institution.id);
+            } else if (globalAdmin) {
+              await widget.controller.load();
+            } else {
+              await widget.controller.loadEffective();
+            }
+            await _loadStock();
+          },
+          onConfigureVaccine: _institutionSettings,
+          onToggleVaccine: _toggle,
+          onEnableAvailable: _enableAvailable,
+          stockController: _stockController,
+          stockLoaded: _stockLoaded,
+          onNewVaccine: globalAdmin ? _form : null,
+          onOpenOptions: globalAdmin ? _options : null,
+          initialSubAction: widget.initialSubAction,
+          onSubActionHandled: widget.onSubActionHandled,
+        ),
+      );
+    }
+
+    return _buildMobileCatalog(context);
+  }
+
+  Widget _buildMobileCatalog(BuildContext context) => Scaffold(
     appBar: widget.embedded ? null : AppBar(title: const Text('Inventario')),
     floatingActionButton: globalAdmin
         ? FloatingActionButton.extended(

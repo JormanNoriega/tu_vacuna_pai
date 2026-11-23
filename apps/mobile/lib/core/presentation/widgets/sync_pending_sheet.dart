@@ -131,7 +131,16 @@ class _SyncPendingSheetState extends State<_SyncPendingSheet> {
       return;
     }
     try {
-      await widget.controller.syncNow();
+      final hasFailed = _entries.any(
+        (entry) =>
+            entry.status == SyncOutboxStatus.failed ||
+            entry.status == SyncOutboxStatus.quarantined,
+      );
+      if (hasFailed) {
+        await widget.controller.retryFailed();
+      } else {
+        await widget.controller.syncNow();
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -197,12 +206,12 @@ class _SyncPendingSheetState extends State<_SyncPendingSheet> {
             if (!_completed)
               _Footer(
                 syncing: _syncing,
-                enabled:
-                    !_loading &&
-                    _entries.any(
-                      (entry) => entry.status == SyncOutboxStatus.pending,
-                    ),
-                needsReview: _hasPending,
+                enabled: !_loading && _hasPending,
+                hasFailed: _entries.any(
+                  (entry) =>
+                      entry.status == SyncOutboxStatus.failed ||
+                      entry.status == SyncOutboxStatus.quarantined,
+                ),
                 onSync: _sync,
                 onClose: () => Navigator.of(context).maybePop(),
               ),
@@ -411,12 +420,12 @@ class _Footer extends StatelessWidget {
     required this.enabled,
     required this.onSync,
     required this.onClose,
-    required this.needsReview,
+    required this.hasFailed,
   });
 
   final bool syncing;
   final bool enabled;
-  final bool needsReview;
+  final bool hasFailed;
   final VoidCallback onSync;
   final VoidCallback onClose;
 
@@ -439,10 +448,10 @@ class _Footer extends StatelessWidget {
           label: Text(
             syncing
                 ? 'Sincronizando...'
+                : hasFailed
+                ? 'Reintentar sincronización'
                 : enabled
                 ? 'Sincronizar ahora'
-                : needsReview
-                ? 'Hay cambios que requieren revisión'
                 : 'Nada por sincronizar',
           ),
         ),
@@ -513,6 +522,18 @@ class _ReceiptTile extends StatelessWidget {
                       color: AppColors.slate,
                     ),
                   ),
+                  if (entry.error != null &&
+                      entry.error!.trim().isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      entry.error!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.danger,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
