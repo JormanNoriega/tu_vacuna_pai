@@ -323,6 +323,7 @@ class _DashboardPageState extends State<DashboardPage> {
       return UsersPage(
         controller: widget.usersController!,
         institutionId: widget.user.institution.id,
+        institutionName: widget.user.institution.name,
         offline: _offline,
       );
     }

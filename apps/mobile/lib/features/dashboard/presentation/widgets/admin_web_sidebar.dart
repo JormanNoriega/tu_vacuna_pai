@@ -531,7 +531,10 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
                 child: Tooltip(
                   message: 'Cerrar sesión',
                   child: IconButton(
-                    icon: const Icon(Icons.logout_rounded, color: AppColors.slate),
+                    icon: const Icon(
+                      Icons.logout_rounded,
+                      color: AppColors.danger,
+                    ),
                     onPressed: widget.onSignOut,
                   ),
                 ),
@@ -541,48 +544,35 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
           Expanded(
             child: FadeTransition(
               opacity: _animation,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ClipRect(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            widget.userName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              color: AppColors.ink,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            widget.institutionName,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.slate,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+              child: Padding(
+                padding: const EdgeInsets.only(right: 14),
+                child: ClipRect(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        widget.userName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: AppColors.ink,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
+                      Text(
+                        widget.institutionName,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.slate,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.logout_rounded,
-                      color: AppColors.danger,
-                      size: 20,
-                    ),
-                    padding: const EdgeInsets.only(right: 12),
-                    constraints: const BoxConstraints(),
-                    onPressed: widget.onSignOut,
-                  ),
-                ],
+                ),
               ),
             ),
           ),
