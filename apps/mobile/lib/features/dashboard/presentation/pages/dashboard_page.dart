@@ -112,6 +112,7 @@ class _DashboardPageState extends State<DashboardPage> {
   bool _isAttentionSubmitting = false;
   String? _inventorySubAction;
   String? _deliverySubAction;
+  String? _historySubAction;
   String? _desktopCustomSection;
 
   /// Razon visual del indicador, ajustable en vivo por la conectividad del
@@ -306,10 +307,14 @@ class _DashboardPageState extends State<DashboardPage> {
         patientDetailController: widget.patientDetailController!,
         offline: _offline,
         institutionId: widget.user.institution.id,
+        institutionName: widget.user.institution.name,
         userId: widget.user.id,
         isAdmin:
             widget.user.hasRole('ADMIN_INSTITUTION') ||
             widget.user.hasPermission('USER_MANAGE'),
+        exportReportController: widget.exportReportController,
+        initialSubAction: _historySubAction,
+        onSubActionHandled: () => _historySubAction = null,
       );
     }
 
@@ -486,7 +491,17 @@ class _DashboardPageState extends State<DashboardPage> {
       setState(() => _selectedIndex = index);
       return;
     }
+    if (label == 'Buscar paciente' || label == 'Historial') {
+      if (isDesktop) {
+        _selectDesktopSection('historial', subAction: 'busqueda');
+        return;
+      }
+    }
     if (label == 'Exportar datos' || label == 'Exportar') {
+      if (isDesktop) {
+        _selectDesktopSection('historial', subAction: 'exportar');
+        return;
+      }
       final controller = widget.exportReportController;
       if (controller == null) {
         AppSnackbar.info(context, 'Modulo de exportacion no disponible.');
@@ -547,6 +562,11 @@ class _DashboardPageState extends State<DashboardPage> {
     if (section == 'entregas') {
       setState(() {
         _deliverySubAction = subAction ?? 'entregas';
+      });
+    }
+    if (section == 'historial') {
+      setState(() {
+        _historySubAction = subAction ?? 'general';
       });
     }
     if (_isSuperAdminView) {

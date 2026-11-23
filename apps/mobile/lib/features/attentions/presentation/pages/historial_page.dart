@@ -13,6 +13,8 @@ import '../../../patients/presentation/patient_detail_controller.dart';
 import '../../../patients/presentation/pages/patient_detail_page.dart';
 import '../../domain/entities/attention.dart';
 import '../history_controller.dart';
+import '../widgets/admin_web_history_view.dart';
+import '../../../reports/presentation/export_report_controller.dart';
 
 /// Historial de atenciones de un paciente (busqueda por documento).
 class HistorialPage extends StatefulWidget {
@@ -21,8 +23,12 @@ class HistorialPage extends StatefulWidget {
     required this.patientDetailController,
     required this.offline,
     this.institutionId = '',
+    this.institutionName,
     this.userId = '',
     this.isAdmin = false,
+    this.exportReportController,
+    this.initialSubAction,
+    this.onSubActionHandled,
     super.key,
   });
 
@@ -30,8 +36,12 @@ class HistorialPage extends StatefulWidget {
   final PatientDetailController patientDetailController;
   final OfflineAccess offline;
   final String institutionId;
+  final String? institutionName;
   final String userId;
   final bool isAdmin;
+  final ExportReportController? exportReportController;
+  final String? initialSubAction;
+  final VoidCallback? onSubActionHandled;
 
   @override
   State<HistorialPage> createState() => _HistorialPageState();
@@ -97,6 +107,22 @@ class _HistorialPageState extends State<HistorialPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 960 && widget.isAdmin;
+    if (isDesktop) {
+      return AdminWebHistoryView(
+        controller: widget.controller,
+        patientDetailController: widget.patientDetailController,
+        offline: widget.offline,
+        institutionId: widget.institutionId,
+        institutionName: widget.institutionName ?? 'Institución PAI',
+        userId: widget.userId,
+        isAdmin: widget.isAdmin,
+        exportReportController: widget.exportReportController,
+        initialSubAction: widget.initialSubAction,
+        onSubActionHandled: widget.onSubActionHandled,
+      );
+    }
+
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) {
