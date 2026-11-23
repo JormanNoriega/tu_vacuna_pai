@@ -27,6 +27,7 @@ class _AdminWebStatisticsViewState extends State<AdminWebStatisticsView> {
   String _selectedPeriod = 'Mes Actual';
   String _activeFilter = 'Todos los biológicos';
   int _selectedGranularity = 1; // 0: Días, 1: Semanas, 2: Meses
+  int _chartVisualType = 1; // 0: Barras agrupadas, 1: Gráfico de líneas continuas / horizontal
 
   final List<String> _periods = [
     'Hoy',
@@ -686,7 +687,7 @@ class _AdminWebStatisticsViewState extends State<AdminWebStatisticsView> {
   }
 
   // ---------------------------------------------------------------------------
-  // 5. Card A: Gráfico de Barras / Histograma de Evolución
+  // 5. Card A: Gráfico de Evolución y Tendencia (Barras y Líneas)
   // ---------------------------------------------------------------------------
   Widget _buildBarChartCard() {
     return Container(
@@ -699,70 +700,153 @@ class _AdminWebStatisticsViewState extends State<AdminWebStatisticsView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 10,
             children: [
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Ritmo y Evolución de Dosis Aplicadas',
-                    style: TextStyle(
+                    _chartVisualType == 1
+                        ? 'Tendencia y Curva de Dosis Aplicadas'
+                        : 'Ritmo y Evolución de Dosis Aplicadas',
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: AppColors.ink,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(
-                    'Distribución comparativa de aplicación según temporalidad',
-                    style: TextStyle(fontSize: 12, color: AppColors.slate),
+                    _chartVisualType == 1
+                        ? 'Comportamiento continuo y progresión temporal de vacunación'
+                        : 'Distribución comparativa de aplicación según temporalidad',
+                    style: const TextStyle(fontSize: 12, color: AppColors.slate),
                   ),
                 ],
               ),
-              // Selector de granularidad
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildGranularityButton('Días', 0),
-                    _buildGranularityButton('Semanas', 1),
-                    _buildGranularityButton('Meses', 2),
-                  ],
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Selector visual: Línea vs Barras
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildChartTypeButton(
+                          icon: Icons.show_chart_rounded,
+                          tooltip: 'Ver gráfico de líneas continuas',
+                          index: 1,
+                        ),
+                        _buildChartTypeButton(
+                          icon: Icons.bar_chart_rounded,
+                          tooltip: 'Ver gráfico de barras',
+                          index: 0,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // Selector de granularidad temporal
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildGranularityButton('Días', 0),
+                        _buildGranularityButton('Semanas', 1),
+                        _buildGranularityButton('Meses', 2),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: 24),
 
-          // Histograma visual
+          // Gráfico visual dinámico (Líneas o Barras)
           SizedBox(
             height: 220,
-            child: _buildBarChartGraphic(),
+            child: _chartVisualType == 1
+                ? _buildLineChartGraphic()
+                : _buildBarChartGraphic(),
           ),
           const SizedBox(height: 16),
 
-          // Leyenda
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          // Leyenda contextual
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 20,
+            runSpacing: 8,
             children: [
               _buildLegendItem(
                 color: AppColors.primary,
                 label: 'Esquema Regular PAI',
+                isLine: _chartVisualType == 1,
               ),
-              const SizedBox(width: 20),
               _buildLegendItem(
                 color: const Color(0xFF00B4D8),
                 label: 'Campañas y Refuerzos',
+                isLine: _chartVisualType == 1,
               ),
+              if (_chartVisualType == 1)
+                _buildLegendItem(
+                  color: const Color(0xFFF59E0B),
+                  label: 'Línea Guía Promedio',
+                  isDashed: true,
+                ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildChartTypeButton({
+    required IconData icon,
+    required String tooltip,
+    required int index,
+  }) {
+    final isSelected = _chartVisualType == index;
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: () => setState(() => _chartVisualType = index),
+        borderRadius: BorderRadius.circular(7),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(7),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Icon(
+            icon,
+            size: 16,
+            color: isSelected ? AppColors.primary : AppColors.slate,
+          ),
+        ),
       ),
     );
   }
@@ -795,6 +879,151 @@ class _AdminWebStatisticsViewState extends State<AdminWebStatisticsView> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLineChartGraphic() {
+    // Datos de muestra según granularidad
+    final labels = _selectedGranularity == 0
+        ? ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+        : (_selectedGranularity == 1
+            ? ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6', 'Sem 7', 'Sem 8']
+            : ['Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov']);
+
+    final values1 = _selectedGranularity == 0
+        ? [42, 58, 65, 48, 72, 38, 12]
+        : (_selectedGranularity == 1
+            ? [190, 240, 215, 275, 230, 290, 260, 242]
+            : [850, 920, 1050, 980, 1140, 1260]);
+
+    final values2 = _selectedGranularity == 0
+        ? [15, 22, 28, 18, 30, 14, 4]
+        : (_selectedGranularity == 1
+            ? [50, 75, 60, 85, 70, 95, 80, 70]
+            : [240, 280, 310, 290, 350, 380]);
+
+    final maxValue = (_selectedGranularity == 0
+            ? 100
+            : (_selectedGranularity == 1 ? 400 : 1800))
+        .toDouble();
+
+    final avg1 = values1.reduce((a, b) => a + b) / values1.length;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Eje Y con líneas de referencia
+        SizedBox(
+          height: 195,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                maxValue.toInt().toString(),
+                style: const TextStyle(fontSize: 10, color: AppColors.hint),
+              ),
+              Text(
+                (maxValue * 0.66).toInt().toString(),
+                style: const TextStyle(fontSize: 10, color: AppColors.hint),
+              ),
+              Text(
+                (maxValue * 0.33).toInt().toString(),
+                style: const TextStyle(fontSize: 10, color: AppColors.hint),
+              ),
+              const Text(
+                '0',
+                style: TextStyle(fontSize: 10, color: AppColors.hint),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+
+        // Lienzo interactivo de líneas continuas
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              const leftInset = 20.0;
+              const rightInset = 20.0;
+              const topInset = 12.0;
+              const bottomInset = 28.0;
+              final chartWidth = constraints.maxWidth;
+              final chartHeight = constraints.maxHeight;
+              final plotHeight = chartHeight - bottomInset - topInset;
+              final plotWidth = chartWidth - leftInset - rightInset;
+
+              final points1 = <Offset>[];
+              final points2 = <Offset>[];
+              final n = labels.length;
+
+              for (int i = 0; i < n; i++) {
+                final x = leftInset +
+                    (n > 1 ? (plotWidth * i / (n - 1)) : (plotWidth / 2));
+                final y1 = topInset +
+                    (1.0 - (values1[i] / maxValue).clamp(0.0, 1.0)) * plotHeight;
+                final y2 = topInset +
+                    (1.0 - (values2[i] / maxValue).clamp(0.0, 1.0)) * plotHeight;
+                points1.add(Offset(x, y1));
+                points2.add(Offset(x, y2));
+              }
+
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  CustomPaint(
+                    size: Size(chartWidth, chartHeight),
+                    painter: _LineChartPainter(
+                      labels: labels,
+                      values1: values1,
+                      values2: values2,
+                      maxValue: maxValue,
+                      averageValue: avg1,
+                      leftInset: leftInset,
+                      rightInset: rightInset,
+                      topInset: topInset,
+                      bottomInset: bottomInset,
+                      color1: AppColors.primary,
+                      color2: const Color(0xFF00B4D8),
+                    ),
+                  ),
+
+                  // Nodos interactivos con Tooltips para Regular
+                  for (int i = 0; i < n; i++)
+                    Positioned(
+                      left: points1[i].dx - 14,
+                      top: points1[i].dy - 14,
+                      child: Tooltip(
+                        message: '${labels[i]}: ${values1[i]} dosis (Regular PAI)',
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          color: Colors.transparent,
+                        ),
+                      ),
+                    ),
+
+                  // Nodos interactivos con Tooltips para Campañas
+                  for (int i = 0; i < n; i++)
+                    Positioned(
+                      left: points2[i].dx - 14,
+                      top: points2[i].dy - 14,
+                      child: Tooltip(
+                        message: '${labels[i]}: ${values2[i]} dosis (Campañas)',
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          color: Colors.transparent,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -912,18 +1141,65 @@ class _AdminWebStatisticsViewState extends State<AdminWebStatisticsView> {
     );
   }
 
-  Widget _buildLegendItem({required Color color, required String label}) {
+  Widget _buildLegendItem({
+    required Color color,
+    required String label,
+    bool isLine = false,
+    bool isDashed = false,
+  }) {
+    Widget indicator;
+    if (isDashed) {
+      indicator = SizedBox(
+        width: 16,
+        height: 10,
+        child: Center(
+          child: Container(
+            height: 2,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(1),
+            ),
+          ),
+        ),
+      );
+    } else if (isLine) {
+      indicator = SizedBox(
+        width: 16,
+        height: 10,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              height: 2.5,
+              color: color,
+            ),
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: color, width: 1.5),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      indicator = Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      );
+    }
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
+        indicator,
         const SizedBox(width: 6),
         Text(
           label,
@@ -1586,4 +1862,225 @@ class _DonutChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _DonutChartPainter oldDelegate) => true;
+}
+
+/// CustomPainter para graficar curvas de tendencia temporal (Spline / Bezier)
+/// con áreas sombreadas en gradiente, línea guía promedio horizontal,
+/// cuadrícula de fondo y nodos marcadores de datos.
+class _LineChartPainter extends CustomPainter {
+  _LineChartPainter({
+    required this.labels,
+    required this.values1,
+    required this.values2,
+    required this.maxValue,
+    required this.averageValue,
+    required this.leftInset,
+    required this.rightInset,
+    required this.topInset,
+    required this.bottomInset,
+    required this.color1,
+    required this.color2,
+  });
+
+  final List<String> labels;
+  final List<int> values1;
+  final List<int> values2;
+  final double maxValue;
+  final double averageValue;
+  final double leftInset;
+  final double rightInset;
+  final double topInset;
+  final double bottomInset;
+  final Color color1;
+  final Color color2;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final plotWidth = size.width - leftInset - rightInset;
+    final plotHeight = size.height - topInset - bottomInset;
+    final baselineY = topInset + plotHeight;
+    final n = labels.length;
+
+    // 1. Líneas de cuadrícula horizontales
+    final gridPaint = Paint()
+      ..color = AppColors.border.withValues(alpha: 0.6)
+      ..strokeWidth = 1.0;
+
+    for (int step = 0; step <= 3; step++) {
+      final y = topInset + (plotHeight * step / 3);
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+
+    // 2. Línea horizontal de referencia para el Promedio
+    if (averageValue > 0 && averageValue <= maxValue) {
+      final avgY = topInset + (1.0 - (averageValue / maxValue)) * plotHeight;
+      final avgPaint = Paint()
+        ..color = const Color(0xFFF59E0B).withValues(alpha: 0.7)
+        ..strokeWidth = 1.2
+        ..style = PaintingStyle.stroke;
+
+      // Línea punteada
+      const dashWidth = 5.0;
+      const dashSpace = 4.0;
+      double startX = 0;
+      while (startX < size.width) {
+        canvas.drawLine(
+          Offset(startX, avgY),
+          Offset(math.min(startX + dashWidth, size.width), avgY),
+          avgPaint,
+        );
+        startX += dashWidth + dashSpace;
+      }
+
+      // Etiqueta de promedio
+      final textSpan = TextSpan(
+        text: 'Promedio: ${averageValue.toInt()}',
+        style: const TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFFD97706),
+        ),
+      );
+      final textPainter = TextPainter(
+        text: textSpan,
+        textDirection: TextDirection.ltr,
+      )..layout();
+      textPainter.paint(
+        canvas,
+        Offset(size.width - textPainter.width - 4, avgY - 14),
+      );
+    }
+
+    // Calcular coordenadas de puntos
+    final pts1 = <Offset>[];
+    final pts2 = <Offset>[];
+    for (int i = 0; i < n; i++) {
+      final x = leftInset +
+          (n > 1 ? (plotWidth * i / (n - 1)) : (plotWidth / 2));
+      final y1 = topInset +
+          (1.0 - (values1[i] / maxValue).clamp(0.0, 1.0)) * plotHeight;
+      final y2 = topInset +
+          (1.0 - (values2[i] / maxValue).clamp(0.0, 1.0)) * plotHeight;
+      pts1.add(Offset(x, y1));
+      pts2.add(Offset(x, y2));
+    }
+
+    // 3. Dibujar Serie 2 (Campañas y Refuerzos)
+    _drawSplineSeries(
+      canvas: canvas,
+      pts: pts2,
+      baselineY: baselineY,
+      color: color2,
+      size: size,
+      drawGradient: true,
+    );
+
+    // 4. Dibujar Serie 1 (Esquema Regular PAI)
+    _drawSplineSeries(
+      canvas: canvas,
+      pts: pts1,
+      baselineY: baselineY,
+      color: color1,
+      size: size,
+      drawGradient: true,
+    );
+
+    // 5. Dibujar etiquetas del Eje X
+    for (int i = 0; i < n; i++) {
+      final textSpan = TextSpan(
+        text: labels[i],
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: AppColors.slate,
+        ),
+      );
+      final textPainter = TextPainter(
+        text: textSpan,
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.center,
+      )..layout();
+
+      final x = pts1[i].dx - (textPainter.width / 2);
+      final y = baselineY + 8;
+      textPainter.paint(canvas, Offset(x, y));
+    }
+  }
+
+  void _drawSplineSeries({
+    required Canvas canvas,
+    required List<Offset> pts,
+    required double baselineY,
+    required Color color,
+    required Size size,
+    required bool drawGradient,
+  }) {
+    if (pts.isEmpty) return;
+
+    final path = Path();
+    path.moveTo(pts[0].dx, pts[0].dy);
+
+    for (int i = 0; i < pts.length - 1; i++) {
+      final p0 = pts[i];
+      final p1 = pts[i + 1];
+      final midX = (p0.dx + p1.dx) / 2;
+      path.cubicTo(midX, p0.dy, midX, p1.dy, p1.dx, p1.dy);
+    }
+
+    // Área bajo la curva con gradiente
+    if (drawGradient) {
+      final fillPath = Path.from(path)
+        ..lineTo(pts.last.dx, baselineY)
+        ..lineTo(pts.first.dx, baselineY)
+        ..close();
+
+      final gradientPaint = Paint()
+        ..style = PaintingStyle.fill
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            color.withValues(alpha: 0.22),
+            color.withValues(alpha: 0.01),
+          ],
+        ).createShader(
+          Rect.fromLTWH(0, topInset, size.width, baselineY - topInset),
+        );
+
+      canvas.drawPath(fillPath, gradientPaint);
+    }
+
+    // Línea de trazo suave
+    final strokePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    canvas.drawPath(path, strokePaint);
+
+    // Puntos / Nodos marcadores
+    final pointBgPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+
+    final pointBorderPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2;
+
+    final innerDotPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    for (final pt in pts) {
+      canvas.drawCircle(pt, 4.5, pointBgPaint);
+      canvas.drawCircle(pt, 4.5, pointBorderPaint);
+      canvas.drawCircle(pt, 2.0, innerDotPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _LineChartPainter oldDelegate) => true;
 }
