@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/presentation/widgets/shimmer_loading.dart';
 import '../../../../core/synchronization/sync_status_controller.dart';
+import '../../../attentions/presentation/history_controller.dart';
+import '../../../reports/presentation/export_report_controller.dart';
+import '../../../users/presentation/users_controller.dart';
 import '../metrics_controller.dart';
 import 'admin_coverage_map_card.dart';
 import 'admin_parameters_card.dart';
@@ -14,7 +17,7 @@ import 'admin_parameters_card.dart';
 /// 1. Cabecera con datos de la institución, fecha y estado de sincronización.
 /// 2. Fila superior de 4 tarjetas de estadísticas clave (KPIs).
 /// 3. Bloque central dividido en Parámetros Operativos del PAI y Espacio del Mapa.
-class AdminWebDashboardView extends StatelessWidget {
+class AdminWebDashboardView extends StatefulWidget {
   const AdminWebDashboardView({
     super.key,
     required this.userName,
@@ -23,6 +26,9 @@ class AdminWebDashboardView extends StatelessWidget {
     required this.onRefresh,
     this.metricsController,
     this.syncStatusController,
+    this.usersController,
+    this.historyController,
+    this.exportReportController,
   });
 
   final String userName;
@@ -31,12 +37,103 @@ class AdminWebDashboardView extends StatelessWidget {
   final Future<void> Function() onRefresh;
   final MetricsController? metricsController;
   final SyncStatusController? syncStatusController;
+  final UsersController? usersController;
+  final HistoryController? historyController;
+  final ExportReportController? exportReportController;
+
+  @override
+  State<AdminWebDashboardView> createState() => _AdminWebDashboardViewState();
+}
+
+class _AdminWebDashboardViewState extends State<AdminWebDashboardView> {
+  int _todayDoses = 0;
+  bool _isLoadingTodayDoses = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialData();
+  }
+
+  @override
+  void didUpdateWidget(covariant AdminWebDashboardView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.institutionId != widget.institutionId) {
+      _loadInitialData();
+    }
+  }
+
+  Future<void> _loadInitialData() async {
+    if (widget.usersController != null && widget.usersController!.users.isEmpty) {
+      widget.usersController!.loadUsers(institutionId: widget.institutionId);
+    }
+    await _fetchTodayDoses();
+  }
+
+  Future<void> _fetchTodayDoses() async {
+    if (!mounted) return;
+    setState(() => _isLoadingTodayDoses = true);
+
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day, 0, 0, 0);
+    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    int count = 0;
+    try {
+      if (widget.exportReportController != null) {
+        final session = await widget.exportReportController!.sessionManager.loadSession();
+        final token = session?.accessToken;
+        if (token != null) {
+          final summary = await widget.exportReportController!.repository.fetchSummary(
+            token,
+            from: startOfDay,
+            to: endOfDay,
+            institutionId: widget.institutionId,
+          );
+          count = summary.dosesCount;
+        }
+      } else if (widget.historyController != null) {
+        final pageResult = await widget.historyController!.recentPage(
+          admin: true,
+          institutionId: widget.institutionId,
+          userId: '',
+          from: startOfDay,
+          to: endOfDay,
+          page: 0,
+          offline: false,
+        );
+        for (final item in (pageResult['items'] as List? ?? [])) {
+          final doses = item['doses'] as List? ?? [];
+          count += doses.length;
+        }
+      }
+    } catch (_) {
+      count = 0;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _todayDoses = count;
+          _isLoadingTodayDoses = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleRefresh() async {
+    await Future.wait([
+      widget.onRefresh(),
+      if (widget.usersController != null)
+        widget.usersController!.loadUsers(institutionId: widget.institutionId),
+      _fetchTodayDoses(),
+    ]);
+  }
 
   @override
   Widget build(BuildContext context) {
     final controllers = [
-      ?metricsController,
-      ?syncStatusController,
+      if (widget.metricsController != null) widget.metricsController!,
+      if (widget.syncStatusController != null) widget.syncStatusController!,
+      if (widget.usersController != null) widget.usersController!,
     ];
     final listenable = Listenable.merge(controllers);
 
@@ -44,7 +141,7 @@ class AdminWebDashboardView extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: RefreshIndicator(
         color: AppColors.primary,
-        onRefresh: onRefresh,
+        onRefresh: _handleRefresh,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
@@ -63,16 +160,16 @@ class AdminWebDashboardView extends StatelessWidget {
                     animation: listenable,
                     builder: (context, _) {
                       final isMetricsLoading =
-                          metricsController?.isLoading ?? false;
+                          widget.metricsController?.isLoading ?? false;
                       final patients =
-                          metricsController?.summary.patientsAttended
+                          widget.metricsController?.summary.patientsAttended
                               .toString() ??
                           '0';
                       final doses =
-                          metricsController?.summary.dosesApplied.toString() ??
+                          widget.metricsController?.summary.dosesApplied.toString() ??
                           '0';
                       final pendingSync =
-                          syncStatusController?.pendingCount.toString() ?? '0';
+                          widget.syncStatusController?.pendingCount.toString() ?? '0';
 
                       return _buildKpiRow(
                         context: context,
@@ -90,7 +187,23 @@ class AdminWebDashboardView extends StatelessWidget {
                     animation: listenable,
                     builder: (context, _) {
                       final appliedDosesCount =
-                          metricsController?.summary.dosesApplied ?? 0;
+                          widget.metricsController?.summary.dosesApplied ?? 0;
+
+                      final users = widget.usersController?.users ?? const [];
+                      final activeVaccinators = users.isNotEmpty
+                          ? users.where((u) => u.isActive).length
+                          : 0;
+                      final isUsersLoading =
+                          widget.usersController?.isLoading ?? false;
+
+                      final parametersCard = AdminParametersCard(
+                        institutionName: widget.institutionName,
+                        appliedDoses: appliedDosesCount,
+                        todayDoses: _todayDoses,
+                        activeVaccinators: activeVaccinators,
+                        isLoadingTodayDoses: _isLoadingTodayDoses,
+                        isLoadingVaccinators: isUsersLoading && users.isEmpty,
+                      );
 
                       return LayoutBuilder(
                         builder: (context, constraints) {
@@ -100,13 +213,10 @@ class AdminWebDashboardView extends StatelessWidget {
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                AdminParametersCard(
-                                  institutionName: institutionName,
-                                  appliedDoses: appliedDosesCount,
-                                ),
+                                parametersCard,
                                 const SizedBox(height: 24),
                                 AdminCoverageMapCard(
-                                  institutionName: institutionName,
+                                  institutionName: widget.institutionName,
                                 ),
                               ],
                             );
@@ -117,16 +227,13 @@ class AdminWebDashboardView extends StatelessWidget {
                             children: [
                               Expanded(
                                 flex: 5,
-                                child: AdminParametersCard(
-                                  institutionName: institutionName,
-                                  appliedDoses: appliedDosesCount,
-                                ),
+                                child: parametersCard,
                               ),
                               const SizedBox(width: 24),
                               Expanded(
                                 flex: 6,
                                 child: AdminCoverageMapCard(
-                                  institutionName: institutionName,
+                                  institutionName: widget.institutionName,
                                 ),
                               ),
                             ],
@@ -159,7 +266,7 @@ class AdminWebDashboardView extends StatelessWidget {
               runSpacing: 6,
               children: [
                 Text(
-                  'Bienvenido, $userName',
+                  'Bienvenido, ${widget.userName}',
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -190,7 +297,7 @@ class AdminWebDashboardView extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Panel de Control Clínico y Gestión Territorial · $institutionName',
+              'Panel de Control Clínico y Gestión Territorial · ${widget.institutionName}',
               style: const TextStyle(
                 fontSize: 13,
                 color: AppColors.slate,
@@ -213,7 +320,7 @@ class AdminWebDashboardView extends StatelessWidget {
                   backgroundColor: AppColors.surfaceAlt,
                   foregroundColor: AppColors.ink,
                 ),
-                onPressed: onRefresh,
+                onPressed: _handleRefresh,
               ),
             ),
           ],
@@ -281,7 +388,7 @@ class AdminWebDashboardView extends StatelessWidget {
       ),
       (
         label: 'Sede Institucional',
-        value: institutionName.isNotEmpty ? institutionName : 'IPS Activa',
+        value: widget.institutionName.isNotEmpty ? widget.institutionName : 'IPS Activa',
         icon: Icons.domain_rounded,
         color: const Color(0xFF0D9488),
         bgColor: const Color(0xFFCCFBF1),

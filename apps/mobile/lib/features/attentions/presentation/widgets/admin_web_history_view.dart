@@ -306,83 +306,101 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
           ),
         ],
       ),
-      child: Row(
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 16,
+        runSpacing: 14,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.primarySoft,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.history_edu_rounded,
-              color: AppColors.primary,
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.history_edu_rounded,
+                  color: AppColors.primary,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 580),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Historial Clínico y Registro PAI',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primarySoft,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-                      ),
-                      child: Text(
-                        widget.institutionName,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 12,
+                      runSpacing: 6,
+                      children: [
+                        const Text(
+                          'Historial Clínico y Registro PAI',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.ink,
+                          ),
                         ),
-                      ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primarySoft,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            widget.institutionName,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Trazabilidad integral de atenciones, carnet digital de vacunación y consolidados epidemiológicos',
+                      style: TextStyle(fontSize: 13, color: AppColors.slate),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Trazabilidad integral de atenciones, carnet digital de vacunación y consolidados epidemiológicos',
-                  style: TextStyle(fontSize: 13, color: AppColors.slate),
+              ),
+            ],
+          ),
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => setState(() => _activeTab = _HistoryWebTab.reportes),
+                icon: const Icon(Icons.file_download_outlined, size: 18),
+                label: const Text('Exportar Reporte PAI'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-              ],
-            ),
-          ),
-          OutlinedButton.icon(
-            onPressed: () => setState(() => _activeTab = _HistoryWebTab.reportes),
-            icon: const Icon(Icons.file_download_outlined, size: 18),
-            label: const Text('Exportar Reporte PAI'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          ),
-          const SizedBox(width: 12),
-          FilledButton.icon(
-            onPressed: () {
-              _loadGeneralHistory(_currentPage);
-              AppSnackbar.info(context, 'Registros actualizados.');
-            },
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Actualizar'),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
+              ),
+              FilledButton.icon(
+                onPressed: () {
+                  _loadGeneralHistory(_currentPage);
+                  AppSnackbar.info(context, 'Registros actualizados.');
+                },
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Actualizar'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -439,13 +457,50 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
       ),
     ];
 
-    return Row(
-      children: [
-        for (int i = 0; i < cards.length; i++) ...[
-          if (i > 0) const SizedBox(width: 16),
-          Expanded(child: cards[i]),
-        ],
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 650) {
+          return Column(
+            children: [
+              for (int i = 0; i < cards.length; i++) ...[
+                if (i > 0) const SizedBox(height: 12),
+                cards[i],
+              ],
+            ],
+          );
+        }
+
+        if (constraints.maxWidth < 960) {
+          return Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(child: cards[0]),
+                  const SizedBox(width: 16),
+                  Expanded(child: cards[1]),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(child: cards[2]),
+                  const SizedBox(width: 16),
+                  Expanded(child: cards[3]),
+                ],
+              ),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            for (int i = 0; i < cards.length; i++) ...[
+              if (i > 0) const SizedBox(width: 16),
+              Expanded(child: cards[i]),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -630,33 +685,28 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
               ),
             ],
           ),
-          child: Row(
-            children: [
-              // Búsqueda por texto (paciente o documento)
-              Expanded(
-                flex: 3,
-                child: TextField(
-                  controller: _searchFilterController,
-                  decoration: InputDecoration(
-                    hintText: 'Buscar por paciente, documento o lote...',
-                    prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                    suffixIcon: _searchFilterController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear_rounded, size: 18),
-                            onPressed: () => setState(() => _searchFilterController.clear()),
-                          )
-                        : null,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  style: const TextStyle(fontSize: 13),
-                  onChanged: (_) => setState(() {}),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 920;
+              final searchField = TextField(
+                controller: _searchFilterController,
+                decoration: InputDecoration(
+                  hintText: 'Buscar por paciente, documento o lote...',
+                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                  suffixIcon: _searchFilterController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded, size: 18),
+                          onPressed: () => setState(() => _searchFilterController.clear()),
+                        )
+                      : null,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-              ),
-              const SizedBox(width: 14),
+                style: const TextStyle(fontSize: 13),
+                onChanged: (_) => setState(() {}),
+              );
 
-              // Selector de Rango de Fechas
-              InkWell(
+              final datePicker = InkWell(
                 onTap: _pickDateRange,
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
@@ -680,12 +730,10 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(width: 14),
+              );
 
-              // Filtro por Biológico
-              SizedBox(
-                width: 220,
+              final vaccineFilter = SizedBox(
+                width: isNarrow ? 200 : 220,
                 child: DropdownButtonFormField<String>(
                   initialValue: _selectedVaccineFilter,
                   isExpanded: true,
@@ -705,12 +753,10 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
                   ],
                   onChanged: (val) => setState(() => _selectedVaccineFilter = val ?? 'TODAS'),
                 ),
-              ),
-              const SizedBox(width: 14),
+              );
 
-              // Filtro por Modalidad
-              SizedBox(
-                width: 180,
+              final modalityFilter = SizedBox(
+                width: isNarrow ? 160 : 180,
                 child: DropdownButtonFormField<String>(
                   initialValue: _selectedModalityFilter,
                   isExpanded: true,
@@ -726,8 +772,40 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
                   ],
                   onChanged: (val) => setState(() => _selectedModalityFilter = val ?? 'TODAS'),
                 ),
-              ),
-            ],
+              );
+
+              if (isNarrow) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    searchField,
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 10,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        datePicker,
+                        vaccineFilter,
+                        modalityFilter,
+                      ],
+                    ),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(flex: 3, child: searchField),
+                  const SizedBox(width: 14),
+                  datePicker,
+                  const SizedBox(width: 14),
+                  vaccineFilter,
+                  const SizedBox(width: 14),
+                  modalityFilter,
+                ],
+              );
+            },
           ),
         ),
         const SizedBox(height: 18),
@@ -748,34 +826,58 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildGeneralTableHeader(),
-                const Divider(height: 1, thickness: 1, color: AppColors.border),
-                if (_isLoadingGeneral)
-                  const Padding(
-                    padding: EdgeInsets.all(48),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (filteredItems.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(48),
-                    child: Center(
-                      child: Text(
-                        'No se encontraron atenciones con los filtros seleccionados.',
-                        style: TextStyle(color: AppColors.slate, fontSize: 13),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                Widget tableContent = Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildGeneralTableHeader(),
+                    const Divider(height: 1, thickness: 1, color: AppColors.border),
+                    if (_isLoadingGeneral)
+                      const Padding(
+                        padding: EdgeInsets.all(48),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (filteredItems.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(48),
+                        child: Center(
+                          child: Text(
+                            'No se encontraron atenciones con los filtros seleccionados.',
+                            style: TextStyle(color: AppColors.slate, fontSize: 13),
+                          ),
+                        ),
+                      )
+                    else
+                      for (var i = 0; i < filteredItems.length; i++) ...[
+                        if (i > 0) const Divider(height: 1, color: AppColors.border),
+                        _buildGeneralTableRow(filteredItems[i]),
+                      ],
+                  ],
+                );
+
+                if (constraints.maxWidth < 960) {
+                  tableContent = Scrollbar(
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: SizedBox(
+                        width: 960,
+                        child: tableContent,
                       ),
                     ),
-                  )
-                else
-                  for (var i = 0; i < filteredItems.length; i++) ...[
-                    if (i > 0) const Divider(height: 1, color: AppColors.border),
-                    _buildGeneralTableRow(filteredItems[i]),
+                  );
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    tableContent,
+                    const Divider(height: 1, thickness: 1, color: AppColors.border),
+                    _buildPaginationBar(filteredItems.length),
                   ],
-                const Divider(height: 1, thickness: 1, color: AppColors.border),
-                _buildPaginationBar(filteredItems.length),
-              ],
+                );
+              },
             ),
           ),
         ),
@@ -1092,14 +1194,18 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
     return Container(
       color: const Color(0xFFF8FAFC),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 10,
         children: [
           Text(
             'Mostrando $totalCount atenciones registradas en el período',
             style: const TextStyle(fontSize: 13, color: AppColors.slate),
           ),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               OutlinedButton.icon(
                 onPressed: _currentPage > 0 ? () => _loadGeneralHistory(_currentPage - 1) : null,
@@ -1195,10 +1301,11 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
                 ],
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  SizedBox(
-                    width: 230,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isNarrow = constraints.maxWidth < 720;
+                  final docDropdown = SizedBox(
+                    width: isNarrow ? double.infinity : 230,
                     child: DropdownButtonFormField<String>(
                       initialValue: _selectedDocType,
                       isExpanded: true,
@@ -1218,32 +1325,30 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
                       ],
                       onChanged: (val) => setState(() => _selectedDocType = val ?? 'CC'),
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: TextField(
-                      controller: _docNumberController,
-                      keyboardType: documentKeyboardType(_selectedDocType),
-                      inputFormatters: documentInputFormatters(_selectedDocType),
-                      decoration: InputDecoration(
-                        labelText: 'Número de Documento',
-                        hintText: 'Ej. 1098765432',
-                        prefixIcon: const Icon(Icons.badge_outlined, size: 20),
-                        suffixIcon: _docNumberController.text.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear_rounded, size: 18),
-                                onPressed: () => setState(() => _docNumberController.clear()),
-                              )
-                            : null,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      style: const TextStyle(fontSize: 13),
-                      onSubmitted: (_) => _searchPatient(),
+                  );
+
+                  final docField = TextField(
+                    controller: _docNumberController,
+                    keyboardType: documentKeyboardType(_selectedDocType),
+                    inputFormatters: documentInputFormatters(_selectedDocType),
+                    decoration: InputDecoration(
+                      labelText: 'Número de Documento',
+                      hintText: 'Ej. 1098765432',
+                      prefixIcon: const Icon(Icons.badge_outlined, size: 20),
+                      suffixIcon: _docNumberController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded, size: 18),
+                              onPressed: () => setState(() => _docNumberController.clear()),
+                            )
+                          : null,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  FilledButton.icon(
+                    style: const TextStyle(fontSize: 13),
+                    onSubmitted: (_) => _searchPatient(),
+                  );
+
+                  final searchBtn = FilledButton.icon(
                     onPressed: _isSearchingPatient ? null : _searchPatient,
                     icon: _isSearchingPatient
                         ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
@@ -1253,8 +1358,31 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
                       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                  ),
-                ],
+                  );
+
+                  if (isNarrow) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        docDropdown,
+                        const SizedBox(height: 12),
+                        docField,
+                        const SizedBox(height: 12),
+                        searchBtn,
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      docDropdown,
+                      const SizedBox(width: 14),
+                      Expanded(child: docField),
+                      const SizedBox(width: 14),
+                      searchBtn,
+                    ],
+                  );
+                },
               ),
             ],
           ),
@@ -1290,20 +1418,35 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
             ),
           )
         else
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Perfil Demográfico Lateral
-              SizedBox(
-                width: 340,
-                child: _buildPatientDemographicCard(),
-              ),
-              const SizedBox(width: 20),
-              // Línea de Tiempo y Carnet Digital PAI
-              Expanded(
-                child: _buildPatientCarnetTimeline(),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isStacked = constraints.maxWidth < 920;
+              if (isStacked) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildPatientDemographicCard(),
+                    const SizedBox(height: 20),
+                    _buildPatientCarnetTimeline(),
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Perfil Demográfico Lateral
+                  SizedBox(
+                    width: 340,
+                    child: _buildPatientDemographicCard(),
+                  ),
+                  const SizedBox(width: 20),
+                  // Línea de Tiempo y Carnet Digital PAI
+                  Expanded(
+                    child: _buildPatientCarnetTimeline(),
+                  ),
+                ],
+              );
+            },
           ),
       ],
     );

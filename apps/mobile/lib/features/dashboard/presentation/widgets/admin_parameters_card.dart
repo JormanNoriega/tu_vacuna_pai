@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../../core/presentation/widgets/shimmer_loading.dart';
 
 /// Tarjeta de Parámetros Institucionales, Métricas y Monitoreo del PAI
 /// para la vista de escritorio del Administrador.
@@ -9,9 +10,11 @@ class AdminParametersCard extends StatelessWidget {
     super.key,
     required this.institutionName,
     this.targetDoses = 500,
-    this.appliedDoses = 342,
-    this.todayDoses = 28,
-    this.activeVaccinators = 6,
+    this.appliedDoses = 0,
+    this.todayDoses = 0,
+    this.activeVaccinators = 0,
+    this.isLoadingTodayDoses = false,
+    this.isLoadingVaccinators = false,
   });
 
   final String institutionName;
@@ -19,6 +22,8 @@ class AdminParametersCard extends StatelessWidget {
   final int appliedDoses;
   final int todayDoses;
   final int activeVaccinators;
+  final bool isLoadingTodayDoses;
+  final bool isLoadingVaccinators;
 
   @override
   Widget build(BuildContext context) {
@@ -173,32 +178,48 @@ class AdminParametersCard extends StatelessWidget {
             const SizedBox(height: 18),
 
             // Módulo 2: Actividad Diaria y Personal Activo
-            Row(
-              children: [
-                Expanded(
-                  child: _buildParameterItem(
-                    context: context,
-                    icon: Icons.today_rounded,
-                    iconColor: AppColors.primary,
-                    bgColor: AppColors.primarySoft,
-                    label: 'Dosis Aplicadas Hoy',
-                    value: '$todayDoses dosis',
-                    subtext: 'Jornada activa en IPS',
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: _buildParameterItem(
-                    context: context,
-                    icon: Icons.badge_outlined,
-                    iconColor: const Color(0xFF6366F1),
-                    bgColor: const Color(0xFFEEF2FF),
-                    label: 'Vacunadores Activos',
-                    value: '$activeVaccinators en turno',
-                    subtext: 'Personal en sede y campo',
-                  ),
-                ),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 450;
+                final todayItem = _buildParameterItem(
+                  context: context,
+                  icon: Icons.today_rounded,
+                  iconColor: AppColors.primary,
+                  bgColor: AppColors.primarySoft,
+                  label: 'Dosis Aplicadas Hoy',
+                  value: '$todayDoses dosis',
+                  subtext: 'Jornada activa en IPS',
+                  isLoading: isLoadingTodayDoses,
+                );
+                final vaccinatorsItem = _buildParameterItem(
+                  context: context,
+                  icon: Icons.badge_outlined,
+                  iconColor: const Color(0xFF6366F1),
+                  bgColor: const Color(0xFFEEF2FF),
+                  label: 'Vacunadores Activos',
+                  value: '$activeVaccinators en turno',
+                  subtext: 'Personal habilitado en sede',
+                  isLoading: isLoadingVaccinators,
+                );
+
+                if (isNarrow) {
+                  return Column(
+                    children: [
+                      todayItem,
+                      const SizedBox(height: 12),
+                      vaccinatorsItem,
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: todayItem),
+                    const SizedBox(width: 14),
+                    Expanded(child: vaccinatorsItem),
+                  ],
+                );
+              },
             ),
           ],
         ),
@@ -214,6 +235,7 @@ class AdminParametersCard extends StatelessWidget {
     required String label,
     required String value,
     required String subtext,
+    bool isLoading = false,
   }) {
     return Container(
       padding: const EdgeInsets.all(14),
@@ -248,14 +270,26 @@ class AdminParametersCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.ink,
-                  ),
-                ),
+                isLoading
+                    ? ShimmerEffect(
+                        child: Container(
+                          width: 48,
+                          height: 16,
+                          margin: const EdgeInsets.symmetric(vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      )
+                    : Text(
+                        value,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.ink,
+                        ),
+                      ),
                 const SizedBox(height: 2),
                 Text(
                   subtext,

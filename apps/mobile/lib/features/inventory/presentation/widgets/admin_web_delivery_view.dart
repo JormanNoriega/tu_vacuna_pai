@@ -67,135 +67,8 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
   List<Map<String, dynamic>> _apiCustodyEvents = [];
 
   // ---------------------------------------------------------------------------
-  // Datos muestra y simulación interactiva
-  // ---------------------------------------------------------------------------
-  static const Map<String, String> _sampleVaccinators = {
-    'vac-01': 'Enf. Carlos Méndez (Jefe de Vacunación)',
-    'vac-02': 'Aux. Laura Restrepo (Auxiliar PAI)',
-    'vac-03': 'Enf. Andrea Gómez (Enfermera Asistencial)',
-    'vac-04': 'Aux. Mateo Beltrán (Brigada Extramural)',
-  };
-
-  late final List<Map<String, dynamic>> _localAssignments = [
-    {
-      'id': 'ENT-001',
-      'vaccineName': 'Pentavalente (DTP-HB-Hib)',
-      'lotNumber': 'PT-2026-X8',
-      'vialCount': 30,
-      'doseCount': 30,
-      'status': 'IN_TRANSIT',
-      'deliveredAt': '2026-11-22T08:30:00Z',
-      'vaccinatorId': 'vac-01',
-      'campaignId': null,
-      'campaignName': null,
-      'notes': 'Entrega matutina para puesto de vacunación intramural sala 1.',
-    },
-    {
-      'id': 'ENT-002',
-      'vaccineName': 'Influenza Estacional Pediátrica',
-      'lotNumber': 'INF-2026-B12',
-      'vialCount': 45,
-      'doseCount': 45,
-      'status': 'RECEIVED',
-      'deliveredAt': '2026-11-22T08:45:00Z',
-      'vaccinatorId': 'vac-02',
-      'campaignId': 'CMP-01',
-      'campaignName': 'Jornada Extramural Vereda La Cabaña',
-      'notes': 'Termo Coleman #3 verificado a 3.8°C.',
-    },
-    {
-      'id': 'ENT-003',
-      'vaccineName': 'Polio Inyectable (VIP)',
-      'lotNumber': 'VIP-994-COL',
-      'vialCount': 25,
-      'doseCount': 50,
-      'status': 'PARTIALLY_RECEIVED',
-      'deliveredAt': '2026-11-21T14:15:00Z',
-      'vaccinatorId': 'vac-03',
-      'campaignId': null,
-      'campaignName': null,
-      'notes': 'Diferencia física reportada: 2 frascos faltantes en recepción.',
-    },
-    {
-      'id': 'ENT-004',
-      'vaccineName': 'Triple Viral (SRP)',
-      'lotNumber': 'SRP-2026-04',
-      'vialCount': 20,
-      'doseCount': 20,
-      'status': 'RECEIVED',
-      'deliveredAt': '2026-11-22T09:10:00Z',
-      'vaccinatorId': 'vac-04',
-      'campaignId': 'CMP-02',
-      'campaignName': 'Vacunación Escolar Colegio Integrado',
-      'notes': 'Brigada escolar primaria jornada matutina.',
-    },
-    {
-      'id': 'ENT-005',
-      'vaccineName': 'Fiebre Amarilla (FA)',
-      'lotNumber': 'FA-2025-99',
-      'vialCount': 15,
-      'doseCount': 75,
-      'status': 'CLOSED_WITH_DIFFERENCE',
-      'deliveredAt': '2026-11-20T11:00:00Z',
-      'vaccinatorId': 'vac-01',
-      'campaignId': null,
-      'campaignName': null,
-      'notes': 'Acta conciliada: 1 frasco descartado por rotura accidental.',
-    },
-  ];
-
-  late final List<Map<String, dynamic>> _localCampaigns = [
-    {
-      'id': 'CMP-01',
-      'name': 'Jornada Extramural Vereda La Cabaña',
-      'status': 'ACTIVE',
-      'startsOn': '2026-11-20',
-      'endsOn': '2026-11-24',
-      'notes': 'Atención prioritaria a menores de 5 años y adultos mayores en zona rural dispersa.',
-    },
-    {
-      'id': 'CMP-02',
-      'name': 'Vacunación Escolar Colegio Integrado',
-      'status': 'ACTIVE',
-      'startsOn': '2026-11-22',
-      'endsOn': '2026-11-25',
-      'notes': 'Esquema VPH niñas 9-17 años y refuerzo de SRP a niños de 5 años.',
-    },
-    {
-      'id': 'CMP-03',
-      'name': 'Semana Andina de Vacunación - Parque Central',
-      'status': 'COMPLETED',
-      'startsOn': '2026-11-01',
-      'endsOn': '2026-11-07',
-      'notes': 'Puesto masivo de vacunación comunitaria completado con éxito.',
-    },
-  ];
-
-  late final List<Map<String, dynamic>> _localCustodyEvents = [
-    {
-      'id': 'EVT-01',
-      'assignmentId': 'ENT-001',
-      'eventType': 'DESPACHO',
-      'createdAt': '2026-11-22T08:30:00Z',
-      'note': 'Salida de almacén institucional en termo #2 con 4 paquetes fríos.',
-    },
-    {
-      'id': 'EVT-02',
-      'assignmentId': 'ENT-002',
-      'eventType': 'RECEPCION',
-      'createdAt': '2026-11-22T09:00:00Z',
-      'note': 'Recibido por Aux. Laura Restrepo. Temperatura registrada: 3.8°C.',
-    },
-    {
-      'id': 'EVT-03',
-      'assignmentId': 'ENT-003',
-      'eventType': 'MERMA_REPORTADA',
-      'createdAt': '2026-11-21T15:20:00Z',
-      'note': 'Rotura accidental de 1 frasco durante desembalaje en mesa clínica.',
-    },
-  ];
-
   // Getters conectados directamente a la API
+  // ---------------------------------------------------------------------------
   List<Map<String, dynamic>> get _effectiveAssignments => _apiAssignments;
 
   List<Map<String, dynamic>> get _effectiveCampaigns => _apiCampaigns;
@@ -336,6 +209,7 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
           if (!mounted) return;
           if (ok) {
             await _loadData();
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 backgroundColor: AppColors.success,
@@ -388,6 +262,7 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
           if (!mounted) return;
           if (ok) {
             await _loadData();
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 backgroundColor: AppColors.success,
@@ -437,6 +312,7 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
           if (!mounted) return;
           if (ok) {
             await _loadData();
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 backgroundColor: AppColors.success,
@@ -574,14 +450,21 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
   // 1. Cabecera
   // ---------------------------------------------------------------------------
   Widget _buildHeader(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 16,
+      runSpacing: 14,
       children: [
-        Expanded(
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 620),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 10,
+                runSpacing: 6,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -613,7 +496,6 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 10),
                   const Text(
                     'Cadena de Frío y Custodia Oficial',
                     style: TextStyle(
@@ -645,7 +527,6 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
             ],
           ),
         ),
-        const SizedBox(width: 16),
         // Botones de acción principales
         Wrap(
           spacing: 10,
@@ -760,6 +641,17 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
             color: pendingConciliation > 0 ? const Color(0xFFF59E0B) : AppColors.slate,
           ),
         ];
+
+        if (constraints.maxWidth < 650) {
+          return Column(
+            children: [
+              for (int i = 0; i < cards.length; i++) ...[
+                if (i > 0) const SizedBox(height: 12),
+                cards[i],
+              ],
+            ],
+          );
+        }
 
         if (isCompact) {
           return Column(
@@ -1086,15 +978,9 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: Table(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        Widget tableContent = Table(
           columnWidths: const {
             0: FlexColumnWidth(2.5), // Vacunador
             1: FlexColumnWidth(2.5), // Biológico & Lote
@@ -1127,8 +1013,33 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
               _buildDeliveryRow(filtered[i], isEven: i.isEven),
             ],
           ],
-        ),
-      ),
+        );
+
+        if (constraints.maxWidth < 900) {
+          tableContent = Scrollbar(
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: 900,
+                child: tableContent,
+              ),
+            ),
+          );
+        }
+
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: tableContent,
+          ),
+        );
+      },
     );
   }
 
