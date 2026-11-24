@@ -1830,12 +1830,13 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
       if (ok) {
         AppSnackbar.success(context, 'Reporte PAI generado y exportado exitosamente.');
       } else {
-        AppSnackbar.info(context, 'Reporte generado en modo local/simulación.');
+        final err = controller.error ?? 'No se pudo generar o exportar el reporte.';
+        AppSnackbar.error(context, err);
       }
     } else {
-      AppSnackbar.success(
+      AppSnackbar.warning(
         context,
-        'Reporte PAI ($_exportFormat) generado exitosamente con 1,428 registros.',
+        'El servicio de reportes no está disponible en este momento.',
       );
     }
   }

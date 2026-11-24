@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/auth/offline_access.dart';
 import '../../../../core/presentation/widgets/app_snackbar.dart';
+import '../../../../core/utils/uuid.dart';
 import '../../../auth/domain/entities/auth_user.dart';
 import '../../../inventory/presentation/inventory_controller.dart';
 import '../../domain/entities/catalog_entities.dart';
@@ -66,20 +67,8 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
   String? _activeSubView;
   Vaccine? _selectedVaccineForConfig;
 
-  // Mapa local para simulación interactiva de estados cuando el backend no está activo
+  // Estado de habilitacion institucional
   final Map<String, bool> _localEnabledState = {};
-  final Map<String, int> _localStockState = {
-    'vac-01': 140, // BCG
-    'vac-02': 95, // Hepatitis B
-    'vac-03': 210, // IPV Polio
-    'vac-04': 180, // Pentavalente
-    'vac-05': 75, // Rotavirus
-    'vac-06': 120, // Neumococo
-    'vac-07': 60, // Influenza
-    'vac-08': 150, // Triple Viral
-    'vac-09': 45, // Fiebre Amarilla
-    'vac-10': 80, // Hepatitis A
-  };
 
   // Opciones operativas personalizadas por vacuna (jeringas, laboratorios, observaciones)
   final Map<String, List<Map<String, dynamic>>> _customOptionsByVaccine = {};
@@ -91,191 +80,18 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
   final Map<String, bool> _validateAgePolicy = {};
 
   // Historial de ajustes de almacén realizados en la sesión
-  final List<Map<String, dynamic>> _stockAdjustmentsLog = [
-    {
-      'date': 'Hoy, 09:15 AM',
-      'vaccine': 'Pentavalente (DPT + HB + Hib)',
-      'lot': 'LOT-PENTA-2026-03',
-      'type': 'Entrada extraordinaria por distribución',
-      'quantity': '+50 frascos',
-      'user': 'Brayan Administrador',
-    },
-    {
-      'date': 'Ayer, 04:30 PM',
-      'vaccine': 'Rotavirus Monovalente',
-      'lot': 'LOT-ROTA-2025-11',
-      'type': 'Ajuste de conteo físico en depósito',
-      'quantity': '+5 frascos',
-      'user': 'Dra. Elena Almacén',
-    },
-  ];
+  final List<Map<String, dynamic>> _stockAdjustmentsLog = [];
 
-  static const List<Vaccine> _sampleVaccines = [
-    Vaccine(
-      id: 'vac-01',
-      name: 'BCG (Tuberculosis)',
-      code: 'BCG-01',
-      category: 'Programa Ampliado de Inmunización (PAI)',
-      maxDoses: 1,
-      minAgeMonths: 0,
-      maxAgeMonths: 1,
-      active: true,
-      version: 1,
-      hasLot: true,
-      hasDiluent: true,
-      hasSyringe: true,
-      hasSyringeLot: true,
-    ),
-    Vaccine(
-      id: 'vac-02',
-      name: 'Hepatitis B Pediátrica',
-      code: 'HEP-B-01',
-      category: 'Programa Ampliado de Inmunización (PAI)',
-      maxDoses: 1,
-      minAgeMonths: 0,
-      maxAgeMonths: 1,
-      active: true,
-      version: 1,
-      hasLot: true,
-      hasSyringe: true,
-    ),
-    Vaccine(
-      id: 'vac-03',
-      name: 'Polio Inyectable (IPV)',
-      code: 'IPV-01',
-      category: 'Programa Ampliado de Inmunización (PAI)',
-      maxDoses: 3,
-      minAgeMonths: 2,
-      maxAgeMonths: 6,
-      active: true,
-      version: 1,
-      hasLot: true,
-      hasSyringe: true,
-    ),
-    Vaccine(
-      id: 'vac-04',
-      name: 'Pentavalente (DPT + HB + Hib)',
-      code: 'PENTA-01',
-      category: 'Programa Ampliado de Inmunización (PAI)',
-      maxDoses: 3,
-      minAgeMonths: 2,
-      maxAgeMonths: 6,
-      active: true,
-      version: 1,
-      hasLot: true,
-      hasSyringe: true,
-    ),
-    Vaccine(
-      id: 'vac-05',
-      name: 'Rotavirus Monovalente',
-      code: 'ROTA-01',
-      category: 'Programa Ampliado de Inmunización (PAI)',
-      maxDoses: 2,
-      minAgeMonths: 2,
-      maxAgeMonths: 4,
-      active: true,
-      version: 1,
-      hasLot: true,
-      hasDropper: true,
-    ),
-    Vaccine(
-      id: 'vac-06',
-      name: 'Neumococo Conjugada 13 Valente',
-      code: 'NEUMO-13',
-      category: 'Programa Ampliado de Inmunización (PAI)',
-      maxDoses: 3,
-      minAgeMonths: 2,
-      maxAgeMonths: 12,
-      active: true,
-      version: 1,
-      hasLot: true,
-      hasSyringe: true,
-      hasPneumococcalType: true,
-    ),
-    Vaccine(
-      id: 'vac-07',
-      name: 'Influenza Pediátrica',
-      code: 'FLU-PED-01',
-      category: 'Programa Ampliado de Inmunización (PAI)',
-      maxDoses: 2,
-      minAgeMonths: 6,
-      maxAgeMonths: 24,
-      active: true,
-      version: 1,
-      hasLot: true,
-      hasSyringe: true,
-    ),
-    Vaccine(
-      id: 'vac-08',
-      name: 'Triple Viral (SRP)',
-      code: 'SRP-01',
-      category: 'Programa Ampliado de Inmunización (PAI)',
-      maxDoses: 2,
-      minAgeMonths: 12,
-      maxAgeMonths: 60,
-      active: true,
-      version: 1,
-      hasLot: true,
-      hasDiluent: true,
-      hasSyringe: true,
-    ),
-    Vaccine(
-      id: 'vac-09',
-      name: 'Fiebre Amarilla',
-      code: 'FA-01',
-      category: 'Programa Ampliado de Inmunización (PAI)',
-      maxDoses: 1,
-      minAgeMonths: 18,
-      maxAgeMonths: 720,
-      active: true,
-      version: 1,
-      hasLot: true,
-      hasDiluent: true,
-      hasSyringe: true,
-    ),
-    Vaccine(
-      id: 'vac-10',
-      name: 'Hepatitis A Pediátrica',
-      code: 'HEP-A-01',
-      category: 'Programa Ampliado de Inmunización (PAI)',
-      maxDoses: 1,
-      minAgeMonths: 12,
-      maxAgeMonths: 24,
-      active: true,
-      version: 1,
-      hasLot: true,
-      hasSyringe: true,
-    ),
-  ];
-
-  static const List<Vaccine> _sampleAvailableVaccines = [
-    Vaccine(
-      id: 'vac-avail-01',
-      name: 'DPT Acelular (Gestantes y Niños)',
-      code: 'DPTA-01',
-      category: 'Programa Ampliado de Inmunización (PAI)',
-      maxDoses: 1,
-      minAgeMonths: 72,
-      maxAgeMonths: 999,
-      active: true,
-      version: 1,
-      hasLot: true,
-      hasSyringe: true,
-    ),
-    Vaccine(
-      id: 'vac-avail-02',
-      name: 'VPH Nonavalente (Virus Papiloma Humano)',
-      code: 'VPH-09',
-      category: 'Programa Ampliado de Inmunización (PAI)',
-      maxDoses: 2,
-      minAgeMonths: 108,
-      maxAgeMonths: 216,
-      active: true,
-      version: 1,
-      hasLot: true,
-      hasSyringe: true,
-    ),
-  ];
+  // Controladores para formulario de ajustes
+  String? _ajusteVaccineId;
+  final TextEditingController _ajusteLotController =
+      TextEditingController(text: 'LOTE-PAI-2026-X');
+  final TextEditingController _ajusteVialsController =
+      TextEditingController(text: '10');
+  String _ajusteReason = 'conteo';
+  final TextEditingController _ajusteNoteController =
+      TextEditingController(text: 'Conteo de verificación mensual en almacén central.');
+  bool _isSavingAjuste = false;
 
   bool get _isGlobalAdmin => widget.user.hasRole('SUPER_ADMIN');
   bool get _isInstitutionAdmin => widget.user.hasRole('ADMIN_INSTITUTION');
@@ -304,6 +120,9 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
   @override
   void dispose() {
     _searchController.dispose();
+    _ajusteLotController.dispose();
+    _ajusteVialsController.dispose();
+    _ajusteNoteController.dispose();
     super.dispose();
   }
 
@@ -315,30 +134,20 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
         final available = lot['availableVials'];
         return sum + (available is num ? available.toInt() : 0);
       });
-      if (total > 0) return total;
+      return total;
     }
-    return _localStockState[vaccineId] ?? 85;
+    return 0;
   }
 
   int _getLotCountForVaccine(String vaccineId) {
     final stock = widget.stockController;
     if (stock != null && widget.stockLoaded && stock.lots.isNotEmpty) {
-      final count = stock.lots.where((lot) => lot['vaccineId'] == vaccineId).length;
-      if (count > 0) return count;
+      return stock.lots.where((lot) => lot['vaccineId'] == vaccineId).length;
     }
-    return (vaccineId.hashCode.abs() % 3) + 1;
+    return 0;
   }
 
-  List<Vaccine> get _effectiveVaccines {
-    if (widget.controller.vaccines.isNotEmpty) {
-      return widget.controller.filteredVaccines;
-    }
-    final query = widget.controller.query.trim().toLowerCase();
-    if (query.isEmpty) return _sampleVaccines;
-    return _sampleVaccines
-        .where((v) => '${v.name} ${v.code} ${v.category}'.toLowerCase().contains(query))
-        .toList();
-  }
+  List<Vaccine> get _effectiveVaccines => widget.controller.filteredVaccines;
 
   List<Vaccine> get _filteredList {
     final baseList = _effectiveVaccines;
@@ -628,22 +437,7 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
       final matches = stock.lots.where((l) => l['vaccineId'] == v.id).toList();
       if (matches.isNotEmpty) return matches;
     }
-    return [
-      {
-        'lotNumber': 'LOTE-${v.code}-2026-A1',
-        'manufacturer': 'Serum Institute of India',
-        'expiresOn': '2026-12-15',
-        'dosesPerVial': v.maxDoses > 1 ? 10 : 1,
-        'availableVials': (_getStockForVaccine(v.id) * 0.6).round(),
-      },
-      {
-        'lotNumber': 'LOTE-${v.code}-2027-B2',
-        'manufacturer': 'Sanofi Pasteur S.A.',
-        'expiresOn': '2027-08-30',
-        'dosesPerVial': v.maxDoses > 1 ? 10 : 1,
-        'availableVials': (_getStockForVaccine(v.id) * 0.4).round(),
-      },
-    ];
+    return const [];
   }
 
   Future<void> _showAddLotDialog(Vaccine v) async {
@@ -724,21 +518,68 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
 
     if (saved == true) {
       final addedVials = int.tryParse(vialsCtrl.text.trim()) ?? 50;
-      setState(() {
-        final current = _customLotsByVaccine[v.id] ?? _getLotsForVaccine(v);
-        final list = List<Map<String, dynamic>>.from(current);
-        list.insert(0, {
-          'lotNumber': lotNumCtrl.text.trim(),
-          'manufacturer': mfgCtrl.text.trim(),
-          'expiresOn': expiryCtrl.text.trim(),
-          'dosesPerVial': v.maxDoses > 1 ? 10 : 1,
-          'availableVials': addedVials,
+      final lotNum = lotNumCtrl.text.trim();
+      final mfg = mfgCtrl.text.trim();
+      final expiry = expiryCtrl.text.trim();
+      final doses = v.maxDoses > 1 ? v.maxDoses : 1;
+      final instId = widget.user.institution.id;
+
+      if (widget.stockController != null && instId != null) {
+        final vaccineUuid = RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(v.id)
+            ? v.id
+            : uuidV4();
+        final ok = await widget.stockController!.post(
+          instId,
+          'lots-with-entry',
+          {
+            'id': uuidV4(),
+            'vaccineId': vaccineUuid,
+            'manufacturer': mfg,
+            'lotNumber': lotNum,
+            'expiresOn': expiry,
+            'dosesPerVial': doses,
+            'movementId': uuidV4(),
+            'vials': addedVials,
+            'occurredAt': DateTime.now().toUtc().toIso8601String(),
+            'note': 'Entrada registrada desde catálogo web',
+          },
+        );
+
+        if (ok) {
+          await widget.stockController!.loadLots(instId);
+          await widget.onRefresh();
+          if (mounted) {
+            AppSnackbar.success(
+              context,
+              'Se registraron $addedVials frascos del lote $lotNum en el servidor.',
+            );
+          }
+        } else {
+          if (mounted) {
+            final err = widget.stockController!.error ??
+                'No se pudo registrar la entrada de lote en el servidor.';
+            AppSnackbar.error(context, err);
+          }
+        }
+      } else {
+        setState(() {
+          final current = _customLotsByVaccine[v.id] ?? _getLotsForVaccine(v);
+          final list = List<Map<String, dynamic>>.from(current);
+          list.insert(0, {
+            'lotNumber': lotNum,
+            'manufacturer': mfg,
+            'expiresOn': expiry,
+            'dosesPerVial': doses,
+            'availableVials': addedVials,
+          });
+          _customLotsByVaccine[v.id] = list;
         });
-        _customLotsByVaccine[v.id] = list;
-        _localStockState[v.id] = (_localStockState[v.id] ?? 80) + addedVials;
-      });
-      if (mounted) {
-        AppSnackbar.success(context, 'Se registraron $addedVials frascos del lote ${lotNumCtrl.text.trim()}.');
+        if (mounted) {
+          AppSnackbar.success(
+            context,
+            'Se registraron $addedVials frascos del lote $lotNum (modo local).',
+          );
+        }
       }
     }
   }
@@ -767,9 +608,7 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
       totalVialsInDepot += _getStockForVaccine(v.id);
     }
 
-    final availableList = c.availableVaccines.isNotEmpty
-        ? c.availableVaccines
-        : _sampleAvailableVaccines;
+    final availableList = c.availableVaccines;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -1540,7 +1379,25 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
   // SUB-VISTA 1: CONFIGURACIÓN DE VACUNAS DE LA IPS (CON SIDEBAR PERSISTENTE)
   // =========================================================================
   Widget _buildConfigurationView() {
-    final vaccines = _effectiveVaccines.isNotEmpty ? _effectiveVaccines : _sampleVaccines;
+    final vaccines = _effectiveVaccines;
+    if (vaccines.isEmpty) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('No hay vacunas en el catálogo para configurar.'),
+              const SizedBox(height: 16),
+              OutlinedButton(
+                onPressed: () => setState(() => _activeSubView = null),
+                child: const Text('Volver al Catálogo'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     final vaccine = _selectedVaccineForConfig ?? vaccines.first;
     final dosesList = _getDosesForVaccine(vaccine);
     final lotsList = _getLotsForVaccine(vaccine);
@@ -2318,7 +2175,32 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
   // SUB-VISTA 2: AJUSTES Y REGULARIZACIONES DE ALMACÉN (SIDEBAR PERSISTENTE)
   // =========================================================================
   Widget _buildAjustesView() {
-    final availableVaccines = _effectiveVaccines.isNotEmpty ? _effectiveVaccines : _sampleVaccines;
+    final availableVaccines = _effectiveVaccines;
+    if (availableVaccines.isEmpty) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('No hay vacunas disponibles en el catálogo.'),
+              const SizedBox(height: 16),
+              OutlinedButton(
+                onPressed: () => setState(() => _activeSubView = null),
+                child: const Text('Volver al Catálogo'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final selectedVaccineId = _ajusteVaccineId ?? availableVaccines.first.id;
+    final selectedVaccine = availableVaccines.firstWhere(
+      (v) => v.id == selectedVaccineId,
+      orElse: () => availableVaccines.first,
+    );
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
@@ -2402,28 +2284,28 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
                           children: [
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                initialValue: availableVaccines.any((v) => v.id == 'vac-04')
-                                    ? 'vac-04'
-                                    : availableVaccines.first.id,
+                                value: selectedVaccine.id,
                                 decoration: const InputDecoration(labelText: 'Biológico / Vacuna'),
                                 items: [
                                   for (final v in availableVaccines)
                                     DropdownMenuItem(value: v.id, child: Text(v.name)),
                                 ],
-                                onChanged: (_) {},
+                                onChanged: (val) {
+                                  if (val != null) setState(() => _ajusteVaccineId = val);
+                                },
                               ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
                               child: TextFormField(
-                                initialValue: 'LOTE-PAI-2026-X',
+                                controller: _ajusteLotController,
                                 decoration: const InputDecoration(labelText: 'Número de Lote'),
                               ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
                               child: TextFormField(
-                                initialValue: '10',
+                                controller: _ajusteVialsController,
                                 keyboardType: TextInputType.number,
                                 decoration: const InputDecoration(labelText: 'Cantidad de Frascos'),
                               ),
@@ -2435,7 +2317,7 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
                           children: [
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                initialValue: 'conteo',
+                                value: _ajusteReason,
                                 decoration: const InputDecoration(labelText: 'Motivo del Ajuste'),
                                 items: const [
                                   DropdownMenuItem(value: 'conteo', child: Text('Ajuste por conteo físico en inventario')),
@@ -2443,13 +2325,15 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
                                   DropdownMenuItem(value: 'donacion', child: Text('Entrada extraordinaria de biológicos')),
                                   DropdownMenuItem(value: 'rotura', child: Text('Frascos descartados o averiados')),
                                 ],
-                                onChanged: (_) {},
+                                onChanged: (val) {
+                                  if (val != null) setState(() => _ajusteReason = val);
+                                },
                               ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
                               child: TextFormField(
-                                initialValue: 'Conteo de verificación mensual en almacén central.',
+                                controller: _ajusteNoteController,
                                 decoration: const InputDecoration(labelText: 'Observación o Justificación'),
                               ),
                             ),
@@ -2460,23 +2344,132 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
                           alignment: Alignment.centerRight,
                           child: FilledButton.icon(
                             style: FilledButton.styleFrom(minimumSize: const Size(0, 42)),
-                            onPressed: () {
-                              setState(() {
-                                _stockAdjustmentsLog.insert(0, {
-                                  'date': 'Justo ahora',
-                                  'vaccine': 'Pentavalente (DPT + HB + Hib)',
-                                  'lot': 'LOTE-PAI-2026-X',
-                                  'type': 'Ajuste por conteo físico en inventario',
-                                  'quantity': '+10 frascos',
-                                  'user': widget.user.name,
-                                });
-                              });
-                              AppSnackbar.success(
-                                context,
-                                'Ajuste de inventario registrado correctamente.',
-                              );
-                            },
-                            icon: const Icon(Icons.save_rounded, size: 18),
+                            onPressed: _isSavingAjuste
+                                ? null
+                                : () async {
+                                    final lotNum = _ajusteLotController.text.trim();
+                                    final vials = int.tryParse(_ajusteVialsController.text.trim()) ?? 10;
+                                    final note = _ajusteNoteController.text.trim();
+                                    final instId = widget.user.institution.id;
+
+                                    if (lotNum.isEmpty) {
+                                      AppSnackbar.warning(context, 'Ingresa el número de lote.');
+                                      return;
+                                    }
+                                    if (vials <= 0) {
+                                      AppSnackbar.warning(context, 'La cantidad de frascos debe ser mayor a 0.');
+                                      return;
+                                    }
+
+                                    setState(() => _isSavingAjuste = true);
+                                    try {
+                                      if (widget.stockController != null && instId != null) {
+                                        final existingLot = widget.stockController!.lots.firstWhere(
+                                          (l) => l['lotNumber'] == lotNum && l['vaccineId'] == selectedVaccine.id,
+                                          orElse: () => const {},
+                                        );
+
+                                        bool ok = false;
+                                        if (existingLot.isNotEmpty && existingLot['id'] != null) {
+                                          ok = await widget.stockController!.post(
+                                            instId,
+                                            'entries',
+                                            {
+                                              'movementId': uuidV4(),
+                                              'lotId': existingLot['id'],
+                                              'vials': vials,
+                                              'occurredAt': DateTime.now().toUtc().toIso8601String(),
+                                              'note': note.isNotEmpty ? note : 'Ajuste de inventario ($lotNum)',
+                                            },
+                                          );
+                                        } else {
+                                          final vaccineUuid = RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(selectedVaccine.id)
+                                              ? selectedVaccine.id
+                                              : uuidV4();
+                                          ok = await widget.stockController!.post(
+                                            instId,
+                                            'lots-with-entry',
+                                            {
+                                              'id': uuidV4(),
+                                              'vaccineId': vaccineUuid,
+                                              'manufacturer': 'Laboratorio Institucional',
+                                              'lotNumber': lotNum,
+                                              'expiresOn': '2027-12-31',
+                                              'dosesPerVial': selectedVaccine.maxDoses > 1 ? selectedVaccine.maxDoses : 1,
+                                              'movementId': uuidV4(),
+                                              'vials': vials,
+                                              'occurredAt': DateTime.now().toUtc().toIso8601String(),
+                                              'note': note.isNotEmpty ? note : 'Ajuste de inventario ($lotNum)',
+                                            },
+                                          );
+                                        }
+
+                                        if (ok) {
+                                          await widget.stockController!.loadLots(instId);
+                                          await widget.onRefresh();
+                                          if (mounted) {
+                                            setState(() {
+                                              _stockAdjustmentsLog.insert(0, {
+                                                'date': 'Justo ahora',
+                                                'vaccine': selectedVaccine.name,
+                                                'lot': lotNum,
+                                                'type': switch (_ajusteReason) {
+                                                  'conteo' => 'Ajuste por conteo físico en inventario',
+                                                  'merma' => 'Merma por temperatura / red de frío',
+                                                  'donacion' => 'Entrada extraordinaria de biológicos',
+                                                  'rotura' => 'Frascos descartados o averiados',
+                                                  _ => 'Regularización de stock',
+                                                },
+                                                'quantity': '+$vials frascos',
+                                                'user': widget.user.name,
+                                              });
+                                            });
+                                            AppSnackbar.success(
+                                              context,
+                                              'Ajuste de inventario registrado correctamente en el servidor.',
+                                            );
+                                          }
+                                        } else {
+                                          if (mounted) {
+                                            final err = widget.stockController!.error ?? 'No se pudo registrar el ajuste.';
+                                            AppSnackbar.error(context, err);
+                                          }
+                                        }
+                                      } else {
+                                        setState(() {
+                                          _stockAdjustmentsLog.insert(0, {
+                                            'date': 'Justo ahora',
+                                            'vaccine': selectedVaccine.name,
+                                            'lot': lotNum,
+                                            'type': switch (_ajusteReason) {
+                                              'conteo' => 'Ajuste por conteo físico en inventario',
+                                              'merma' => 'Merma por temperatura / red de frío',
+                                              'donacion' => 'Entrada extraordinaria de biológicos',
+                                              'rotura' => 'Frascos descartados o averiados',
+                                              _ => 'Regularización de stock',
+                                            },
+                                            'quantity': '+$vials frascos',
+                                            'user': widget.user.name,
+                                          });
+                                        });
+                                        if (mounted) {
+                                          AppSnackbar.success(
+                                            context,
+                                            'Ajuste registrado localmente.',
+                                          );
+                                        }
+                                      }
+                                    } finally {
+                                      if (mounted) setState(() => _isSavingAjuste = false);
+                                    }
+                                  },
+                            icon: _isSavingAjuste
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  )
+                                : const Icon(Icons.save_rounded, size: 18),
                             label: const Text('Registrar Ajuste en Almacén'),
                           ),
                         ),
@@ -2521,22 +2514,33 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
                                 ],
                               ),
                             ),
-                            for (final log in _stockAdjustmentsLog)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                decoration: const BoxDecoration(
-                                  border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
+                            if (_stockAdjustmentsLog.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 24),
+                                child: Center(
+                                  child: Text(
+                                    'No hay regularizaciones o movimientos registrados recientemente.',
+                                    style: TextStyle(fontSize: 12, color: AppColors.slate),
+                                  ),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Expanded(flex: 18, child: Text(log['date'], style: const TextStyle(fontSize: 12, color: AppColors.slate))),
-                                    Expanded(flex: 25, child: Text(log['vaccine'], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                                    Expanded(flex: 20, child: Text(log['lot'], style: const TextStyle(fontSize: 12, color: AppColors.slate))),
-                                    Expanded(flex: 30, child: Text(log['type'], style: const TextStyle(fontSize: 12))),
-                                    Expanded(flex: 14, child: Text(log['quantity'], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary))),
-                                  ],
+                              )
+                            else
+                              for (final log in _stockAdjustmentsLog)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  decoration: const BoxDecoration(
+                                    border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(flex: 18, child: Text(log['date'], style: const TextStyle(fontSize: 12, color: AppColors.slate))),
+                                      Expanded(flex: 25, child: Text(log['vaccine'], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
+                                      Expanded(flex: 20, child: Text(log['lot'], style: const TextStyle(fontSize: 12, color: AppColors.slate))),
+                                      Expanded(flex: 30, child: Text(log['type'], style: const TextStyle(fontSize: 12))),
+                                      Expanded(flex: 14, child: Text(log['quantity'], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary))),
+                                    ],
+                                  ),
                                 ),
-                              ),
                           ],
                         ),
                       ],

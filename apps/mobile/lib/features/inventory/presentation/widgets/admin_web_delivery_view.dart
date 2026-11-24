@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../../core/utils/uuid.dart';
 import '../campaign_detail_page.dart';
 import '../custody_event_form_page.dart';
 import '../delivery_detail_page.dart';
@@ -194,21 +195,14 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
     },
   ];
 
-  // Getters con fallback inteligente
-  List<Map<String, dynamic>> get _effectiveAssignments =>
-      _apiAssignments.isNotEmpty ? _apiAssignments : _localAssignments;
+  // Getters conectados directamente a la API
+  List<Map<String, dynamic>> get _effectiveAssignments => _apiAssignments;
 
-  List<Map<String, dynamic>> get _effectiveCampaigns =>
-      _apiCampaigns.isNotEmpty ? _apiCampaigns : _localCampaigns;
+  List<Map<String, dynamic>> get _effectiveCampaigns => _apiCampaigns;
 
-  List<Map<String, dynamic>> get _effectiveCustodyEvents =>
-      _apiCustodyEvents.isNotEmpty ? _apiCustodyEvents : _localCustodyEvents;
+  List<Map<String, dynamic>> get _effectiveCustodyEvents => _apiCustodyEvents;
 
-  Map<String, String> get _effectiveVaccinatorNames {
-    final map = Map<String, String>.from(_sampleVaccinators);
-    map.addAll(_apiVaccinatorNames);
-    return map;
-  }
+  Map<String, String> get _effectiveVaccinatorNames => _apiVaccinatorNames;
 
   @override
   void initState() {
@@ -294,87 +288,177 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
   }
 
   // ---------------------------------------------------------------------------
-  // Acciones y Diálogos Interactivos de Simulación
+  // Acciones y Diálogos Conectados al Backend
   // ---------------------------------------------------------------------------
-  void _handleNewDelivery({Map<String, dynamic>? campaign}) {
+  Future<void> _handleNewDelivery({Map<String, dynamic>? campaign}) async {
     showDialog(
       context: context,
       builder: (ctx) => _NewDeliveryDialog(
         vaccinators: _effectiveVaccinatorNames,
         campaigns: _effectiveCampaigns,
         defaultCampaign: campaign,
-        onSubmit: (newAssignment) {
-          setState(() {
-            _localAssignments.insert(0, newAssignment);
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: AppColors.success,
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle_rounded, color: Colors.white),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Entrega #${newAssignment['id']} despachada exitosamente a ${newAssignment['vaccinatorName']}.',
-                  ),
-                ],
+        onSubmit: (newAssignment) async {
+          final lotId = newAssignment['lotId'] ??
+              (widget.controller.lots.isNotEmpty
+                  ? widget.controller.lots.first['id'] as String?
+                  : null);
+
+          if (lotId == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                backgroundColor: AppColors.warning,
+                content: Text(
+                  'No hay lotes con saldo en el depósito. Registra una entrada de stock primero.',
+                ),
               ),
-            ),
+            );
+            return;
+          }
+
+          final assignmentId = uuidV4();
+          final movementId = uuidV4();
+          final ok = await widget.controller.post(
+            widget.institutionId,
+            'assignments',
+            {
+              'movementId': movementId,
+              'assignmentId': assignmentId,
+              'lotId': lotId,
+              'vaccinatorId': newAssignment['vaccinatorId'],
+              'vials': newAssignment['vialCount'],
+              'occurredAt': DateTime.now().toUtc().toIso8601String(),
+              'note': newAssignment['notes'] ?? 'Despacho institucional',
+              if (newAssignment['campaignId'] != null)
+                'campaignId': newAssignment['campaignId'],
+            },
           );
+
+          if (!mounted) return;
+          if (ok) {
+            await _loadData();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: AppColors.success,
+                content: Row(
+                  children: [
+                    const Icon(Icons.check_circle_rounded, color: Colors.white),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Entrega despachada exitosamente a ${newAssignment['vaccinatorName']}.',
+                    ),
+                  ],
+                ),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: AppColors.danger,
+                content: Text(
+                  widget.controller.error ?? 'Error al despachar la entrega.',
+                ),
+              ),
+            );
+          }
         },
       ),
     );
   }
 
-  void _handleNewCampaign() {
+  Future<void> _handleNewCampaign() async {
     showDialog(
       context: context,
       builder: (ctx) => _NewCampaignDialog(
-        onSubmit: (newCampaign) {
-          setState(() {
-            _localCampaigns.insert(0, newCampaign);
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: AppColors.success,
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle_rounded, color: Colors.white),
-                  const SizedBox(width: 10),
-                  Text('Jornada "${newCampaign['name']}" organizada con éxito.'),
-                ],
-              ),
-            ),
+        onSubmit: (newCampaign) async {
+          final campaignId = uuidV4();
+          final ok = await widget.controller.post(
+            widget.institutionId,
+            'campaigns',
+            {
+              'id': campaignId,
+              'name': newCampaign['name'],
+              'location': newCampaign['location'] ?? 'Sede Central',
+              'startsOn': newCampaign['startsOn'] ??
+                  DateTime.now().toIso8601String().substring(0, 10),
+              'endsOn': newCampaign['endsOn'] ??
+                  DateTime.now().add(const Duration(days: 1)).toIso8601String().substring(0, 10),
+            },
           );
+
+          if (!mounted) return;
+          if (ok) {
+            await _loadData();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: AppColors.success,
+                content: Row(
+                  children: [
+                    const Icon(Icons.check_circle_rounded, color: Colors.white),
+                    const SizedBox(width: 10),
+                    Text('Jornada "${newCampaign['name']}" guardada con éxito en el servidor.'),
+                  ],
+                ),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: AppColors.danger,
+                content: Text(
+                  widget.controller.error ?? 'Error al guardar la jornada en el servidor.',
+                ),
+              ),
+            );
+          }
         },
       ),
     );
   }
 
-  void _handleResolveConciliation(Map<String, dynamic> assignment) {
+  Future<void> _handleResolveConciliation(Map<String, dynamic> assignment) async {
     showDialog(
       context: context,
       builder: (ctx) => _ConciliationResolutionDialog(
         assignment: assignment,
         vaccinatorName: _effectiveVaccinatorNames[assignment['vaccinatorId']] ??
             'Vacunador ${assignment['vaccinatorId']}',
-        onResolved: (reason, notes) {
-          setState(() {
-            assignment['status'] = 'CLOSED_WITH_DIFFERENCE';
-            assignment['notes'] = '$reason · $notes';
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              backgroundColor: AppColors.success,
-              content: Row(
-                children: [
-                  Icon(Icons.verified_rounded, color: Colors.white),
-                  SizedBox(width: 10),
-                  Text('Acta de conciliación formalizada con éxito. Entrega cerrada sin pendientes.'),
-                ],
-              ),
-            ),
+        onResolved: (reason, notes) async {
+          final assignmentId = assignment['id'] as String;
+          final ok = await widget.controller.post(
+            widget.institutionId,
+            'assignments/$assignmentId/difference-resolutions',
+            {
+              'id': uuidV4(),
+              'kind': reason,
+              'vials': 1,
+              'note': notes,
+            },
           );
+          if (!mounted) return;
+          if (ok) {
+            await _loadData();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                backgroundColor: AppColors.success,
+                content: Row(
+                  children: [
+                    Icon(Icons.verified_rounded, color: Colors.white),
+                    SizedBox(width: 10),
+                    Text('Acta de conciliación formalizada con éxito en el servidor.'),
+                  ],
+                ),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: AppColors.danger,
+                content: Text(
+                  widget.controller.error ?? 'No se pudo registrar la resolución en el servidor.',
+                ),
+              ),
+            );
+          }
         },
       ),
     );
@@ -2157,7 +2241,7 @@ class _NewDeliveryDialogState extends State<_NewDeliveryDialog> {
                         );
 
                         final newAssignment = {
-                          'id': 'ENT-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+                          'id': uuidV4(),
                           'vaccineName': _selectedVaccine,
                           'lotNumber': _lotController.text.trim().toUpperCase(),
                           'vialCount': vials,
@@ -2384,8 +2468,9 @@ class _NewCampaignDialogState extends State<_NewCampaignDialog> {
                       onPressed: () {
                         if (!_formKey.currentState!.validate()) return;
                         final newCamp = {
-                          'id': 'CMP-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+                          'id': uuidV4(),
                           'name': _nameController.text.trim(),
+                          'location': _locationController.text.trim(),
                           'status': 'ACTIVE',
                           'startsOn': _startDate.toIso8601String().substring(0, 10),
                           'endsOn': _endDate.toIso8601String().substring(0, 10),

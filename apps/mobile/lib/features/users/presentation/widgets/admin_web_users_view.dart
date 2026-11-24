@@ -33,6 +33,8 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedRoleFilter = 'TODOS';
   String _selectedStatusFilter = 'TODOS';
+  int _currentPage = 1;
+  static const int _pageSize = 10;
 
   List<Vaccinator> get _effectiveUsers => widget.controller.users;
 
@@ -61,6 +63,22 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
 
       return true;
     }).toList();
+  }
+
+  int get _totalPages {
+    final count = _filteredUsers.length;
+    if (count == 0) return 1;
+    return (count / _pageSize).ceil();
+  }
+
+  List<Vaccinator> get _pagedUsers {
+    final all = _filteredUsers;
+    if (all.isEmpty) return const [];
+    final page = _currentPage.clamp(1, _totalPages);
+    final startIndex = (page - 1) * _pageSize;
+    final endIndex = (startIndex + _pageSize).clamp(0, all.length);
+    if (startIndex >= all.length) return const [];
+    return all.sublist(startIndex, endIndex);
   }
 
   @override
@@ -545,7 +563,7 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
             width: 380,
             child: TextField(
               controller: _searchController,
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) => setState(() => _currentPage = 1),
               decoration: InputDecoration(
                 hintText: 'Buscar por nombre, documento o correo...',
                 hintStyle: const TextStyle(fontSize: 13, color: AppColors.hint),
@@ -559,7 +577,7 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
                         icon: const Icon(Icons.clear_rounded, size: 18),
                         onPressed: () {
                           _searchController.clear();
-                          setState(() {});
+                          setState(() => _currentPage = 1);
                         },
                       )
                     : null,
@@ -629,7 +647,12 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
                       ),
                     ],
                     onChanged: (val) {
-                      if (val != null) setState(() => _selectedRoleFilter = val);
+                      if (val != null) {
+                        setState(() {
+                          _selectedRoleFilter = val;
+                          _currentPage = 1;
+                        });
+                      }
                     },
                   ),
                 ),
@@ -673,7 +696,12 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
                       ),
                     ],
                     onChanged: (val) {
-                      if (val != null) setState(() => _selectedStatusFilter = val);
+                      if (val != null) {
+                        setState(() {
+                          _selectedStatusFilter = val;
+                          _currentPage = 1;
+                        });
+                      }
                     },
                   ),
                 ),
@@ -690,6 +718,9 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
   // ---------------------------------------------------------------------------
   Widget _buildUsersTableCard(BuildContext context) {
     final filtered = _filteredUsers;
+    final paged = _pagedUsers;
+    final totalPages = _totalPages;
+    final currentPage = _currentPage.clamp(1, totalPages);
 
     return Container(
       decoration: BoxDecoration(
@@ -832,13 +863,13 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: filtered.length,
+              itemCount: paged.length,
               separatorBuilder: (_, _) => const Divider(
                 height: 1,
                 color: AppColors.border,
               ),
               itemBuilder: (context, index) {
-                final user = filtered[index];
+                final user = paged[index];
                 return _buildUserTableRow(context, user);
               },
             ),
@@ -853,14 +884,18 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Mostrando ${filtered.length} de ${_effectiveUsers.length} usuarios registrados en la institución',
+                  filtered.isEmpty
+                      ? 'No hay usuarios para mostrar'
+                      : 'Mostrando ${(currentPage - 1) * _pageSize + 1}–${((currentPage - 1) * _pageSize + paged.length)} de ${filtered.length} usuarios (${_effectiveUsers.length} en total)',
                   style: const TextStyle(fontSize: 12, color: AppColors.slate),
                 ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     OutlinedButton(
-                      onPressed: null,
+                      onPressed: currentPage > 1
+                          ? () => setState(() => _currentPage = currentPage - 1)
+                          : null,
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -883,9 +918,9 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
                         color: AppColors.primarySoft,
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Text(
-                        'Página 1',
-                        style: TextStyle(
+                      child: Text(
+                        'Página $currentPage de $totalPages',
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: AppColors.primary,
@@ -894,7 +929,9 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
                     ),
                     const SizedBox(width: 8),
                     OutlinedButton(
-                      onPressed: null,
+                      onPressed: currentPage < totalPages
+                          ? () => setState(() => _currentPage = currentPage + 1)
+                          : null,
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
