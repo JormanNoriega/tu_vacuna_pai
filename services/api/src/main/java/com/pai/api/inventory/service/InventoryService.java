@@ -346,6 +346,54 @@ public class InventoryService {
         + "LEFT JOIN app.inventory_campaigns c ON c.id = a.campaign_id AND c.institution_id = a.institution_id";
   }
 
+  public record ReceivedLot(UUID lotId, String lotNumber, LocalDate expiresOn) {}
+
+  /**
+   * Evidencia de recepción, no saldo clínico. Una recepción previa no prueba
+   * que aún queden dosis utilizables ni que se disponga de los insumos.
+   */
+  @Transactional(readOnly = true)
+  public List<ReceivedLot> listMyReceivedLots(UUID actor, UUID institution, UUID vaccineId) {
+    return listMyReceivedLots(actor, institution, vaccineId, false);
+  }
+
+  /**
+   * Descarta entregas sin frascos sin comprometer en los registros logísticos.
+   * No acredita existencias físicas ni descuenta consumos clínicos históricos.
+   */
+  @Transactional(readOnly = true)
+  public List<ReceivedLot> listMyUncommittedReceivedLots(
+      UUID actor, UUID institution, UUID vaccineId) {
+    return listMyReceivedLots(actor, institution, vaccineId, true);
+  }
+
+  private List<ReceivedLot> listMyReceivedLots(
+      UUID actor, UUID institution, UUID vaccineId, boolean requireUncommitted) {
+    UUID institutionId = authorize(actor, institution, "ATTENTION_CREATE");
+    LocalDate today = LocalDate.now(clock.withZone(OPERATIONAL_ZONE));
+    return db.query("""
+        SELECT l.id, l.lot_number, l.expires_on
+        FROM app.inventory_lots l
+        WHERE l.institution_id = ? AND l.vaccine_id = ? AND l.expires_on >= ?
+          AND EXISTS (
+            SELECT 1 FROM app.inventory_assignments a
+            WHERE a.institution_id = l.institution_id AND a.lot_id = l.id
+              AND a.vaccinator_id = ? AND a.received_vials > 0
+              AND a.status IN ('RECEIVED', 'PARTIALLY_RECEIVED', 'CLOSED_WITH_DIFFERENCE')
+              AND (NOT ? OR a.received_vials >
+                COALESCE((SELECT SUM(e.vial_count) FROM app.inventory_custody_events e
+                  WHERE e.institution_id = a.institution_id AND e.lot_id = a.lot_id
+                    AND e.assignment_id = a.id), 0) +
+                COALESCE((SELECT SUM(r.vial_count) FROM app.inventory_installation_reservations r
+                  WHERE r.institution_id = a.institution_id AND r.lot_id = a.lot_id
+                    AND r.assignment_id = a.id AND r.vaccinator_id = a.vaccinator_id), 0))
+          )
+        ORDER BY l.expires_on, l.id
+        """, (rs, n) -> new ReceivedLot(rs.getObject("id", UUID.class),
+            rs.getString("lot_number"), rs.getObject("expires_on", LocalDate.class)),
+        institutionId, vaccineId, today, actor, requireUncommitted);
+  }
+
   public record HistoricalReceipt(UUID id, UUID assignmentId, UUID lotId, int vials,
       UUID receivedBy, Instant receivedAt, String differenceNote) {}
   public record HistoricalEvent(UUID id, UUID assignmentId, UUID lotId, int vials, String status,

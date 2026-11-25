@@ -1,6 +1,6 @@
 {
-    "name": "tu_vacuna_pai",
-    "short_name": "tu_vacuna_pai",
+    "name": "Tu Vacuna PAI",
+    "short_name": "Tu Vacuna PAI",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

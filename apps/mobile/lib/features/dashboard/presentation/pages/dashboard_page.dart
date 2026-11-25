@@ -195,7 +195,7 @@ class _DashboardPageState extends State<DashboardPage> {
               selectedIcon: _showsDeliveries
                   ? Icons.local_shipping
                   : Icons.medication_liquid,
-              label: _showsDeliveries ? 'Entregas' : 'Recibidos',
+              label: _showsDeliveries ? 'Entregas y jornadas' : 'Recibidos',
               requiredPermissions: const ['INVENTORY_READ', 'ATTENTION_CREATE'],
               isDeliveryTab: true,
             ),
@@ -285,6 +285,14 @@ class _DashboardPageState extends State<DashboardPage> {
     if (_destinations[_selectedIndex].isNewAttention &&
         widget.attentionController != null) {
       return NuevaAtencionPage(
+        hasReceivedLot: (vaccineId) async {
+          final inventory = widget.inventoryController;
+          if (inventory == null) throw StateError('Inventario no disponible');
+          return inventory.hasReceivedLot(
+            widget.user.institution.id,
+            vaccineId,
+          );
+        },
         user: widget.user,
         controller: widget.attentionController!,
         offline: _offline,
@@ -399,7 +407,8 @@ class _DashboardPageState extends State<DashboardPage> {
   /// Resuelve las acciones de "Acciones frecuentes" llevando al destino
   /// correspondiente del dashboard (o avisando si aun no existe).
   void _openQuickAction(String label) {
-    final isDesktop = MediaQuery.sizeOf(context).width >= 960 &&
+    final isDesktop =
+        MediaQuery.sizeOf(context).width >= 960 &&
         (_isSuperAdminView ||
             widget.user.hasRole('ADMIN_INSTITUTION') ||
             widget.user.hasPermission('USER_MANAGE'));
@@ -580,13 +589,15 @@ class _DashboardPageState extends State<DashboardPage> {
       _selectTab(index);
       return;
     }
-    final index = _destinations.indexWhere((d) => switch (section) {
-      'historial' => d.isHistory,
-      'inventario' => d.isCatalog,
-      'entregas' => d.isDeliveryTab,
-      'administracion' => d.isUsersManagement,
-      _ => false,
-    });
+    final index = _destinations.indexWhere(
+      (d) => switch (section) {
+        'historial' => d.isHistory,
+        'inventario' => d.isCatalog,
+        'entregas' => d.isDeliveryTab,
+        'administracion' => d.isUsersManagement,
+        _ => false,
+      },
+    );
     if (index >= 0) {
       _selectTab(index);
     }
@@ -652,7 +663,8 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isDesktopAdmin = constraints.maxWidth >= 960 &&
+        final isDesktopAdmin =
+            constraints.maxWidth >= 960 &&
             (_isSuperAdminView ||
                 widget.user.hasRole('ADMIN_INSTITUTION') ||
                 widget.user.hasPermission('USER_MANAGE'));
@@ -673,30 +685,29 @@ class _DashboardPageState extends State<DashboardPage> {
             onRefresh: () async => _reloadMetrics(),
           )
         : (_selectedIndex == 0
-            ? AdminWebDashboardView(
-                userName: widget.user.name,
-                institutionName: widget.user.institution.name,
-                institutionId: widget.user.institution.id,
-                onRefresh: () async => _reloadMetrics(),
-                metricsController: widget.metricsController,
-                syncStatusController: widget.syncStatusController,
-                usersController: widget.usersController,
-                historyController: widget.historyController,
-                exportReportController: widget.exportReportController,
-              )
-            : _buildContent());
+              ? AdminWebDashboardView(
+                  userName: widget.user.name,
+                  institutionName: widget.user.institution.name,
+                  institutionId: widget.user.institution.id,
+                  onRefresh: () async => _reloadMetrics(),
+                  metricsController: widget.metricsController,
+                  syncStatusController: widget.syncStatusController,
+                  usersController: widget.usersController,
+                  historyController: widget.historyController,
+                  exportReportController: widget.exportReportController,
+                )
+              : _buildContent());
 
     final bodyWithBanner = switch (widget.sessionStatus) {
       SessionStatus.offlineLocked => Column(
-          children: [
-            const _OfflineLockedBanner(),
-            Expanded(child: desktopBody),
-          ],
-        ),
+        children: [
+          const _OfflineLockedBanner(),
+          Expanded(child: desktopBody),
+        ],
+      ),
       SessionStatus.offlineAuthorized ||
       SessionStatus.signedIn ||
-      SessionStatus.signedOut =>
-        desktopBody,
+      SessionStatus.signedOut => desktopBody,
     };
 
     return Scaffold(

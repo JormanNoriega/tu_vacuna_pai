@@ -127,6 +127,60 @@ class InventoryServiceTest {
   }
 
   @Test
+  void receivedLotsArePersonalDeduplicatedAndOrderedByOperationalExpiry() {
+    UUID expiringToday = receivedLotFixture("Hoy", LocalDate.of(2026, 1, 1), vaccine);
+    UUID expired = receivedLotFixture("Vencido", LocalDate.of(2025, 12, 31), vaccine);
+    UUID inTransit = receivedLotFixture("En tránsito", LocalDate.of(2027, 1, 1), vaccine);
+    UUID otherOwner = receivedLotFixture("Otro vacunador", LocalDate.of(2027, 1, 1), vaccine);
+    UUID otherVaccine = receivedLotFixture("Otro biológico", LocalDate.of(2027, 1, 1), UUID.randomUUID());
+
+    receiptFixture(lot, vaccinator, "RECEIVED", 2);
+    receiptFixture(lot, vaccinator, "RECEIVED", 1);
+    receiptFixture(expiringToday, vaccinator, "PARTIALLY_RECEIVED", 1);
+    receiptFixture(expired, vaccinator, "RECEIVED", 1);
+    receiptFixture(inTransit, vaccinator, "IN_TRANSIT", 0);
+    receiptFixture(otherOwner, UUID.randomUUID(), "RECEIVED", 1);
+    receiptFixture(otherVaccine, vaccinator, "RECEIVED", 1);
+
+    assertThat(service.listMyReceivedLots(vaccinator, institution, vaccine))
+        .extracting(InventoryService.ReceivedLot::lotId)
+        .containsExactly(expiringToday, lot);
+  }
+
+  @Test
+  void uncommittedReceivedLotsUseActualReceiptAndExcludeCustodyAndReservations() {
+    receiptFixture(lot, vaccinator, "PARTIALLY_RECEIVED", 1);
+    UUID anotherLot = receivedLotFixture("Reservado", LocalDate.of(2027, 1, 1), vaccine);
+    receiptFixture(anotherLot, vaccinator, "RECEIVED", 2);
+    db.update("INSERT INTO app.inventory_installation_reservations "
+        + "(id, institution_id, lot_id, assignment_id, vaccinator_id, vial_count) "
+        + "SELECT ?, institution_id, lot_id, id, vaccinator_id, 2 "
+        + "FROM app.inventory_assignments WHERE lot_id = ?", UUID.randomUUID(), anotherLot);
+    assertThat(service.listMyUncommittedReceivedLots(vaccinator, institution, vaccine))
+        .extracting(InventoryService.ReceivedLot::lotId).containsExactly(lot);
+
+    db.update("INSERT INTO app.inventory_custody_events "
+        + "(id, institution_id, lot_id, assignment_id, vial_count, status) "
+        + "SELECT ?, institution_id, lot_id, id, 1, 'RETURN_PENDING' "
+        + "FROM app.inventory_assignments WHERE lot_id = ?", UUID.randomUUID(), lot);
+    assertThat(service.listMyUncommittedReceivedLots(vaccinator, institution, vaccine)).isEmpty();
+    assertThat(service.listMyReceivedLots(vaccinator, institution, vaccine)).hasSize(2);
+  }
+
+  private UUID receivedLotFixture(String number, LocalDate expiry, UUID vaccineId) {
+    UUID id = UUID.randomUUID();
+    db.update("INSERT INTO app.inventory_lots (id, institution_id, vaccine_id, lot_number, expires_on) "
+        + "VALUES (?, ?, ?, ?, ?)", id, institution, vaccineId, number, expiry);
+    return id;
+  }
+
+  private void receiptFixture(UUID lotId, UUID owner, String status, int received) {
+    db.update("INSERT INTO app.inventory_assignments "
+        + "(id, institution_id, lot_id, vaccinator_id, vial_count, status, received_vials) "
+        + "VALUES (?, ?, ?, ?, ?, ?, ?)", UUID.randomUUID(), institution, lotId, owner, 2, status, received);
+  }
+
+  @Test
   void operationalReceiptAndFinalizationCommitTogetherWithoutOfflineOrStockEffects() {
     db.execute("CREATE TABLE app.inventory_transfer_finalizations (id UUID PRIMARY KEY,institution_id UUID,"
         + "lot_id UUID,assignment_id UUID UNIQUE,kind VARCHAR,recorded_by UUID,note VARCHAR,"

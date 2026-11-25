@@ -145,8 +145,7 @@ class _CustodyEventFormPageState extends State<CustodyEventFormPage> {
                 validator: (value) =>
                     value == null ? 'Selecciona una opción.' : null,
               ),
-              const SizedBox(height: 16),
-              if (!widget.confirmation) ...[
+              if (!widget.confirmation)
                 TextFormField(
                   controller: _count,
                   enabled: !locked,
@@ -166,8 +165,6 @@ class _CustodyEventFormPageState extends State<CustodyEventFormPage> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
-              ],
               TextFormField(
                 controller: _note,
                 enabled: !locked,

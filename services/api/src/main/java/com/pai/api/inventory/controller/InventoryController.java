@@ -145,6 +145,20 @@ public class InventoryController {
     return service.listMyAssignments(ActorResolver.actorId(auth), institutionId);
   }
 
+  @GetMapping("/vaccines/{vaccineId}/my-received-lots")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
+  public List<InventoryService.ReceivedLot> myReceivedLots(Authentication auth,
+      @PathVariable UUID institutionId, @PathVariable UUID vaccineId) {
+    return service.listMyReceivedLots(ActorResolver.actorId(auth), institutionId, vaccineId);
+  }
+
+  @GetMapping("/vaccines/{vaccineId}/my-uncommitted-received-lots")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
+  public List<InventoryService.ReceivedLot> myUncommittedReceivedLots(Authentication auth,
+      @PathVariable UUID institutionId, @PathVariable UUID vaccineId) {
+    return service.listMyUncommittedReceivedLots(ActorResolver.actorId(auth), institutionId, vaccineId);
+  }
+
   @PostMapping("/assignments/{assignmentId}/receive")
   @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_CREATE')")
   public VialTransfer.Assignment receive(Authentication auth, @PathVariable UUID institutionId,

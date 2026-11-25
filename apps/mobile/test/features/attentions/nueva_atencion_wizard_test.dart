@@ -6,6 +6,7 @@ import 'package:tu_vacuna_pai/features/attentions/domain/repositories/attentions
 import 'package:tu_vacuna_pai/features/attentions/domain/use_cases/attentions_use_cases.dart';
 import 'package:tu_vacuna_pai/features/attentions/presentation/attention_controller.dart';
 import 'package:tu_vacuna_pai/features/attentions/presentation/pages/nueva_atencion_page.dart';
+import 'package:tu_vacuna_pai/features/attentions/presentation/widgets/steps/step2_additional_data_step.dart';
 import 'package:tu_vacuna_pai/features/auth/domain/entities/auth_user.dart';
 import 'package:tu_vacuna_pai/features/auth/domain/entities/session_restore_result.dart';
 import 'package:tu_vacuna_pai/features/catalogs/domain/entities/catalog_entities.dart';
@@ -20,6 +21,44 @@ import 'package:tu_vacuna_pai/features/patients/domain/use_cases/create_patient.
 import 'package:tu_vacuna_pai/features/patients/domain/use_cases/search_patient.dart';
 
 import '../admin/fake_admin_repository.dart';
+
+Future<void> _selectMinorDocument(WidgetTester tester, String number) async {
+  final document = find.widgetWithText(
+    TextFormField,
+    'Número de Identificación *',
+  );
+  expect(tester.widget<TextFormField>(document).controller!.text, isEmpty);
+  await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+  await tester.pumpAndSettle();
+  expect(find.textContaining('CC -'), findsNothing);
+  expect(find.text('RC - Registro Civil'), findsWidgets);
+  await tester.tap(find.text('TI - Tarjeta de Identidad').last);
+  await tester.pumpAndSettle();
+  await tester.enterText(document, number);
+}
+
+Future<void> _fillGuardian(WidgetTester tester) async {
+  final scrollable = find.descendant(
+    of: find.byType(Step2AdditionalDataStep),
+    matching: find.byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable && widget.axisDirection == AxisDirection.down,
+    ),
+  );
+  for (final (hint, value) in [
+    ('Ej: 1234567890', '1234567890'),
+    ('Ej: María', 'Maria'),
+    ('Ej: Pérez Gómez', 'Gomez'),
+  ]) {
+    final field = find.byWidgetPredicate(
+      (widget) => widget is TextField && widget.decoration?.hintText == hint,
+    );
+    await tester.scrollUntilVisible(field, 300, scrollable: scrollable);
+    await tester.enterText(field, value);
+  }
+  FocusManager.instance.primaryFocus?.unfocus();
+  await tester.pumpAndSettle();
+}
 
 void main() {
   late _FakePatientsRepository patientsRepo;
@@ -74,12 +113,14 @@ void main() {
   Widget createTestWidget({
     VoidCallback? onFinished,
     ValueChanged<bool>? onSubmittingChanged,
+    Future<bool> Function(String)? hasReceivedLot,
   }) {
     return MaterialApp(
       home: NuevaAtencionPage(
         user: user,
         controller: controller,
         offline: offline,
+        hasReceivedLot: hasReceivedLot,
         onFinished: onFinished,
         onSubmittingChanged: onSubmittingChanged,
       ),
@@ -157,6 +198,11 @@ void main() {
       await tester.tap(confirmBtn);
       await tester.pumpAndSettle();
 
+      await tester.tap(find.text('Siguiente'));
+      await tester.pumpAndSettle();
+      expect(find.text('Paso 1 de 4'), findsOneWidget);
+      await _selectMinorDocument(tester, '1020304050');
+
       // Tocar Siguiente
       await tester.tap(find.text('Siguiente'));
       await tester.pumpAndSettle();
@@ -232,9 +278,11 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
 
         bool finishedCalled = false;
+        bool hasDelivery = false;
         final submittingEvents = <bool>[];
         await tester.pumpWidget(
           createTestWidget(
+            hasReceivedLot: (_) async => hasDelivery,
             onFinished: () => finishedCalled = true,
             onSubmittingChanged: (val) => submittingEvents.add(val),
           ),
@@ -261,6 +309,7 @@ void main() {
             : find.text('OK');
         await tester.tap(confirmBtn);
         await tester.pumpAndSettle();
+        await _selectMinorDocument(tester, '99887766');
 
         // Siguiente -> Paso 2
         await tester.tap(find.text('Siguiente'));
@@ -277,6 +326,16 @@ void main() {
         await tester.tap(find.text('Primaria').last);
         await tester.pumpAndSettle();
 
+        await tester.tap(find.text('Siguiente'));
+        await tester.pumpAndSettle();
+        expect(find.text('Paso 2 de 4'), findsOneWidget);
+        expect(find.text('Paso 3 de 4'), findsNothing);
+        expect(
+          find.text('Registra el responsable del menor antes de continuar.'),
+          findsOneWidget,
+        );
+
+        await _fillGuardian(tester);
         // Siguiente -> Paso 3
         await tester.tap(find.text('Siguiente'));
         await tester.pumpAndSettle();
@@ -287,6 +346,21 @@ void main() {
           await tester.tap(find.text('Ver todas'));
           await tester.pumpAndSettle();
         }
+        await tester.tap(find.text('BCG'));
+        await tester.pumpAndSettle();
+        expect(find.text('Sin entrega disponible'), findsWidgets);
+        expect(find.text('Única'), findsNothing);
+        expect(find.text('Confirmar esta dosis'), findsNothing);
+        await tester.tap(find.text('Siguiente'));
+        await tester.pumpAndSettle();
+        expect(find.text('Paso 3 de 4'), findsOneWidget);
+        expect(find.text('Paso 4 de 4'), findsNothing);
+
+        hasDelivery = true;
+        await tester.tap(find.text('Anterior'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Siguiente'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('BCG'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Única'));
@@ -345,6 +419,7 @@ void main() {
             : find.text('OK');
         await tester.tap(confirmBtn);
         await tester.pumpAndSettle();
+        await _selectMinorDocument(tester, '11223344');
 
         // Siguiente -> Paso 2
         await tester.tap(find.text('Siguiente'));
@@ -354,6 +429,7 @@ void main() {
         await tester.tap(find.text('Hombre'));
         await tester.pumpAndSettle();
 
+        await _fillGuardian(tester);
         // Siguiente -> Paso 3
         await tester.tap(find.text('Siguiente'));
         await tester.pumpAndSettle();
@@ -384,7 +460,9 @@ void main() {
 
         // Debe bloquear el avance y mostrar advertencia porque la dosis no confirmada fue descartada
         expect(
-          find.text('Debes registrar y confirmar al menos una vacuna antes de continuar.'),
+          find.text(
+            'Debes registrar y confirmar al menos una vacuna antes de continuar.',
+          ),
           findsOneWidget,
         );
         // Debe mantenerse en el Paso 3
@@ -422,6 +500,7 @@ void main() {
             : find.text('OK');
         await tester.tap(confirmBtn);
         await tester.pumpAndSettle();
+        await _selectMinorDocument(tester, '55667788');
 
         // Siguiente -> Paso 2
         await tester.tap(find.text('Siguiente'));
@@ -437,6 +516,7 @@ void main() {
         await tester.tap(find.text('Primaria').last);
         await tester.pumpAndSettle();
 
+        await _fillGuardian(tester);
         // Siguiente -> Paso 3
         await tester.tap(find.text('Siguiente'));
         await tester.pumpAndSettle();
@@ -665,6 +745,12 @@ class _FakeCatalogRepository implements CatalogRepository {
           code: 'CC',
           label: 'Cédula de Ciudadanía',
           sortOrder: 1,
+        ),
+        ReferenceOption(code: 'RC', label: 'Registro Civil', sortOrder: 2),
+        ReferenceOption(
+          code: 'TI',
+          label: 'Tarjeta de Identidad',
+          sortOrder: 3,
         ),
       ],
     ),
