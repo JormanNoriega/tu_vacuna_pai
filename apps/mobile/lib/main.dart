@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'features/inventory/presentation/inventory_controller.dart';
@@ -208,5 +209,7 @@ Future<void> main() async {
     ),
   );
 
-  syncScheduler.start();
+  if (!kIsWeb) {
+    syncScheduler.start();
+  }
 }

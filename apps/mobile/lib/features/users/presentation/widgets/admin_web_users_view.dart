@@ -33,6 +33,8 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedRoleFilter = 'TODOS';
   String _selectedStatusFilter = 'TODOS';
+  int _currentPage = 1;
+  static const int _pageSize = 10;
 
   List<Vaccinator> get _effectiveUsers => widget.controller.users;
 
@@ -61,6 +63,22 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
 
       return true;
     }).toList();
+  }
+
+  int get _totalPages {
+    final count = _filteredUsers.length;
+    if (count == 0) return 1;
+    return (count / _pageSize).ceil();
+  }
+
+  List<Vaccinator> get _pagedUsers {
+    final all = _filteredUsers;
+    if (all.isEmpty) return const [];
+    final page = _currentPage.clamp(1, _totalPages);
+    final startIndex = (page - 1) * _pageSize;
+    final endIndex = (startIndex + _pageSize).clamp(0, all.length);
+    if (startIndex >= all.length) return const [];
+    return all.sublist(startIndex, endIndex);
   }
 
   @override
@@ -545,7 +563,7 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
             width: 380,
             child: TextField(
               controller: _searchController,
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) => setState(() => _currentPage = 1),
               decoration: InputDecoration(
                 hintText: 'Buscar por nombre, documento o correo...',
                 hintStyle: const TextStyle(fontSize: 13, color: AppColors.hint),
@@ -559,7 +577,7 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
                         icon: const Icon(Icons.clear_rounded, size: 18),
                         onPressed: () {
                           _searchController.clear();
-                          setState(() {});
+                          setState(() => _currentPage = 1);
                         },
                       )
                     : null,
@@ -629,7 +647,12 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
                       ),
                     ],
                     onChanged: (val) {
-                      if (val != null) setState(() => _selectedRoleFilter = val);
+                      if (val != null) {
+                        setState(() {
+                          _selectedRoleFilter = val;
+                          _currentPage = 1;
+                        });
+                      }
                     },
                   ),
                 ),
@@ -673,7 +696,12 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
                       ),
                     ],
                     onChanged: (val) {
-                      if (val != null) setState(() => _selectedStatusFilter = val);
+                      if (val != null) {
+                        setState(() {
+                          _selectedStatusFilter = val;
+                          _currentPage = 1;
+                        });
+                      }
                     },
                   ),
                 ),
@@ -690,6 +718,9 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
   // ---------------------------------------------------------------------------
   Widget _buildUsersTableCard(BuildContext context) {
     final filtered = _filteredUsers;
+    final paged = _pagedUsers;
+    final totalPages = _totalPages;
+    final currentPage = _currentPage.clamp(1, totalPages);
 
     return Container(
       decoration: BoxDecoration(
@@ -707,141 +738,48 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Encabezado de la tabla
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
-              border: Border(bottom: BorderSide(color: AppColors.border)),
-            ),
-            child: const Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'Personal / Identificación',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.slate,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'Profesión y Registro Rethus',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.slate,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'Contacto Institucional',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.slate,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Roles PAI',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.slate,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Center(
-                    child: Text(
-                      'Estado',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.slate,
+          // Contenido de la tabla (Encabezado y Filas) con scroll horizontal defensivo
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const minTableWidth = 920.0;
+              final tableContent = Column(
+                children: [
+                  _buildTableHeader(),
+                  if (filtered.isEmpty)
+                    _buildEmptyUsersState()
+                  else
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: paged.length,
+                      separatorBuilder: (_, _) => const Divider(
+                        height: 1,
+                        color: AppColors.border,
                       ),
+                      itemBuilder: (context, index) {
+                        final user = paged[index];
+                        return _buildUserTableRow(context, user);
+                      },
                     ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: SizedBox(
-                      width: 88,
-                      child: Center(
-                        child: Text(
-                          'Acciones',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.slate,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+                ],
+              );
 
-          // Filas de usuarios
-          if (filtered.isEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 48),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.person_search_rounded,
-                      size: 48,
-                      color: AppColors.hint.withValues(alpha: 0.5),
+              if (constraints.maxWidth < minTableWidth) {
+                return Scrollbar(
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: minTableWidth,
+                      child: tableContent,
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'No se encontraron usuarios con los filtros aplicados',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Intenta ajustar el término de búsqueda o cambia los filtros de rol/estado.',
-                      style: TextStyle(fontSize: 12, color: AppColors.slate),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: filtered.length,
-              separatorBuilder: (_, _) => const Divider(
-                height: 1,
-                color: AppColors.border,
-              ),
-              itemBuilder: (context, index) {
-                final user = filtered[index];
-                return _buildUserTableRow(context, user);
-              },
-            ),
+                  ),
+                );
+              }
+
+              return tableContent;
+            },
+          ),
 
           // Pie de tabla con conteo y paginación
           Container(
@@ -849,18 +787,25 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
             decoration: const BoxDecoration(
               border: Border(top: BorderSide(color: AppColors.border)),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 12,
+              runSpacing: 10,
               children: [
                 Text(
-                  'Mostrando ${filtered.length} de ${_effectiveUsers.length} usuarios registrados en la institución',
+                  filtered.isEmpty
+                      ? 'No hay usuarios para mostrar'
+                      : 'Mostrando ${(currentPage - 1) * _pageSize + 1}–${((currentPage - 1) * _pageSize + paged.length)} de ${filtered.length} usuarios (${_effectiveUsers.length} en total)',
                   style: const TextStyle(fontSize: 12, color: AppColors.slate),
                 ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     OutlinedButton(
-                      onPressed: null,
+                      onPressed: currentPage > 1
+                          ? () => setState(() => _currentPage = currentPage - 1)
+                          : null,
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -883,9 +828,9 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
                         color: AppColors.primarySoft,
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Text(
-                        'Página 1',
-                        style: TextStyle(
+                      child: Text(
+                        'Página $currentPage de $totalPages',
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: AppColors.primary,
@@ -894,7 +839,9 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
                     ),
                     const SizedBox(width: 8),
                     OutlinedButton(
-                      onPressed: null,
+                      onPressed: currentPage < totalPages
+                          ? () => setState(() => _currentPage = currentPage + 1)
+                          : null,
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -913,6 +860,129 @@ class _AdminWebUsersViewState extends State<AdminWebUsersView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTableHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: const Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: Text(
+              'Personal / Identificación',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppColors.slate,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              'Profesión y Registro Rethus',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppColors.slate,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              'Contacto Institucional',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppColors.slate,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              'Roles PAI',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppColors.slate,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Center(
+              child: Text(
+                'Estado',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.slate,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(
+                width: 88,
+                child: Center(
+                  child: Text(
+                    'Acciones',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.slate,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyUsersState() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 48),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.person_search_rounded,
+              size: 48,
+              color: AppColors.hint.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'No se encontraron usuarios con los filtros aplicados',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.ink,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Intenta ajustar el término de búsqueda o cambia los filtros de rol/estado.',
+              style: TextStyle(fontSize: 12, color: AppColors.slate),
+            ),
+          ],
+        ),
       ),
     );
   }
