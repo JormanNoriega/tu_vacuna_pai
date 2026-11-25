@@ -18,6 +18,7 @@ class Step3VaccinesStep extends StatefulWidget {
     required this.controller,
     required this.offline,
     this.hasReceivedLot,
+    this.isActive = true,
     required this.attentionDate,
     this.birthDate,
     this.sex,
@@ -34,6 +35,7 @@ class Step3VaccinesStep extends StatefulWidget {
   final AttentionController controller;
   final OfflineAccess offline;
   final Future<bool> Function(String vaccineId)? hasReceivedLot;
+  final bool isActive;
   final DateTime attentionDate;
   final DateTime? birthDate;
   final String? sex;
@@ -56,6 +58,49 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
   String? _activeDoseKey;
   bool _showAllVaccines = false;
   bool _isConfirmingDose = false;
+  final Map<String, bool?> _receiptStatus = {};
+  int _receiptGeneration = 0;
+
+  void _loadReceiptStatuses({bool force = false}) {
+    final check = widget.hasReceivedLot;
+    if (!widget.isActive || check == null) return;
+    final ids = widget.controller.effectiveVaccines
+        .map((vaccine) => vaccine.vaccineId)
+        .where((id) => force || !_receiptStatus.containsKey(id))
+        .toSet();
+    if (ids.isEmpty) return;
+    final generation = _receiptGeneration;
+    for (final id in ids) {
+      _receiptStatus[id] = null;
+      check(id)
+          .then((received) {
+            if (!mounted || generation != _receiptGeneration) return;
+            setState(() => _receiptStatus[id] = received);
+          })
+          .catchError((Object _) {
+            if (!mounted || generation != _receiptGeneration) return;
+            setState(() => _receiptStatus.remove(id));
+          });
+    }
+  }
+
+  void _retryReceiptStatuses() {
+    setState(() {
+      _receiptGeneration++;
+      _receiptStatus.clear();
+      _loadReceiptStatuses();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant Step3VaccinesStep oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      _receiptGeneration++;
+      _receiptStatus.clear();
+      _loadReceiptStatuses();
+    }
+  }
 
   PatientEligibilityContext _buildPatientContext() {
     final hasSpecialCondition =
@@ -102,10 +147,11 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
     if (!widget.controller.effectiveCatalogLoaded) {
       widget.controller.loadEffectiveCatalog();
     }
+    _loadReceiptStatuses();
   }
 
   void _onControllerChanged() {
-    if (mounted) setState(() {});
+    if (mounted) setState(() => _loadReceiptStatuses());
   }
 
   @override
@@ -134,6 +180,7 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
     if (check == null) return true;
     try {
       final received = await check(vaccine.vaccineId);
+      if (mounted) setState(() => _receiptStatus[vaccine.vaccineId] = received);
       if (!received && mounted) {
         AppSnackbar.warning(
           context,
@@ -492,7 +539,12 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
   }
 
   Widget _buildVaccineCard(EffectiveVaccine vaccine) {
-    final isExpanded = _expandedVaccines.contains(vaccine.vaccineId);
+    final checking = widget.hasReceivedLot != null;
+    final known = _receiptStatus.containsKey(vaccine.vaccineId);
+    final receipt = _receiptStatus[vaccine.vaccineId];
+    final canExpand = !checking || receipt == true;
+    final isExpanded =
+        canExpand && _expandedVaccines.contains(vaccine.vaccineId);
     final hasStagedDoses = widget.stagedDoses.values.any(
       (d) => d.vaccineId == vaccine.vaccineId && d.isCompleted,
     );
@@ -500,15 +552,23 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: checking && !canExpand
+            ? const Color(0xFFF8FAFC)
+            : AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: hasStagedDoses ? AppColors.primary : AppColors.border,
+          color: hasStagedDoses
+              ? AppColors.primary
+              : checking && !canExpand
+              ? const Color(0xFFE2E8F0)
+              : AppColors.border,
           width: hasStagedDoses ? 1.5 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withValues(
+              alpha: checking && !canExpand ? 0.01 : 0.03,
+            ),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -518,15 +578,22 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
         children: [
           // Header Tappeable
           InkWell(
-            onTap: () {
-              setState(() {
-                if (isExpanded) {
-                  _expandedVaccines.remove(vaccine.vaccineId);
-                } else {
-                  _expandedVaccines.add(vaccine.vaccineId);
-                }
-              });
-            },
+            onTap: !canExpand
+                ? () {
+                    AppSnackbar.warning(
+                      context,
+                      '${vaccine.name}: sin existencias disponibles asignadas. Solicita una entrega al administrador.',
+                    );
+                  }
+                : () {
+                    setState(() {
+                      if (isExpanded) {
+                        _expandedVaccines.remove(vaccine.vaccineId);
+                      } else {
+                        _expandedVaccines.add(vaccine.vaccineId);
+                      }
+                    });
+                  },
             borderRadius: BorderRadius.circular(12),
             child: Padding(
               padding: const EdgeInsets.all(14),
@@ -537,7 +604,9 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
+                      color: !canExpand
+                          ? const Color(0xFFE2E8F0)
+                          : AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Center(
@@ -545,10 +614,12 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
                         vaccine.name.isNotEmpty
                             ? vaccine.name[0].toUpperCase()
                             : 'V',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 20,
-                          color: AppColors.primary,
+                          color: !canExpand
+                              ? const Color(0xFF64748B)
+                              : AppColors.primary,
                         ),
                       ),
                     ),
@@ -562,8 +633,10 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
                       children: [
                         Text(
                           vaccine.name,
-                          style: const TextStyle(
-                            color: AppColors.ink,
+                          style: TextStyle(
+                            color: !canExpand
+                                ? const Color(0xFF334155)
+                                : AppColors.ink,
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
                           ),
@@ -576,18 +649,168 @@ class _Step3VaccinesStepState extends State<Step3VaccinesStep>
                             fontSize: 12.5,
                           ),
                         ),
+                        if (checking) ...[
+                          if (!known) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.error_outline_rounded,
+                                  size: 13,
+                                  color: AppColors.danger,
+                                ),
+                                const SizedBox(width: 5),
+                                const Text(
+                                  'No se pudo verificar el inventario',
+                                  style: TextStyle(
+                                    color: AppColors.danger,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                InkWell(
+                                  onTap: _retryReceiptStatuses,
+                                  child: const Text(
+                                    'Reintentar',
+                                    style: TextStyle(
+                                      color: AppColors.primary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ] else if (receipt == null) ...[
+                            const SizedBox(height: 6),
+                            const Row(
+                              children: [
+                                SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Consultando inventario…',
+                                  style: TextStyle(
+                                    color: AppColors.slate,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ] else if (receipt == true) ...[
+                            const SizedBox(height: 6),
+                            const Row(
+                              children: [
+                                Icon(
+                                  Icons.check_circle_rounded,
+                                  size: 13,
+                                  color: AppColors.success,
+                                ),
+                                SizedBox(width: 5),
+                                Text(
+                                  'Entrega recibida · Toca para ver dosis',
+                                  style: TextStyle(
+                                    color: AppColors.slate,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ] else ...[
+                            // Sin entrega disponible - Badge destacado
+                            Container(
+                              margin: const EdgeInsets.only(top: 6, bottom: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFFBEB),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: const Color(0xFFFDE68A),
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.inventory_2_outlined,
+                                    size: 13,
+                                    color: Color(0xFFB45309),
+                                  ),
+                                  SizedBox(width: 5),
+                                  Text(
+                                    'Sin entrega disponible',
+                                    style: TextStyle(
+                                      color: Color(0xFFB45309),
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline_rounded,
+                                  size: 12.5,
+                                  color: AppColors.slate,
+                                ),
+                                SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    'Solicita existencias al administrador.',
+                                    style: TextStyle(
+                                      color: AppColors.slate,
+                                      fontSize: 11.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
                       ],
                     ),
                   ),
 
-                  // Icono expansión
-                  Icon(
-                    isExpanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
-                    color: AppColors.slate,
-                    size: 24,
-                  ),
+                  // Indicador Trailing: Ícono de inventario para agotado, flecha para activo
+                  if (!canExpand)
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFBEB),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFFDE68A)),
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.inventory_2_outlined,
+                          color: Color(0xFFD97706),
+                          size: 18,
+                        ),
+                      ),
+                    )
+                  else
+                    Icon(
+                      isExpanded
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      color: isExpanded ? AppColors.primary : AppColors.slate,
+                      size: 24,
+                    ),
                 ],
               ),
             ),

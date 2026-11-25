@@ -359,8 +359,9 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
         );
         return;
       }
-      if (!await _validateReceivedLots() || !mounted || _currentStep != 2)
+      if (!await _validateReceivedLots() || !mounted || _currentStep != 2) {
         return;
+      }
       _goToStep(3);
       return;
     }
@@ -951,6 +952,7 @@ class _NuevaAtencionPageState extends State<NuevaAtencionPage> {
 
                   // Paso 3
                   Step3VaccinesStep(
+                    isActive: _currentStep == 2,
                     hasReceivedLot: _onlineReceiptCheck,
                     controller: widget.controller,
                     offline: widget.offline,

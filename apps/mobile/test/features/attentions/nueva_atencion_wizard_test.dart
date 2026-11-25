@@ -348,9 +348,8 @@ void main() {
         }
         await tester.tap(find.text('BCG'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Única'));
-        await tester.pumpAndSettle();
-        expect(find.text('BCG: sin stock asignado vigente.'), findsOneWidget);
+        expect(find.text('Sin entrega disponible'), findsWidgets);
+        expect(find.text('Única'), findsNothing);
         expect(find.text('Confirmar esta dosis'), findsNothing);
         await tester.tap(find.text('Siguiente'));
         await tester.pumpAndSettle();
@@ -358,6 +357,12 @@ void main() {
         expect(find.text('Paso 4 de 4'), findsNothing);
 
         hasDelivery = true;
+        await tester.tap(find.text('Anterior'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Siguiente'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('BCG'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Única'));
         await tester.pumpAndSettle();
         await tester.enterText(
