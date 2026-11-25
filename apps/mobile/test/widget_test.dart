@@ -160,11 +160,14 @@ void main() {
       findsOneWidget,
     );
     await tester.tap(
-      find.descendant(of: navBar, matching: find.text('Entregas')),
+      find.descendant(of: navBar, matching: find.text('Entregas y jornadas')),
     );
     await tester.pumpAndSettle();
     expect(
-      find.descendant(of: find.byType(AppBar), matching: find.text('Entregas')),
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.text('Entregas y jornadas'),
+      ),
       findsOneWidget,
     );
     expect(find.text('Entregas no disponibles.'), findsOneWidget);

@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -110,23 +110,34 @@ class ExportReportController extends AsyncController {
         return false;
       }
 
-      final tempDir = await getTemporaryDirectory();
       final fromStr =
           '${_startDate.year}${_startDate.month.toString().padLeft(2, '0')}${_startDate.day.toString().padLeft(2, '0')}';
       final toStr =
           '${_endDate.year}${_endDate.month.toString().padLeft(2, '0')}${_endDate.day.toString().padLeft(2, '0')}';
       final filename = 'registro-diario-$fromStr-$toStr.$format';
-      final file = File('${tempDir.path}/$filename');
-      await file.writeAsBytes(fileBytes);
 
       final isCsv = format.toLowerCase() == 'csv';
       final mimeType = isCsv
           ? 'text/csv'
           : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
+      final XFile xfile;
+      if (kIsWeb) {
+        xfile = XFile.fromData(
+          fileBytes,
+          mimeType: mimeType,
+          name: filename,
+        );
+      } else {
+        final tempDir = await getTemporaryDirectory();
+        final file = File('${tempDir.path}/$filename');
+        await file.writeAsBytes(fileBytes);
+        xfile = XFile(file.path, mimeType: mimeType, name: filename);
+      }
+
       await SharePlus.instance.share(
         ShareParams(
-          files: [XFile(file.path, mimeType: mimeType)],
+          files: [xfile],
           subject: 'Reporte Registro Diario PAI ($fromStr a $toStr)',
         ),
       );

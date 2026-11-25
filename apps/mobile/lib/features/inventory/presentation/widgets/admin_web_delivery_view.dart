@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../../core/utils/uuid.dart';
 import '../campaign_detail_page.dart';
 import '../custody_event_form_page.dart';
 import '../delivery_detail_page.dart';
@@ -66,149 +67,15 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
   List<Map<String, dynamic>> _apiCustodyEvents = [];
 
   // ---------------------------------------------------------------------------
-  // Datos muestra y simulación interactiva
+  // Getters conectados directamente a la API
   // ---------------------------------------------------------------------------
-  static const Map<String, String> _sampleVaccinators = {
-    'vac-01': 'Enf. Carlos Méndez (Jefe de Vacunación)',
-    'vac-02': 'Aux. Laura Restrepo (Auxiliar PAI)',
-    'vac-03': 'Enf. Andrea Gómez (Enfermera Asistencial)',
-    'vac-04': 'Aux. Mateo Beltrán (Brigada Extramural)',
-  };
+  List<Map<String, dynamic>> get _effectiveAssignments => _apiAssignments;
 
-  late final List<Map<String, dynamic>> _localAssignments = [
-    {
-      'id': 'ENT-001',
-      'vaccineName': 'Pentavalente (DTP-HB-Hib)',
-      'lotNumber': 'PT-2026-X8',
-      'vialCount': 30,
-      'doseCount': 30,
-      'status': 'IN_TRANSIT',
-      'deliveredAt': '2026-11-22T08:30:00Z',
-      'vaccinatorId': 'vac-01',
-      'campaignId': null,
-      'campaignName': null,
-      'notes': 'Entrega matutina para puesto de vacunación intramural sala 1.',
-    },
-    {
-      'id': 'ENT-002',
-      'vaccineName': 'Influenza Estacional Pediátrica',
-      'lotNumber': 'INF-2026-B12',
-      'vialCount': 45,
-      'doseCount': 45,
-      'status': 'RECEIVED',
-      'deliveredAt': '2026-11-22T08:45:00Z',
-      'vaccinatorId': 'vac-02',
-      'campaignId': 'CMP-01',
-      'campaignName': 'Jornada Extramural Vereda La Cabaña',
-      'notes': 'Termo Coleman #3 verificado a 3.8°C.',
-    },
-    {
-      'id': 'ENT-003',
-      'vaccineName': 'Polio Inyectable (VIP)',
-      'lotNumber': 'VIP-994-COL',
-      'vialCount': 25,
-      'doseCount': 50,
-      'status': 'PARTIALLY_RECEIVED',
-      'deliveredAt': '2026-11-21T14:15:00Z',
-      'vaccinatorId': 'vac-03',
-      'campaignId': null,
-      'campaignName': null,
-      'notes': 'Diferencia física reportada: 2 frascos faltantes en recepción.',
-    },
-    {
-      'id': 'ENT-004',
-      'vaccineName': 'Triple Viral (SRP)',
-      'lotNumber': 'SRP-2026-04',
-      'vialCount': 20,
-      'doseCount': 20,
-      'status': 'RECEIVED',
-      'deliveredAt': '2026-11-22T09:10:00Z',
-      'vaccinatorId': 'vac-04',
-      'campaignId': 'CMP-02',
-      'campaignName': 'Vacunación Escolar Colegio Integrado',
-      'notes': 'Brigada escolar primaria jornada matutina.',
-    },
-    {
-      'id': 'ENT-005',
-      'vaccineName': 'Fiebre Amarilla (FA)',
-      'lotNumber': 'FA-2025-99',
-      'vialCount': 15,
-      'doseCount': 75,
-      'status': 'CLOSED_WITH_DIFFERENCE',
-      'deliveredAt': '2026-11-20T11:00:00Z',
-      'vaccinatorId': 'vac-01',
-      'campaignId': null,
-      'campaignName': null,
-      'notes': 'Acta conciliada: 1 frasco descartado por rotura accidental.',
-    },
-  ];
+  List<Map<String, dynamic>> get _effectiveCampaigns => _apiCampaigns;
 
-  late final List<Map<String, dynamic>> _localCampaigns = [
-    {
-      'id': 'CMP-01',
-      'name': 'Jornada Extramural Vereda La Cabaña',
-      'status': 'ACTIVE',
-      'startsOn': '2026-11-20',
-      'endsOn': '2026-11-24',
-      'notes': 'Atención prioritaria a menores de 5 años y adultos mayores en zona rural dispersa.',
-    },
-    {
-      'id': 'CMP-02',
-      'name': 'Vacunación Escolar Colegio Integrado',
-      'status': 'ACTIVE',
-      'startsOn': '2026-11-22',
-      'endsOn': '2026-11-25',
-      'notes': 'Esquema VPH niñas 9-17 años y refuerzo de SRP a niños de 5 años.',
-    },
-    {
-      'id': 'CMP-03',
-      'name': 'Semana Andina de Vacunación - Parque Central',
-      'status': 'COMPLETED',
-      'startsOn': '2026-11-01',
-      'endsOn': '2026-11-07',
-      'notes': 'Puesto masivo de vacunación comunitaria completado con éxito.',
-    },
-  ];
+  List<Map<String, dynamic>> get _effectiveCustodyEvents => _apiCustodyEvents;
 
-  late final List<Map<String, dynamic>> _localCustodyEvents = [
-    {
-      'id': 'EVT-01',
-      'assignmentId': 'ENT-001',
-      'eventType': 'DESPACHO',
-      'createdAt': '2026-11-22T08:30:00Z',
-      'note': 'Salida de almacén institucional en termo #2 con 4 paquetes fríos.',
-    },
-    {
-      'id': 'EVT-02',
-      'assignmentId': 'ENT-002',
-      'eventType': 'RECEPCION',
-      'createdAt': '2026-11-22T09:00:00Z',
-      'note': 'Recibido por Aux. Laura Restrepo. Temperatura registrada: 3.8°C.',
-    },
-    {
-      'id': 'EVT-03',
-      'assignmentId': 'ENT-003',
-      'eventType': 'MERMA_REPORTADA',
-      'createdAt': '2026-11-21T15:20:00Z',
-      'note': 'Rotura accidental de 1 frasco durante desembalaje en mesa clínica.',
-    },
-  ];
-
-  // Getters con fallback inteligente
-  List<Map<String, dynamic>> get _effectiveAssignments =>
-      _apiAssignments.isNotEmpty ? _apiAssignments : _localAssignments;
-
-  List<Map<String, dynamic>> get _effectiveCampaigns =>
-      _apiCampaigns.isNotEmpty ? _apiCampaigns : _localCampaigns;
-
-  List<Map<String, dynamic>> get _effectiveCustodyEvents =>
-      _apiCustodyEvents.isNotEmpty ? _apiCustodyEvents : _localCustodyEvents;
-
-  Map<String, String> get _effectiveVaccinatorNames {
-    final map = Map<String, String>.from(_sampleVaccinators);
-    map.addAll(_apiVaccinatorNames);
-    return map;
-  }
+  Map<String, String> get _effectiveVaccinatorNames => _apiVaccinatorNames;
 
   @override
   void initState() {
@@ -294,87 +161,180 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
   }
 
   // ---------------------------------------------------------------------------
-  // Acciones y Diálogos Interactivos de Simulación
+  // Acciones y Diálogos Conectados al Backend
   // ---------------------------------------------------------------------------
-  void _handleNewDelivery({Map<String, dynamic>? campaign}) {
+  Future<void> _handleNewDelivery({Map<String, dynamic>? campaign}) async {
     showDialog(
       context: context,
       builder: (ctx) => _NewDeliveryDialog(
         vaccinators: _effectiveVaccinatorNames,
         campaigns: _effectiveCampaigns,
         defaultCampaign: campaign,
-        onSubmit: (newAssignment) {
-          setState(() {
-            _localAssignments.insert(0, newAssignment);
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: AppColors.success,
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle_rounded, color: Colors.white),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Entrega #${newAssignment['id']} despachada exitosamente a ${newAssignment['vaccinatorName']}.',
-                  ),
-                ],
+        onSubmit: (newAssignment) async {
+          final lotId = newAssignment['lotId'] ??
+              (widget.controller.lots.isNotEmpty
+                  ? widget.controller.lots.first['id'] as String?
+                  : null);
+
+          if (lotId == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                backgroundColor: AppColors.warning,
+                content: Text(
+                  'No hay lotes con saldo en el depósito. Registra una entrada de stock primero.',
+                ),
               ),
-            ),
+            );
+            return;
+          }
+
+          final assignmentId = uuidV4();
+          final movementId = uuidV4();
+          final ok = await widget.controller.post(
+            widget.institutionId,
+            'assignments',
+            {
+              'movementId': movementId,
+              'assignmentId': assignmentId,
+              'lotId': lotId,
+              'vaccinatorId': newAssignment['vaccinatorId'],
+              'vials': newAssignment['vialCount'],
+              'occurredAt': DateTime.now().toUtc().toIso8601String(),
+              'note': newAssignment['notes'] ?? 'Despacho institucional',
+              if (newAssignment['campaignId'] != null)
+                'campaignId': newAssignment['campaignId'],
+            },
           );
+
+          if (!mounted) return;
+          if (ok) {
+            await _loadData();
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: AppColors.success,
+                content: Row(
+                  children: [
+                    const Icon(Icons.check_circle_rounded, color: Colors.white),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Entrega despachada exitosamente a ${newAssignment['vaccinatorName']}.',
+                    ),
+                  ],
+                ),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: AppColors.danger,
+                content: Text(
+                  widget.controller.error ?? 'Error al despachar la entrega.',
+                ),
+              ),
+            );
+          }
         },
       ),
     );
   }
 
-  void _handleNewCampaign() {
+  Future<void> _handleNewCampaign() async {
     showDialog(
       context: context,
       builder: (ctx) => _NewCampaignDialog(
-        onSubmit: (newCampaign) {
-          setState(() {
-            _localCampaigns.insert(0, newCampaign);
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: AppColors.success,
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle_rounded, color: Colors.white),
-                  const SizedBox(width: 10),
-                  Text('Jornada "${newCampaign['name']}" organizada con éxito.'),
-                ],
-              ),
-            ),
+        onSubmit: (newCampaign) async {
+          final campaignId = uuidV4();
+          final ok = await widget.controller.post(
+            widget.institutionId,
+            'campaigns',
+            {
+              'id': campaignId,
+              'name': newCampaign['name'],
+              'location': newCampaign['location'] ?? 'Sede Central',
+              'startsOn': newCampaign['startsOn'] ??
+                  DateTime.now().toIso8601String().substring(0, 10),
+              'endsOn': newCampaign['endsOn'] ??
+                  DateTime.now().add(const Duration(days: 1)).toIso8601String().substring(0, 10),
+            },
           );
+
+          if (!mounted) return;
+          if (ok) {
+            await _loadData();
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: AppColors.success,
+                content: Row(
+                  children: [
+                    const Icon(Icons.check_circle_rounded, color: Colors.white),
+                    const SizedBox(width: 10),
+                    Text('Jornada "${newCampaign['name']}" guardada con éxito en el servidor.'),
+                  ],
+                ),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: AppColors.danger,
+                content: Text(
+                  widget.controller.error ?? 'Error al guardar la jornada en el servidor.',
+                ),
+              ),
+            );
+          }
         },
       ),
     );
   }
 
-  void _handleResolveConciliation(Map<String, dynamic> assignment) {
+  Future<void> _handleResolveConciliation(Map<String, dynamic> assignment) async {
     showDialog(
       context: context,
       builder: (ctx) => _ConciliationResolutionDialog(
         assignment: assignment,
         vaccinatorName: _effectiveVaccinatorNames[assignment['vaccinatorId']] ??
             'Vacunador ${assignment['vaccinatorId']}',
-        onResolved: (reason, notes) {
-          setState(() {
-            assignment['status'] = 'CLOSED_WITH_DIFFERENCE';
-            assignment['notes'] = '$reason · $notes';
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              backgroundColor: AppColors.success,
-              content: Row(
-                children: [
-                  Icon(Icons.verified_rounded, color: Colors.white),
-                  SizedBox(width: 10),
-                  Text('Acta de conciliación formalizada con éxito. Entrega cerrada sin pendientes.'),
-                ],
-              ),
-            ),
+        onResolved: (reason, notes) async {
+          final assignmentId = assignment['id'] as String;
+          final ok = await widget.controller.post(
+            widget.institutionId,
+            'assignments/$assignmentId/difference-resolutions',
+            {
+              'id': uuidV4(),
+              'kind': reason,
+              'vials': 1,
+              'note': notes,
+            },
           );
+          if (!mounted) return;
+          if (ok) {
+            await _loadData();
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                backgroundColor: AppColors.success,
+                content: Row(
+                  children: [
+                    Icon(Icons.verified_rounded, color: Colors.white),
+                    SizedBox(width: 10),
+                    Text('Acta de conciliación formalizada con éxito en el servidor.'),
+                  ],
+                ),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: AppColors.danger,
+                content: Text(
+                  widget.controller.error ?? 'No se pudo registrar la resolución en el servidor.',
+                ),
+              ),
+            );
+          }
         },
       ),
     );
@@ -490,14 +450,21 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
   // 1. Cabecera
   // ---------------------------------------------------------------------------
   Widget _buildHeader(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 16,
+      runSpacing: 14,
       children: [
-        Expanded(
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 620),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 10,
+                runSpacing: 6,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -529,7 +496,6 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 10),
                   const Text(
                     'Cadena de Frío y Custodia Oficial',
                     style: TextStyle(
@@ -561,7 +527,6 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
             ],
           ),
         ),
-        const SizedBox(width: 16),
         // Botones de acción principales
         Wrap(
           spacing: 10,
@@ -676,6 +641,17 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
             color: pendingConciliation > 0 ? const Color(0xFFF59E0B) : AppColors.slate,
           ),
         ];
+
+        if (constraints.maxWidth < 650) {
+          return Column(
+            children: [
+              for (int i = 0; i < cards.length; i++) ...[
+                if (i > 0) const SizedBox(height: 12),
+                cards[i],
+              ],
+            ],
+          );
+        }
 
         if (isCompact) {
           return Column(
@@ -1002,15 +978,9 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: Table(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        Widget tableContent = Table(
           columnWidths: const {
             0: FlexColumnWidth(2.5), // Vacunador
             1: FlexColumnWidth(2.5), // Biológico & Lote
@@ -1043,8 +1013,33 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
               _buildDeliveryRow(filtered[i], isEven: i.isEven),
             ],
           ],
-        ),
-      ),
+        );
+
+        if (constraints.maxWidth < 900) {
+          tableContent = Scrollbar(
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: 900,
+                child: tableContent,
+              ),
+            ),
+          );
+        }
+
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: tableContent,
+          ),
+        );
+      },
     );
   }
 
@@ -2157,7 +2152,7 @@ class _NewDeliveryDialogState extends State<_NewDeliveryDialog> {
                         );
 
                         final newAssignment = {
-                          'id': 'ENT-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+                          'id': uuidV4(),
                           'vaccineName': _selectedVaccine,
                           'lotNumber': _lotController.text.trim().toUpperCase(),
                           'vialCount': vials,
@@ -2384,8 +2379,9 @@ class _NewCampaignDialogState extends State<_NewCampaignDialog> {
                       onPressed: () {
                         if (!_formKey.currentState!.validate()) return;
                         final newCamp = {
-                          'id': 'CMP-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+                          'id': uuidV4(),
                           'name': _nameController.text.trim(),
+                          'location': _locationController.text.trim(),
                           'status': 'ACTIVE',
                           'startsOn': _startDate.toIso8601String().substring(0, 10),
                           'endsOn': _endDate.toIso8601String().substring(0, 10),

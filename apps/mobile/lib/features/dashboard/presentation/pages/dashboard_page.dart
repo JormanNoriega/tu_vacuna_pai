@@ -639,6 +639,9 @@ class _DashboardPageState extends State<DashboardPage> {
         vaccinatorId: _canPerformAttentions ? widget.user.id : null,
       );
     }
+    if (widget.user.hasRole('ADMIN_INSTITUTION') || widget.user.hasRole('SUPER_ADMIN')) {
+      widget.usersController?.loadUsers(institutionId: widget.user.institution.id);
+    }
   }
 
   void _openCatalog() {
@@ -689,6 +692,9 @@ class _DashboardPageState extends State<DashboardPage> {
                   onRefresh: () async => _reloadMetrics(),
                   metricsController: widget.metricsController,
                   syncStatusController: widget.syncStatusController,
+                  usersController: widget.usersController,
+                  historyController: widget.historyController,
+                  exportReportController: widget.exportReportController,
                 )
               : _buildContent());
 
