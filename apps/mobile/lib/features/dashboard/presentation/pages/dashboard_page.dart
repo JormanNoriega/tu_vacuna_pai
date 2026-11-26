@@ -112,6 +112,7 @@ class _DashboardPageState extends State<DashboardPage> {
   bool _isAttentionSubmitting = false;
   String? _inventorySubAction;
   String? _deliverySubAction;
+  int _deliveryInitialTab = 0;
   String? _historySubAction;
   String? _desktopCustomSection;
 
@@ -195,7 +196,7 @@ class _DashboardPageState extends State<DashboardPage> {
               selectedIcon: _showsDeliveries
                   ? Icons.local_shipping
                   : Icons.medication_liquid,
-              label: _showsDeliveries ? 'Entregas y jornadas' : 'Recibidos',
+              label: _showsDeliveries ? 'Entregas' : 'Recibidos',
               requiredPermissions: const ['INVENTORY_READ', 'ATTENTION_CREATE'],
               isDeliveryTab: true,
             ),
@@ -357,6 +358,7 @@ class _DashboardPageState extends State<DashboardPage> {
             widget.sessionStatus == SessionStatus.signedIn &&
             _liveReason != OfflineReason.noNetwork,
         embedded: true,
+        initialTab: _deliveryInitialTab,
         initialSubAction: _deliverySubAction,
         onSubActionHandled: () => _deliverySubAction = null,
       );
@@ -472,20 +474,14 @@ class _DashboardPageState extends State<DashboardPage> {
         );
         return;
       }
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => InventoryPage(
-            controller: widget.inventoryController!,
-            institutionId: widget.user.institution.id,
-            admin: true,
-            canWrite: widget.user.hasPermission('INVENTORY_WRITE'),
-            online:
-                widget.sessionStatus == SessionStatus.signedIn &&
-                _liveReason != OfflineReason.noNetwork,
-            initialTab: label == 'Jornadas' ? 1 : 0,
-          ),
-        ),
+      final index = _destinations.indexWhere(
+        (destination) => destination.isDeliveryTab,
       );
+      if (index < 0) return;
+      setState(() {
+        _deliveryInitialTab = label == 'Jornadas' ? 1 : 0;
+        _selectedIndex = index;
+      });
       return;
     }
     final index = _destinations.indexWhere(
@@ -639,8 +635,11 @@ class _DashboardPageState extends State<DashboardPage> {
         vaccinatorId: _canPerformAttentions ? widget.user.id : null,
       );
     }
-    if (widget.user.hasRole('ADMIN_INSTITUTION') || widget.user.hasRole('SUPER_ADMIN')) {
-      widget.usersController?.loadUsers(institutionId: widget.user.institution.id);
+    if (widget.user.hasRole('ADMIN_INSTITUTION') ||
+        widget.user.hasRole('SUPER_ADMIN')) {
+      widget.usersController?.loadUsers(
+        institutionId: widget.user.institution.id,
+      );
     }
   }
 
