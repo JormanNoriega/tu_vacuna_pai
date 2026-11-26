@@ -57,13 +57,22 @@ spring:
 # --- Edge Functions de Supabase (aprovisionamiento de identidad) ---
 app:
   auth-functions-url: ${AUTH_FUNCTIONS_URL:https://jfxkrznzhfvecaaixkjv.supabase.co/functions/v1}
-  # Inventario online requiere habilitacion deliberada en el despliegue.
-  # Las superficies experimentales permanecen apagadas aun si se habilita la API base.
+  # Funcionalidades disponibles por defecto; conservan sus permisos y controles.
   inventory:
-    api-enabled: ${APP_INVENTORY_API_ENABLED:true}
-    custody-workflow-enabled: ${APP_INVENTORY_CUSTODY_WORKFLOW_ENABLED:true}
-    reservations-enabled: ${APP_INVENTORY_RESERVATIONS_ENABLED:true}
-    installation-keys-enabled: ${APP_INVENTORY_INSTALLATION_KEYS_ENABLED:true}
+    api-enabled: true
+    custody-workflow-enabled: true
+    reservations-enabled: true
+    installation-keys-enabled: true
+
+  # La politica de privacidad geografica sigue pendiente para datos de produccion.
+  geography:
+    enabled: true
+    cell-size-degrees: ${APP_GEOGRAPHY_CELL_SIZE_DEGREES:0.018}
+    minimum-attentions: ${APP_GEOGRAPHY_MINIMUM_ATTENTIONS:5}
+    allowed-periods: ${APP_GEOGRAPHY_ALLOWED_PERIODS:7,30,90}
+    default-period: ${APP_GEOGRAPHY_DEFAULT_PERIOD:30}
+    cache-ttl: 30m
+    cache-maximum-size: 500
 
 server:
   port: ${SERVER_PORT:8080}

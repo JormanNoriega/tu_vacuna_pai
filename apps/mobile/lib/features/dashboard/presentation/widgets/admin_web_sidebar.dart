@@ -50,6 +50,7 @@ class AdminWebSidebar extends StatefulWidget {
     required this.institutionName,
     this.roleName = 'ADMINISTRADOR',
     this.isSuperAdmin = false,
+    this.showGeography = false,
   });
 
   final String selectedSection;
@@ -60,6 +61,7 @@ class AdminWebSidebar extends StatefulWidget {
   final String institutionName;
   final String roleName;
   final bool isSuperAdmin;
+  final bool showGeography;
 
   @override
   State<AdminWebSidebar> createState() => _AdminWebSidebarState();
@@ -129,14 +131,14 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
       ];
     }
 
-    return const [
-      AdminSidebarItem(
+    return [
+      const AdminSidebarItem(
         id: 'inicio',
         label: 'Inicio',
         icon: Icons.space_dashboard_outlined,
         selectedIcon: Icons.space_dashboard_rounded,
       ),
-      AdminSidebarItem(
+      const AdminSidebarItem(
         id: 'inventario',
         label: 'Inventario',
         icon: Icons.inventory_2_outlined,
@@ -159,7 +161,7 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
           ),
         ],
       ),
-      AdminSidebarItem(
+      const AdminSidebarItem(
         id: 'entregas',
         label: 'Entregas y Custodia',
         icon: Icons.local_shipping_outlined,
@@ -187,7 +189,7 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
           ),
         ],
       ),
-      AdminSidebarItem(
+      const AdminSidebarItem(
         id: 'historial',
         label: 'Historial Clínico',
         icon: Icons.history_rounded,
@@ -205,7 +207,7 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
           ),
         ],
       ),
-      AdminSidebarItem(
+      const AdminSidebarItem(
         id: 'estadisticas',
         label: 'Estadísticas',
         icon: Icons.analytics_outlined,
@@ -223,7 +225,14 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
           ),
         ],
       ),
-      AdminSidebarItem(
+      if (widget.showGeography)
+        const AdminSidebarItem(
+          id: 'geografia',
+          label: 'Visor geográfico',
+          icon: Icons.map_outlined,
+          selectedIcon: Icons.map,
+        ),
+      const AdminSidebarItem(
         id: 'administracion',
         label: 'Administración',
         icon: Icons.admin_panel_settings_outlined,
@@ -276,7 +285,9 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
               boxShadow: [
                 if (_animation.value > 0.05)
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06 * _animation.value),
+                    color: Colors.black.withValues(
+                      alpha: 0.06 * _animation.value,
+                    ),
                     blurRadius: 16,
                     offset: const Offset(4, 0),
                   ),
@@ -433,9 +444,12 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
                               item.label,
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight:
-                                    isSelected ? FontWeight.bold : FontWeight.w500,
-                                color: isSelected ? AppColors.primary : AppColors.ink,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.ink,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -448,7 +462,9 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
                                     ? Icons.keyboard_arrow_down_rounded
                                     : Icons.keyboard_arrow_right_rounded,
                                 size: 20,
-                                color: isSelected ? AppColors.primary : AppColors.hint,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.hint,
                               ),
                               padding: const EdgeInsets.only(right: 8),
                               constraints: const BoxConstraints(),
@@ -471,7 +487,12 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
             child: SizeTransition(
               sizeFactor: _animation,
               child: Padding(
-                padding: const EdgeInsets.only(left: 60, top: 2, bottom: 4, right: 12),
+                padding: const EdgeInsets.only(
+                  left: 60,
+                  top: 2,
+                  bottom: 4,
+                  right: 12,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

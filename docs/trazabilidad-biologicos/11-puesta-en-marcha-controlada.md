@@ -1,5 +1,10 @@
 # Puesta en marcha controlada: inventario en línea
 
+> **Actualización de configuración:** las funciones de inventario están habilitadas
+> por defecto en `application.yml`; las indicaciones históricas de este documento
+> sobre habilitarlas mediante variables ya no describen el valor predeterminado.
+> Las limitaciones de seguridad y validación señaladas siguen siendo relevantes.
+
 ## Estado
 
 ### Integración local de vistas de lectura

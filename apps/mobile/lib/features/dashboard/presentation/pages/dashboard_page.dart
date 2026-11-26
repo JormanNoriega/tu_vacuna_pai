@@ -38,6 +38,8 @@ import '../../../reports/presentation/pages/export_report_page.dart';
 import '../widgets/admin_web_dashboard_view.dart';
 import '../widgets/admin_web_sidebar.dart';
 import '../widgets/admin_web_statistics_real_view.dart';
+import '../../../geography/geography_controller.dart';
+import '../../../geography/geography_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
@@ -57,6 +59,7 @@ class DashboardPage extends StatefulWidget {
     this.metricsController,
     this.statisticsController,
     this.exportReportController,
+    this.geographyController,
     super.key,
   });
 
@@ -105,6 +108,7 @@ class DashboardPage extends StatefulWidget {
   final MetricsController? metricsController;
   final StatisticsController? statisticsController;
   final ExportReportController? exportReportController;
+  final GeographyController? geographyController;
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -247,6 +251,12 @@ class _DashboardPageState extends State<DashboardPage> {
   ];
 
   bool get _isSuperAdmin => widget.user.hasRole('SUPER_ADMIN');
+  bool get _canSeeGeography =>
+      !_isSuperAdmin &&
+      !widget.user.hasRole('VACCINATOR') &&
+      widget.user.hasRole('ADMIN_INSTITUTION') &&
+      widget.user.hasPermission('ATTENTION_READ') &&
+      widget.geographyController != null;
 
   bool get _showsDeliveries =>
       widget.user.hasRole('ADMIN_INSTITUTION') ||
@@ -548,9 +558,10 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   void _selectDesktopSection(String section, {String? subAction}) {
-    if (section == 'estadisticas') {
+    if (section == 'estadisticas' ||
+        (section == 'geografia' && _canSeeGeography)) {
       setState(() {
-        _desktopCustomSection = 'estadisticas';
+        _desktopCustomSection = section;
       });
       return;
     }
@@ -681,7 +692,14 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildDesktopAdminLayout() {
-    final desktopBody = _desktopCustomSection == 'estadisticas'
+    final desktopBody = _desktopCustomSection == 'geografia' && _canSeeGeography
+        ? GeographyPage(
+            controller: widget.geographyController!,
+            online:
+                widget.sessionStatus == SessionStatus.signedIn &&
+                _liveReason != OfflineReason.noNetwork,
+          )
+        : _desktopCustomSection == 'estadisticas'
         ? AdminWebStatisticsRealView(
             institutionName: widget.user.institution.name,
             offline: widget.sessionStatus != SessionStatus.signedIn,
@@ -699,6 +717,13 @@ class _DashboardPageState extends State<DashboardPage> {
                   usersController: widget.usersController,
                   historyController: widget.historyController,
                   exportReportController: widget.exportReportController,
+                  geographyController: _canSeeGeography
+                      ? widget.geographyController
+                      : null,
+                  geographyOnline:
+                      widget.sessionStatus == SessionStatus.signedIn &&
+                      _liveReason != OfflineReason.noNetwork,
+                  onOpenGeography: () => _selectDesktopSection('geografia'),
                 )
               : _buildContent());
 
@@ -727,6 +752,7 @@ class _DashboardPageState extends State<DashboardPage> {
             institutionName: widget.user.institution.name,
             roleName: _isSuperAdmin ? 'SUPER ADMIN' : 'ADMINISTRADOR',
             isSuperAdmin: _isSuperAdminView,
+            showGeography: _canSeeGeography,
           ),
           Expanded(child: bodyWithBanner),
         ],
@@ -782,6 +808,24 @@ class _DashboardPageState extends State<DashboardPage> {
           ],
         ),
         actions: [
+          if (_canSeeGeography)
+            IconButton(
+              tooltip: 'Visor geográfico',
+              icon: const Icon(Icons.map_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => Scaffold(
+                    appBar: AppBar(title: const Text('Visor geográfico')),
+                    body: GeographyPage(
+                      controller: widget.geographyController!,
+                      online:
+                          widget.sessionStatus == SessionStatus.signedIn &&
+                          _liveReason != OfflineReason.noNetwork,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           if (widget.sessionStatus == SessionStatus.offlineAuthorized)
             _ConnectionStatusButton(
               reason: _liveReason ?? OfflineReason.noNetwork,
