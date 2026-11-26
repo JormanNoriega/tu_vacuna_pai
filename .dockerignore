@@ -1,0 +1,7 @@
+*
+!services/
+services/*
+!services/api/
+services/api/*
+!services/api/pom.xml
+!services/api/src/

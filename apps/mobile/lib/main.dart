@@ -52,6 +52,7 @@ import 'features/dashboard/presentation/statistics_controller.dart';
 import 'features/dashboard/data/statistics_repository_impl.dart';
 import 'features/reports/data/reports_repository_impl.dart';
 import 'features/reports/presentation/export_report_controller.dart';
+import 'features/geography/geography_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -183,10 +184,7 @@ Future<void> main() async {
   );
   final statisticsController = StatisticsController(
     sessionManager: sessionManager,
-    repository: StatisticsRepositoryImpl(
-      api: apiClient,
-      database: appDatabase,
-    ),
+    repository: StatisticsRepositoryImpl(api: apiClient, database: appDatabase),
   );
   final exportReportController = ExportReportController(
     sessionManager: sessionManager,
@@ -216,6 +214,11 @@ Future<void> main() async {
       metricsController: metricsController,
       statisticsController: statisticsController,
       exportReportController: exportReportController,
+      geographyController: GeographyController(
+        api: apiClient,
+        sessionManager: sessionManager,
+        synthetic: true,
+      ),
     ),
   );
 

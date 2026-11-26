@@ -65,6 +65,16 @@ app:
     reservations-enabled: ${APP_INVENTORY_RESERVATIONS_ENABLED:true}
     installation-keys-enabled: ${APP_INVENTORY_INSTALLATION_KEYS_ENABLED:true}
 
+  # Experimental: no habilitar con datos reales hasta aprobar la política de privacidad.
+  geography:
+    enabled: ${APP_GEOGRAPHY_ENABLED:false}
+    cell-size-degrees: ${APP_GEOGRAPHY_CELL_SIZE_DEGREES:0.018}
+    minimum-attentions: ${APP_GEOGRAPHY_MINIMUM_ATTENTIONS:5}
+    allowed-periods: ${APP_GEOGRAPHY_ALLOWED_PERIODS:7,30,90}
+    default-period: ${APP_GEOGRAPHY_DEFAULT_PERIOD:30}
+    cache-ttl: 30m
+    cache-maximum-size: 500
+
 server:
   port: ${SERVER_PORT:8080}
   shutdown: graceful

@@ -23,6 +23,7 @@ import '../features/patients/presentation/patient_detail_controller.dart';
 import '../features/dashboard/presentation/metrics_controller.dart';
 import '../features/dashboard/presentation/statistics_controller.dart';
 import '../features/reports/presentation/export_report_controller.dart';
+import '../features/geography/geography_controller.dart';
 import 'theme/app_theme.dart';
 
 class TuVacunaApp extends StatefulWidget {
@@ -43,6 +44,7 @@ class TuVacunaApp extends StatefulWidget {
     this.metricsController,
     this.statisticsController,
     this.exportReportController,
+    this.geographyController,
   });
 
   /// Repositorio de autenticacion. En produccion se inyecta desde [main];
@@ -91,6 +93,7 @@ class TuVacunaApp extends StatefulWidget {
   final MetricsController? metricsController;
   final StatisticsController? statisticsController;
   final ExportReportController? exportReportController;
+  final GeographyController? geographyController;
 
   @override
   State<TuVacunaApp> createState() => _TuVacunaAppState();
@@ -143,6 +146,7 @@ class _TuVacunaAppState extends State<TuVacunaApp> {
     widget.historyController?.clearSession();
     widget.patientDetailController?.clearSession();
     widget.metricsController?.clearSession();
+    widget.geographyController?.clearSession();
   }
 
   @override
@@ -195,6 +199,7 @@ class _TuVacunaAppState extends State<TuVacunaApp> {
         metricsController: widget.metricsController,
         statisticsController: widget.statisticsController,
         exportReportController: widget.exportReportController,
+        geographyController: widget.geographyController,
       );
     }
     return LoginPage(controller: _authController);

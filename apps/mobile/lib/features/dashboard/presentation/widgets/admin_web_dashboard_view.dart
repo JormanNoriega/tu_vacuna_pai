@@ -5,9 +5,10 @@ import '../../../../core/presentation/widgets/shimmer_loading.dart';
 import '../../../../core/synchronization/sync_status_controller.dart';
 import '../../../attentions/presentation/history_controller.dart';
 import '../../../reports/presentation/export_report_controller.dart';
+import '../../../geography/geography_controller.dart';
+import '../../../geography/geography_page.dart';
 import '../../../users/presentation/users_controller.dart';
 import '../metrics_controller.dart';
-import 'admin_coverage_map_card.dart';
 import 'admin_parameters_card.dart';
 
 /// Vista de inicio (Dashboard de bienvenida) adaptada para PC (Web/Desktop)
@@ -29,6 +30,8 @@ class AdminWebDashboardView extends StatefulWidget {
     this.usersController,
     this.historyController,
     this.exportReportController,
+    this.geographyController,
+    this.geographyOnline = false,
   });
 
   final String userName;
@@ -40,6 +43,8 @@ class AdminWebDashboardView extends StatefulWidget {
   final UsersController? usersController;
   final HistoryController? historyController;
   final ExportReportController? exportReportController;
+  final GeographyController? geographyController;
+  final bool geographyOnline;
 
   @override
   State<AdminWebDashboardView> createState() => _AdminWebDashboardViewState();
@@ -64,7 +69,8 @@ class _AdminWebDashboardViewState extends State<AdminWebDashboardView> {
   }
 
   Future<void> _loadInitialData() async {
-    if (widget.usersController != null && widget.usersController!.users.isEmpty) {
+    if (widget.usersController != null &&
+        widget.usersController!.users.isEmpty) {
       widget.usersController!.loadUsers(institutionId: widget.institutionId);
     }
     await _fetchTodayDoses();
@@ -81,15 +87,17 @@ class _AdminWebDashboardViewState extends State<AdminWebDashboardView> {
     int count = 0;
     try {
       if (widget.exportReportController != null) {
-        final session = await widget.exportReportController!.sessionManager.loadSession();
+        final session = await widget.exportReportController!.sessionManager
+            .loadSession();
         final token = session?.accessToken;
         if (token != null) {
-          final summary = await widget.exportReportController!.repository.fetchSummary(
-            token,
-            from: startOfDay,
-            to: endOfDay,
-            institutionId: widget.institutionId,
-          );
+          final summary = await widget.exportReportController!.repository
+              .fetchSummary(
+                token,
+                from: startOfDay,
+                to: endOfDay,
+                institutionId: widget.institutionId,
+              );
           count = summary.dosesCount;
         }
       } else if (widget.historyController != null) {
@@ -166,10 +174,13 @@ class _AdminWebDashboardViewState extends State<AdminWebDashboardView> {
                               .toString() ??
                           '0';
                       final doses =
-                          widget.metricsController?.summary.dosesApplied.toString() ??
+                          widget.metricsController?.summary.dosesApplied
+                              .toString() ??
                           '0';
                       final pendingSync =
-                          widget.syncStatusController?.pendingCount.toString() ?? '0';
+                          widget.syncStatusController?.pendingCount
+                              .toString() ??
+                          '0';
 
                       return _buildKpiRow(
                         context: context,
@@ -214,10 +225,10 @@ class _AdminWebDashboardViewState extends State<AdminWebDashboardView> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 parametersCard,
-                                const SizedBox(height: 24),
-                                AdminCoverageMapCard(
-                                  institutionName: widget.institutionName,
-                                ),
+                                if (widget.geographyController != null) ...[
+                                  const SizedBox(height: 24),
+                                  _geographyCard(),
+                                ],
                               ],
                             );
                           }
@@ -225,17 +236,11 @@ class _AdminWebDashboardViewState extends State<AdminWebDashboardView> {
                           return Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                flex: 5,
-                                child: parametersCard,
-                              ),
-                              const SizedBox(width: 24),
-                              Expanded(
-                                flex: 6,
-                                child: AdminCoverageMapCard(
-                                  institutionName: widget.institutionName,
-                                ),
-                              ),
+                              Expanded(flex: 5, child: parametersCard),
+                              if (widget.geographyController != null) ...[
+                                const SizedBox(width: 24),
+                                Expanded(flex: 6, child: _geographyCard()),
+                              ],
                             ],
                           );
                         },
@@ -250,6 +255,22 @@ class _AdminWebDashboardViewState extends State<AdminWebDashboardView> {
       ),
     );
   }
+
+  Widget _geographyCard() => Card(
+    clipBehavior: Clip.antiAlias,
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+      side: const BorderSide(color: AppColors.border),
+    ),
+    child: SizedBox(
+      height: 620,
+      child: GeographyPage(
+        controller: widget.geographyController!,
+        online: widget.geographyOnline,
+      ),
+    ),
+  );
 
   Widget _buildDesktopHeader(BuildContext context) {
     return LayoutBuilder(
@@ -388,7 +409,9 @@ class _AdminWebDashboardViewState extends State<AdminWebDashboardView> {
       ),
       (
         label: 'Sede Institucional',
-        value: widget.institutionName.isNotEmpty ? widget.institutionName : 'IPS Activa',
+        value: widget.institutionName.isNotEmpty
+            ? widget.institutionName
+            : 'IPS Activa',
         icon: Icons.domain_rounded,
         color: const Color(0xFF0D9488),
         bgColor: const Color(0xFFCCFBF1),

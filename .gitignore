@@ -29,6 +29,7 @@ opencode.jsonc
 apps/mobile/.dart_tool/
 apps/mobile/build/
 apps/mobile/.flutter-plugins-dependencies
+apps/admin_web/.dart_tool/
 
 # ===== Agent skills =====
 .agents/

@@ -20,6 +20,15 @@ class ApiClient {
   final http.Client _http;
   final Duration _timeout;
 
+  Future<Map<String, dynamic>> fetchGeography(String token, int days) async {
+    final uri = Uri.parse('$baseUrl/geography/attentions')
+        .replace(queryParameters: {'days': '$days'});
+    return _decodeObject(
+      await _send(_http.get(uri, headers: _jsonHeaders(token))),
+      fallback: 'No se pudo consultar el visor geográfico.',
+    );
+  }
+
   Future<List<Map<String, dynamic>>> inventoryList(
     String token,
     String institutionId,
