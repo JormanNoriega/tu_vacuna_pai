@@ -32,11 +32,12 @@ import '../../../../core/presentation/widgets/shimmer_loading.dart';
 import '../../domain/entities/metrics_summary.dart';
 import '../../domain/entities/recent_record_item.dart';
 import '../metrics_controller.dart';
+import '../statistics_controller.dart';
 import '../../../reports/presentation/export_report_controller.dart';
 import '../../../reports/presentation/pages/export_report_page.dart';
 import '../widgets/admin_web_dashboard_view.dart';
 import '../widgets/admin_web_sidebar.dart';
-import '../widgets/admin_web_statistics_view.dart';
+import '../widgets/admin_web_statistics_real_view.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
@@ -54,6 +55,7 @@ class DashboardPage extends StatefulWidget {
     this.networkInfo,
     this.syncStatusController,
     this.metricsController,
+    this.statisticsController,
     this.exportReportController,
     super.key,
   });
@@ -101,6 +103,7 @@ class DashboardPage extends StatefulWidget {
   /// Metricas del home (pacientes atendidos y dosis aplicadas). Null en tests
   /// y demos.
   final MetricsController? metricsController;
+  final StatisticsController? statisticsController;
   final ExportReportController? exportReportController;
 
   @override
@@ -680,9 +683,11 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildDesktopAdminLayout() {
     final desktopBody = _desktopCustomSection == 'estadisticas'
-        ? AdminWebStatisticsView(
+        ? AdminWebStatisticsRealView(
             institutionName: widget.user.institution.name,
+            offline: widget.sessionStatus != SessionStatus.signedIn,
             onRefresh: () async => _reloadMetrics(),
+            controller: widget.statisticsController,
           )
         : (_selectedIndex == 0
               ? AdminWebDashboardView(

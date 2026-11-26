@@ -100,6 +100,29 @@ class ApiClient {
     );
   }
 
+  /// Dashboard estadistico institucional con periodo y granularidad.
+  Future<Map<String, dynamic>> fetchStatisticsDashboard(
+    String accessToken, {
+    required DateTime from,
+    required DateTime to,
+    required String granularity,
+  }) async {
+    final uri = Uri.parse('$baseUrl/metrics/statistics/dashboard').replace(
+      queryParameters: {
+        'from': from.toUtc().toIso8601String(),
+        'to': to.toUtc().toIso8601String(),
+        'granularity': granularity,
+      },
+    );
+    final response = await _send(
+      _http.get(uri, headers: _jsonHeaders(accessToken)),
+    );
+    return _decodeObject(
+      response,
+      fallback: 'Error al consultar las estadisticas.',
+    );
+  }
+
   /// Ultimos registros de atencion para el home.
   Future<List<Map<String, dynamic>>> fetchRecentRecords(
     String accessToken, {

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../statistics_controller.dart';
 
 /// Vista de escritorio (Web / Desktop) para el módulo de Estadísticas y Analítica PAI.
 ///
@@ -14,10 +15,12 @@ class AdminWebStatisticsView extends StatefulWidget {
     super.key,
     required this.institutionName,
     this.onRefresh,
+    this.statisticsController,
   });
 
   final String institutionName;
   final Future<void> Function()? onRefresh;
+  final StatisticsController? statisticsController;
 
   @override
   State<AdminWebStatisticsView> createState() => _AdminWebStatisticsViewState();
