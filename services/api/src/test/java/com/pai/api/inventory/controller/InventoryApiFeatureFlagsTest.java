@@ -42,7 +42,10 @@ class InventoryApiFeatureFlagsTest {
   private ApplicationContextRunner runner() {
     return new ApplicationContextRunner()
         .withInitializer(new ConfigDataApplicationContextInitializer())
-        .withPropertyValues("app.inventory.api-enabled=false")
+        .withPropertyValues(
+          "app.inventory.api-enabled=false",
+          "app.inventory.reservations-enabled=false",
+          "app.inventory.installation-keys-enabled=false")
         .withUserConfiguration(Config.class);
   }
 

@@ -21,7 +21,7 @@ void main() {
   );
 
   testWidgets('UsersPage muestra skeleton shimmer mientras carga vacunadores y luego muestra el listado', (tester) async {
-    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.physicalSize = const Size(800, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
 

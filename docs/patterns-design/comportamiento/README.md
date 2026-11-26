@@ -14,7 +14,7 @@ En esta categoría se documentan los patrones GoF orientados al comportamiento d
 | **Command** | Encapsula una solicitud como un objeto, permitiendo parametrizar clientes con distintas peticiones, colas y operaciones reversibles. | Manejo de comandos outbox/inbox en sincronización offline (`SyncCommandHandler`, `SyncPushService`). |
 | **Strategy** | Define una familia de algoritmos, encapsula cada uno y los hace intercambiables en tiempo de ejecución. | Estrategias de cifrado de base de datos local y políticas de resolución de conflictos. |
 | **State** | Permite a un objeto alterar su comportamiento cuando su estado interno cambia. | [Ciclo de vida de la atención clínica](./state/README.md). |
-| **Observer** | Define una dependencia uno-a-muchos para que cuando un objeto cambie de estado, todos sus dependientes sean notificados automáticamente. | Reactividad en Flutter (`ChangeNotifier`, `ValueNotifier`, `NetworkInfo` stream listeners). |
+| **Observer** | Define una dependencia uno-a-muchos para que cuando un objeto cambie de estado, todos sus dependientes sean notificados automáticamente. | Reactividad en Flutter (`ChangeNotifier`, `ValueNotifier`, `NetworkInfo` stream listeners). [Aplicación en Estadísticas](./observer-estadisticas-flutter.md). |
 | **Template Method** | Define el esqueleto de un algoritmo en una operación, difiriendo algunos pasos a las subclases. | Flujo de procesamiento y validación de exportación de reportes clínicos. |
 
 ---
