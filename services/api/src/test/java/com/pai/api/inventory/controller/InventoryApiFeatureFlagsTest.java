@@ -47,7 +47,7 @@ class InventoryApiFeatureFlagsTest {
   }
 
   @Test
-  void allInventoryHttpApisAreClosedWithoutExplicitFlag() {
+  void allInventoryHttpApisAreClosedWhenApiDisabled() {
     runner().run(context -> {
       assertThat(context).doesNotHaveBean(InventoryController.class);
       assertThat(context).doesNotHaveBean(CampaignController.class);
@@ -59,8 +59,9 @@ class InventoryApiFeatureFlagsTest {
   }
 
   @Test
-  void onlineInventoryFlagDoesNotEnableExperimentalInstallationApis() {
-    runner().withPropertyValues("app.inventory.api-enabled=true").run(context -> {
+  void explicitlyDisabledInstallationApisRemainClosed() {
+    runner().withPropertyValues("app.inventory.api-enabled=true",
+        "app.inventory.reservations-enabled=false", "app.inventory.installation-keys-enabled=false").run(context -> {
       assertThat(context).hasSingleBean(InventoryController.class);
       assertThat(context).hasSingleBean(CampaignController.class);
       assertThat(context).hasSingleBean(CustodyEventController.class);
@@ -72,13 +73,26 @@ class InventoryApiFeatureFlagsTest {
 
   @Test
   void reservationAndKeyApisNeedTheirOwnExplicitFlags() {
-    runner().withPropertyValues("app.inventory.api-enabled=true", "app.inventory.reservations-enabled=true")
+    runner().withPropertyValues("app.inventory.api-enabled=true", "app.inventory.reservations-enabled=true",
+        "app.inventory.installation-keys-enabled=false")
         .run(context -> {
           assertThat(context).hasSingleBean(InstallationReservationController.class);
           assertThat(context).doesNotHaveBean(InstallationKeyController.class);
         });
     runner().withPropertyValues("app.inventory.api-enabled=true", "app.inventory.reservations-enabled=true",
         "app.inventory.installation-keys-enabled=true").run(context -> {
+          assertThat(context).hasSingleBean(InstallationKeyController.class);
+        });
+  }
+
+  @Test
+  void inventoryApisAreEnabledByDefault() {
+    new ApplicationContextRunner()
+        .withInitializer(new ConfigDataApplicationContextInitializer())
+        .withUserConfiguration(Config.class)
+        .run(context -> {
+          assertThat(context).hasSingleBean(InventoryController.class);
+          assertThat(context).hasSingleBean(InstallationReservationController.class);
           assertThat(context).hasSingleBean(InstallationKeyController.class);
         });
   }

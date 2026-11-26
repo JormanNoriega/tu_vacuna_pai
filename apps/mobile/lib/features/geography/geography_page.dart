@@ -12,9 +12,13 @@ class GeographyPage extends StatefulWidget {
     super.key,
     required this.controller,
     required this.online,
+    this.compact = false,
+    this.onOpenDetails,
   });
   final GeographyController controller;
   final bool online;
+  final bool compact;
+  final VoidCallback? onOpenDetails;
 
   @override
   State<GeographyPage> createState() => _GeographyPageState();
@@ -79,119 +83,149 @@ class _GeographyPageState extends State<GeographyPage> {
                   ],
                 ),
               ),
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: constraints.maxHeight * .55,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+            if (widget.compact)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 12,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                      child: Wrap(
-                        spacing: 12,
-                        runSpacing: 8,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            'Georreferenciación y cobertura',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          DropdownButton<int>(
-                            value: days,
-                            items: [7, 30, 90]
-                                .map(
-                                  (d) => DropdownMenuItem(
-                                    value: d,
-                                    child: Text('$d días'),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: !widget.online
-                                ? null
-                                : (value) {
-                                    if (value == null) return;
-                                    setState(() => days = value);
-                                    unawaited(controller.load(value));
-                                  },
-                          ),
-                          SegmentedButton<bool>(
-                            segments: const [
-                              ButtonSegment(value: true, label: Text('Calor')),
-                              ButtonSegment(
-                                value: false,
-                                label: Text('Agrupaciones'),
-                              ),
-                            ],
-                            selected: {heat},
-                            onSelectionChanged: (value) =>
-                                setState(() => heat = value.first),
-                          ),
-                          IconButton(
-                            tooltip: 'Actualizar datos',
-                            onPressed: !widget.online || controller.loading
-                                ? null
-                                : () => controller.load(days, refresh: true),
-                            icon: const Icon(Icons.refresh),
-                          ),
-                        ],
-                      ),
+                    Text(
+                      'Georreferenciación y cobertura',
+                      style: Theme.of(context).textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
-                    if (!controller.synthetic)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'Celdas aproximadas; las áreas vacías no indican ausencia de atenciones. '
-                          'La actualización puede reflejar datos de hasta 30 minutos.',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
+                    if (widget.onOpenDetails != null)
+                      TextButton.icon(
+                        onPressed: widget.onOpenDetails,
+                        icon: const Icon(Icons.open_in_full, size: 18),
+                        label: const Text('Ver detalle'),
                       ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Wrap(
-                        spacing: 16,
-                        children: [
-                          _slider(
-                            'Opacidad',
-                            opacity,
-                            0,
-                            1,
-                            (v) => setState(() => opacity = v),
-                          ),
-                          if (heat)
-                            _slider(
-                              'Intensidad',
-                              intensity,
-                              .2,
-                              3,
-                              (v) => setState(() => intensity = v),
-                            ),
-                          if (heat)
-                            _slider(
-                              'Radio',
-                              radius,
-                              10,
-                              70,
-                              (v) => setState(() => radius = v),
-                            ),
-                        ],
-                      ),
+                    Text(
+                      'Últimos 30 días · Celdas aproximadas',
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
-                    if (controller.data != null && widget.online)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'Datos calculados: ${DateFormat('dd/MM/yyyy HH:mm').format(controller.data!.generatedAt.toLocal())} (hora del dispositivo). '
-                          '${heat ? 'Mayor intensidad de color indica mayor concentración; el radio y la intensidad cambian la apariencia.' : 'Cada círculo muestra el total de su celda.'}',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
                   ],
                 ),
               ),
-            ),
+            if (!widget.compact)
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: constraints.maxHeight * .55,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(
+                              'Georreferenciación y cobertura',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            DropdownButton<int>(
+                              value: days,
+                              items: [7, 30, 90]
+                                  .map(
+                                    (d) => DropdownMenuItem(
+                                      value: d,
+                                      child: Text('$d días'),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: !widget.online
+                                  ? null
+                                  : (value) {
+                                      if (value == null) return;
+                                      setState(() => days = value);
+                                      unawaited(controller.load(value));
+                                    },
+                            ),
+                            SegmentedButton<bool>(
+                              segments: const [
+                                ButtonSegment(
+                                  value: true,
+                                  label: Text('Calor'),
+                                ),
+                                ButtonSegment(
+                                  value: false,
+                                  label: Text('Agrupaciones'),
+                                ),
+                              ],
+                              selected: {heat},
+                              onSelectionChanged: (value) =>
+                                  setState(() => heat = value.first),
+                            ),
+                            IconButton(
+                              tooltip: 'Actualizar datos',
+                              onPressed: !widget.online || controller.loading
+                                  ? null
+                                  : () => controller.load(days, refresh: true),
+                              icon: const Icon(Icons.refresh),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (!controller.synthetic)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'Celdas aproximadas; las áreas vacías no indican ausencia de atenciones. '
+                            'La actualización puede reflejar datos de hasta 30 minutos.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Wrap(
+                          spacing: 16,
+                          children: [
+                            _slider(
+                              'Opacidad',
+                              opacity,
+                              0,
+                              1,
+                              (v) => setState(() => opacity = v),
+                            ),
+                            if (heat)
+                              _slider(
+                                'Intensidad',
+                                intensity,
+                                .2,
+                                3,
+                                (v) => setState(() => intensity = v),
+                              ),
+                            if (heat)
+                              _slider(
+                                'Radio',
+                                radius,
+                                10,
+                                70,
+                                (v) => setState(() => radius = v),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (controller.data != null && widget.online)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'Datos calculados: ${DateFormat('dd/MM/yyyy HH:mm').format(controller.data!.generatedAt.toLocal())} (hora del dispositivo). '
+                            '${heat ? 'Mayor intensidad de color indica mayor concentración; el radio y la intensidad cambian la apariencia.' : 'Cada círculo muestra el total de su celda.'}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -310,7 +344,7 @@ class _GeographyMapState extends State<_GeographyMap> {
   Future<void> pending = Future.value();
   static const style = String.fromEnvironment(
     'GEOGRAPHY_MAP_STYLE_URL',
-    defaultValue: 'https://tiles.openfreemap.org/styles/positron',
+    defaultValue: 'https://tiles.openfreemap.org/styles/liberty',
   );
 
   Map<String, dynamic> get geojson => {

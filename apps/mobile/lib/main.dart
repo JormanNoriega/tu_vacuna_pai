@@ -217,7 +217,6 @@ Future<void> main() async {
       geographyController: GeographyController(
         api: apiClient,
         sessionManager: sessionManager,
-        synthetic: true,
       ),
     ),
   );

@@ -727,6 +727,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   geographyOnline:
                       widget.sessionStatus == SessionStatus.signedIn &&
                       _liveReason != OfflineReason.noNetwork,
+                  onOpenGeography: () => _selectDesktopSection('geografia'),
                 )
               : _buildContent());
 

@@ -13,6 +13,34 @@ import 'package:tu_vacuna_pai/features/geography/geography_page.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  testWidgets('vista rápida oculta controles y abre el módulo detallado', (
+    tester,
+  ) async {
+    var opened = false;
+    final controller = GeographyController(
+      api: ApiClient(baseUrl: 'https://example.test/api/v1'),
+      sessionManager: SessionManager(const FlutterSecureStorage()),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: GeographyPage(
+            controller: controller,
+            online: false,
+            compact: true,
+            onOpenDetails: () => opened = true,
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Últimos 30 días · Celdas aproximadas'), findsOneWidget);
+    expect(find.text('Opacidad'), findsNothing);
+    expect(find.text('Intensidad'), findsNothing);
+    expect(find.text('Agrupaciones'), findsNothing);
+    await tester.tap(find.text('Ver detalle'));
+    expect(opened, isTrue);
+  });
+
   testWidgets('cambiar modo no realiza otra consulta', (tester) async {
     FlutterSecureStorage.setMockInitialValues({'access_token': 'token'});
     var count = 0;

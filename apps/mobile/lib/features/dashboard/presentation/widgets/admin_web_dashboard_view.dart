@@ -32,6 +32,7 @@ class AdminWebDashboardView extends StatefulWidget {
     this.exportReportController,
     this.geographyController,
     this.geographyOnline = false,
+    this.onOpenGeography,
   });
 
   final String userName;
@@ -45,6 +46,7 @@ class AdminWebDashboardView extends StatefulWidget {
   final ExportReportController? exportReportController;
   final GeographyController? geographyController;
   final bool geographyOnline;
+  final VoidCallback? onOpenGeography;
 
   @override
   State<AdminWebDashboardView> createState() => _AdminWebDashboardViewState();
@@ -268,6 +270,8 @@ class _AdminWebDashboardViewState extends State<AdminWebDashboardView> {
       child: GeographyPage(
         controller: widget.geographyController!,
         online: widget.geographyOnline,
+        compact: true,
+        onOpenDetails: widget.onOpenGeography,
       ),
     ),
   );
