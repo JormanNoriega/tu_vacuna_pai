@@ -63,6 +63,27 @@ class RegistroDiarioExportServiceTest {
   }
 
   @Test
+  void listsInstitutionVaccinatorsEvenWithoutDosesInRange() {
+    UUID institutionId = UUID.randomUUID();
+    UUID vaccinatorId = UUID.randomUUID();
+    AuthorizedUser actor = mock(AuthorizedUser.class);
+    InstitutionEntity institution = mock(InstitutionEntity.class);
+    UserEntity vaccinator = mock(UserEntity.class);
+    when(institution.getId()).thenReturn(institutionId);
+    when(actor.getInstitution()).thenReturn(institution);
+    when(dataScope.resolveInstitutionId(any(), any())).thenReturn(institutionId);
+    when(vaccinator.getId()).thenReturn(vaccinatorId);
+    when(vaccinator.getFullName()).thenReturn("Ana");
+    when(userRepository.findByInstitutionIdAndRoleCodes(institutionId, Set.of("VACCINATOR")))
+        .thenReturn(List.of(vaccinator));
+    when(registroDiarioQuery.doses(any(), any(), any())).thenReturn(List.of());
+
+    assertThat(exportService.vaccinators(actor, Instant.EPOCH, Instant.now()))
+        .extracting(RegistroDiarioExportService.VaccinatorOption::id)
+        .containsExactly(vaccinatorId);
+  }
+
+  @Test
   void exportsRegistroDiarioWithDualLevelHeadersAndPivotedVaccines() throws Exception {
     UUID institutionId = UUID.randomUUID();
     UUID patientId = UUID.randomUUID();
@@ -108,6 +129,8 @@ class RegistroDiarioExportServiceTest {
             1);
 
     when(registroDiarioQuery.doses(any(), any(), any())).thenReturn(List.of(dose));
+    assertThat(exportService.summary(actor, now.minusSeconds(86400), now, vaccinatorId).dosesCount()).isEqualTo(1);
+    assertThat(exportService.summary(actor, now.minusSeconds(86400), now, UUID.randomUUID()).dosesCount()).isZero();
 
     PatientIdentity patient =
         new PatientIdentity(
@@ -130,8 +153,18 @@ class RegistroDiarioExportServiceTest {
     when(nurse.getPhone()).thenReturn("3187654321");
     when(nurse.getInstitutionId()).thenReturn(institutionId);
     when(userRepository.findAllById(Set.of(vaccinatorId))).thenReturn(List.of(nurse));
+    when(userRepository.findByInstitutionIdAndIdIn(institutionId, Set.of(vaccinatorId)))
+        .thenReturn(List.of(nurse));
 
     when(institutionRepository.findAllById(Set.of(institutionId))).thenReturn(List.of(inst));
+    assertThat(exportService.vaccinators(actor, now.minusSeconds(86400), now))
+        .extracting(RegistroDiarioExportService.VaccinatorOption::id)
+        .containsExactly(vaccinatorId);
+    ExportedReport emptyReport = exportService.export(
+        actor, now.minusSeconds(86400), now, ReportFormat.XLSX, UUID.randomUUID());
+    try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(emptyReport.content()))) {
+      assertThat(workbook.getSheetAt(0).getLastRowNum()).isEqualTo(1);
+    }
 
     ExportedReport report =
         exportService.export(actor, now.minusSeconds(86400), now, ReportFormat.XLSX);

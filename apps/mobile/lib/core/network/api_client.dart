@@ -172,11 +172,13 @@ class ApiClient {
     String accessToken, {
     required DateTime from,
     required DateTime to,
+    String? vaccinatorId,
   }) async {
     final uri = Uri.parse('$baseUrl/reports/registro-diario/summary').replace(
       queryParameters: {
         'from': from.toUtc().toIso8601String(),
         'to': to.toUtc().toIso8601String(),
+        'vaccinatorId': ?vaccinatorId,
       },
     );
     final response = await _send(
@@ -188,18 +190,37 @@ class ApiClient {
     );
   }
 
+  Future<List<Map<String, dynamic>>> fetchReportVaccinators(
+    String accessToken, {
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final uri = Uri.parse('$baseUrl/reports/registro-diario/vaccinators').replace(
+      queryParameters: {
+        'from': from.toUtc().toIso8601String(),
+        'to': to.toUtc().toIso8601String(),
+      },
+    );
+    return _decodeList(
+      await _send(_http.get(uri, headers: _jsonHeaders(accessToken))),
+      fallback: 'No se pudieron consultar los vacunadores.',
+    );
+  }
+
   /// Descarga el archivo de reporte "Registro Diario" en bytes (XLSX o CSV).
   Future<Uint8List> downloadRegistroDiario(
     String accessToken, {
     required DateTime from,
     required DateTime to,
     String format = 'xlsx',
+    String? vaccinatorId,
   }) async {
     final uri = Uri.parse('$baseUrl/reports/registro-diario').replace(
       queryParameters: {
         'from': from.toUtc().toIso8601String(),
         'to': to.toUtc().toIso8601String(),
         'format': format,
+        'vaccinatorId': ?vaccinatorId,
       },
     );
     final response = await _send(

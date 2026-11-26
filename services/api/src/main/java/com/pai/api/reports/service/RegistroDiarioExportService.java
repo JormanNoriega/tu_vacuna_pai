@@ -210,8 +210,13 @@ public class RegistroDiarioExportService {
 
   public RegistroDiarioSummaryResponse summary(
       AuthorizedUser actor, Instant from, Instant to) {
+    return summary(actor, from, to, null);
+  }
+
+  public RegistroDiarioSummaryResponse summary(
+      AuthorizedUser actor, Instant from, Instant to, UUID vaccinatorId) {
     UUID institutionId = dataScope.resolveInstitutionId(actor, actor.getInstitution().getId());
-    List<RegistroDiarioDoseData> doseRows = registroDiarioQuery.doses(institutionId, from, to);
+    List<RegistroDiarioDoseData> doseRows = filteredDoses(institutionId, from, to, vaccinatorId);
     long patientsCount =
         doseRows.stream().map(RegistroDiarioDoseData::patientId).distinct().count();
     long dosesCount = doseRows.size();
@@ -226,8 +231,41 @@ public class RegistroDiarioExportService {
 
   public ExportedReport export(
       AuthorizedUser actor, Instant from, Instant to, ReportFormat format) {
+    return export(actor, from, to, format, null);
+  }
+
+  public record VaccinatorOption(UUID id, String name) {}
+
+  public List<VaccinatorOption> vaccinators(AuthorizedUser actor, Instant from, Instant to) {
     UUID institutionId = dataScope.resolveInstitutionId(actor, actor.getInstitution().getId());
-    List<RegistroDiarioDoseData> doseRows = registroDiarioQuery.doses(institutionId, from, to);
+    Set<UUID> ids = registroDiarioQuery.doses(institutionId, from, to).stream()
+        .map(RegistroDiarioDoseData::vaccinatorId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
+    Map<UUID, UserEntity> users = new LinkedHashMap<>();
+    userRepository.findByInstitutionIdAndRoleCodes(institutionId, Set.of("VACCINATOR"))
+        .forEach(user -> users.put(user.getId(), user));
+    if (!ids.isEmpty()) {
+      userRepository.findByInstitutionIdAndIdIn(institutionId, ids)
+          .forEach(user -> users.put(user.getId(), user));
+    }
+    return users.values().stream()
+        .map(user -> new VaccinatorOption(user.getId(), user.getFullName()))
+        .sorted(Comparator.comparing(VaccinatorOption::name, String.CASE_INSENSITIVE_ORDER))
+        .toList();
+  }
+
+  private List<RegistroDiarioDoseData> filteredDoses(
+      UUID institutionId, Instant from, Instant to, UUID vaccinatorId) {
+    var rows = registroDiarioQuery.doses(institutionId, from, to);
+    if (vaccinatorId == null) return rows;
+    return rows.stream().filter(row -> vaccinatorId.equals(row.vaccinatorId())).toList();
+  }
+
+  public ExportedReport export(
+      AuthorizedUser actor, Instant from, Instant to, ReportFormat format, UUID vaccinatorId) {
+    UUID institutionId = dataScope.resolveInstitutionId(actor, actor.getInstitution().getId());
+    List<RegistroDiarioDoseData> doseRows = filteredDoses(institutionId, from, to, vaccinatorId);
 
     List<VaccineEntity> activeVaccines =
         new ArrayList<>(vaccineRepository.findByActiveTrueOrderByNameAsc());

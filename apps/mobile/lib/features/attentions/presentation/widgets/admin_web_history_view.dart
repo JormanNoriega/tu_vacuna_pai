@@ -22,7 +22,7 @@ enum _HistoryWebTab {
 /// Proporciona:
 /// 1. Registro General de Atenciones y Dosis (Consulta Institucional con filtros avanzados).
 /// 2. Búsqueda y Expediente Clínico (Carnet Digital de Vacunación PAI).
-/// 3. Centro de Exportación de Reportes PAI (Excel / SISPRO).
+/// 3. Exportación del registro diario PAI.
 ///
 /// Implementado sobre un SingleChildScrollView con scroll natural y vista expandida,
 /// permitiendo visualizar la lista de atenciones completa con holgura.
@@ -80,7 +80,6 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
   DateTime _exportStart = DateTime.now().subtract(const Duration(days: 30));
   DateTime _exportEnd = DateTime.now();
   String _exportFormat = 'xlsx';
-  String _exportReportType = 'CONSOLIDADO_PAI';
 
   @override
   void initState() {
@@ -96,6 +95,12 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
     _handleInitialSubAction();
     _loadGeneralHistory(0);
     widget.controller.loadDocumentTypes();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      widget.exportReportController?.setDateRange(
+        _exportStart, _exportEnd, institutionId: widget.institutionId,
+      );
+    });
   }
 
   void _handleInitialSubAction() {
@@ -270,14 +275,21 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
               children: [
                 _buildHeader(),
                 const SizedBox(height: 20),
-                _buildKpisBar(),
-                const SizedBox(height: 22),
+                if (_activeTab != _HistoryWebTab.reportes) ...[
+                  _buildKpisBar(),
+                  const SizedBox(height: 22),
+                ],
                 _buildTabBar(),
                 const SizedBox(height: 22),
                 switch (_activeTab) {
                   _HistoryWebTab.registroGeneral => _buildGeneralHistoryTab(),
                   _HistoryWebTab.expediente => _buildClinicalRecordTab(),
-                  _HistoryWebTab.reportes => _buildExportReportsTab(),
+                  _HistoryWebTab.reportes => widget.exportReportController == null
+                      ? _buildExportReportsTab()
+                      : AnimatedBuilder(
+                          animation: widget.exportReportController!,
+                          builder: (_, _) => _buildExportReportsTab(),
+                        ),
                 },
                 const SizedBox(height: 40),
               ],
@@ -1728,7 +1740,7 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
   }
 
   // ===========================================================================
-  // Pestaña 3: Exportación de Reportes PAI y SISPRO
+  // Pestaña 3: Exportación del registro diario PAI
   // ===========================================================================
   Widget _buildExportReportsTab() {
     return Container(
@@ -1765,11 +1777,11 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Centro de Exportación de Reportes PAI y SISPRO',
+                      'Exportar registro diario PAI',
                       style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: AppColors.ink),
                     ),
                     Text(
-                      'Genera archivos oficiales con estructura nominal conforme a lineamientos del Ministerio de Salud.',
+                      'Descarga las dosis registradas en el período seleccionado.',
                       style: TextStyle(fontSize: 13, color: AppColors.slate),
                     ),
                   ],
@@ -1778,34 +1790,6 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
             ],
           ),
           const SizedBox(height: 24),
-
-          // Tipo de Reporte
-          const Text('Tipo de Reporte a Generar', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.ink)),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            initialValue: _exportReportType,
-            isExpanded: true,
-            decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            items: const [
-              DropdownMenuItem(
-                value: 'CONSOLIDADO_PAI',
-                child: Text('Reporte Consolidado Nominal PAI (Excel Oficial)', style: TextStyle(fontSize: 13)),
-              ),
-              DropdownMenuItem(
-                value: 'COBERTURAS_COHORTE',
-                child: Text('Monitoreo de Coberturas y Cohortes de Nacimiento (RIPS/SISPRO)', style: TextStyle(fontSize: 13)),
-              ),
-              DropdownMenuItem(
-                value: 'TRAZABILIDAD_LOTES',
-                child: Text('Trazabilidad de Lotes y Desperdicio por Vacunador', style: TextStyle(fontSize: 13)),
-              ),
-            ],
-            onChanged: (val) => setState(() => _exportReportType = val ?? 'CONSOLIDADO_PAI'),
-          ),
-          const SizedBox(height: 18),
 
           // Período
           const Text('Rango de Fechas', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.ink)),
@@ -1821,7 +1805,10 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
                       firstDate: DateTime(2020),
                       lastDate: _exportEnd,
                     );
-                    if (picked != null) setState(() => _exportStart = picked);
+                    if (picked != null && mounted) {
+                      setState(() => _exportStart = picked);
+                      widget.exportReportController?.setDateRange(_exportStart, _exportEnd, institutionId: widget.institutionId);
+                    }
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1849,7 +1836,10 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
                       firstDate: _exportStart,
                       lastDate: DateTime.now(),
                     );
-                    if (picked != null) setState(() => _exportEnd = picked);
+                    if (picked != null && mounted) {
+                      setState(() => _exportEnd = picked);
+                      widget.exportReportController?.setDateRange(_exportStart, _exportEnd, institutionId: widget.institutionId);
+                    }
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1870,6 +1860,78 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
             ],
           ),
           const SizedBox(height: 18),
+
+          const Text('Vacunador (opcional)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.ink)),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            key: ValueKey(widget.exportReportController?.vaccinatorId),
+            initialValue: widget.exportReportController?.vaccinatorId ?? '',
+            isExpanded: true,
+            decoration: const InputDecoration(border: OutlineInputBorder()),
+            items: [
+              const DropdownMenuItem(value: '', child: Text('Todos los vacunadores')),
+              for (final person in widget.exportReportController?.vaccinators ?? <Map<String, dynamic>>[])
+                DropdownMenuItem(
+                  value: person['id'] as String,
+                  child: Text(person['name'] as String, overflow: TextOverflow.ellipsis),
+                ),
+            ],
+            onChanged: widget.exportReportController == null || widget.exportReportController!.isLoading ? null : (value) {
+              widget.exportReportController!.setVaccinator(
+                value == null || value.isEmpty ? null : value,
+                institutionId: widget.institutionId,
+              );
+            },
+          ),
+          if (widget.exportReportController != null &&
+              !widget.exportReportController!.isLoading &&
+              widget.exportReportController!.error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text('No se pudieron cargar los datos del reporte: ${widget.exportReportController!.error}',
+                  style: const TextStyle(color: AppColors.danger, fontSize: 12)),
+            )
+          else if (widget.exportReportController != null &&
+              !widget.exportReportController!.isLoading &&
+              widget.exportReportController!.vaccinators.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text('No hay vacunadores disponibles para esta institución.',
+                  style: TextStyle(color: AppColors.slate, fontSize: 12)),
+            ),
+          const SizedBox(height: 20),
+          const Text('Resumen del período', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.ink)),
+          const SizedBox(height: 12),
+          if (widget.exportReportController == null)
+            const Text('El servicio de reportes no está disponible.')
+          else if (widget.exportReportController!.isLoading)
+            const LinearProgressIndicator()
+          else if (widget.exportReportController!.error != null)
+            Text('No se pudo cargar el resumen: ${widget.exportReportController!.error}')
+          else
+            LayoutBuilder(builder: (context, constraints) {
+              final summary = widget.exportReportController!.summary;
+              final cards = [
+                _buildKpiCard(title: 'Pacientes atendidos', value: '${summary.patientsCount}', subtitle: 'En el período seleccionado', icon: Icons.people_alt_rounded, color: Colors.indigo),
+                _buildKpiCard(title: 'Dosis aplicadas', value: '${summary.dosesCount}', subtitle: 'En el período seleccionado', icon: Icons.vaccines_rounded, color: AppColors.primary),
+                _buildKpiCard(title: 'Tipos de vacuna', value: '${summary.vaccineTypesCount}', subtitle: 'Biológicos registrados', icon: Icons.medication_liquid_rounded, color: AppColors.success),
+              ];
+              if (constraints.maxWidth < 700) {
+                return Column(children: [
+                  for (var i = 0; i < cards.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 12),
+                    cards[i],
+                  ],
+                ]);
+              }
+              return Row(children: [
+                for (var i = 0; i < cards.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 16),
+                  Expanded(child: cards[i]),
+                ],
+              ]);
+            }),
+          const SizedBox(height: 20),
 
           // Formato
           const Text('Formato del Archivo', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.ink)),
@@ -1897,7 +1959,7 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
                 SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'El reporte incluirá todas las variables nominales requeridas: datos demográficos, régimen, tipo y dosis de biológico, lote, vacunador y fecha exacta.',
+                    'El registro incluye datos del paciente, atención, vacunas y vacunador disponibles para el período seleccionado.',
                     style: TextStyle(fontSize: 12.5, color: AppColors.ink),
                   ),
                 ),
@@ -1910,7 +1972,7 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
           Align(
             alignment: Alignment.centerRight,
             child: FilledButton.icon(
-              onPressed: _handleExportExecution,
+              onPressed: widget.exportReportController?.isExporting == true ? null : _handleExportExecution,
               icon: const Icon(Icons.download_rounded, size: 20),
               label: const Text('Generar y Descargar Reporte'),
               style: FilledButton.styleFrom(
@@ -1966,8 +2028,6 @@ class _AdminWebHistoryViewState extends State<AdminWebHistoryView> {
   Future<void> _handleExportExecution() async {
     final controller = widget.exportReportController;
     if (controller != null) {
-      controller.setStartDate(_exportStart, institutionId: widget.institutionId);
-      controller.setEndDate(_exportEnd, institutionId: widget.institutionId);
       final ok = await controller.exportAndShare(format: _exportFormat);
       if (!mounted) return;
       if (ok) {

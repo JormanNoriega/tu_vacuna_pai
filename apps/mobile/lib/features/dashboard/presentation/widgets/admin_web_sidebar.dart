@@ -36,9 +36,7 @@ class AdminSidebarSubItem {
 
 /// Menú lateral interactivo de escritorio para Administradores.
 ///
-/// Permanece colapsado en 72px mostrando solo iconos con Tooltip.
-/// Al pasar el mouse encima (a cualquier altura), se expande suavemente a 270px
-/// mostrando nombres y flechas desplegables para sub-opciones.
+/// Alterna entre una barra compacta y una expandida mediante un botón explícito.
 class AdminWebSidebar extends StatefulWidget {
   const AdminWebSidebar({
     super.key,
@@ -72,6 +70,7 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
   late final AnimationController _animController;
   late final Animation<double> _animation;
   final Set<String> _expandedSubmenus = {};
+  bool _isExpanded = false;
 
   @override
   void initState() {
@@ -258,76 +257,73 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
     });
   }
 
-  void _onEnter() {
-    _animController.forward();
-  }
-
-  void _onExit() {
-    _animController.reverse();
+  void _toggleSidebar() {
+    setState(() => _isExpanded = !_isExpanded);
+    if (_isExpanded) {
+      _animController.forward();
+    } else {
+      _animController.reverse();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => _onEnter(),
-      onExit: (_) => _onExit(),
-      child: AnimatedBuilder(
-        animation: _animation,
-        builder: (context, child) {
-          final width = 72.0 + (198.0 * _animation.value);
-          return Container(
-            width: width,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              border: const Border(
-                right: BorderSide(color: AppColors.border, width: 1),
-              ),
-              boxShadow: [
-                if (_animation.value > 0.05)
-                  BoxShadow(
-                    color: Colors.black.withValues(
-                      alpha: 0.06 * _animation.value,
-                    ),
-                    blurRadius: 16,
-                    offset: const Offset(4, 0),
-                  ),
-              ],
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        final width = 72.0 + (198.0 * _animation.value);
+        return Container(
+          width: width,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: const Border(
+              right: BorderSide(color: AppColors.border, width: 1),
             ),
-            child: ClipRect(
-              child: OverflowBox(
-                minWidth: 270,
-                maxWidth: 270,
-                alignment: Alignment.topLeft,
-                child: SizedBox(
-                  width: 270,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Cabecera del sidebar: Logo e Isotipo
-                      _buildHeader(),
-                      const Divider(height: 1, color: AppColors.border),
-
-                      // Lista de ítems y submenús
-                      Expanded(
-                        child: ListView(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          children: [
-                            for (final item in _items) _buildItemTile(item),
-                          ],
-                        ),
-                      ),
-
-                      const Divider(height: 1, color: AppColors.border),
-                      // Pie de página: Usuario y botón de salir
-                      _buildFooter(),
-                    ],
+            boxShadow: [
+              if (_animation.value > 0.05)
+                BoxShadow(
+                  color: Colors.black.withValues(
+                    alpha: 0.06 * _animation.value,
                   ),
+                  blurRadius: 16,
+                  offset: const Offset(4, 0),
+                ),
+            ],
+          ),
+          child: ClipRect(
+            child: OverflowBox(
+              minWidth: 270,
+              maxWidth: 270,
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: 270,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Cabecera del sidebar: Logo e Isotipo
+                    _buildHeader(),
+                    const Divider(height: 1, color: AppColors.border),
+
+                    // Lista de ítems y submenús
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        children: [
+                          for (final item in _items) _buildItemTile(item),
+                        ],
+                      ),
+                    ),
+
+                    const Divider(height: 1, color: AppColors.border),
+                    // Pie de página: Usuario y botón de salir
+                    _buildFooter(),
+                  ],
                 ),
               ),
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -340,17 +336,24 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
           SizedBox(
             width: 71,
             child: Center(
-              child: Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
+              child: Tooltip(
+                message: _isExpanded ? 'Tu Vacuna PAI' : 'Expandir menú',
+                child: Material(
                   color: AppColors.primary,
                   borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.vaccines_rounded,
-                  color: Colors.white,
-                  size: 24,
+                  child: InkWell(
+                    onTap: _isExpanded ? null : _toggleSidebar,
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      width: 42,
+                      height: 42,
+                      child: const Icon(
+                        Icons.vaccines_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -393,6 +396,12 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
               ),
             ),
           ),
+          if (_isExpanded)
+            IconButton(
+              tooltip: 'Contraer menú',
+              onPressed: _toggleSidebar,
+              icon: const Icon(Icons.menu_open_rounded, color: AppColors.slate),
+            ),
         ],
       ),
     );
@@ -407,74 +416,81 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-          child: InkWell(
-            onTap: () {
-              widget.onSelectSection(item.id);
-              if (item.hasSubItems) {
-                _toggleSubmenu(item.id);
-              }
-            },
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              height: 44,
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primarySoft : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 51,
-                    child: Center(
-                      child: Icon(
-                        isSelected ? item.selectedIcon : item.icon,
-                        color: isSelected ? AppColors.primary : AppColors.slate,
-                        size: 22,
+          child: Tooltip(
+            message: _isExpanded ? '' : item.label,
+            child: InkWell(
+              onTap: () {
+                widget.onSelectSection(item.id);
+                if (item.hasSubItems) {
+                  _toggleSubmenu(item.id);
+                }
+              },
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                height: 44,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.primarySoft
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 51,
+                      child: Center(
+                        child: Icon(
+                          isSelected ? item.selectedIcon : item.icon,
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.slate,
+                          size: 22,
+                        ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: FadeTransition(
-                      opacity: _animation,
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              item.label,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.w500,
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : AppColors.ink,
+                    Expanded(
+                      child: FadeTransition(
+                        opacity: _animation,
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                item.label,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.ink,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          if (item.hasSubItems)
-                            IconButton(
-                              icon: Icon(
-                                isSubmenuOpen
-                                    ? Icons.keyboard_arrow_down_rounded
-                                    : Icons.keyboard_arrow_right_rounded,
-                                size: 20,
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : AppColors.hint,
+                            if (item.hasSubItems)
+                              IconButton(
+                                icon: Icon(
+                                  isSubmenuOpen
+                                      ? Icons.keyboard_arrow_down_rounded
+                                      : Icons.keyboard_arrow_right_rounded,
+                                  size: 20,
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.hint,
+                                ),
+                                padding: const EdgeInsets.only(right: 8),
+                                constraints: const BoxConstraints(),
+                                onPressed: () => _toggleSubmenu(item.id),
                               ),
-                              padding: const EdgeInsets.only(right: 8),
-                              constraints: const BoxConstraints(),
-                              onPressed: () => _toggleSubmenu(item.id),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -488,7 +504,7 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
               sizeFactor: _animation,
               child: Padding(
                 padding: const EdgeInsets.only(
-                  left: 60,
+                  left: 48,
                   top: 2,
                   bottom: 4,
                   right: 12,
@@ -521,8 +537,7 @@ class _AdminWebSidebarState extends State<AdminWebSidebar>
                                     color: AppColors.slate,
                                     fontWeight: FontWeight.w500,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                  softWrap: true,
                                 ),
                               ),
                             ],
