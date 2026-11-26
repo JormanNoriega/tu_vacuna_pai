@@ -7,6 +7,8 @@ import com.pai.api.reports.export.ReportFormat;
 import com.pai.api.reports.service.RegistroDiarioExportService;
 import com.pai.api.shared.security.ActorResolver;
 import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -37,9 +39,19 @@ public class ReportController {
   public ResponseEntity<RegistroDiarioSummaryResponse> registroDiarioSummary(
       Authentication authentication,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to) {
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
+      @RequestParam(required = false) UUID vaccinatorId) {
     AuthorizedUser actor = ActorResolver.resolve(authentication);
-    return ResponseEntity.ok(service.summary(actor, from, to));
+    return ResponseEntity.ok(service.summary(actor, from, to, vaccinatorId));
+  }
+
+  @GetMapping("/registro-diario/vaccinators")
+  @PreAuthorize("@authorization.hasPermission(authentication, 'ATTENTION_READ')")
+  public List<RegistroDiarioExportService.VaccinatorOption> vaccinators(
+      Authentication authentication,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to) {
+    return service.vaccinators(ActorResolver.resolve(authentication), from, to);
   }
 
   @GetMapping("/registro-diario")
@@ -48,9 +60,10 @@ public class ReportController {
       Authentication authentication,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
-      @RequestParam(defaultValue = "xlsx") String format) {
+      @RequestParam(defaultValue = "xlsx") String format,
+      @RequestParam(required = false) UUID vaccinatorId) {
     AuthorizedUser actor = ActorResolver.resolve(authentication);
-    ExportedReport report = service.export(actor, from, to, ReportFormat.from(format));
+    ExportedReport report = service.export(actor, from, to, ReportFormat.from(format), vaccinatorId);
     return ResponseEntity.ok()
         .header(
             HttpHeaders.CONTENT_DISPOSITION,

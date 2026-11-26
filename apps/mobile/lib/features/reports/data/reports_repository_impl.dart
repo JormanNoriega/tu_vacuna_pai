@@ -17,16 +17,18 @@ class ReportsRepositoryImpl implements ReportsRepository {
     required DateTime from,
     required DateTime to,
     String? institutionId,
+    String? vaccinatorId,
   }) async {
     try {
       final json = await api.fetchRegistroDiarioSummary(
         accessToken,
         from: from,
         to: to,
+        vaccinatorId: vaccinatorId,
       );
       return ReportSummary.fromJson(json);
     } catch (_) {
-      if (database != null && institutionId != null) {
+      if (database != null && institutionId != null && vaccinatorId == null) {
         return _localSummary(institutionId, from, to);
       }
       rethrow;
@@ -34,17 +36,26 @@ class ReportsRepositoryImpl implements ReportsRepository {
   }
 
   @override
+  Future<List<Map<String, dynamic>>> fetchVaccinators(
+    String accessToken, {
+    required DateTime from,
+    required DateTime to,
+  }) => api.fetchReportVaccinators(accessToken, from: from, to: to);
+
+  @override
   Future<Uint8List> exportReport(
     String accessToken, {
     required DateTime from,
     required DateTime to,
     String format = 'xlsx',
+    String? vaccinatorId,
   }) {
     return api.downloadRegistroDiario(
       accessToken,
       from: from,
       to: to,
       format: format,
+      vaccinatorId: vaccinatorId,
     );
   }
 

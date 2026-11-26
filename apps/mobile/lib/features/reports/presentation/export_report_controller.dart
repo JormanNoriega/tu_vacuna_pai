@@ -20,11 +20,31 @@ class ExportReportController extends AsyncController {
   DateTime _endDate = DateTime.now();
   ReportSummary _summary = ReportSummary.zero;
   bool _isExporting = false;
+  String? _vaccinatorId;
+  List<Map<String, dynamic>> _vaccinators = [];
+  int _summaryRequest = 0;
 
   DateTime get startDate => _startDate;
   DateTime get endDate => _endDate;
   ReportSummary get summary => _summary;
   bool get isExporting => _isExporting;
+  String? get vaccinatorId => _vaccinatorId;
+  List<Map<String, dynamic>> get vaccinators => _vaccinators;
+
+  void setDateRange(DateTime start, DateTime end, {String? institutionId}) {
+    _startDate = start;
+    _endDate = end;
+    _vaccinatorId = null;
+    _vaccinators = [];
+    notifyListeners();
+    loadSummary(institutionId: institutionId, refreshVaccinators: true);
+  }
+
+  void setVaccinator(String? id, {String? institutionId}) {
+    _vaccinatorId = id;
+    notifyListeners();
+    loadSummary(institutionId: institutionId);
+  }
 
   void setStartDate(DateTime start, {String? institutionId}) {
     if (start.isAfter(_endDate)) {
@@ -44,7 +64,9 @@ class ExportReportController extends AsyncController {
     loadSummary(institutionId: institutionId);
   }
 
-  Future<void> loadSummary({String? institutionId}) async {
+  Future<void> loadSummary({String? institutionId, bool refreshVaccinators = false}) async {
+    final request = ++_summaryRequest;
+    final selectedVaccinator = _vaccinatorId;
     final from = DateTime(
       _startDate.year,
       _startDate.month,
@@ -63,12 +85,18 @@ class ExportReportController extends AsyncController {
     );
 
     await execute((token) async {
-      _summary = await repository.fetchSummary(
+      final summary = await repository.fetchSummary(
         token,
         from: from,
         to: to,
         institutionId: institutionId,
+        vaccinatorId: selectedVaccinator,
       );
+      if (request == _summaryRequest) _summary = summary;
+      if (refreshVaccinators) {
+        final vaccinators = await repository.fetchVaccinators(token, from: from, to: to);
+        if (request == _summaryRequest) _vaccinators = vaccinators;
+      }
     });
   }
 
@@ -102,6 +130,7 @@ class ExportReportController extends AsyncController {
           from: from,
           to: to,
           format: format,
+          vaccinatorId: _vaccinatorId,
         );
       });
 

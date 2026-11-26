@@ -8,6 +8,13 @@ abstract interface class ReportsRepository {
     required DateTime from,
     required DateTime to,
     String? institutionId,
+    String? vaccinatorId,
+  });
+
+  Future<List<Map<String, dynamic>>> fetchVaccinators(
+    String accessToken, {
+    required DateTime from,
+    required DateTime to,
   });
 
   Future<Uint8List> exportReport(
@@ -15,5 +22,6 @@ abstract interface class ReportsRepository {
     required DateTime from,
     required DateTime to,
     String format = 'xlsx',
+    String? vaccinatorId,
   });
 }

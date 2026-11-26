@@ -2344,10 +2344,14 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
                             Expanded(
                               child: DropdownButtonFormField<String>(
                                 initialValue: selectedVaccine.id,
+                                isExpanded: true,
                                 decoration: const InputDecoration(labelText: 'Biológico / Vacuna'),
                                 items: [
                                   for (final v in availableVaccines)
-                                    DropdownMenuItem(value: v.id, child: Text(v.name)),
+                                    DropdownMenuItem(
+                                      value: v.id,
+                                      child: Text(v.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                    ),
                                 ],
                                 onChanged: (val) {
                                   if (val != null) setState(() => _ajusteVaccineId = val);
@@ -2377,12 +2381,13 @@ class _AdminWebCatalogViewState extends State<AdminWebCatalogView> {
                             Expanded(
                               child: DropdownButtonFormField<String>(
                                 initialValue: _ajusteReason,
+                                isExpanded: true,
                                 decoration: const InputDecoration(labelText: 'Motivo del Ajuste'),
                                 items: const [
-                                  DropdownMenuItem(value: 'conteo', child: Text('Ajuste por conteo físico en inventario')),
-                                  DropdownMenuItem(value: 'merma', child: Text('Merma por temperatura / red de frío')),
-                                  DropdownMenuItem(value: 'donacion', child: Text('Entrada extraordinaria de biológicos')),
-                                  DropdownMenuItem(value: 'rotura', child: Text('Frascos descartados o averiados')),
+                                  DropdownMenuItem(value: 'conteo', child: Text('Ajuste por conteo físico en inventario', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                  DropdownMenuItem(value: 'merma', child: Text('Merma por temperatura / red de frío', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                  DropdownMenuItem(value: 'donacion', child: Text('Entrada extraordinaria de biológicos', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                  DropdownMenuItem(value: 'rotura', child: Text('Frascos descartados o averiados', maxLines: 1, overflow: TextOverflow.ellipsis)),
                                 ],
                                 onChanged: (val) {
                                   if (val != null) setState(() => _ajusteReason = val);

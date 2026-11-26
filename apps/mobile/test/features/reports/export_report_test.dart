@@ -42,6 +42,7 @@ class FakeReportsRepository implements ReportsRepository {
   DateTime? lastFrom;
   DateTime? lastTo;
   String? lastFormat;
+  String? lastVaccinatorId;
   bool exportCalled = false;
 
   @override
@@ -50,11 +51,20 @@ class FakeReportsRepository implements ReportsRepository {
     required DateTime from,
     required DateTime to,
     String? institutionId,
+    String? vaccinatorId,
   }) async {
     lastFrom = from;
     lastTo = to;
+    lastVaccinatorId = vaccinatorId;
     return summary;
   }
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchVaccinators(
+    String accessToken, {
+    required DateTime from,
+    required DateTime to,
+  }) async => [];
 
   @override
   Future<Uint8List> exportReport(
@@ -62,6 +72,7 @@ class FakeReportsRepository implements ReportsRepository {
     required DateTime from,
     required DateTime to,
     String format = 'xlsx',
+    String? vaccinatorId,
   }) async {
     exportCalled = true;
     lastFormat = format;
@@ -163,6 +174,15 @@ void main() {
   });
 
   group('ExportReportController', () {
+    test('filtra el resumen por vacunador y permite volver a todos', () async {
+      controller.setVaccinator('vac-1', institutionId: 'inst-1');
+      await Future<void>.delayed(Duration.zero);
+      expect(repository.lastVaccinatorId, 'vac-1');
+      controller.setVaccinator(null, institutionId: 'inst-1');
+      await Future<void>.delayed(Duration.zero);
+      expect(repository.lastVaccinatorId, isNull);
+    });
+
     test('carga el resumen correctamente y actualiza metricas', () async {
       expect(controller.summary.patientsCount, 0);
       await controller.loadSummary(institutionId: 'inst-1');
