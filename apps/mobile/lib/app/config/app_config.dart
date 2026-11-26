@@ -6,9 +6,9 @@ import 'package:flutter/foundation.dart';
 ///   flutter run --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_PUBLISHABLE_KEY=...
 ///               --dart-define=API_BASE_URL=...
 ///
-/// Los valores por defecto apuntan al proyecto Supabase de desarrollo y a un
-/// backend local. La URL del API se ajusta por plataforma: en el emulador de
-/// Android el host de la maquina anfitriona es `10.0.2.2`, no `localhost`.
+/// Los valores por defecto apuntan al proyecto Supabase configurado y al backend
+/// de Render. En el emulador de Android, `localhost` se traduce a `10.0.2.2`
+/// cuando se configura un backend local.
 abstract final class AppConfig {
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
@@ -25,10 +25,11 @@ abstract final class AppConfig {
   );
 
   /// URL base del API. En Android emulador se traduce `localhost` a `10.0.2.2`.
+  /// `API_BASE_URL` permite cambiar el destino en cualquier modo de compilacion.
   static String get apiBaseUrl {
     final configured = const String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'http://localhost:8080/api/v1',
+      defaultValue: 'https://tu-vacuna-pai.onrender.com/api/v1',
     );
 
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
