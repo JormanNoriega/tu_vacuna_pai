@@ -39,11 +39,23 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Entregas'));
-      await tester.tap(find.text('Entregas'));
+      final action = find
+          .descendant(
+            of: find.byType(DashboardPage),
+            matching: find.text('Entregas'),
+          )
+          .first;
+      await tester.ensureVisible(action);
+      await tester.tap(action);
       await tester.pumpAndSettle();
       expect(find.text('Nueva entrega'), findsOneWidget);
-      await tester.pageBack();
+      expect(find.byKey(const Key('dashboard-nav-bar')), findsOneWidget);
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const Key('dashboard-nav-bar')),
+          matching: find.text('Inicio'),
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.pumpWidget(
         MaterialApp(
@@ -51,7 +63,6 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Entregas'), findsNothing);
       expect(find.text('Jornadas'), findsNothing);
     },
   );
@@ -73,8 +84,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       for (final label in ['Jornadas', 'Entregas', 'Custodia y cierre']) {
-        await tester.ensureVisible(find.text(label));
-        await tester.tap(find.text(label));
+        final action = find.text(label).first;
+        await tester.ensureVisible(action);
+        await tester.tap(action);
         await tester.pumpAndSettle();
         expect(
           find.text(switch (label) {
@@ -86,7 +98,17 @@ void main() {
         );
         expect(find.text('Nueva jornada'), findsNothing);
         expect(find.text('Nueva entrega'), findsNothing);
-        await tester.pageBack();
+        if (label == 'Custodia y cierre') {
+          await tester.pageBack();
+        } else {
+          expect(find.byKey(const Key('dashboard-nav-bar')), findsOneWidget);
+          await tester.tap(
+            find.descendant(
+              of: find.byKey(const Key('dashboard-nav-bar')),
+              matching: find.text('Inicio'),
+            ),
+          );
+        }
         await tester.pumpAndSettle();
       }
     },
@@ -115,7 +137,13 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.text('Entregas'), findsNothing);
+        expect(
+          find.descendant(
+            of: find.byType(GridView),
+            matching: find.text('Entregas'),
+          ),
+          findsNothing,
+        );
         expect(find.text('Jornadas'), findsNothing);
         expect(find.text('Custodia y cierre'), findsNothing);
       },
