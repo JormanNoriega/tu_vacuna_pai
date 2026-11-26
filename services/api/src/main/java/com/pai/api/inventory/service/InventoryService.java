@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,7 @@ public class InventoryService {
   private final PermissionGuard guard;
   private final DataScope scope;
   private final Clock clock;
+  private ApplicationEventPublisher events = event -> {};
   private static final ZoneId OPERATIONAL_ZONE = ZoneId.of("America/Bogota");
 
   @Autowired
@@ -345,6 +347,9 @@ public class InventoryService {
         + "JOIN app.vaccines v ON v.id = l.vaccine_id "
         + "LEFT JOIN app.inventory_campaigns c ON c.id = a.campaign_id AND c.institution_id = a.institution_id";
   }
+
+  @Autowired
+  void setEvents(ApplicationEventPublisher events) { this.events = events; }
 
   public record ReceivedLot(UUID lotId, String lotNumber, LocalDate expiresOn) {}
 
@@ -775,6 +780,8 @@ public class InventoryService {
         java.sql.Timestamp.from(occurredAt.truncatedTo(ChronoUnit.MICROS)), actor, reason);
     db.update("UPDATE app.inventory_lots SET available_vials = ? WHERE institution_id = ? AND id = ?",
         transfer.remainingVials(), institutionId, lotId);
+    events.publishEvent(new InventoryChange("DELIVERY_CREATED", institutionId, assignmentId,
+        movementId, vaccinatorId));
     return transfer.assignment();
   }
 

@@ -13,6 +13,18 @@ El servidor escucha en un puerto local temporal y termina con la prueba; no acce
 
 La configuración de la aplicación mantiene el endpoint desactivado por defecto. Activarlo solo en entornos de prueba controlados; no habilita restricciones clínicas ni cuotas offline.
 
+## Prueba aislada de eventos SSE
+
+`InventoryEventsHttpE2eTest` inicia Spring y H2 locales, abre suscripciones SSE
+HTTP autenticadas con identidades ficticias y comprueba el aviso de entrega al
+vacunador y el de devolución al administrador. Invoca los servicios reales;
+prepara la recepción directamente en el fixture y no ejercita formularios,
+Supabase ni dispositivos físicos. Se ejecutó satisfactoriamente el 26 de
+noviembre de 2026 con `.\mvnw.cmd '-Dmaven.compiler.useIncrementalCompilation=false'
+'-Dtest=InventoryEventsHttpE2eTest' test`. La prueba previa de widgets
+`InventoryMobileE2eTest` no pasó en esa revisión porque espera una pantalla de
+lotes anterior al flujo de Entregas; no presentar ese recorrido como aprobado.
+
 ## Prueba explícita con Supabase Auth y PostgreSQL
 
 `InventorySupabaseMobileE2eTest` es una prueba **opt-in que escribe temporalmente en el proyecto configurado**. Crea dos identidades temporales mediante Supabase Auth Admin, una institución temporal y sus datos de inventario; obtiene JWT reales por contraseña e inicia la API real local con inventario habilitado solo en ese proceso. Los widgets recorren creación de lote, entrada, asignación con jornada, recepción, devolución e incidencia. Después verifica saldo 9, devolución confirmada e incidencia de pérdida. La prueba elimina únicamente los registros de la institución e identidades que ella creó y deshabilita los sembradores globales durante su ejecución.

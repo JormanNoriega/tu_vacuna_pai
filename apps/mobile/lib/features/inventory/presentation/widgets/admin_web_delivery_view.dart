@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
@@ -52,6 +54,8 @@ class AdminWebDeliveryView extends StatefulWidget {
 }
 
 class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
+  StreamSubscription<Map<String, dynamic>>? _changeSub;
+  bool _reloadAfterCurrent = false;
   _DeliveryWebTab _activeTab = _DeliveryWebTab.entregas;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -80,6 +84,7 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
   @override
   void initState() {
     super.initState();
+    _listenChanges();
     _resolveInitialSubAction(widget.initialSubAction);
     if (widget.online) {
       _loadData();
@@ -89,6 +94,10 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
   @override
   void didUpdateWidget(covariant AdminWebDeliveryView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      unawaited(_changeSub?.cancel());
+      _listenChanges();
+    }
     if (widget.initialSubAction != null &&
         widget.initialSubAction != oldWidget.initialSubAction) {
       _resolveInitialSubAction(widget.initialSubAction);
@@ -101,8 +110,20 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
 
   @override
   void dispose() {
+    unawaited(_changeSub?.cancel());
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _listenChanges() {
+    _changeSub = widget.controller.changes.listen((_) {
+      if (!mounted || !widget.online) return;
+      if (_loading) {
+        _reloadAfterCurrent = true;
+      } else {
+        unawaited(_loadData());
+      }
+    });
   }
 
   void _resolveInitialSubAction(String? subAction) {
@@ -149,6 +170,10 @@ class _AdminWebDeliveryViewState extends State<AdminWebDeliveryView> {
       _apiCampaigns = campaigns;
       _apiCustodyEvents = events;
     });
+    if (_reloadAfterCurrent) {
+      _reloadAfterCurrent = false;
+      unawaited(_loadData());
+    }
   }
 
   Future<void> _openPage(Widget page) async {

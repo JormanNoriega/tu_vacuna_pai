@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'inventory_controller.dart';
@@ -22,6 +24,8 @@ class PendingFollowUpsPage extends StatefulWidget {
 }
 
 class _PendingFollowUpsPageState extends State<PendingFollowUpsPage> {
+  StreamSubscription<Map<String, dynamic>>? _changeSub;
+  bool _reloadAfterCurrent = false;
   List<Map<String, dynamic>>? _items;
   String? _error;
   bool _loading = false;
@@ -30,7 +34,21 @@ class _PendingFollowUpsPageState extends State<PendingFollowUpsPage> {
   @override
   void initState() {
     super.initState();
+    _changeSub = widget.controller.changes.listen((event) {
+      if (event['type'] != 'RETURN_DECLARED' || !mounted) return;
+      if (_loading) {
+        _reloadAfterCurrent = true;
+      } else {
+        unawaited(_load());
+      }
+    });
     if (widget.online && widget.canRead) _load();
+  }
+
+  @override
+  void dispose() {
+    unawaited(_changeSub?.cancel());
+    super.dispose();
   }
 
   @override
@@ -40,7 +58,9 @@ class _PendingFollowUpsPageState extends State<PendingFollowUpsPage> {
         oldWidget.canRead != widget.canRead ||
         oldWidget.institutionId != widget.institutionId) {
       _request++;
-      _items = null;
+      if (oldWidget.institutionId != widget.institutionId || !widget.canRead) {
+        _items = null;
+      }
       _error = null;
       _loading = false;
       if (widget.online && widget.canRead) _load();
@@ -51,7 +71,6 @@ class _PendingFollowUpsPageState extends State<PendingFollowUpsPage> {
     if (!widget.online || !widget.canRead || _loading) return;
     final request = ++_request;
     setState(() {
-      _items = null;
       _error = null;
       _loading = true;
     });
@@ -61,11 +80,15 @@ class _PendingFollowUpsPageState extends State<PendingFollowUpsPage> {
     if (!mounted || request != _request) return;
     setState(() {
       _loading = false;
-      _items = result;
+      if (result != null) _items = result;
       _error = result == null
           ? widget.controller.error ?? 'No se pudo consultar el seguimiento.'
           : null;
     });
+    if (_reloadAfterCurrent) {
+      _reloadAfterCurrent = false;
+      unawaited(_load());
+    }
   }
 
   @override
@@ -105,8 +128,11 @@ class _PendingFollowUpsPageState extends State<PendingFollowUpsPage> {
                     const LinearProgressIndicator(),
                     const SizedBox(height: 12),
                     const Text('Consultando pendientes…'),
-                  ] else if (_error != null) ...[
+                  ],
+                  if (_error != null) ...[
                     Text(_error!),
+                    if (items != null && items.isNotEmpty)
+                      const Text('Los datos mostrados pueden estar desactualizados.'),
                     Align(
                       alignment: Alignment.centerLeft,
                       child: TextButton(
@@ -114,7 +140,8 @@ class _PendingFollowUpsPageState extends State<PendingFollowUpsPage> {
                         child: const Text('Reintentar'),
                       ),
                     ),
-                  ] else if (items != null) ...[
+                  ],
+                  if (items != null && (_error == null || items.isNotEmpty)) ...[
                     if (items.isEmpty)
                       const Text('No hay pendientes en esta consulta.')
                     else ...[

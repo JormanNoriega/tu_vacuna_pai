@@ -169,6 +169,90 @@ class _DelayedHistoricalController extends _HistoricalController {
 }
 
 void main() {
+  testWidgets('un evento actualiza la lista aunque haya un diálogo abierto', (tester) async {
+    final controller = FakeInventoryController();
+    final navigator = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(MaterialApp(
+      navigatorKey: navigator,
+      home: InventoryPage(
+        controller: controller, institutionId: 'institucion',
+        admin: false, online: true, canWrite: true,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    final initialLoads = controller.loads;
+    unawaited(showDialog<void>(
+      context: navigator.currentContext!,
+      builder: (_) => const AlertDialog(title: Text('Diálogo abierto')),
+    ));
+    await tester.pumpAndSettle();
+    controller.acceptChange({'type': 'DELIVERY_CREATED', 'assignmentId': 'entrega-1'});
+    await tester.pumpAndSettle();
+    expect(controller.loads, initialLoads + 1);
+    navigator.currentState!.pop();
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox());
+    controller.dispose();
+  });
+
+  testWidgets('un fallo al actualizar pendientes conserva datos con advertencia', (tester) async {
+    final controller = _FollowUpController()
+      ..result = [{'kind': 'RETURN_PENDING', 'vaccineName': 'Vacuna prueba',
+        'lotNumber': 'L1', 'pendingVials': 2}];
+    await tester.pumpWidget(MaterialApp(home: PendingFollowUpsPage(
+      controller: controller, institutionId: 'institucion', online: true, canRead: true,
+    )));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Vacuna prueba'), findsOneWidget);
+    controller.result = null;
+    controller.acceptChange({'type': 'RETURN_DECLARED'});
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Vacuna prueba'), findsOneWidget);
+    expect(find.textContaining('pueden estar desactualizados'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    controller.dispose();
+  });
+
+  testWidgets('una devolución recibida por evento actualiza la vista administrativa', (tester) async {
+    final controller = FakeInventoryController();
+    await tester.pumpWidget(MaterialApp(
+      home: InventoryPage(
+        controller: controller,
+        institutionId: 'institucion',
+        admin: true,
+        online: true,
+        canWrite: true,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    final initialLoads = controller.loads;
+    controller.acceptChange({'type': 'RETURN_DECLARED', 'assignmentId': 'entrega-1'});
+    await tester.pumpAndSettle();
+    expect(controller.loads, initialLoads + 1);
+    await tester.pumpWidget(const SizedBox());
+    controller.dispose();
+  });
+
+  testWidgets('una entrega recibida por evento actualiza la lista sin deslizar', (tester) async {
+    final controller = FakeInventoryController();
+    await tester.pumpWidget(MaterialApp(
+      home: InventoryPage(
+        controller: controller,
+        institutionId: 'institucion',
+        admin: false,
+        online: true,
+        canWrite: true,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    final initialLoads = controller.loads;
+    controller.acceptChange({'type': 'DELIVERY_CREATED', 'assignmentId': 'entrega-1'});
+    await tester.pumpAndSettle();
+    expect(controller.loads, initialLoads + 1);
+    await tester.pumpWidget(const SizedBox());
+    controller.dispose();
+  });
+
   testWidgets(
     'historial no muestra respuesta tardía después de perder permiso',
     (tester) async {

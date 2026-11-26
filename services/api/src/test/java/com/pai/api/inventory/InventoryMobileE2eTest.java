@@ -12,9 +12,11 @@ import com.pai.api.identity.service.IdentityService;
 import com.pai.api.inventory.controller.InventoryController;
 import com.pai.api.inventory.controller.CampaignController;
 import com.pai.api.inventory.controller.CustodyEventController;
+import com.pai.api.inventory.controller.InventoryEventStreamController;
 import com.pai.api.inventory.service.InventoryService;
 import com.pai.api.inventory.service.CampaignService;
 import com.pai.api.inventory.service.CustodyEventService;
+import com.pai.api.inventory.service.InventoryEventStream;
 import com.pai.api.shared.exceptions.GlobalExceptionHandler;
 import com.pai.api.shared.json.JsonSerializer;
 import com.pai.api.shared.security.AuthorizationService;
@@ -61,7 +63,8 @@ class InventoryMobileE2eTest {
   @SpringBootConfiguration
   @EnableAutoConfiguration
   @EnableTransactionManagement
-  @Import({InventoryController.class, CampaignController.class, CustodyEventController.class, InventoryService.class, CampaignService.class, CustodyEventService.class,
+  @Import({InventoryController.class, CampaignController.class, CustodyEventController.class, InventoryEventStreamController.class,
+      InventoryEventStream.class, InventoryService.class, CampaignService.class, CustodyEventService.class,
       com.pai.api.inventory.service.InventoryReceiptWorkflow.class,
       com.pai.api.inventory.service.CustodyWorkflowService.class,
       com.pai.api.inventory.controller.CustodyWorkflowController.class, DataScope.class, PermissionGuard.class,
@@ -185,5 +188,34 @@ class InventoryMobileE2eTest {
       assertThat(db.queryForObject("SELECT available_vials FROM app.inventory_lots", Integer.class)).isEqualTo(9);
       System.out.println("Novedad movil: perdida registrada; saldo sin cambios; confirmacion no autorizada=403");
     }
+  }
+
+  static java.util.concurrent.CompletableFuture<String> subscribe(int port, String token)
+      throws Exception {
+    var request = java.net.http.HttpRequest.newBuilder(java.net.URI.create("http://127.0.0.1:" + port
+            + "/api/v1/institutions/" + INST + "/inventory/events"))
+        .header("Authorization", "Bearer " + token)
+        .header("Accept", "text/event-stream, application/json").GET().build();
+    var response = java.net.http.HttpClient.newHttpClient().send(request,
+        java.net.http.HttpResponse.BodyHandlers.ofInputStream());
+    assertThat(response.statusCode()).isEqualTo(200);
+    var reader = new java.io.BufferedReader(new java.io.InputStreamReader(response.body(),
+        java.nio.charset.StandardCharsets.UTF_8));
+    // No iniciar operaciones hasta recibir la confirmación de suscripción.
+    assertThat(reader.readLine()).isEqualTo("event:ready");
+    assertThat(reader.readLine()).isEqualTo("data:ok");
+    assertThat(reader.readLine()).isEmpty();
+    return java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+      try (reader) {
+        boolean change = false;
+        for (String line; (line = reader.readLine()) != null;) {
+          if (line.equals("event:inventory-change")) change = true;
+          if (change && line.startsWith("data:")) return line;
+        }
+        throw new IllegalStateException("El canal terminó sin evento.");
+      } catch (java.io.IOException ex) {
+        throw new java.util.concurrent.CompletionException(ex);
+      }
+    });
   }
 }

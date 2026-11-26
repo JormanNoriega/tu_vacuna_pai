@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/app_theme.dart';
@@ -49,6 +51,8 @@ class InventoryPage extends StatefulWidget {
 }
 
 class _InventoryPageState extends State<InventoryPage> {
+  StreamSubscription<Map<String, dynamic>>? _changeSub;
+  bool _reloadAfterCurrent = false;
   int _tab = 0;
   bool _refreshing = false;
   String? _error;
@@ -61,6 +65,7 @@ class _InventoryPageState extends State<InventoryPage> {
   @override
   void initState() {
     super.initState();
+    _listenChanges();
     _tab = widget.admin && widget.initialTab == 1 ? 1 : 0;
     if (widget.online) _load();
   }
@@ -68,6 +73,10 @@ class _InventoryPageState extends State<InventoryPage> {
   @override
   void didUpdateWidget(covariant InventoryPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      unawaited(_changeSub?.cancel());
+      _listenChanges();
+    }
     if (oldWidget.institutionId != widget.institutionId ||
         oldWidget.admin != widget.admin) {
       _request++;
@@ -82,6 +91,24 @@ class _InventoryPageState extends State<InventoryPage> {
     } else if (!oldWidget.online && widget.online) {
       _load();
     }
+  }
+
+  void _listenChanges() {
+    _changeSub = widget.controller.changes.listen((_) {
+      if (!mounted || !widget.online) return;
+      if (widget.admin && MediaQuery.sizeOf(context).width >= 960) return;
+      if (_refreshing) {
+        _reloadAfterCurrent = true;
+      } else {
+        unawaited(_load());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    unawaited(_changeSub?.cancel());
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -115,6 +142,10 @@ class _InventoryPageState extends State<InventoryPage> {
       // Un fallo del directorio no debe ocultar entregas ya consultadas.
       _error = loadError;
     });
+    if (_reloadAfterCurrent) {
+      _reloadAfterCurrent = false;
+      unawaited(_load());
+    }
   }
 
   Future<void> _open(Widget page) async {
@@ -247,20 +278,35 @@ class _InventoryPageState extends State<InventoryPage> {
                             width: double.infinity,
                             child: SegmentedButton<int>(
                               style: ButtonStyle(
-                                backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
-                                  if (states.contains(WidgetState.selected)) {
+                                  backgroundColor:
+                                      WidgetStateProperty.resolveWith<Color>((
+                                        states,
+                                      ) {
+                                        if (states.contains(
+                                          WidgetState.selected,
+                                        )) {
                                     return const Color(0xFFEFF6FF);
                                   }
                                   return Colors.white;
                                 }),
-                                foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
-                                  if (states.contains(WidgetState.selected)) {
+                                  foregroundColor:
+                                      WidgetStateProperty.resolveWith<Color>((
+                                        states,
+                                      ) {
+                                        if (states.contains(
+                                          WidgetState.selected,
+                                        )) {
                                     return const Color(0xFF1E60EC);
                                   }
                                   return const Color(0xFF64748B);
                                 }),
-                                iconColor: WidgetStateProperty.resolveWith<Color>((states) {
-                                  if (states.contains(WidgetState.selected)) {
+                                  iconColor:
+                                      WidgetStateProperty.resolveWith<Color>((
+                                        states,
+                                      ) {
+                                        if (states.contains(
+                                          WidgetState.selected,
+                                        )) {
                                     return const Color(0xFF1E60EC);
                                   }
                                   return const Color(0xFF64748B);
@@ -277,18 +323,28 @@ class _InventoryPageState extends State<InventoryPage> {
                               segments: const [
                                 ButtonSegment(
                                   value: 0,
-                                  icon: Icon(Icons.local_shipping_outlined, size: 18),
+                                    icon: Icon(
+                                      Icons.local_shipping_outlined,
+                                      size: 18,
+                                    ),
                                   label: Text(
                                     'Entregas',
-                                    style: TextStyle(fontWeight: FontWeight.w700),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                   ),
                                 ),
                                 ButtonSegment(
                                   value: 1,
-                                  icon: Icon(Icons.event_note_outlined, size: 18),
+                                    icon: Icon(
+                                      Icons.event_note_outlined,
+                                      size: 18,
+                                    ),
                                   label: Text(
                                     'Jornadas',
-                                    style: TextStyle(fontWeight: FontWeight.w700),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                   ),
                                 ),
                               ],
@@ -303,16 +359,24 @@ class _InventoryPageState extends State<InventoryPage> {
                           onRefresh: _load,
                           child: ListView(
                             physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+                              padding: const EdgeInsets.fromLTRB(
+                                20,
+                                20,
+                                20,
+                                100,
+                              ),
                             children: [
                               _heading(context),
                               const SizedBox(height: 24),
-                              if (_refreshing) const LinearProgressIndicator(),
+                                if (_refreshing)
+                                  const LinearProgressIndicator(),
                               if (_error != null) ...[
                                 Text(
                                   _error!,
                                   style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .error,
                                   ),
                                 ),
                                 Align(
@@ -461,7 +525,9 @@ class _InventoryPageState extends State<InventoryPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.admin ? 'Custodia y cierre' : 'Mi custodia y conteos',
+                          widget.admin
+                              ? 'Custodia y cierre'
+                              : 'Mi custodia y conteos',
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -611,12 +677,16 @@ class _InventoryPageState extends State<InventoryPage> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: isActive ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9),
+                    color: isActive
+                        ? const Color(0xFFECFDF5)
+                        : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     Icons.event_available_rounded,
-                    color: isActive ? const Color(0xFF059669) : const Color(0xFF64748B),
+                    color: isActive
+                        ? const Color(0xFF059669)
+                        : const Color(0xFF64748B),
                     size: 22,
                   ),
                 ),
@@ -638,12 +708,19 @@ class _InventoryPageState extends State<InventoryPage> {
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
-                              color: isActive ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9),
+                              color: isActive
+                                  ? const Color(0xFFECFDF5)
+                                  : const Color(0xFFF1F5F9),
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                color: isActive ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0),
+                                color: isActive
+                                    ? const Color(0xFFA7F3D0)
+                                    : const Color(0xFFE2E8F0),
                               ),
                             ),
                             child: Text(
@@ -651,7 +728,9 @@ class _InventoryPageState extends State<InventoryPage> {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                color: isActive ? const Color(0xFF047857) : const Color(0xFF64748B),
+                                color: isActive
+                                    ? const Color(0xFF047857)
+                                    : const Color(0xFF64748B),
                               ),
                             ),
                           ),
@@ -660,12 +739,19 @@ class _InventoryPageState extends State<InventoryPage> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.location_on_outlined, size: 14, color: AppColors.slate),
+                          const Icon(
+                            Icons.location_on_outlined,
+                            size: 14,
+                            color: AppColors.slate,
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               '${campaign['location']} · ${campaignDates(campaign)}',
-                              style: const TextStyle(fontSize: 12.5, color: AppColors.slate),
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                color: AppColors.slate,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -676,7 +762,11 @@ class _InventoryPageState extends State<InventoryPage> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFF94A3B8)),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: Color(0xFF94A3B8),
+                ),
               ],
             ),
           ),
@@ -748,7 +838,10 @@ class _InventoryPageState extends State<InventoryPage> {
         child: Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            tilePadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 6,
+            ),
             childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             leading: Container(
               width: 38,
@@ -773,10 +866,7 @@ class _InventoryPageState extends State<InventoryPage> {
             ),
             subtitle: Text(
               '${_events.length} registradas',
-              style: const TextStyle(
-                fontSize: 12.5,
-                color: AppColors.slate,
-              ),
+              style: const TextStyle(fontSize: 12.5, color: AppColors.slate),
             ),
             children: [
               for (var i = 0; i < _events.length; i++) ...[
@@ -829,7 +919,10 @@ class _InventoryPageState extends State<InventoryPage> {
                                 ),
                           style: FilledButton.styleFrom(
                             visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
                           ),
                           child: const Text('Revisar'),
                         ),

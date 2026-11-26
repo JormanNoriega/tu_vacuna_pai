@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/presentation/async_controller.dart';
@@ -10,6 +12,17 @@ class InventoryController extends AsyncController {
     this.renewSession,
   });
   final ApiClient api;
+  final _changes = StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get changes => _changes.stream;
+  void acceptChange(Map<String, dynamic> event) {
+    if (!isDisposed) _changes.add(event);
+  }
+
+  @override
+  void dispose() {
+    unawaited(_changes.close());
+    super.dispose();
+  }
 
   /// Comprueba recepción vigente con frascos sin comprometer registrados.
   /// No representa saldo clínico de dosis ni prueba existencias físicas.
@@ -84,10 +97,6 @@ class InventoryController extends AsyncController {
 
   Future<void> load(String institution, {required bool admin}) =>
       execute((token) async {
-        lots = const [];
-        assignments = const [];
-        campaigns = const [];
-        custodyEvents = const [];
         final loadedLots = admin
             ? await api.inventoryList(token, institution, 'lots')
             : <Map<String, dynamic>>[];

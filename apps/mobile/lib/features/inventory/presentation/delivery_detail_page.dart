@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/app_theme.dart';
@@ -32,14 +34,43 @@ class DeliveryDetailPage extends StatefulWidget {
 }
 
 class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
+  StreamSubscription<Map<String, dynamic>>? _changeSub;
+  bool _reloadAfterCurrent = false;
   late Map<String, dynamic> _assignment = widget.assignment;
   bool _refreshing = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _changeSub = widget.controller.changes.listen((event) {
+      if (event['assignmentId'] != _assignment['id'] || !mounted) return;
+      if (_refreshing) {
+        _reloadAfterCurrent = true;
+      } else {
+        unawaited(_refresh());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    unawaited(_changeSub?.cancel());
+    super.dispose();
+  }
 
   Future<void> _open(Widget page) async {
     await Navigator.of(context)
         .push(MaterialPageRoute<void>(builder: (_) => page));
     if (!mounted) return;
+    await _refresh();
+  }
+
+  Future<void> _refresh() async {
+    if (_refreshing) {
+      _reloadAfterCurrent = true;
+      return;
+    }
     setState(() => _refreshing = true);
     await widget.controller.load(widget.institutionId, admin: widget.admin);
     if (!mounted) return;
@@ -50,6 +81,10 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
         if (a['id'] == _assignment['id']) _assignment = a;
       }
     });
+    if (_reloadAfterCurrent) {
+      _reloadAfterCurrent = false;
+      unawaited(_refresh());
+    }
   }
 
   @override
@@ -59,7 +94,13 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     final isPending = status == 'IN_TRANSIT' || status == 'PARTIALLY_RECEIVED';
     final isReceived = status == 'RECEIVED';
 
-    final (statusLabel, statusBg, statusFg, statusBorder, statusIcon) = switch (status) {
+    final (
+      statusLabel,
+      statusBg,
+      statusFg,
+      statusBorder,
+      statusIcon,
+    ) = switch (status) {
       'RECEIVED' => (
         'Recibida',
         const Color(0xFFECFDF5),
@@ -115,9 +156,9 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
             ? Icons.inventory_2_outlined
             : Icons.vaccines_outlined;
 
-    final events = widget.controller.custodyEvents.where(
-      (e) => e['assignmentId'] == a['id'],
-    ).toList();
+    final events = widget.controller.custodyEvents
+        .where((e) => e['assignmentId'] == a['id'])
+        .toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -245,7 +286,10 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 5,
+                          ),
                         decoration: BoxDecoration(
                           color: statusBg,
                           borderRadius: BorderRadius.circular(20),
@@ -375,10 +419,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
             const SizedBox(height: 4),
             const Text(
               'Gestión de custodia, verificaciones y eventos de lote.',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.slate,
-              ),
+                style: TextStyle(fontSize: 13, color: AppColors.slate),
             ),
             const SizedBox(height: 14),
 
@@ -519,10 +560,16 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                               assignment: a,
                             ),
                           ),
-                    icon: const Icon(Icons.check_circle_outline_rounded, size: 20),
+                      icon: const Icon(
+                        Icons.check_circle_outline_rounded,
+                        size: 20,
+                      ),
                     label: const Text(
                       'Confirmar recepción',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                     ),
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF1E60EC),
@@ -590,7 +637,10 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(12),
@@ -651,7 +701,8 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                                 color: Color(0xFF0F172A),
                               ),
                             ),
-                            if ((e['reportNote']?.toString() ?? '').isNotEmpty) ...[
+                              if ((e['reportNote']?.toString() ?? '')
+                                  .isNotEmpty) ...[
                               const SizedBox(height: 3),
                               Text(
                                 '${e['reportNote']}',
@@ -702,7 +753,11 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
               ),
               child: Row(
                 children: const [
-                  Icon(Icons.shield_outlined, size: 18, color: Color(0xFF64748B)),
+                    Icon(
+                      Icons.shield_outlined,
+                      size: 18,
+                      color: Color(0xFF64748B),
+                    ),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(

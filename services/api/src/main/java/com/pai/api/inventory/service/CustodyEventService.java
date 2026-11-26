@@ -5,6 +5,8 @@ import com.pai.api.shared.security.PermissionGuard;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,11 +17,14 @@ public class CustodyEventService {
   private final JdbcTemplate db;
   private final PermissionGuard guard;
   private final DataScope scope;
+  private ApplicationEventPublisher events = event -> {};
   public CustodyEventService(JdbcTemplate db, PermissionGuard guard, DataScope scope) {
     this.db = db;
     this.guard = guard;
     this.scope = scope;
   }
+  @Autowired
+  void setEvents(ApplicationEventPublisher events) { this.events = events; }
 
   public record Event(UUID id, UUID assignmentId, UUID lotId, int vialCount, String status,
       String reportNote, String confirmationNote, String vaccineName, String lotNumber) {}
@@ -80,6 +85,9 @@ public class CustodyEventService {
     db.update("INSERT INTO app.inventory_custody_events (id, institution_id, lot_id, assignment_id, "
         + "vial_count, status, reported_by, report_note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         id, institutionId, assignment.lot(), assignmentId, vials, status, actor, detail);
+    if (status.equals("RETURN_PENDING")) {
+      events.publishEvent(new InventoryChange("RETURN_DECLARED", institutionId, assignmentId, id, actor));
+    }
   }
 
   /** Solo el responsable institucional confirma recepcion fisica y destino explicito. */

@@ -16,6 +16,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -124,6 +125,26 @@ class InventoryServiceTest {
     reservations = new InstallationReservationService(db, guard, new DataScope());
     tx.executeWithoutResult(s -> service.createLot(actor, institution, lot, vaccine,
         "Fabricante", "Lote-1", LocalDate.of(2028, 1, 1), 10));
+  }
+
+  @Test
+  void publishesOnlyNewDeliveryAndReturnNotIdempotentRetries() {
+    var changes = new ArrayList<InventoryChange>();
+    service.setEvents(event -> changes.add((InventoryChange) event));
+    custody.setEvents(event -> changes.add((InventoryChange) event));
+    UUID movement = UUID.randomUUID(), assignment = UUID.randomUUID(), returned = UUID.randomUUID();
+    tx.executeWithoutResult(s -> service.recordEntry(actor, institution, UUID.randomUUID(), lot, 5, now, "Entrada"));
+    tx.executeWithoutResult(s -> service.dispatch(actor, institution, movement, assignment, lot, vaccinator, 3, now, "Entrega"));
+    tx.executeWithoutResult(s -> service.dispatch(actor, institution, movement, assignment, lot, vaccinator, 3, now, "Entrega"));
+    assertThat(changes).hasSize(1);
+    assertThat(changes.getFirst().type()).isEqualTo("DELIVERY_CREATED");
+    assertThat(changes.getFirst().vaccinatorId()).isEqualTo(vaccinator);
+    tx.executeWithoutResult(s -> service.receive(vaccinator, institution, assignment, 3));
+    tx.executeWithoutResult(s -> custody.report(vaccinator, institution, returned, assignment, 1, "RETURN", "Sobrante"));
+    tx.executeWithoutResult(s -> custody.report(vaccinator, institution, returned, assignment, 1, "RETURN", "Sobrante"));
+    assertThat(changes).hasSize(2);
+    assertThat(changes.getLast().type()).isEqualTo("RETURN_DECLARED");
+    assertThat(changes.getLast().assignmentId()).isEqualTo(assignment);
   }
 
   @Test

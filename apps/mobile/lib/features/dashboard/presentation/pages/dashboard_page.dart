@@ -20,6 +20,7 @@ import '../../../users/presentation/users_controller.dart';
 import '../../../catalogs/presentation/catalog_controller.dart';
 import '../../../catalogs/presentation/pages/catalog_page.dart';
 import '../../../inventory/presentation/inventory_controller.dart';
+import '../../../inventory/data/inventory_event_client.dart';
 import '../../../inventory/presentation/inventory_page.dart';
 import '../../../inventory/presentation/custody_page.dart';
 import '../../../attentions/presentation/attention_controller.dart';
@@ -108,6 +109,11 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+  InventoryEventClient? _inventoryEvents;
+  StreamSubscription<Map<String, dynamic>>? _inventoryEventSub;
+  StreamSubscription<InventoryConnectionStatus>? _inventoryStatusSub;
+  bool _inventoryConnectionFailed = false;
+  InventoryConnectionStatus? _inventoryConnectionStatus;
   int _selectedIndex = 0;
   bool _isAttentionSubmitting = false;
   String? _inventorySubAction;
@@ -124,6 +130,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
+    _startInventoryEvents();
     _liveReason = widget.offlineReason;
     unawaited(widget.syncStatusController?.refresh());
     final networkInfo = widget.networkInfo;
@@ -137,6 +144,13 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void didUpdateWidget(DashboardPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.user.id != widget.user.id ||
+        oldWidget.user.institution.id != widget.user.institution.id ||
+        oldWidget.sessionStatus != widget.sessionStatus ||
+        oldWidget.inventoryController != widget.inventoryController) {
+      _stopInventoryEvents();
+      _startInventoryEvents();
+    }
     if (oldWidget.offlineReason != widget.offlineReason) {
       _liveReason = widget.offlineReason;
     }
@@ -144,8 +158,66 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   void dispose() {
+    _stopInventoryEvents();
     _connectivitySub?.cancel();
     super.dispose();
+  }
+
+  void _startInventoryEvents() {
+    final controller = widget.inventoryController;
+    final user = widget.user;
+    if (controller == null ||
+        widget.sessionStatus != SessionStatus.signedIn ||
+        (!user.hasPermission('ATTENTION_CREATE') &&
+            !user.hasPermission('INVENTORY_READ'))) {
+      return;
+    }
+    final client = InventoryEventClient(
+      baseUrl: controller.api.baseUrl,
+      sessionManager: controller.sessionManager,
+      institutionId: user.institution.id,
+      renewSession: controller.renewSession,
+    );
+    _inventoryEvents = client;
+    _inventoryConnectionFailed = false;
+    _inventoryConnectionStatus = null;
+    _inventoryStatusSub = client.statuses.listen((status) {
+      if (!mounted) return;
+      setState(() => _inventoryConnectionStatus = status);
+      if (status == InventoryConnectionStatus.connected) {
+        if (_inventoryConnectionFailed) {
+          AppSnackbar.info(context, 'Conexión de avisos de inventario recuperada.');
+        }
+        _inventoryConnectionFailed = false;
+      } else {
+        _inventoryConnectionFailed = true;
+        AppSnackbar.warning(context, status == InventoryConnectionStatus.unauthorized
+            ? 'Avisos de inventario no disponibles. Revisa tu sesión y permisos.'
+            : 'Avisos de inventario desconectados. Consulta las entregas manualmente.');
+      }
+    });
+    _inventoryEventSub = client.events.listen((event) {
+      if (!mounted) return;
+      final type = event['type'];
+      if (type != 'DELIVERY_CREATED' && type != 'RETURN_DECLARED') return;
+      controller.acceptChange(event);
+      AppSnackbar.info(
+        context,
+        type == 'DELIVERY_CREATED'
+            ? 'Tienes una nueva entrega pendiente.'
+            : 'Hay una devolución pendiente de revisión.',
+      );
+    });
+    client.start();
+  }
+
+  void _stopInventoryEvents() {
+    unawaited(_inventoryStatusSub?.cancel());
+    _inventoryStatusSub = null;
+    unawaited(_inventoryEventSub?.cancel());
+    _inventoryEventSub = null;
+    _inventoryEvents?.dispose();
+    _inventoryEvents = null;
   }
 
   /// Solo etiqueta visual: con conectividad del dispositivo el motivo de la
@@ -660,7 +732,25 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
+    final status = _inventoryConnectionStatus;
+    final showWarning = status == InventoryConnectionStatus.unavailable ||
+        status == InventoryConnectionStatus.unauthorized;
+    return Column(
+      children: [
+        if (showWarning)
+          Material(
+            color: Colors.orange.shade100,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: Text(status == InventoryConnectionStatus.unauthorized
+                    ? 'Avisos de inventario no disponibles: revisa tu sesión y permisos.'
+                    : 'Avisos de inventario desconectados: consulta las entregas manualmente.'),
+              ),
+            ),
+          ),
+        Expanded(child: LayoutBuilder(
       builder: (context, constraints) {
         final isDesktopAdmin =
             constraints.maxWidth >= 960 &&
@@ -674,6 +764,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
         return _buildMobileLayout();
       },
+        )),
+      ],
     );
   }
 
